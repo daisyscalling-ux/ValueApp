@@ -1,0 +1,1194 @@
+"""
+providers.py — Datenzugriff mit sauberer Degradation.
+
+Standard: yfinance (kostenlos, kein Key). Wenn FINNHUB_API_KEY / FMP_API_KEY
+gesetzt sind, werden reichere Daten (Revisionen, Sentiment, Supply-Chain,
+Transcripts, Insider) ergänzt. Fehlt etwas, wird None/[] zurückgegeben –
+das restliche System läuft weiter.
+
+Alle Netzwerk-Calls sind defensiv in try/except gekapselt.
+"""
+from __future__ import annotations
+from typing import Any, Optional
+import math
+import config
+
+try:
+    import yfinance as yf
+except Exception:  # pragma: no cover
+    yf = None
+
+try:
+    import requests
+except Exception:  # pragma: no cover
+    requests = None
+
+
+def _safe(d: dict, key: str, default=None):
+    v = d.get(key, default)
+    if v is None:
+        return default
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return default
+    return v
+
+
+def _num(x):
+    try:
+        f = float(x)
+        return None if (math.isnan(f) or math.isinf(f)) else f
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Fundamentaldaten -> normalisiertes Dict
+# ---------------------------------------------------------------------------
+def _fh(path, params):
+    """Finnhub-GET (nur wenn Key vorhanden). Gibt JSON oder None."""
+    if not config.FINNHUB_API_KEY or requests is None:
+        return None
+    try:
+        p = dict(params)
+        p["token"] = config.FINNHUB_API_KEY
+        r = requests.get(f"https://finnhub.io/api/v1/{path}", params=p, timeout=12)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        return None
+    return None
+
+
+def _num(x):
+    try:
+        if x is None:
+            return None
+        v = float(x)
+        return v if v == v else None       # NaN raus
+    except Exception:
+        return None
+
+
+def _yf_bundle(info):
+    """yfinance-Rohwerte normalisiert (Margen/ROE als Ratio 0-1, wie geliefert)."""
+    return {
+        "price": _num(info.get("currentPrice")) or _num(info.get("regularMarketPrice")),
+        "name": info.get("longName"), "sector": info.get("sector"),
+        "industry": info.get("industry"), "currency": info.get("currency"),
+        "country": info.get("country"),
+        "shares_out": _num(info.get("sharesOutstanding")),
+        "market_cap": _num(info.get("marketCap")),
+        "enterprise_value": _num(info.get("enterpriseValue")),
+        "beta": _num(info.get("beta")),
+        "pe_trailing": _num(info.get("trailingPE")), "pe_forward": _num(info.get("forwardPE")),
+        "pb": _num(info.get("priceToBook")), "ev_ebitda": _num(info.get("enterpriseToEbitda")),
+        "ev_sales": _num(info.get("enterpriseToRevenue")),
+        "ps": _num(info.get("priceToSalesTrailing12Months")),
+        "peg": _num(info.get("pegRatio")) or _num(info.get("trailingPegRatio")),
+        "roe": _num(info.get("returnOnEquity")), "roa": _num(info.get("returnOnAssets")),
+        "gross_margin": _num(info.get("grossMargins")),
+        "operating_margin": _num(info.get("operatingMargins")),
+        "profit_margin": _num(info.get("profitMargins")),
+        "revenue_growth": _num(info.get("revenueGrowth")),
+        "earnings_growth": _num(info.get("earningsGrowth")),
+        "debt_to_equity": _num(info.get("debtToEquity")),
+        "current_ratio": _num(info.get("currentRatio")),
+        "quick_ratio": _num(info.get("quickRatio")),
+        "ebitda": _num(info.get("ebitda")), "free_cashflow": _num(info.get("freeCashflow")),
+        "operating_cashflow": _num(info.get("operatingCashflow")),
+        "eps_trailing": _num(info.get("trailingEps")), "eps_forward": _num(info.get("forwardEps")),
+        "book_value_ps": _num(info.get("bookValue")),
+        "total_debt": _num(info.get("totalDebt")), "cash": _num(info.get("totalCash")),
+        "target_mean": _num(info.get("targetMeanPrice")),
+        "analyst_count": _num(info.get("numberOfAnalystOpinions")),
+        "business_summary": info.get("longBusinessSummary") or None,
+        "recommendation": info.get("recommendationKey"),
+        "52w_high": _num(info.get("fiftyTwoWeekHigh")), "52w_low": _num(info.get("fiftyTwoWeekLow")),
+    }
+
+
+def _finnhub_bundle(ticker):
+    """Finnhub-Quelle normalisiert auf dieselbe Skala wie yfinance
+    (Margen/ROE/Wachstum: Prozent -> Ratio; Mio. -> absolut)."""
+    B = {}
+    q = _fh("quote", {"symbol": ticker})
+    if q and _num(q.get("c")):
+        B["price"] = _num(q.get("c"))
+    p = _fh("stock/profile2", {"symbol": ticker})
+    if p:
+        B["name"] = p.get("name") or None
+        B["country"] = p.get("country") or None
+        B["currency"] = p.get("currency") or None
+        B["industry"] = p.get("finnhubIndustry") or None
+        if _num(p.get("shareOutstanding")):
+            B["shares_out"] = _num(p.get("shareOutstanding")) * 1e6
+        if _num(p.get("marketCapitalization")):
+            B["market_cap_usd"] = _num(p.get("marketCapitalization")) * 1e6
+    m = _fh("stock/metric", {"symbol": ticker, "metric": "all"})
+    if m and isinstance(m.get("metric"), dict):
+        M = m["metric"]
+
+        def gv(*keys):
+            for k in keys:
+                if _num(M.get(k)) is not None:
+                    return _num(M.get(k))
+            return None
+
+        def ratio(lo, hi, *keys):           # Prozent -> Ratio, mit Plausibilitaetsgrenze
+            v = gv(*keys)
+            if v is None:
+                return None
+            v = v / 100.0
+            return v if lo <= v <= hi else None
+
+        B["pe_trailing"] = gv("peTTM", "peBasicExclExtraTTM", "peExclExtraTTM")
+        B["pb"] = gv("pbQuarterly", "pbAnnual")
+        B["ps"] = gv("psTTM", "psAnnual")
+        B["eps_trailing"] = gv("epsTTM", "epsInclExtraItemsTTM")
+        B["book_value_ps"] = gv("bookValuePerShareQuarterly", "bookValuePerShareAnnual")
+        B["beta"] = gv("beta")
+        B["52w_high"] = gv("52WeekHigh")
+        B["52w_low"] = gv("52WeekLow")
+        B["current_ratio"] = gv("currentRatioQuarterly", "currentRatioAnnual")
+        B["roe"] = ratio(-3, 3, "roeTTM", "roeRfy")
+        B["roa"] = ratio(-2, 2, "roaTTM", "roaRfy")
+        B["gross_margin"] = ratio(-2, 2, "grossMarginTTM", "grossMarginAnnual")
+        B["operating_margin"] = ratio(-2, 2, "operatingMarginTTM", "operatingMarginAnnual")
+        B["profit_margin"] = ratio(-2, 2, "netProfitMarginTTM", "netProfitMarginAnnual")
+        B["revenue_growth"] = ratio(-5, 10, "revenueGrowthTTMYoy", "revenueGrowthQuarterlyYoy")
+        B["earnings_growth"] = ratio(-5, 10, "epsGrowthTTMYoy", "epsGrowthQuarterlyYoy")
+    return {k: v for k, v in B.items() if v is not None}
+
+
+def _pick(*vals):
+    for v in vals:
+        if v is not None:
+            return v
+    return None
+
+
+def _consensus(*vals):
+    """Median der vorhandenen Werte (robust gegen einen Ausreisser).
+    Bei 2 Werten = Mittelwert, bei 3 = mittlerer Wert."""
+    xs = sorted(v for v in vals if v is not None)
+    if not xs:
+        return None
+    n = len(xs)
+    if n == 1:
+        return xs[0]
+    if n % 2:
+        return xs[n // 2]
+    return (xs[n // 2 - 1] + xs[n // 2]) / 2.0
+
+
+def _fmp_get(path, params=None):
+    """Financial-Modeling-Prep-GET (nur wenn FMP_API_KEY gesetzt)."""
+    if not config.FMP_API_KEY or requests is None:
+        return None
+    try:
+        p = dict(params or {})
+        p["apikey"] = config.FMP_API_KEY
+        r = requests.get(f"https://financialmodelingprep.com/api/v3/{path}",
+                         params=p, timeout=15)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        return None
+    return None
+
+
+def _fmp_bundle(ticker):
+    """Vierte Quelle (FMP) normalisiert. Margen/ROE/Wachstum kommen bereits als
+    Ratio (0-1) -> direkt mit yfinance vergleichbar, ideal zum Gegenpruefen."""
+    B = {}
+    prof = _fmp_get(f"profile/{ticker}")
+    if isinstance(prof, list) and prof:
+        d = prof[0]
+        B["price"] = _num(d.get("price"))
+        B["name"] = d.get("companyName") or None
+        B["currency"] = d.get("currency") or None
+        B["country"] = d.get("country") or None
+        B["industry"] = d.get("industry") or None
+        B["sector"] = d.get("sector") or None
+        B["beta"] = _num(d.get("beta"))
+        B["business_summary"] = d.get("description") or None
+        if _num(d.get("mktCap")):
+            B["market_cap"] = _num(d.get("mktCap"))
+        rng = d.get("range")
+        if isinstance(rng, str) and "-" in rng:
+            try:
+                lo, hi = rng.split("-")
+                B["52w_low"], B["52w_high"] = _num(lo), _num(hi)
+            except Exception:
+                pass
+    rt = _fmp_get(f"ratios-ttm/{ticker}")
+    if isinstance(rt, list) and rt:
+        d = rt[0]
+        B["pe_trailing"] = _num(d.get("peRatioTTM"))
+        B["pb"] = _num(d.get("priceToBookRatioTTM"))
+        B["ps"] = _num(d.get("priceToSalesRatioTTM"))
+        B["roe"] = _num(d.get("returnOnEquityTTM"))
+        B["roa"] = _num(d.get("returnOnAssetsTTM"))
+        B["gross_margin"] = _num(d.get("grossProfitMarginTTM"))
+        B["operating_margin"] = _num(d.get("operatingProfitMarginTTM"))
+        B["profit_margin"] = _num(d.get("netProfitMarginTTM"))
+        B["current_ratio"] = _num(d.get("currentRatioTTM"))
+        B["quick_ratio"] = _num(d.get("quickRatioTTM"))
+    km = _fmp_get(f"key-metrics-ttm/{ticker}")
+    if isinstance(km, list) and km:
+        d = km[0]
+        B["book_value_ps"] = _num(d.get("bookValuePerShareTTM"))
+        B["ev_ebitda"] = _num(d.get("enterpriseValueOverEBITDATTM"))
+        B["ev_sales"] = _num(d.get("evToSalesTTM"))
+        if _num(d.get("enterpriseValueTTM")):
+            B["enterprise_value"] = _num(d.get("enterpriseValueTTM"))
+        if B.get("pe_trailing") is None:
+            B["pe_trailing"] = _num(d.get("peRatioTTM"))
+    gr = _fmp_get(f"financial-growth/{ticker}", {"limit": 1})
+    if isinstance(gr, list) and gr:
+        d = gr[0]
+        B["revenue_growth"] = _num(d.get("revenueGrowth"))
+        B["earnings_growth"] = _num(d.get("epsgrowth"))
+    # Historischer Median-KGV (fuer Markt-Fair-Value-Methode): Jahres-KGVs 5-8J
+    hist = _fmp_get(f"ratios/{ticker}", {"limit": 8})
+    if isinstance(hist, list) and hist:
+        pes = sorted(_num(x.get("priceEarningsRatio")) for x in hist
+                     if _num(x.get("priceEarningsRatio")) and 0 < x.get("priceEarningsRatio", 0) < 120)
+        if len(pes) >= 4:
+            mid = len(pes) // 2
+            B["hist_pe_median"] = (pes[mid] if len(pes) % 2 else
+                                   (pes[mid - 1] + pes[mid]) / 2)
+    return {k: v for k, v in B.items() if v is not None}
+
+
+def _merge_sources(ticker, A, B, C=None):
+    """Kombiniert mehrere normalisierte Quellen feldweise. Eindeutige Groessen
+    (Kurs, Aktien, KGV/KBV) werden konsistent abgeleitet/gegengeprueft; bei
+    skalengleichen Ratios (Margen/ROE/Wachstum) entscheidet der Median (Konsens)."""
+    C = C or {}
+    warn = []
+    price = _pick(A.get("price"), C.get("price"), B.get("price"))
+    refs = [(n, s.get("price")) for n, s in (("yfinance", A), ("finnhub", B), ("fmp", C))
+            if s.get("price")]
+    if len(refs) >= 2:
+        lo = min(p for _, p in refs)
+        hi = max(p for _, p in refs)
+        if lo > 0 and (hi - lo) / lo > 0.06:
+            warn.append("Kurs uneinig: " + ", ".join(f"{n} {p:.2f}" for n, p in refs))
+    currency = _pick(A.get("currency"), C.get("currency"), B.get("currency")) or "USD"
+    shares = _pick(A.get("shares_out"), B.get("shares_out"))
+    eps = _pick(A.get("eps_trailing"), C.get("eps_trailing"), B.get("eps_trailing"))
+    bvps = _pick(A.get("book_value_ps"), C.get("book_value_ps"), B.get("book_value_ps"))
+
+    # Marktkap.: Kurs x Aktien ist quellenuebergreifend konsistent -> bevorzugt
+    mc_calc = price * shares if (price and shares) else None
+    mc_rep = _pick(A.get("market_cap"), C.get("market_cap"))
+    if mc_calc and mc_rep and mc_rep > 0 and abs(mc_calc - mc_rep) / mc_rep > 0.25:
+        warn.append("Marktkap.: Kurs x Aktien weicht von gemeldetem Wert ab")
+    market_cap = mc_calc or mc_rep
+    if market_cap is None and currency == "USD":
+        market_cap = B.get("market_cap_usd")
+
+    # KGV / KBV: gemeldet/abgeleitet konsistent, sonst Konsens der Quellen
+    pe = A.get("pe_trailing")
+    if pe is None and price and eps and eps > 0:
+        pe = price / eps
+    pe = _pick(pe, _consensus(C.get("pe_trailing"), B.get("pe_trailing")))
+    pb = A.get("pb")
+    if pb is None and price and bvps and bvps > 0:
+        pb = price / bvps
+    pb = _pick(pb, _consensus(C.get("pb"), B.get("pb")))
+
+    src = ["yfinance"]
+    if B:
+        src.append("finnhub")
+    if C:
+        src.append("fmp")
+    ebitda = A.get("ebitda")
+    ev = _pick(A.get("enterprise_value"), C.get("enterprise_value"))
+    fcf = A.get("free_cashflow")
+    total_debt = A.get("total_debt") or 0.0
+    cash = A.get("cash") or 0.0
+    net_debt = total_debt - cash
+
+    def cons(field):
+        return _consensus(A.get(field), C.get(field), B.get(field))
+
+    return {
+        "ticker": ticker.upper(),
+        "name": _pick(A.get("name"), C.get("name"), B.get("name")) or ticker.upper(),
+        "sector": A.get("sector") or C.get("sector") or "Unknown",
+        "industry": _pick(A.get("industry"), C.get("industry"), B.get("industry")) or "Unknown",
+        "currency": currency,
+        "country": _pick(A.get("country"), C.get("country"), B.get("country")) or "?",
+        "price": price,
+        "market_cap": market_cap,
+        "enterprise_value": ev,
+        "shares_out": shares,
+        "beta": _pick(A.get("beta"), C.get("beta"), B.get("beta")) or config.VALUATION["default_beta"],
+        "pe_trailing": pe,
+        "pe_forward": A.get("pe_forward"),
+        "pb": pb,
+        "ev_ebitda": _pick(A.get("ev_ebitda"), C.get("ev_ebitda")),
+        "ev_sales": _pick(A.get("ev_sales"), C.get("ev_sales")),
+        "ps": _pick(A.get("ps"), _consensus(C.get("ps"), B.get("ps"))),
+        "peg": A.get("peg"),
+        "fcf_yield": (fcf / ev) if (fcf and ev) else None,
+        "roe": cons("roe"),
+        "roa": cons("roa"),
+        "gross_margin": cons("gross_margin"),
+        "operating_margin": cons("operating_margin"),
+        "profit_margin": cons("profit_margin"),
+        "revenue_growth": cons("revenue_growth"),
+        "earnings_growth": cons("earnings_growth"),
+        "debt_to_equity": A.get("debt_to_equity"),
+        "current_ratio": cons("current_ratio"),
+        "quick_ratio": _pick(A.get("quick_ratio"), C.get("quick_ratio")),
+        "net_debt": net_debt,
+        "net_debt_ebitda": (net_debt / ebitda) if (ebitda and ebitda > 0) else None,
+        "ebit": ebitda,
+        "ebitda": ebitda,
+        "free_cashflow": fcf,
+        "operating_cashflow": A.get("operating_cashflow"),
+        "eps_trailing": eps,
+        "eps_forward": A.get("eps_forward"),
+        "book_value_ps": bvps,
+        "total_debt": total_debt,
+        "cash": cash,
+        "target_mean": A.get("target_mean"),
+        "analyst_count": A.get("analyst_count"),
+        "business_summary": _pick(A.get("business_summary"), C.get("business_summary")),
+        "hist_pe_median": C.get("hist_pe_median"),
+        "recommendation": A.get("recommendation"),
+        "52w_high": _pick(A.get("52w_high"), C.get("52w_high"), B.get("52w_high")),
+        "52w_low": _pick(A.get("52w_low"), C.get("52w_low"), B.get("52w_low")),
+        "data_sources": "+".join(src),
+        "_warnings": warn,
+    }
+
+
+def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
+    """Kombiniert mehrere Datenquellen feldweise zu einem moeglichst verlaesslichen
+    Kennzahlen-Dict. yfinance (Taxonomie-Basis) + Finnhub + (bei deep=True) FMP fuer
+    echten Kennzahlen-Konsens; Stooq als letzte Preis-Absicherung.
+    deep=True nur fuer Einzelanalysen verwenden (FMP-Tageslimit schonen)."""
+    info = {}
+    if yf is not None:
+        try:
+            info = yf.Ticker(ticker).info or {}
+        except Exception:
+            info = {}
+    A = _yf_bundle(info)
+    B = _finnhub_bundle(ticker)
+    C = _fmp_bundle(ticker) if deep else None
+    merged = _merge_sources(ticker, A, B, C)
+    if merged.get("price") is None:                 # Quelle: Stooq als letzte Absicherung
+        sp = _stooq_last(ticker)
+        if sp:
+            merged["price"] = sp
+            merged["data_sources"] = merged.get("data_sources", "") + "+stooq"
+            if merged.get("market_cap") is None and merged.get("shares_out"):
+                merged["market_cap"] = sp * merged["shares_out"]
+            if merged.get("pe_trailing") is None and merged.get("eps_trailing"):
+                e = merged["eps_trailing"]
+                merged["pe_trailing"] = sp / e if e and e > 0 else None
+    return merged
+
+
+def search_symbol(query: str, limit: int = 8) -> list[dict]:
+    """Namens-/Ticker-Suche via Yahoo. Liefert [{symbol,name,type,exchange}]."""
+    if not query or requests is None:
+        return []
+    try:
+        r = requests.get("https://query2.finance.yahoo.com/v1/finance/search",
+                         params={"q": query, "quotesCount": limit, "newsCount": 0},
+                         headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        out = []
+        for q in r.json().get("quotes", []):
+            sym = q.get("symbol")
+            if not sym:
+                continue
+            out.append({
+                "symbol": sym,
+                "name": q.get("shortname") or q.get("longname") or "",
+                "type": q.get("quoteType") or q.get("typeDisp") or "",
+                "exchange": q.get("exchDisp") or q.get("exchange") or "",
+            })
+        return out
+    except Exception:
+        return []
+
+
+def _stooq_history(ticker, interval):
+    """Schluesselfreie zweite Quelle (Stooq) fuer Tages-/Wochenhistorie.
+    Best-effort, v.a. fuer US-Titer ohne Boersen-Suffix."""
+    if requests is None or interval not in ("1d", "1wk", "1mo"):
+        return None
+    sym = ticker.lower()
+    if "." not in sym:
+        sym = f"{sym}.us"
+    imap = {"1d": "d", "1wk": "w", "1mo": "m"}
+    try:
+        import pandas as pd
+        import io
+        url = f"https://stooq.com/q/d/l/?s={sym}&i={imap[interval]}"
+        r = requests.get(url, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code != 200 or not r.text or "Date" not in r.text[:50]:
+            return None
+        df = pd.read_csv(io.StringIO(r.text))
+        if df.empty or "Close" not in df.columns:
+            return None
+        df["Date"] = pd.to_datetime(df["Date"])
+        return df.set_index("Date")[["Close"]]
+    except Exception:
+        return None
+
+
+def _stooq_last(ticker):
+    """Letzter Tagesschluss von Stooq (dritte Preisquelle, letzte Absicherung)."""
+    h = _stooq_history(ticker, "1d")
+    try:
+        if h is not None and not h.empty:
+            return float(h["Close"].dropna().iloc[-1])
+    except Exception:
+        return None
+    return None
+
+
+def get_intraday_price(ticker: str) -> Optional[float]:
+    """Aktuellster Intraday-Kurs (minutengenau) fuer Live-G/V im Portfolio.
+    1) Finnhub /quote (nahezu Echtzeit fuer US)  2) yfinance 1-Minuten-Historie.
+    None, wenn nichts verfuegbar -> Aufrufer nutzt dann den regulaeren Kurs."""
+    q = _fh("quote", {"symbol": ticker})
+    if q and q.get("c"):
+        try:
+            c = float(q["c"])
+            if c > 0:
+                return c
+        except Exception:
+            pass
+    if yf is not None:
+        try:
+            h = yf.Ticker(ticker).history(period="1d", interval="1m")
+            if h is not None and not h.empty:
+                last = h["Close"].dropna()
+                if len(last):
+                    return float(last.iloc[-1])
+        except Exception:
+            pass
+    return None
+
+
+def get_price_history(ticker: str, period: str = "1y", interval: str = "1d"):
+    h = None
+    if yf is not None:
+        try:
+            h = yf.Ticker(ticker).history(period=period, interval=interval)
+        except Exception:
+            h = None
+    if h is None or getattr(h, "empty", True):
+        h = _stooq_history(ticker, interval)      # zweite Quelle als Fallback
+    return h
+
+
+def get_fx_to_eur(currency: str):
+    """
+    Multiplikator, um einen Betrag in 'currency' nach EUR umzurechnen.
+    EUR -> 1.0. Pence (GBp/GBX) -> 0.01 * GBP-Kurs. Mehrere Quellen:
+    yfinance zuerst, dann EZB/Frankfurter (schluesselfrei). Fehler -> None.
+    """
+    if not currency:
+        return 1.0
+    cur = currency.upper()
+    pence = 1.0
+    if cur in ("GBP", "GBX") or currency == "GBp":
+        if currency in ("GBp", "GBX") or cur == "GBX":
+            pence = 0.01
+        cur = "GBP"
+    if cur == "EUR":
+        return 1.0 * pence
+    rate = None
+    if yf is not None:                                  # Quelle 1: yfinance
+        try:
+            h = yf.Ticker(f"{cur}EUR=X").history(period="5d")
+            rate = float(h["Close"].dropna().iloc[-1])
+        except Exception:
+            rate = None
+    if rate is None and requests is not None:           # Quelle 2: EZB / Frankfurter
+        try:
+            r = requests.get("https://api.frankfurter.app/latest",
+                             params={"from": cur, "to": "EUR"}, timeout=10)
+            if r.status_code == 200:
+                rate = _num(r.json().get("rates", {}).get("EUR"))
+        except Exception:
+            rate = None
+    return rate * pence if rate else None
+
+
+def get_performance(ticker: str) -> dict:
+    """Kursveraenderung 6M / 1J / YTD in % aus einem History-Abruf."""
+    h = get_price_history(ticker, period="1y", interval="1d")
+    if h is None or getattr(h, "empty", True):
+        return {}
+    try:
+        import pandas as pd
+        close = h["Close"].dropna()
+        if close.empty:
+            return {}
+        idx = close.index
+        try:
+            idx = idx.tz_localize(None)
+        except Exception:
+            try:
+                idx = idx.tz_convert(None)
+            except Exception:
+                pass
+        close.index = idx
+        last = float(close.iloc[-1])
+
+        def pct(ref):
+            ref = float(ref)
+            return (last / ref - 1) * 100 if ref else None
+
+        out = {"ch_1y": pct(close.iloc[0])}
+        c6 = close[close.index >= (close.index[-1] - pd.Timedelta(days=182))]
+        out["ch_6m"] = pct(c6.iloc[0]) if len(c6) else None
+        ystart = pd.Timestamp(year=close.index[-1].year, month=1, day=1)
+        cy = close[close.index >= ystart]
+        out["ch_ytd"] = pct(cy.iloc[0]) if len(cy) else None
+        return out
+    except Exception:
+        return {}
+
+
+def get_analyst_ratings(ticker: str):
+    """Analystenrating als {buy, hold, sell}. Finnhub bevorzugt, sonst yfinance."""
+    rev = get_estimate_revisions(ticker)
+    if rev:
+        return {"buy": (rev.get("strongBuy") or 0) + (rev.get("buy") or 0),
+                "hold": rev.get("hold") or 0,
+                "sell": (rev.get("sell") or 0) + (rev.get("strongSell") or 0)}
+    if yf is None:
+        return None
+    try:
+        rec = yf.Ticker(ticker).recommendations
+        if rec is None or len(rec) == 0:
+            return None
+        if "period" in getattr(rec, "columns", []):
+            m = rec[rec["period"] == "0m"]
+            row = m.iloc[0] if len(m) else rec.iloc[0]
+        else:
+            row = rec.iloc[-1]
+
+        def g(k):
+            try:
+                return int(row.get(k, 0) or 0)
+            except Exception:
+                return 0
+        return {"buy": g("strongBuy") + g("buy"), "hold": g("hold"),
+                "sell": g("sell") + g("strongSell")}
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# News / Intel
+# ---------------------------------------------------------------------------
+def get_financials(ticker: str) -> dict:
+    """Mehrjahres-Finanzdaten fuer Trend-Kriterien (recent first)."""
+    out = {"revenue": [], "gross_margin": [], "fcf": [], "net_income": None}
+    if yf is None:
+        return out
+    try:
+        tk = yf.Ticker(ticker)
+        fin, cf = tk.financials, tk.cashflow
+
+        def row(df, *names):
+            for n in names:
+                try:
+                    if df is not None and n in df.index:
+                        return [None if v is None else float(v) for v in df.loc[n].values]
+                except Exception:
+                    pass
+            return []
+
+        rev = row(fin, "Total Revenue")
+        gp = row(fin, "Gross Profit")
+        ni = row(fin, "Net Income", "Net Income Common Stockholders")
+        out["revenue"] = [x for x in rev if x is not None]
+        if rev and gp and len(rev) == len(gp):
+            out["gross_margin"] = [g / r for g, r in zip(gp, rev) if r]
+        if ni and ni[0] is not None:
+            out["net_income"] = ni[0]
+        fcf = row(cf, "Free Cash Flow")
+        if not fcf:
+            ocf = row(cf, "Operating Cash Flow", "Total Cash From Operating Activities")
+            cap = row(cf, "Capital Expenditure")
+            if ocf and cap and len(ocf) == len(cap):
+                fcf = [o + c for o, c in zip(ocf, cap)]  # CapEx ist negativ
+        out["fcf"] = [x for x in fcf if x is not None]
+        return out
+    except Exception:
+        return out
+
+
+def get_last_earnings_surprise(ticker: str):
+    """'beat' / 'inline' / 'miss' aus der letzten berichteten EPS-Ueberraschung."""
+    if yf is None:
+        return None
+    try:
+        ed = yf.Ticker(ticker).earnings_dates
+        if ed is None or ed.empty:
+            return None
+        cols = list(ed.columns)
+        rep = ed.dropna(subset=["Reported EPS"]) if "Reported EPS" in cols else ed.dropna()
+        if rep.empty:
+            return None
+        last = rep.iloc[0]
+        sp = last.get("Surprise(%)") if "Surprise(%)" in cols else None
+        if sp is None and "EPS Estimate" in cols and "Reported EPS" in cols:
+            est, act = last.get("EPS Estimate"), last.get("Reported EPS")
+            sp = ((act - est) / abs(est) * 100) if est else None
+        if sp is None:
+            return None
+        sp = float(sp)
+        return "beat" if sp > 1 else ("miss" if sp < -1 else "inline")
+    except Exception:
+        return None
+
+
+def get_technicals(ticker: str) -> dict:
+    """RSI(14), SMA20/50/200, Distanz zu SMA200, Volumen-/Strukturtrend."""
+    out = {}
+    h = get_price_history(ticker, period="1y", interval="1d")
+    if h is None or getattr(h, "empty", True):
+        return out
+    try:
+        close = h["Close"].dropna()
+        if len(close) < 20:
+            return out
+        price = float(close.iloc[-1])
+        out["price"] = price
+        d = close.diff()
+        gain = d.clip(lower=0).rolling(14).mean()
+        loss = (-d.clip(upper=0)).rolling(14).mean().replace(0, 1e-9)
+        rsi = 100 - 100 / (1 + gain / loss)
+        if rsi.notna().sum() > 1:
+            out["rsi"] = float(rsi.iloc[-1])
+            out["rsi_rising"] = bool(rsi.iloc[-1] > rsi.iloc[-2])
+        for n in (20, 50, 200):
+            out[f"sma{n}"] = float(close.rolling(n).mean().iloc[-1]) if len(close) >= n else None
+        s200 = out.get("sma200")
+        out["dist_sma200"] = (price / s200 - 1) if s200 else None
+        if "Volume" in h.columns:
+            vol = h["Volume"].reindex(close.index).fillna(0)
+            sgn = close.diff().apply(lambda x: 1 if x > 0 else (-1 if x < 0 else 0))
+            obv = (sgn * vol).cumsum()
+            if len(obv) > 60:
+                base = abs(obv.iloc[-60]) or 1
+                r = (obv.iloc[-1] - obv.iloc[-60]) / base
+                out["obv_trend"] = "up" if r > 0.05 else ("down" if r < -0.05 else "flat")
+        if len(close) >= 120:
+            half = close.iloc[-120:]
+            a, b = half.iloc[:60].min(), half.iloc[60:].min()
+            out["structure"] = ("higher_low" if b > a * 1.01
+                                else "lower_low" if b < a * 0.99 else "sideways")
+        return out
+    except Exception:
+        return out
+
+
+NEWS_SITES = ["finance.yahoo.com", "investing.com", "onvista.de", "marketscreener.com"]
+_ALLOWED_KEYS = ["yahoo", "investing", "onvista", "marketscreener"]
+
+
+def _allowed_source(src) -> bool:
+    s = (src or "").lower()
+    return any(k in s for k in _ALLOWED_KEYS)
+
+
+def _clean_name(name):
+    """Firmensuffixe entfernen, damit die News-Suche besser greift."""
+    if not name:
+        return name
+    s = name
+    for suf in [", Inc.", " Inc.", " Inc", " Corporation", " Corp.", " Corp",
+                " plc", " PLC", " S.A.", " AG", " SE", " N.V.", " NV", " Co.",
+                " Company", " Ltd.", " Ltd", " Holdings", " Group", " (The)", ","]:
+        s = s.replace(suf, "")
+    return s.strip() or name
+
+
+def _google_news_rss(query, limit):
+    """Google-News-RSS: breit anfragen, danach nach erlaubten Quellen filtern
+    (inkl. Subdomains wie de.investing.com via Quellen-URL)."""
+    if requests is None or not query:
+        return []
+    try:
+        import xml.etree.ElementTree as ET
+        url = ("https://news.google.com/rss/search?q="
+               + requests.utils.quote(f"{query} Aktie OR stock OR shares")
+               + "&hl=de&gl=DE&ceid=DE:de")
+        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        root = ET.fromstring(r.content)
+        out = []
+        for it in root.findall(".//item"):
+            src = it.find("source")
+            sname = src.text if src is not None else ""
+            surl = src.get("url") if src is not None else ""
+            if not (_allowed_source(sname) or _allowed_source(surl)):
+                continue
+            out.append({"headline": it.findtext("title"), "url": it.findtext("link"),
+                        "source": sname or "News", "datetime": it.findtext("pubDate"),
+                        "summary": None})
+            if len(out) >= limit:
+                break
+        return out
+    except Exception:
+        return []
+
+
+def _yf_news_filtered(ticker, limit):
+    """yfinance-News, gefiltert auf die erlaubten Portale (Schema-robust)."""
+    if yf is None:
+        return []
+    try:
+        raw = yf.Ticker(ticker).news or []
+    except Exception:
+        return []
+    out = []
+    for n in raw:
+        c = n.get("content") if isinstance(n.get("content"), dict) else None
+        if c:
+            url = (c.get("canonicalUrl") or {}).get("url") \
+                or (c.get("clickThroughUrl") or {}).get("url")
+            item = {"headline": c.get("title"), "url": url,
+                    "source": (c.get("provider") or {}).get("displayName"),
+                    "datetime": c.get("pubDate"), "summary": c.get("summary")}
+        else:
+            item = {"headline": n.get("title"), "url": n.get("link"),
+                    "source": n.get("publisher"),
+                    "datetime": n.get("providerPublishTime"), "summary": None}
+        if item.get("headline") and _allowed_source(item.get("source")):
+            out.append(item)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def get_news(ticker: str, limit: int = 12, name: str = None) -> list[dict]:
+    """Nur etablierte Portale: Yahoo Finance, Investing.com, onvista.de, marketscreener.com."""
+    query = _clean_name(name) if name else ticker
+    items = _google_news_rss(query, limit)
+    if len(items) < limit:
+        seen = {i["headline"] for i in items}
+        for it in _yf_news_filtered(ticker, limit):
+            if it["headline"] not in seen:
+                items.append(it)
+                seen.add(it["headline"])
+    return items[:limit]
+
+
+def get_peers(ticker: str) -> list[str]:
+    """Wettbewerber/Peers. Finnhub bevorzugt, sonst leer."""
+    if config.FINNHUB_API_KEY and requests is not None:
+        try:
+            r = requests.get("https://finnhub.io/api/v1/stock/peers",
+                             params={"symbol": ticker.upper(),
+                                     "token": config.FINNHUB_API_KEY}, timeout=15)
+            peers = r.json()
+            return [p for p in peers if p != ticker.upper()][:12]
+        except Exception:
+            pass
+    return []
+
+
+def get_supply_chain(ticker: str) -> dict[str, list]:
+    """
+    Kunden/Lieferanten. ECHTE Supply-Chain-Graphen sind institutionelle
+    Premiumdaten (Bloomberg SPLC / FactSet). Hier: Best-Effort über Finnhub
+    Premium-Endpoint, falls verfügbar. Sonst leer -> im Report ehrlich kennzeichnen.
+    """
+    result = {"customers": [], "suppliers": []}
+    if config.FINNHUB_API_KEY and requests is not None:
+        try:
+            r = requests.get("https://finnhub.io/api/v1/stock/supply-chain",
+                             params={"symbol": ticker.upper(),
+                                     "token": config.FINNHUB_API_KEY}, timeout=15)
+            data = r.json()
+            for item in data.get("data", []):
+                rel = (item.get("relationship") or "").lower()
+                sym = item.get("symbol") or item.get("companyName")
+                if "customer" in rel:
+                    result["customers"].append(sym)
+                elif "supplier" in rel:
+                    result["suppliers"].append(sym)
+        except Exception:
+            pass
+    return result
+
+
+def get_estimate_revisions(ticker: str) -> Optional[dict]:
+    """Schätzungs-Trend (Frühindikator). Finnhub recommendation/earnings trend."""
+    if config.FINNHUB_API_KEY and requests is not None:
+        try:
+            r = requests.get("https://finnhub.io/api/v1/stock/recommendation",
+                             params={"symbol": ticker.upper(),
+                                     "token": config.FINNHUB_API_KEY}, timeout=15)
+            data = r.json()
+            if data:
+                latest = data[0]
+                return {"period": latest.get("period"),
+                        "strongBuy": latest.get("strongBuy"),
+                        "buy": latest.get("buy"), "hold": latest.get("hold"),
+                        "sell": latest.get("sell"),
+                        "strongSell": latest.get("strongSell")}
+        except Exception:
+            pass
+    return None
+
+
+def get_insider_activity(ticker: str) -> Optional[dict]:
+    """Insider-Transaktionen (Frühsignal). Finnhub."""
+    if config.FINNHUB_API_KEY and requests is not None:
+        try:
+            r = requests.get("https://finnhub.io/api/v1/stock/insider-transactions",
+                             params={"symbol": ticker.upper(),
+                                     "token": config.FINNHUB_API_KEY}, timeout=15)
+            data = r.json().get("data", [])
+            buys = sum(1 for x in data if (x.get("change") or 0) > 0)
+            sells = sum(1 for x in data if (x.get("change") or 0) < 0)
+            return {"recent_buys": buys, "recent_sells": sells, "n": len(data)}
+        except Exception:
+            pass
+    return None
+
+
+def get_signal_extras(ticker: str) -> dict:
+    """Schwerere Signale fuer die Scoring-Matrizen (best effort, alles guarded):
+    Mehrjahres-Reihen (Umsatz/Bruttogewinn/Nettogewinn/FCF), letzte Earnings,
+    EPS-Revisionen, Analysten-Trend, Short-Interest."""
+    out = {"revenue": None, "gross_profit": None, "net_income": None, "fcf": None,
+           "last_earnings": {}, "eps_rev": {}, "rec_trend": {},
+           "short_pct_float": None, "shares_short": None, "shares_short_prior": None}
+    if yf is None:
+        return out
+    try:
+        tk = yf.Ticker(ticker)
+    except Exception:
+        return out
+
+    try:
+        inc = tk.income_stmt
+    except Exception:
+        inc = None
+    try:
+        cf = tk.cashflow
+    except Exception:
+        cf = None
+
+    def row(df, *names):
+        try:
+            if df is None or getattr(df, "empty", True):
+                return None
+            for n in names:
+                if n in df.index:
+                    s = df.loc[n].dropna()
+                    vals = [_num(x) for x in s.values]
+                    vals = [x for x in vals if x is not None]
+                    return vals or None       # neueste zuerst
+        except Exception:
+            pass
+        return None
+
+    out["revenue"] = row(inc, "Total Revenue", "TotalRevenue")
+    out["gross_profit"] = row(inc, "Gross Profit", "GrossProfit")
+    out["net_income"] = row(inc, "Net Income", "NetIncome",
+                            "Net Income Common Stockholders")
+    fcf = row(cf, "Free Cash Flow", "FreeCashFlow")
+    if fcf is None:
+        ocf = row(cf, "Operating Cash Flow", "OperatingCashFlow",
+                  "Total Cash From Operating Activities")
+        cap = row(cf, "Capital Expenditure", "CapitalExpenditures")
+        if ocf and cap and len(ocf) == len(cap):
+            fcf = [o + c for o, c in zip(ocf, cap)]   # Capex ist negativ
+    out["fcf"] = fcf
+
+    try:
+        info = tk.info
+        out["short_pct_float"] = _num(info.get("shortPercentOfFloat"))
+        out["shares_short"] = _num(info.get("sharesShort"))
+        out["shares_short_prior"] = _num(info.get("sharesShortPriorMonth"))
+    except Exception:
+        pass
+
+    try:
+        df = tk.get_earnings_dates(limit=8)
+        if df is not None and not df.empty and "Reported EPS" in df.columns:
+            past = df[df["Reported EPS"].notna()]
+            if not past.empty:
+                r = past.iloc[0]
+                out["last_earnings"] = {"estimate": _num(r.get("EPS Estimate")),
+                                        "reported": _num(r.get("Reported EPS")),
+                                        "surprise_pct": _num(r.get("Surprise(%)"))}
+    except Exception:
+        pass
+
+    try:
+        rv = getattr(tk, "eps_revisions", None)
+        if rv is not None and not rv.empty:
+            r = rv.iloc[0]
+            out["eps_rev"] = {"up": _num(r.get("upLast30days")) or 0,
+                              "down": _num(r.get("downLast30days")) or 0}
+    except Exception:
+        pass
+
+    try:
+        rec = tk.recommendations
+        if rec is not None and len(rec) > 0 and "period" in rec.columns:
+            def net(rw):
+                g = lambda k: int(rw.get(k, 0) or 0)
+                return g("strongBuy") + g("buy") - g("sell") - g("strongSell")
+            cur = rec[rec["period"] == "0m"]
+            prev = rec[rec["period"].isin(["-2m", "-3m"])]
+            if len(cur):
+                out["rec_trend"] = {"net_now": net(cur.iloc[0]),
+                                    "net_prev": net(prev.iloc[0]) if len(prev) else None}
+    except Exception:
+        pass
+
+    return out
+
+
+# ===========================================================================
+# RADAR-Datenquellen (Events, Schaetzungen, Insider) - kostenlos, erweiterbar
+# ===========================================================================
+_CIK_CACHE = None
+_SEC_UA = {"User-Agent": "ValueRadar research tool contact@example.com"}
+
+
+def get_cik_map():
+    """Ticker -> 10-stellige CIK (einmalig von SEC geladen, gecached)."""
+    global _CIK_CACHE
+    if _CIK_CACHE is not None:
+        return _CIK_CACHE
+    if requests is None:
+        return {}
+    try:
+        r = requests.get("https://www.sec.gov/files/company_tickers.json",
+                         headers=_SEC_UA, timeout=20)
+        m = {}
+        for v in r.json().values():
+            t, cik = v.get("ticker"), v.get("cik_str")
+            if t and cik is not None:
+                m[t.upper()] = str(cik).zfill(10)
+        _CIK_CACHE = m
+        return m
+    except Exception:
+        return {}
+
+
+# 8-K Item-Codes -> Bedeutung (Auswahl der relevanten Katalysatoren)
+SEC_ITEM_LABELS = {
+    "1.01": "Wesentliche Vereinbarung (Vertrag/Kooperation)",
+    "2.01": "Abschluss \u00dcbernahme/Verkauf",
+    "1.02": "Vertrag beendet",
+    "2.02": "Quartalszahlen",
+    "5.02": "Management-Wechsel",
+    "7.01": "Reg-FD-Mitteilung",
+    "8.01": "Sonstiges wesentliches Ereignis",
+    "3.02": "Kapitalerh\u00f6hung",
+}
+
+
+def get_recent_8k(ticker, days=90):
+    """Aktuelle 8-K-Meldungen (US) mit Item-Codes. [] wenn keine/CIK fehlt."""
+    cik = get_cik_map().get(ticker.upper())
+    if not cik or requests is None:
+        return []
+    try:
+        import datetime as dt
+        r = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json",
+                         headers=_SEC_UA, timeout=20)
+        rec = r.json().get("filings", {}).get("recent", {})
+        forms = rec.get("form", [])
+        dates = rec.get("filingDate", [])
+        items = rec.get("items", [])
+        cutoff = dt.date.today() - dt.timedelta(days=days)
+        out = []
+        for i, fm in enumerate(forms):
+            if fm != "8-K":
+                continue
+            d = dates[i] if i < len(dates) else ""
+            try:
+                if dt.date.fromisoformat(d) < cutoff:
+                    continue
+            except Exception:
+                pass
+            codes = [c.strip() for c in (items[i] if i < len(items) else "").replace(";", ",").split(",") if c.strip()]
+            out.append({"date": d, "items": codes})
+        return out
+    except Exception:
+        return []
+
+
+def get_event_news(name, limit=25):
+    """Breite News-Headlines (alle Quellen) fuer die Katalysator-Stichwortsuche."""
+    if requests is None or not name:
+        return []
+    try:
+        import xml.etree.ElementTree as ET
+        url = ("https://news.google.com/rss/search?q="
+               + requests.utils.quote(_clean_name(name))
+               + "&hl=de&gl=DE&ceid=DE:de")
+        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        root = ET.fromstring(r.content)
+        return [(it.findtext("title") or "") for it in root.findall(".//item")[:limit]]
+    except Exception:
+        return []
+
+
+def get_eps_revision_light(ticker):
+    """Nur EPS-Revisionen (leichter Abruf, ohne Bilanz/GuV)."""
+    if yf is None:
+        return {}
+    try:
+        rv = getattr(yf.Ticker(ticker), "eps_revisions", None)
+        if rv is not None and not rv.empty:
+            r = rv.iloc[0]
+            return {"up": _num(r.get("upLast30days")) or 0,
+                    "down": _num(r.get("downLast30days")) or 0}
+    except Exception:
+        pass
+    return {}
+
+
+def get_insider_light(ticker):
+    """Insider-Kaeufe/-Verkaeufe. Finnhub bevorzugt, sonst yfinance (best effort)."""
+    fh = get_insider_activity(ticker)
+    if fh and fh.get("n"):
+        return {"buys": fh.get("recent_buys", 0), "sells": fh.get("recent_sells", 0)}
+    if yf is None:
+        return {}
+    try:
+        ip = yf.Ticker(ticker).insider_purchases
+        if ip is not None and not ip.empty:
+            buys = sells = 0
+            col0 = ip.iloc[:, 0].astype(str).str.lower()
+            shares = ip.iloc[:, 1]
+            for lbl, val in zip(col0, shares):
+                v = _num(val) or 0
+                if "purchase" in lbl:
+                    buys = int(v)
+                elif "sale" in lbl:
+                    sells = int(v)
+            if buys or sells:
+                return {"buys": buys, "sells": sells}
+    except Exception:
+        pass
+    return {}
+
+
+# ===========================================================================
+# Screener-Zusatzdaten: Technik + Performance aus EINEM History-Abruf
+# ===========================================================================
+def get_screen_extras(ticker: str) -> dict:
+    """Liefert Performance (1M/6M/12M/YTD), SMA200-Abstand, RSI(14), 52W-Position
+    und ob die Aktie nach einem Rueckgang einen Boden gebildet hat."""
+    out = {"ch_1m": None, "ch_6m": None, "ch_1y": None, "ch_ytd": None,
+           "above_sma200": None, "sma200_gap": None, "rsi": None,
+           "pct_from_low": None, "drawdown": None, "base_formed": None}
+    h = get_price_history(ticker, period="1y", interval="1d")
+    if h is None or getattr(h, "empty", True):
+        return out
+    try:
+        import pandas as pd
+        c = h["Close"].dropna()
+        if len(c) < 30:
+            return out
+        try:
+            c.index = c.index.tz_localize(None)
+        except Exception:
+            try:
+                c.index = c.index.tz_convert(None)
+            except Exception:
+                pass
+        last = float(c.iloc[-1])
+
+        def pct(ref):
+            ref = float(ref)
+            return round((last / ref - 1) * 100, 1) if ref else None
+
+        out["ch_1y"] = pct(c.iloc[0])
+        for key, days in (("ch_1m", 30), ("ch_6m", 182)):
+            seg = c[c.index >= (c.index[-1] - pd.Timedelta(days=days))]
+            out[key] = pct(seg.iloc[0]) if len(seg) else None
+        ystart = pd.Timestamp(year=c.index[-1].year, month=1, day=1)
+        cy = c[c.index >= ystart]
+        out["ch_ytd"] = pct(cy.iloc[0]) if len(cy) else None
+
+        sma200 = float(c.tail(200).mean())
+        out["above_sma200"] = bool(last >= sma200)
+        out["sma200_gap"] = round((last / sma200 - 1) * 100, 1) if sma200 else None
+
+        delta = c.diff().dropna()
+        up = delta.clip(lower=0).tail(14).mean()
+        dn = (-delta.clip(upper=0)).tail(14).mean()
+        if dn and dn > 0:
+            rs = up / dn
+            out["rsi"] = round(100 - 100 / (1 + rs), 1)
+        elif up and up > 0:
+            out["rsi"] = 100.0
+
+        hi = float(c.max())
+        lo = float(c.min())
+        out["pct_from_low"] = round((last / lo - 1) * 100, 1) if lo else None
+        out["drawdown"] = round((last / hi - 1) * 100, 1) if hi else None
+
+        # Bodenbildung: in 12M >15% gefallen, aber letzte ~3 Monate stabilisiert
+        # (juengster Tiefpunkt-Abstand klein, geringe Schwankung ueber dem Tief)
+        recent = c.tail(63)
+        rmin = float(recent.min())
+        stab = (last / rmin - 1) if rmin else None
+        out["base_formed"] = bool(out["drawdown"] is not None and out["drawdown"] < -15
+                                  and stab is not None and stab < 0.18 and last >= rmin)
+        return out
+    except Exception:
+        return out
+
+
+def get_dividend_years(ticker: str) -> Optional[int]:
+    """Anzahl der Kalenderjahre mit Dividendenzahlung (max. ~12 Jahre Historie)."""
+    try:
+        import yfinance as yf
+        div = yf.Ticker(ticker).dividends
+        if div is None or getattr(div, "empty", True):
+            return 0
+        years = {d.year for d in div.index}
+        return len(years)
+    except Exception:
+        return None
+
+
+def get_price_on(ticker: str, date) -> Optional[float]:
+    """Schlusskurs am/zuletzt vor 'date' (YYYY-MM-DD oder Datum). None bei Fehler.
+    Genutzt fuer Gewinn/Verlust seit Kauf im Portfoliocheck."""
+    if yf is None or not ticker or not date:
+        return None
+    try:
+        import pandas as pd
+        from datetime import timedelta
+        d = pd.to_datetime(date).date()
+        start = (d - timedelta(days=8)).isoformat()
+        end = (d + timedelta(days=5)).isoformat()
+        h = yf.Ticker(ticker).history(start=start, end=end)
+        if h is None or h.empty:
+            return None
+        idx_dates = [x.date() for x in h.index]
+        before = [c for dt, c in zip(idx_dates, h["Close"].tolist()) if dt <= d and c == c]
+        if before:
+            return float(before[-1])
+        after = [c for c in h["Close"].tolist() if c == c]
+        return float(after[0]) if after else None
+    except Exception:
+        return None

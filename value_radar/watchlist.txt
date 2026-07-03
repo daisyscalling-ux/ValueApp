@@ -1,0 +1,11 @@
+# Beispiel-Universum: ein Ticker pro Zeile, # = Kommentar
+# Thema: Memory & Semis (Cyclical/Inflection)
+MU
+NVDA
+AMD
+TSM
+AVGO
+# Thema: Power & Grid
+GEV
+ETN
+# eigene Kandidaten hier ergaenzen ...

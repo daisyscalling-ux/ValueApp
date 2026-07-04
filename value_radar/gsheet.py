@@ -84,3 +84,52 @@ def save_all(d: dict) -> bool:
 def reset_cache():
     global _WS
     _WS = "unset"
+
+
+def diagnose() -> str:
+    """Gibt im Klartext zurueck, WARUM Google Sheets (nicht) funktioniert.
+    Macht echte Aufrufe -> nur auf Knopfdruck verwenden, nicht bei jedem Rerun."""
+    try:
+        import streamlit as st
+    except Exception as e:
+        return f"Streamlit nicht verf\u00fcgbar: {e}"
+    try:
+        creds = st.secrets.get("gcp_service_account")
+    except Exception:
+        creds = None
+    try:
+        sid = st.secrets.get("GSHEET_ID")
+    except Exception:
+        sid = None
+    if not creds:
+        return ("Der Secrets-Block [gcp_service_account] fehlt (oder ist leer). "
+                "In den Secrets muss die Zeile [gcp_service_account] \u00fcber "
+                "type = \"service_account\" stehen.")
+    if not sid:
+        return "GSHEET_ID fehlt in den Secrets."
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+    except Exception as e:
+        return f"Google-Pakete nicht installiert (requirements.txt?): {e}"
+    try:
+        c = Credentials.from_service_account_info(dict(creds), scopes=_SCOPES)
+    except Exception as e:
+        return ("Zugangsdaten ung\u00fcltig \u2013 meist ist der private_key nicht "
+                f"vollst\u00e4ndig/korrekt kopiert. Details: {e}")
+    try:
+        gc = gspread.authorize(c)
+    except Exception as e:
+        return f"Authentifizierung fehlgeschlagen: {e}"
+    try:
+        sh = gc.open_by_key(str(sid))
+    except Exception as e:
+        return ("Sheet nicht erreichbar. Pr\u00fcfe: (1) Google-Sheets-API im Projekt "
+                "aktiviert? (2) Sheet mit der client_email als Bearbeiter geteilt? "
+                "(3) GSHEET_ID korrekt? "
+                f"Details: {e}")
+    try:
+        sh.sheet1.acell("A1").value
+        return "OK"
+    except Exception as e:
+        return f"Zugriff auf Tabellenblatt 1 fehlgeschlagen: {e}"

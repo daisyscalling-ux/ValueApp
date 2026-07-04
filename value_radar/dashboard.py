@@ -1816,6 +1816,18 @@ if nav == "Portfoliocheck":
                        "entweder Google Sheets als Cloud-Speicher einrichten (siehe "
                        "GOOGLE_SHEETS_SETUP.md) ODER hier ein Backup herunterladen (liegt auf "
                        "deinem Ger\u00e4t) und nach einem Reboot wieder importieren.")
+            if st.button("\U0001f50d Google-Sheets-Verbindung testen"):
+                try:
+                    import gsheet
+                    gsheet.reset_cache()
+                    msg = gsheet.diagnose()
+                except Exception as e:
+                    msg = f"Diagnose nicht m\u00f6glich: {e}"
+                if msg == "OK":
+                    st.success("Verbindung steht! Bitte die App einmal neu laden \u2013 "
+                               "dann wird oben \u201eCloud-Speicher aktiv\u201c angezeigt.")
+                else:
+                    st.error(msg)
         bc = st.columns([1, 1])
         bc[0].download_button(
             "\u2b07\ufe0f Backup herunterladen", data=store.export_json(),

@@ -97,19 +97,30 @@ section[data-testid="stSidebar"] .stButton>button:hover{
 /* ---- Mobile Bottom-Tab-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
 .st-key-mobilenav{display:none;}
 @media (max-width: 820px){
+  /* Seitenleiste + Hamburger-Icon (oben links) auf dem Handy ausblenden -
+     die Bottom-Leiste ersetzt die Navigation komplett. */
+  section[data-testid="stSidebar"]{display:none !important;}
+  [data-testid="stSidebarCollapsedControl"],
+  [data-testid="collapsedControl"],
+  [data-testid="stSidebarCollapseButton"]{display:none !important;}
+
   .st-key-mobilenav{
     display:block; position:fixed; left:0; right:0; bottom:0; z-index:99990;
     background:rgba(10,14,20,.96); backdrop-filter:blur(8px);
     border-top:1px solid var(--line);
-    padding:4px 2px calc(4px + env(safe-area-inset-bottom, 0px)) 2px;}
-  .st-key-mobilenav [data-testid="stHorizontalBlock"]{gap:0 !important;}
+    padding:4px 0 calc(4px + env(safe-area-inset-bottom, 0px)) 0;}
+  /* Spalten NEBENEINANDER erzwingen (Streamlit stapelt sie sonst untereinander) */
+  .st-key-mobilenav [data-testid="stHorizontalBlock"]{
+    flex-direction:row !important; flex-wrap:nowrap !important;
+    gap:0 !important; width:100%;}
   .st-key-mobilenav [data-testid="column"]{
-    min-width:0 !important; flex:1 1 0 !important; width:auto !important;}
+    flex:1 1 0 !important; width:auto !important; min-width:0 !important;}
+  .st-key-mobilenav .stButton{width:100%;}
   .st-key-mobilenav .stButton>button{
     width:100%; min-height:0; padding:5px 0; border:none; box-shadow:none;
-    background:transparent; color:var(--muted);
-    font-size:10px; letter-spacing:.2px; line-height:1.2; white-space:nowrap;}
-  .st-key-mobilenav .stButton>button p{font-size:10px; margin:0;}
+    background:transparent; color:var(--muted); overflow:hidden;
+    font-size:9px; letter-spacing:0; line-height:1.15; white-space:nowrap;}
+  .st-key-mobilenav .stButton>button p{font-size:9px; margin:0;}
   .st-key-mobilenav .stButton>button:hover{color:var(--amber); background:transparent;}
   .st-key-mobilenav .stButton>button[kind="primary"]{
     color:var(--amber); background:transparent; font-weight:800;}
@@ -467,11 +478,19 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
         ep = valuation.classify_playbook(f)
         comp = scoring.score_stock(f, None, preset=ep)["composite"]
         v = valuation.fair_value(f, None, ep)
-        # Upside verwenden, ausser der Fair Value wurde an die Sicherheitsgrenze
-        # gekappt (dann waere er ein unbrauchbarer Extremwert). So bleibt der
-        # Upside fuer die allermeisten Titel erhalten.
+        # Upside: Modell-Upside, wenn nicht gekappt. Sonst als Rueckfall das
+        # Analysten-Kursziel (deckt Titel wie NetEase ab, wo das Modell kappt
+        # oder Daten fehlen). So bleibt fast immer ein sinnvoller Wert stehen.
         capped = v.get("fair_value_capped")
-        up_reliable = v.get("upside_pct") if not capped else None
+        up_model = v.get("upside_pct")
+        atgt = v.get("analyst_target")
+        base_price = f.get("price")
+        if up_model is not None and not capped:
+            up_reliable = up_model
+        elif atgt and base_price:
+            up_reliable = round((atgt / base_price - 1) * 100, 1)
+        else:
+            up_reliable = up_model            # ggf. gekappt, aber besser als leer
         fv_reliable = v.get("fair_value") if not capped else None
         rscore = None
         if inc_radar:
@@ -480,12 +499,16 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
                                 load_event_news(tk, f.get("name")))
             rscore = rr2["score"]
         ret_pct = cost_eur = gain_eur = None
+        price_eur = (p_now or 0) * fx
         if inc_pl:
             avg_buyin = parse_eur(rec.get("avg_buyin"))
-            if avg_buyin and avg_buyin > 0 and p_now:
-                ret_pct = (p_now / avg_buyin - 1) * 100            # Sparplan / Ø Buy-in
+            if avg_buyin and avg_buyin > 0 and price_eur:
+                # Buy-in ist der EUR-Kaufkurs je Aktie (wie im Depot angezeigt).
+                # G/V = aktueller EUR-Kurs vs. EUR-Kaufkurs -> erfasst Kurs- UND
+                # Wechselkurs-Aenderung seit Kauf, genau wie im echten Depot.
+                ret_pct = (price_eur / avg_buyin - 1) * 100
                 if has_shares:
-                    cost_eur = shares * avg_buyin * fx             # exakt
+                    cost_eur = shares * avg_buyin                  # exakt, bereits EUR
             else:
                 kd = rec.get("date")
                 if kd is not None and (not _pd.isna(kd) if hasattr(_pd, "isna") else True):
@@ -496,9 +519,9 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
                     if date_str:
                         p_then = load_price_on(tk, date_str)
                         if p_then and p_now and p_then > 0:
-                            ret_pct = (p_now / p_then - 1) * 100
+                            ret_pct = (p_now / p_then - 1) * 100   # Kursrendite (Handelswaehrung)
                             if has_shares:
-                                cost_eur = shares * p_then * fx    # exakt
+                                cost_eur = shares * p_then * fx
             if ret_pct is not None:
                 if cost_eur is None:
                     denom = 1 + ret_pct / 100
@@ -643,7 +666,7 @@ with st.sidebar:
 # Mobile Bottom-Tab-Navigation: erscheint via CSS nur auf Handys/Touch-Screens.
 # Echte Streamlit-Buttons (kein Link-Reload) -> Login/Status bleiben erhalten.
 MOBILE_NAV = {"Start": "\U0001f3e0 Start", "Einzelanalyse": "\U0001f4c8 Analyse",
-              "Radar": "\U0001f3af Radar", "Screener": "\U0001f50d Screener",
+              "Radar": "\U0001f3af Radar", "Screener": "\U0001f50d Screen",
               "Portfoliocheck": "\U0001f4bc Depot", "News": "\U0001f4f0 News"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
@@ -1796,9 +1819,9 @@ if nav == "Portfoliocheck":
             "Anzahl": st.column_config.TextColumn(
                 "Anzahl", help="St\u00fcckzahl der Aktien. Wert = Anzahl \u00d7 aktueller Kurs."),
             "\u00d8 Buy-in": st.column_config.TextColumn(
-                "\u00d8 Buy-in (Kurs)",
-                help="Durchschnittlicher Kaufkurs je Aktie in Handelsw\u00e4hrung der Aktie "
-                     "(z.B. USD bei US-Titeln). Mit Anzahl ergibt das exakten Gewinn/Verlust. "
+                "\u00d8 Buy-in (\u20ac)",
+                help="Dein durchschnittlicher Kaufkurs je Aktie IN EURO (so wie im "
+                     "Depot angezeigt). Mit Anzahl ergibt das den exakten Gewinn/Verlust. "
                      "Alternativ das Kaufdatum nutzen."),
             "Kaufdatum": st.column_config.DateColumn(
                 "Kaufdatum (optional)", format="YYYY-MM-DD",
@@ -1895,13 +1918,12 @@ if nav == "Portfoliocheck":
                 f'  <span class="na">(Einsatz {sym_eur(a["pl_cost"])} \u2192 Wert '
                 f'{sym_eur(a["pl_value"])})</span></div>', unsafe_allow_html=True)
 
-        # Positionstabelle
+        # Positionstabelle (Zeile antippen -> Einzelanalyse; Gewicht % entfernt)
         prows = sorted(rows, key=lambda r: -r["weight"])
         any_shares = any(r.get("shares") for r in prows)
         data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
                  **({"Anzahl": r["shares"]} if any_shares else {}),
                  "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
-                 "Gewicht %": round(r["weight"] * 100, 2),
                  "Sektor": (r["sector"] or "")[:16], "Composite": round(r["composite"] or 0),
                  "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                  **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
@@ -1916,10 +1938,49 @@ if nav == "Portfoliocheck":
 
         def csc(v):
             return f"color:{score_hex(v)};font-weight:700"
+
+        def gvcol(v):                                   # gruen bei Plus, rot bei Minus
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                return ""
+            return ("color:#3ddc84;font-weight:700" if v >= 0
+                    else "color:#ff5c5c;font-weight:700")
+
+        def sgn_eur(v):
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                return "\u2014"
+            return f"{'+' if v >= 0 else '\u2212'}{de(abs(v), 2)}"
+
+        def sgn_pct(v):
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                return "\u2014"
+            return f"{'+' if v >= 0 else '\u2212'}{de(abs(v), 2)} %"
+
         subset = ["Composite"] + (["Radar"] if inc_radar else [])
-        fmt = {"Kurs \u20ac": "{:.2f}", "Wert \u20ac": "{:.2f}", "Gewicht %": "{:.2f}"}
-        st.dataframe(dfp.style.map(csc, subset=subset).format(fmt, precision=2),
-                     hide_index=True, use_container_width=True)
+        pl_cols = [c for c in ("Kauf %", "G/V \u20ac") if c in dfp.columns]
+        fmt = {"Kurs \u20ac": "{:.2f}", "Wert \u20ac": "{:.2f}"}
+        if "Kauf %" in dfp.columns:
+            fmt["Kauf %"] = sgn_pct
+        if "G/V \u20ac" in dfp.columns:
+            fmt["G/V \u20ac"] = sgn_eur
+        styled = (dfp.style.map(csc, subset=subset).format(fmt, precision=2))
+        if pl_cols:
+            styled = styled.map(gvcol, subset=pl_cols)
+        ev = st.dataframe(styled, hide_index=True, use_container_width=True,
+                          on_select="rerun", selection_mode="single-row", key="pf_holdings")
+        sel = []
+        try:
+            sel = list(ev.selection.rows)
+        except Exception:
+            if isinstance(ev, dict):
+                sel = ev.get("selection", {}).get("rows", [])
+        if sel:
+            picked = str(dfp.iloc[sel[0]]["Ticker"])
+            if st.session_state.get("pf_hold_pick") != picked:
+                st.session_state["pf_hold_pick"] = picked
+                st.session_state["pending_search"] = picked
+                st.session_state["nav"] = "Einzelanalyse"
+                st.rerun()
+        st.caption("\U0001f449 Zeile antippen \u2192 \u00f6ffnet die Aktie in der Einzelanalyse.")
 
         # Thesen-Check: konkrete Aktionen aus dem Kauf-Status
         if a["have_pl"] and a["actions"]:
@@ -1986,13 +2047,25 @@ if nav == "Portfoliocheck":
                                  "Preis \u20ac": c["price_eur"],
                                  "F\u00fcllt L\u00fccke": "ja" if c.get("sector") in gaps else ""}
                                 for c in cands])
-            st.dataframe(cdf.style.map(csc, subset=["Chance", "Score"])
-                         .format(precision=2, formatter={"Preis \u20ac": "{:.2f}"}),
-                         hide_index=True, use_container_width=True)
-            ticker_open_bar(list(cdf["Ticker"]), "pf_cand")
-            st.caption("\u201eChance\u201c = Qualit\u00e4t (Score) kombiniert mit verl\u00e4sslichem "
-                       "Bewertungs-Upside. Nur Titel mit glaubhaftem Upside (+8 bis +80 %) "
-                       "und belastbarem Fair Value. Kein Anlagerat \u2013 jeden Titel selbst pr\u00fcfen.")
+            evc = st.dataframe(cdf.style.map(csc, subset=["Chance", "Score"])
+                               .format(precision=2, formatter={"Preis \u20ac": "{:.2f}"}),
+                               hide_index=True, use_container_width=True,
+                               on_select="rerun", selection_mode="single-row", key="pf_cand2")
+            selc = []
+            try:
+                selc = list(evc.selection.rows)
+            except Exception:
+                if isinstance(evc, dict):
+                    selc = evc.get("selection", {}).get("rows", [])
+            if selc:
+                pk = str(cdf.iloc[selc[0]]["Ticker"])
+                if st.session_state.get("pf_cand_pick") != pk:
+                    st.session_state["pf_cand_pick"] = pk
+                    st.session_state["pending_search"] = pk
+                    st.session_state["nav"] = "Einzelanalyse"
+                    st.rerun()
+            st.caption("\U0001f449 Zeile antippen \u2192 Einzelanalyse. \u201eChance\u201c = Qualit\u00e4t "
+                       "kombiniert mit Bewertungs-Upside. Kein Anlagerat \u2013 selbst pr\u00fcfen.")
         else:
             st.info("Aktuell keine \u00fcberzeugenden Erg\u00e4nzungen gefunden (verlangt Qualit\u00e4t "
                     "Score \u2265 55, belastbarer Fair Value und glaubhaftes Upside +8 bis +80 %). "

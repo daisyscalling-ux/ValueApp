@@ -50,7 +50,9 @@ html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 .vr-head .brand .caret{animation:blink 1.1s steps(1) infinite;}
 @keyframes blink{50%{opacity:0;}}
 .vr-head .status{color:var(--muted);font-size:12px;margin-top:2px;}
-.vr-card{border:1px solid var(--line);background:var(--panel);padding:14px 16px;height:100%;}
+.vr-card{border:1px solid var(--line);background:var(--panel);padding:14px 16px;
+  height:100%;min-height:104px;display:flex;flex-direction:column;justify-content:center;}
+.vr-card .sub{min-height:16px;}
 .vr-card .k{color:var(--muted);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;}
 .vr-card .v{font-size:24px;font-weight:700;margin-top:4px;}
 .vr-card .sub{font-size:12px;color:var(--muted);margin-top:2px;}
@@ -92,6 +94,29 @@ section[data-testid="stSidebar"] .stButton>button:hover{
 .tickcell .stButton>button:hover{border-color:var(--amber);
   background:rgba(255,176,0,.08);}
 .rowline{border-bottom:1px solid var(--line); padding:2px 0;}
+/* ---- Mobile Bottom-Tab-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
+.st-key-mobilenav{display:none;}
+@media (max-width: 820px){
+  .st-key-mobilenav{
+    display:block; position:fixed; left:0; right:0; bottom:0; z-index:99990;
+    background:rgba(10,14,20,.96); backdrop-filter:blur(8px);
+    border-top:1px solid var(--line);
+    padding:4px 2px calc(4px + env(safe-area-inset-bottom, 0px)) 2px;}
+  .st-key-mobilenav [data-testid="stHorizontalBlock"]{gap:0 !important;}
+  .st-key-mobilenav [data-testid="column"]{
+    min-width:0 !important; flex:1 1 0 !important; width:auto !important;}
+  .st-key-mobilenav .stButton>button{
+    width:100%; min-height:0; padding:5px 0; border:none; box-shadow:none;
+    background:transparent; color:var(--muted);
+    font-size:10px; letter-spacing:.2px; line-height:1.2; white-space:nowrap;}
+  .st-key-mobilenav .stButton>button p{font-size:10px; margin:0;}
+  .st-key-mobilenav .stButton>button:hover{color:var(--amber); background:transparent;}
+  .st-key-mobilenav .stButton>button[kind="primary"]{
+    color:var(--amber); background:transparent; font-weight:800;}
+  /* Platz schaffen, damit die Leiste den Inhalt unten nicht verdeckt */
+  section[data-testid="stMain"] .block-container,
+  section.main .block-container{padding-bottom:82px !important;}
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -364,7 +389,7 @@ def home_radar_picks(n=10):
 @st.cache_data(ttl=1800, show_spinner=False)
 def home_screener_picks(n=10, regions=("us", "de", "fr", "gb", "nl", "ch", "ca", "jp", "hk"),
                         min_score=55):
-    tickers, _src = load_universe(tuple(regions), 5.0, 50)
+    tickers, _src = load_universe(tuple(regions), 5.0, max(60, n + 40))
     rows, names = [], set()
     for t in tickers:
         f = load_fundamentals(t)
@@ -376,15 +401,13 @@ def home_screener_picks(n=10, regions=("us", "de", "fr", "gb", "nl", "ch", "ca",
         if (comp or 0) < min_score:                    # schwache Titel ausblenden
             continue
         v = valuation.fair_value(f, None, ep)
-        up = v.get("upside_pct")
+        capped = v.get("fair_value_capped")
+        up = v.get("upside_pct") if not capped else None    # nur gekappte Extremwerte raus
         reliable = v.get("reliable", False)
-        # egregious ueberbewertete (verlaesslich < -20%) gar nicht zeigen
-        if reliable and up is not None and up < -20:
-            continue
         rows.append({"ticker": f["ticker"], "name": f.get("name"), "sector": f.get("sector"),
                      "country": f.get("country"),
                      "price_eur": round((f.get("price") or 0) * f["_fx"], 2),
-                     "score": comp, "upside": up, "reliable": reliable,
+                     "score": comp, "upside": up, "reliable": reliable, "capped": bool(capped),
                      "confidence": v.get("confidence"),
                      "opportunity": round(opportunity_score(comp, up, reliable), 1)})
     rows.sort(key=lambda r: (r["opportunity"] or 0), reverse=True)
@@ -444,10 +467,12 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
         ep = valuation.classify_playbook(f)
         comp = scoring.score_stock(f, None, preset=ep)["composite"]
         v = valuation.fair_value(f, None, ep)
-        # Nur belastbare Upsides verwenden \u2013 gekappte/streuende Fair Values wuerden
-        # Portfolio-Fair-Value, Score-Tilt und Positions-Status verzerren.
-        up_reliable = v.get("upside_pct") if v.get("reliable") else None
-        fv_reliable = v.get("fair_value") if v.get("reliable") else None
+        # Upside verwenden, ausser der Fair Value wurde an die Sicherheitsgrenze
+        # gekappt (dann waere er ein unbrauchbarer Extremwert). So bleibt der
+        # Upside fuer die allermeisten Titel erhalten.
+        capped = v.get("fair_value_capped")
+        up_reliable = v.get("upside_pct") if not capped else None
+        fv_reliable = v.get("fair_value") if not capped else None
         rscore = None
         if inc_radar:
             rr2 = radar.compute(f, load_history_full(tk), load_eps_rev(tk),
@@ -497,9 +522,8 @@ def pf_records_to_df(recs):
     return pd.DataFrame([
         {"Ticker": r.get("ticker", ""),
          "Anzahl": ("" if r.get("shares") in (None, "") else str(r.get("shares"))),
-         "Wert (EUR)": str(r.get("value", "")),
-         "Kaufdatum": (pd.to_datetime(r["date"]).date() if r.get("date") else None),
-         "\u00d8 Buy-in": ("" if r.get("avg_buyin") in (None, "") else str(r.get("avg_buyin")))}
+         "\u00d8 Buy-in": ("" if r.get("avg_buyin") in (None, "") else str(r.get("avg_buyin"))),
+         "Kaufdatum": (pd.to_datetime(r["date"]).date() if r.get("date") else None)}
         for r in recs])
 
 
@@ -526,14 +550,19 @@ def ticker_open_bar(tickers, key_prefix, nav="Einzelanalyse"):
 
 
 def portfolio_candidates(analysis, held_tickers, held_names):
-    """Ergaenzungs-Ideen: nur QUALITAET mit VERLAESSLICHEM, glaubhaftem Bewertungs-
-    Upside (+8% bis +80%). Gekappte/unsichere Fair Values und ueberteuerte Titel
-    werden NICHT vorgeschlagen. Sortiert nach Opportunity-Score + Diversifikations-Bonus.
-    Lieber wenige gute als viele fragwuerdige Ideen \u2013 kein Auffuellen."""
-    pool = home_screener_picks(40, regions=("us", "de", "fr", "gb", "nl",
-                                            "ch", "ca", "jp", "hk"), min_score=55)
+    """Ergaenzungs-Ideen: solide Titel (Score >= 50) mit brauchbarem Bewertungs-
+    Upside, aus breitem Laenderkreis. Gestaffelt, damit fast immer etwas erscheint:
+    erst klar unterbewertet (>= +10%), sonst leicht unterbewertet (>= 0%), sonst die
+    quaitativ besten mit nicht-gekapptem Fair Value. Gekappte Extremwerte fliegen raus."""
+    pool = home_screener_picks(60, regions=("us", "de", "fr", "gb", "nl",
+                                            "ch", "ca", "jp", "hk"), min_score=50)
     gaps = set(analysis["gaps"])
     dom_country = next(iter(analysis.get("country_alloc", {})), None)
+
+    def usable(p):
+        return (p["ticker"] not in held_tickers
+                and (p["name"] or "").lower() not in held_names
+                and not p.get("capped"))
 
     def rank(p):
         opp = p.get("opportunity") or 0
@@ -544,14 +573,26 @@ def portfolio_candidates(analysis, held_tickers, held_names):
             bonus += 3
         return opp + bonus
 
-    cands = [p for p in pool
-             if p["ticker"] not in held_tickers
-             and (p["name"] or "").lower() not in held_names
-             and p.get("reliable")                          # nur belastbarer Fair Value
-             and p.get("upside") is not None
-             and 8 <= p["upside"] <= 80]                     # glaubhaft unterbewertet
-    cands.sort(key=rank, reverse=True)
-    return cands[:6]
+    base = [p for p in pool if usable(p)]
+    strong = [p for p in base if (p.get("upside") or -999) >= 10]
+    mild = [p for p in base if 0 <= (p.get("upside") or -999) < 10]
+    rest = [p for p in base if p not in strong and p not in mild]  # Upside None oder < 0
+    ordered = (sorted(strong, key=rank, reverse=True)
+               + sorted(mild, key=rank, reverse=True)
+               + sorted(rest, key=rank, reverse=True))
+    if len(ordered) < 3:
+        # Sicherheitsnetz: breiterer Scan ohne Score-Schwelle, rein nach Qualitaet -
+        # es soll praktisch nie "keine Ideen" heissen.
+        wide = home_screener_picks(60, regions=("us", "de", "fr", "gb", "nl", "ch",
+                                                "ca", "jp", "hk", "au", "se"), min_score=0)
+        extra = sorted([p for p in wide if usable(p)],
+                       key=lambda p: (p.get("score") or 0), reverse=True)
+        seen = {p["ticker"] for p in ordered}
+        for p in extra:
+            if p["ticker"] not in seen:
+                ordered.append(p)
+                seen.add(p["ticker"])
+    return ordered[:6]
 
 
 st.markdown(
@@ -581,40 +622,14 @@ with st.sidebar:
                 st.rerun()
     st.markdown("---")
 
-    st.markdown('<div class="sec-title">EINGABE</div>', unsafe_allow_html=True)
-    if "search_box" not in st.session_state:
-        st.session_state["search_box"] = "MU"
-    # aus dem Radar angeklickte Aktie ins Suchfeld uebernehmen (vor Widget-Instanz)
-    if "pending_search" in st.session_state:
-        st.session_state["search_box"] = st.session_state.pop("pending_search")
-    q = st.text_input("Suche (Name oder Ticker)", key="search_box",
-                      help="Firmennamen oder Ticker eintippen, dann unten ausw\u00e4hlen.")
-    matches = search_symbols(q.strip()) if q.strip() else []
-    if matches:
-        labels = [f"{mm['symbol']} \u2014 {mm['name']}"
-                  + (f" \u00b7 {mm['type']}" if mm.get("type") else "")
-                  + (f" ({mm['exchange']})" if mm.get("exchange") else "")
-                  for mm in matches]
-        sel = st.selectbox("Treffer", range(len(labels)),
-                           format_func=lambda i: labels[i])
-        ticker = matches[sel]["symbol"].upper()
-    else:
-        ticker = q.strip().upper()
-        if q.strip():
-            st.caption(f"Keine Suchtreffer \u2013 nutze '{ticker}' direkt als Ticker.")
-    preset = st.selectbox("Playbook", ["Auto (empfohlen)", "quality", "cyclical", "inflection"],
-                          index=0,
-                          help="Auto = automatische Erkennung anhand Branche & Wachstum. "
-                               "quality = Compounder \u00b7 cyclical = Micron-Typ "
-                               "\u00b7 inflection = Nvidia-Typ")
-    run = st.button("\u25b6 ANALYSIEREN", use_container_width=True)
+    st.markdown("---")
     if st.button("\U0001f504 Marktdaten neu laden", use_container_width=True,
                  help="Leert den Datencache und holt frische Live-Daten. "
                       "Ohne Klick nutzen wiederholte L\u00e4ufe denselben Cache "
                       "(ca. 30 Min.) \u2013 dadurch sind die Ergebnisse reproduzierbar."):
-        for fn in (load_universe, load_fundamentals, load_perf, load_analyst,
-                   load_screen_extras, load_div_years, load_intel, fx_to_eur,
-                   load_history, load_history_full):
+        for fn in (load_universe, load_fundamentals, load_fundamentals_deep, load_perf,
+                   load_analyst, load_screen_extras, load_div_years, load_intel, fx_to_eur,
+                   load_history, load_history_full, load_intraday_price):
             try:
                 fn.clear()
             except Exception:
@@ -625,15 +640,29 @@ with st.sidebar:
     st.markdown("---")
 
 
+# Mobile Bottom-Tab-Navigation: erscheint via CSS nur auf Handys/Touch-Screens.
+# Echte Streamlit-Buttons (kein Link-Reload) -> Login/Status bleiben erhalten.
+MOBILE_NAV = {"Start": "\U0001f3e0 Start", "Einzelanalyse": "\U0001f4c8 Analyse",
+              "Radar": "\U0001f3af Radar", "Screener": "\U0001f50d Screener",
+              "Portfoliocheck": "\U0001f4bc Depot", "News": "\U0001f4f0 News"}
+_mnav = st.container(key="mobilenav")
+with _mnav:
+    _mc = st.columns(len(MOBILE_NAV))
+    for _i, (_pg, _lab) in enumerate(MOBILE_NAV.items()):
+        if _mc[_i].button(_lab, key=f"mnav_{_pg}", use_container_width=True,
+                          type=("primary" if _pg == nav else "secondary")):
+            if _pg != nav:
+                st.session_state["nav"] = _pg
+                st.rerun()
+
+
+# Playbook laeuft immer automatisch im Hintergrund (nicht mehr in der UI)
+preset = "Auto"
+
+
 def resolve_preset(f):
-    """Effektives Playbook: bei 'Auto' automatisch klassifizieren, sonst die Wahl."""
-    return valuation.classify_playbook(f) if preset.startswith("Auto") else preset
-
-
-# "Analysieren" springt von jeder Seite zur Einzelanalyse
-if run and nav != "Einzelanalyse":
-    st.session_state["pending_nav"] = "Einzelanalyse"
-    st.rerun()
+    """Effektives Playbook: immer automatisch anhand Branche & Wachstum."""
+    return valuation.classify_playbook(f)
 
 # ===========================================================================
 # START — Landing Page (Index-Charts, Hot Picks, Hot News)
@@ -797,9 +826,27 @@ if nav == "Start":
 # EINZELANALYSE (Tabs: Analyse, Scorecard, Matrix 1, Matrix 2)
 # ===========================================================================
 if nav == "Einzelanalyse":
+    # Eingabefeld direkt im Tab (Name ODER Ticker) - Playbook laeuft im Hintergrund
+    if "ea_search" not in st.session_state:
+        st.session_state["ea_search"] = "MU"
+    if "pending_search" in st.session_state:
+        st.session_state["ea_search"] = st.session_state.pop("pending_search")
+    qtext = st.text_input("Aktie analysieren \u2013 Name oder Ticker eingeben",
+                          key="ea_search", placeholder="z.B. Micron, NVDA, SAP.DE, ASML.AS")
+    qv = qtext.strip()
+    ticker = ""
+    if qv:
+        mm = search_symbols(qv)
+        if mm:
+            exact = next((x for x in mm if x["symbol"].upper() == qv.upper()), None)
+            ticker = (exact or mm[0])["symbol"].upper()
+        else:
+            ticker = qv.upper()
+    run = False
+
     ea_tabs = st.tabs(["  ANALYSE  ", "  SCORECARD  ", "  MATRIX 1  ", "  MATRIX 2  "])
     with ea_tabs[0]:
-        if run or ticker:
+        if ticker:
             with st.spinner(f"Lade {ticker} ... (Mehrquellen-Abgleich)"):
                 f = load_fundamentals_deep(ticker)
             if not f.get("price"):
@@ -824,10 +871,8 @@ if nav == "Einzelanalyse":
                 v = valuation.fair_value(f, None, preset=ep)
 
                 st.markdown(f"### {f.get('name','')} `{ticker}`")
-                pb_note = f"{ep} (automatisch)" if preset.startswith("Auto") else ep
                 st.caption(f"{f.get('sector','?')} / {f.get('industry','?')}  \u00b7  "
-                           f"{f.get('country','?')}  \u00b7  Playbook: {pb_note}  \u00b7  "
-                           f"Heimatw\u00e4hrung: {cur}")
+                           f"{f.get('country','?')}  \u00b7  Heimatw\u00e4hrung: {cur}")
                 bsum = (f.get("business_summary") or "").strip()
                 if bsum:
                     short = bsum[:380].rsplit(" ", 1)[0] + (" \u2026" if len(bsum) > 380 else "")
@@ -845,13 +890,13 @@ if nav == "Einzelanalyse":
 
                 c = st.columns(6)
                 if q["score"] is not None:
-                    card(c[0], "\u269b\ufe0f Quantum Score", f"{q['score']:.2f}",
+                    card(c[0], "\u269b\ufe0f Quantum Score", f"{q['score']:.0f}",
                          " \u00b7 ".join(f"{k[:4]} {x}" for k, x in q["parts"].items()),
                          score_color(q["score"]))
                 else:
                     card(c[0], "\u269b\ufe0f Quantum Score", "\u2014")
                 comp = s["composite"]
-                card(c[1], "Composite Score", f"{comp:.2f}",
+                card(c[1], "Composite Score", f"{comp:.0f}",
                      "Value-Trap!" if s["value_trap"] else "/ 100", score_color(comp))
                 card(c[2], "Kurs", m(v["price"]))
                 up = v["upside_pct"]
@@ -883,7 +928,7 @@ if nav == "Einzelanalyse":
                         rows += (f'<div class="row"><span class="lbl">{k}</span>'
                                  f'<div class="track"><div class="fill" '
                                  f'style="width:{val}%;background:{score_color(val)}"></div></div>'
-                                 f'<span class="val">{val:.2f}</span></div>')
+                                 f'<span class="val">{val:.0f}</span></div>')
                     st.markdown(rows, unsafe_allow_html=True)
                     st.markdown('<div class="sec-title" style="margin-top:18px">'
                                 'BEWERTUNGSMETHODEN</div>', unsafe_allow_html=True)
@@ -1718,13 +1763,14 @@ if nav == "Screener":
 # ===========================================================================
 if nav == "Portfoliocheck":
     st.markdown('<div class="sec-title">PORTFOLIOCHECK</div>', unsafe_allow_html=True)
-    st.caption("Trage dein Portfolio ein \u2013 Ticker ODER Firmenname (wird automatisch "
-               "erkannt), Wert in EUR (Komma erlaubt). F\u00fcr Gewinn/Verlust optional ein "
-               "Kaufdatum ODER einen \u00d8 Buy-in (Sparplan). Speichern m\u00f6glich.")
+    st.caption("Ticker ODER Firmenname eintragen (wird automatisch erkannt), dann "
+               "Anzahl und \u00d8 Buy-in-Kurs. Der Wert wird automatisch aus Anzahl \u00d7 "
+               "aktuellem Intraday-Kurs berechnet. Gewinn/Verlust und Live-Kurse sind "
+               "immer aktiv.")
 
-    # --- Speicher-Verwaltung ---
+    # --- Speicher-Verwaltung (Laden/Loeschen buendig mit dem Auswahlfeld) ---
     saved = store.names()
-    sccol = st.columns([2, 1, 1])
+    sccol = st.columns([2, 1, 1], vertical_alignment="bottom")
     pick = sccol[0].selectbox("Gespeichertes Portfolio laden", ["\u2013"] + saved)
     if sccol[1].button("Laden", use_container_width=True) and pick != "\u2013":
         st.session_state["pf_data"] = pf_records_to_df(store.load_all().get(pick, []))
@@ -1737,9 +1783,9 @@ if nav == "Portfoliocheck":
 
     if "pf_data" not in st.session_state or st.session_state["pf_data"] is None:
         st.session_state["pf_data"] = pd.DataFrame([
-            {"Ticker": "AAPL", "Anzahl": "", "Wert (EUR)": "3000", "Kaufdatum": None, "\u00d8 Buy-in": ""},
-            {"Ticker": "MSFT", "Anzahl": "", "Wert (EUR)": "2500", "Kaufdatum": None, "\u00d8 Buy-in": ""},
-            {"Ticker": "NVDA", "Anzahl": "", "Wert (EUR)": "2000", "Kaufdatum": None, "\u00d8 Buy-in": ""}])
+            {"Ticker": "AAPL", "Anzahl": "10", "\u00d8 Buy-in": "", "Kaufdatum": None},
+            {"Ticker": "MSFT", "Anzahl": "5", "\u00d8 Buy-in": "", "Kaufdatum": None},
+            {"Ticker": "NVDA", "Anzahl": "8", "\u00d8 Buy-in": "", "Kaufdatum": None}])
     ekey = f"pf_editor_{st.session_state.get('pf_editor_key', 0)}"
     edited = st.data_editor(
         st.session_state["pf_data"], num_rows="dynamic", use_container_width=True, key=ekey,
@@ -1748,45 +1794,30 @@ if nav == "Portfoliocheck":
                                                   help="Ticker (AAPL, SAP.DE) ODER Firmenname \u2013 "
                                                        "wird automatisch aufgel\u00f6st."),
             "Anzahl": st.column_config.TextColumn(
-                "Anzahl",
-                help="St\u00fcckzahl der Aktien. Wenn gesetzt, wird der Wert exakt aus "
-                     "Anzahl \u00d7 aktuellem Kurs berechnet (genauer als manueller Wert)."),
-            "Wert (EUR)": st.column_config.TextColumn("Wert (EUR)",
-                                                      help="Aktueller Marktwert (Alternative zur Anzahl), "
-                                                           "Komma erlaubt (z.B. 1.500,50)"),
-            "Kaufdatum": st.column_config.DateColumn(
-                "Kaufdatum (optional)", format="YYYY-MM-DD",
-                help="F\u00fcr Gewinn/Verlust seit Kauf. Leer lassen bei Sparplan/unbekannt."),
+                "Anzahl", help="St\u00fcckzahl der Aktien. Wert = Anzahl \u00d7 aktueller Kurs."),
             "\u00d8 Buy-in": st.column_config.TextColumn(
                 "\u00d8 Buy-in (Kurs)",
                 help="Durchschnittlicher Kaufkurs je Aktie in Handelsw\u00e4hrung der Aktie "
-                     "(z.B. USD bei US-Titeln). Alternative zum Kaufdatum \u2013 ideal f\u00fcr "
-                     "Sparpl\u00e4ne. Mit Anzahl ergibt das die exakte Kostenbasis.")})
+                     "(z.B. USD bei US-Titeln). Mit Anzahl ergibt das exakten Gewinn/Verlust. "
+                     "Alternativ das Kaufdatum nutzen."),
+            "Kaufdatum": st.column_config.DateColumn(
+                "Kaufdatum (optional)", format="YYYY-MM-DD",
+                help="Alternative zum \u00d8 Buy-in. Leer lassen bei Sparplan/unbekannt.")})
 
-    oc = st.columns([1, 1, 1, 1])
-    inc_radar = oc[0].checkbox("Radar einbeziehen", value=False)
-    inc_pl = oc[1].checkbox("Gewinn/Verlust einbeziehen", value=True)
-    live_px = oc[2].checkbox("\u23f1 Intraday-Kurse", value=False,
-                             help="Nutzt minutengenaue Kurse f\u00fcr Wert & Gewinn/Verlust "
-                                  "(statt ~15-Min-verz\u00f6gerter Tagesdaten). Am genauesten "
-                                  "mit Anzahl + \u00d8 Buy-in je Position.")
-    if oc[3].button("\U0001f504 Kurse aktualisieren", use_container_width=True):
-        load_intraday_price.clear()
-        st.rerun()
-
-    sc2 = st.columns([2, 2])
+    # Speichern (Name + Button buendig) + Kurse aktualisieren
+    inc_radar, inc_pl, live_px = False, True, True      # G/V & Intraday immer an
+    sc2 = st.columns([2, 1, 1], vertical_alignment="bottom")
     save_name = sc2[0].text_input("Speichern als", value=st.session_state.get("pf_cur_name", ""),
                                   placeholder="Name des Portfolios")
-    if sc2[1].button("\U0001f4be Portfolio speichern", use_container_width=True):
+    if sc2[1].button("\U0001f4be Speichern", use_container_width=True):
         recs = []
         for _, rr in edited.iterrows():
             tkv = str(rr.get("Ticker") or "").strip()
-            vv = parse_eur(rr.get("Wert (EUR)"))
             shv = parse_eur(rr.get("Anzahl"))
-            if not tkv or (vv is None and shv is None):
+            if not tkv or shv is None:
                 continue
             kd = rr.get("Kaufdatum")
-            recs.append({"ticker": tkv, "value": vv, "shares": shv,
+            recs.append({"ticker": tkv, "value": None, "shares": shv,
                          "date": pd.to_datetime(kd).date().isoformat()
                          if (kd is not None and pd.notna(kd)) else None,
                          "avg_buyin": parse_eur(rr.get("\u00d8 Buy-in"))})
@@ -1795,13 +1826,15 @@ if nav == "Portfoliocheck":
             st.success(f"Gespeichert als \u201e{save_name.strip()}\u201c.")
         else:
             st.warning("Bitte einen Namen angeben.")
+    if sc2[2].button("\U0001f504 Kurse aktualisieren", use_container_width=True):
+        load_intraday_price.clear()
+        st.rerun()
 
-    records = [{"ticker": rr.get("Ticker"), "value": rr.get("Wert (EUR)"),
+    records = [{"ticker": rr.get("Ticker"), "value": None,
                 "shares": rr.get("Anzahl"),
                 "date": rr.get("Kaufdatum"), "avg_buyin": rr.get("\u00d8 Buy-in")}
                for _, rr in edited.iterrows()]
-    with st.spinner("Analysiere Positionen ..."
-                    + (" (Intraday-Kurse)" if live_px else "")):
+    with st.spinner("Analysiere Positionen (Intraday-Kurse) ..."):
         rows, invalid, resolved = build_portfolio_rows(records, inc_radar, inc_pl, live=live_px)
     if live_px:
         n_live = sum(1 for r in rows if r.get("live"))
@@ -1868,7 +1901,7 @@ if nav == "Portfoliocheck":
         data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
                  **({"Anzahl": r["shares"]} if any_shares else {}),
                  "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
-                 "Wert \u20ac": round(r["value_eur"], 2), "Gewicht %": round(r["weight"] * 100, 2),
+                 "Gewicht %": round(r["weight"] * 100, 2),
                  "Sektor": (r["sector"] or "")[:16], "Composite": round(r["composite"] or 0),
                  "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                  **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
@@ -1877,7 +1910,8 @@ if nav == "Portfoliocheck":
                     if a["have_pl"] else {}),
                  **({"Status": r["status"][0]} if a["have_pl"] else {}),
                  **({"Radar": round(r["radar"] or 0)} if inc_radar else {}),
-                 "Playbook": r["playbook"]} for r in prows]
+                 "Playbook": r["playbook"],
+                 "Wert \u20ac": round(r["value_eur"], 2)} for r in prows]   # ganz rechts
         dfp = pd.DataFrame(data)
 
         def csc(v):

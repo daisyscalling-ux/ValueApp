@@ -1804,6 +1804,40 @@ if nav == "Portfoliocheck":
         store.delete(pick)
         st.rerun()
 
+    # --- Backup / Wiederherstellung (reboot-fest, weil auf DEINEM Geraet) ---
+    with st.expander("\U0001f5c4\ufe0f Backup / Wiederherstellen "
+                     "(wichtig bei der Online-Version!)"):
+        if store.backend() == "sheet":
+            st.success("\u2601\ufe0f Cloud-Speicher aktiv (Google Sheets) \u2013 deine Portfolios "
+                       "\u00fcberleben Reboots automatisch. Das Backup unten ist optional.")
+        else:
+            st.caption("In der Streamlit-Cloud wird der lokale Speicher bei jedem Reboot "
+                       "geleert \u2013 gespeicherte Portfolios gehen dann verloren. L\u00f6sung: "
+                       "entweder Google Sheets als Cloud-Speicher einrichten (siehe "
+                       "GOOGLE_SHEETS_SETUP.md) ODER hier ein Backup herunterladen (liegt auf "
+                       "deinem Ger\u00e4t) und nach einem Reboot wieder importieren.")
+        bc = st.columns([1, 1])
+        bc[0].download_button(
+            "\u2b07\ufe0f Backup herunterladen", data=store.export_json(),
+            file_name="value_radar_portfolios.json", mime="application/json",
+            use_container_width=True,
+            disabled=not store.names())
+        up = bc[1].file_uploader("\u2b06\ufe0f Backup importieren (.json)", type=["json"],
+                                 key="pf_backup_upload", label_visibility="collapsed")
+        if up is not None and not st.session_state.get("pf_backup_done"):
+            try:
+                nimp = store.import_json(up.read().decode("utf-8"), merge=True)
+            except Exception:
+                nimp = 0
+            if nimp:
+                st.session_state["pf_backup_done"] = True
+                st.success(f"{nimp} Portfolio(s) importiert. Oben unter \u201eLaden\u201c ausw\u00e4hlen.")
+                st.rerun()
+            else:
+                st.warning("Kein g\u00fcltiges Backup erkannt.")
+        if up is None:
+            st.session_state.pop("pf_backup_done", None)
+
     if "pf_data" not in st.session_state or st.session_state["pf_data"] is None:
         st.session_state["pf_data"] = pd.DataFrame([
             {"Ticker": "AAPL", "Anzahl": "10", "\u00d8 Buy-in": "", "Kaufdatum": None},

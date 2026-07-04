@@ -267,15 +267,27 @@ def _merge_sources(ticker, A, B, C=None):
     skalengleichen Ratios (Margen/ROE/Wachstum) entscheidet der Median (Konsens)."""
     C = C or {}
     warn = []
-    price = _pick(A.get("price"), C.get("price"), B.get("price"))
+    # Preis UND Waehrung IMMER aus derselben Quelle waehlen. Sonst kann z.B. ein
+    # USD-ADR-Kurs (yfinance) mit einer falschen Profil-Waehrung (Finnhub liefert bei
+    # China-ADRs wie NTES teils HKD) kombiniert werden -> voellig falsche EUR-Umrechnung.
+    price = currency = None
+    for s in (A, C, B):                       # Prioritaet: yfinance, fmp, finnhub
+        if s.get("price"):
+            price = s.get("price")
+            currency = s.get("currency")      # gepaart mit dem Preis
+            break
+    if not currency:
+        currency = "USD"                      # sichere Vorgabe statt fremder Quelle
     refs = [(n, s.get("price")) for n, s in (("yfinance", A), ("finnhub", B), ("fmp", C))
             if s.get("price")]
     if len(refs) >= 2:
         lo = min(p for _, p in refs)
         hi = max(p for _, p in refs)
-        if lo > 0 and (hi - lo) / lo > 0.06:
+        if lo > 0 and (hi - lo) / lo > 0.5:
+            warn.append("Kurse aus Quellen stark uneinig (evtl. andere B\u00f6rse/W\u00e4hrung): "
+                        + ", ".join(f"{n} {p:.2f}" for n, p in refs))
+        elif lo > 0 and (hi - lo) / lo > 0.06:
             warn.append("Kurs uneinig: " + ", ".join(f"{n} {p:.2f}" for n, p in refs))
-    currency = _pick(A.get("currency"), C.get("currency"), B.get("currency")) or "USD"
     shares = _pick(A.get("shares_out"), B.get("shares_out"))
     eps = _pick(A.get("eps_trailing"), C.get("eps_trailing"), B.get("eps_trailing"))
     bvps = _pick(A.get("book_value_ps"), C.get("book_value_ps"), B.get("book_value_ps"))
@@ -395,8 +407,36 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     return merged
 
 
+_EU_SUFFIX = (".AS", ".PA", ".L", ".SW", ".MI", ".MC", ".VI", ".BR", ".HE",
+              ".ST", ".OL", ".CO", ".LS", ".IR")
+_HOME_SUFFIX = (".DE", ".F", ".MU", ".SG", ".BE", ".DU", ".HM")   # Deutschland
+
+
+def _sym_rank(item, query):
+    """Rangfolge der Suchtreffer: exakter Ticker > Aktie > US-Primaerlisting
+    (kein Suffix) > Heimat (DE) > EU. Asiatische Zweitlistings (.HK/.SS/.T ...)
+    bekommen keinen Bonus, damit z.B. 'Netease' das US-ADR NTES trifft und nicht
+    die Hongkong-Aktie 9999.HK (HKD)."""
+    sym = (item.get("symbol") or "").upper()
+    typ = (item.get("type") or "").upper()
+    q = (query or "").strip().upper()
+    score = 0
+    if sym == q:
+        score += 100
+    if typ in ("EQUITY", "EQ", "S", "STOCK"):
+        score += 20
+    if "." not in sym:
+        score += 12                     # US-Primaerlisting
+    elif sym.endswith(_HOME_SUFFIX):
+        score += 9
+    elif sym.endswith(_EU_SUFFIX):
+        score += 6
+    return score
+
+
 def search_symbol(query: str, limit: int = 8) -> list[dict]:
-    """Namens-/Ticker-Suche via Yahoo. Liefert [{symbol,name,type,exchange}]."""
+    """Namens-/Ticker-Suche via Yahoo. Liefert [{symbol,name,type,exchange}],
+    sortiert nach Relevanz mit Vorzug fuer Primaer-/Heimatlistings."""
     if not query or requests is None:
         return []
     try:
@@ -414,6 +454,8 @@ def search_symbol(query: str, limit: int = 8) -> list[dict]:
                 "type": q.get("quoteType") or q.get("typeDisp") or "",
                 "exchange": q.get("exchDisp") or q.get("exchange") or "",
             })
+        # stabile Sortierung: hoeherer Rang zuerst, sonst Yahoo-Reihenfolge
+        out.sort(key=lambda it: -_sym_rank(it, query))
         return out
     except Exception:
         return []

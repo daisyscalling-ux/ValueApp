@@ -12,7 +12,26 @@ import os
 PATH = os.path.join(os.path.expanduser("~"), ".value_radar_portfolios.json")
 
 
+def _sheet():
+    """Google-Sheets-Backend, falls konfiguriert & erreichbar, sonst None."""
+    try:
+        import gsheet
+        return gsheet if gsheet.available() else None
+    except Exception:
+        return None
+
+
+def backend() -> str:
+    """'sheet' wenn Google Sheets aktiv ist, sonst 'file'."""
+    return "sheet" if _sheet() is not None else "file"
+
+
 def load_all() -> dict:
+    g = _sheet()
+    if g is not None:
+        d = g.load_all()
+        if d is not None:
+            return d
     try:
         with open(PATH, "r", encoding="utf-8") as fh:
             d = json.load(fh)
@@ -22,6 +41,11 @@ def load_all() -> dict:
 
 
 def _write(d: dict) -> bool:
+    g = _sheet()
+    if g is not None:
+        if g.save_all(d):
+            return True
+        # Sheets-Schreiben fehlgeschlagen -> zusaetzlich lokal sichern
     try:
         with open(PATH, "w", encoding="utf-8") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=2)
@@ -49,3 +73,28 @@ def delete(name: str) -> bool:
 
 def names() -> list:
     return sorted(load_all().keys())
+
+
+def export_json() -> str:
+    """Alle gespeicherten Portfolios als JSON-Text (fuer Download-Backup)."""
+    return json.dumps(load_all(), ensure_ascii=False, indent=2)
+
+
+def import_json(raw, merge: bool = True) -> int:
+    """Portfolios aus einem Backup (JSON-Text/-Bytes/-dict) einlesen.
+    merge=True fuegt zu vorhandenen hinzu (gleiche Namen werden ueberschrieben),
+    merge=False ersetzt alles. Rueckgabe: Anzahl importierter Portfolios."""
+    try:
+        data = json.loads(raw) if isinstance(raw, (str, bytes, bytearray)) else raw
+    except Exception:
+        return 0
+    if not isinstance(data, dict):
+        return 0
+    d = load_all() if merge else {}
+    n = 0
+    for k, v in data.items():
+        if isinstance(k, str) and isinstance(v, list):
+            d[k] = v
+            n += 1
+    _write(d)
+    return n

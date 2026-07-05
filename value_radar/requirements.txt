@@ -6,7 +6,7 @@ yfinance>=0.2.40,<0.3
 pandas>=2.0,<3
 numpy<3
 streamlit>=1.41
-altair>=5.0,<6
+altair>=5.4,<5.5   # 5.5.0 crasht auf Python 3.14 (TypedDict closed=True)
 requests>=2.31
 openpyxl>=3.1
 deep-translator>=1.11

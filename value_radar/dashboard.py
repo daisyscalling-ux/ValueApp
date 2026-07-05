@@ -93,44 +93,65 @@ section[data-testid="stSidebar"] .stButton>button:hover{
 .tickcell .stButton>button:hover{border-color:var(--amber);
   background:rgba(255,176,0,.08);}
 .rowline{border-bottom:1px solid var(--line); padding:2px 0;}
-/* ---- Mobile Top-Tab-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
+/* ---- Mobile Top-Icon-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
 .st-key-mobilenav{display:none;}
 @media (max-width: 820px){
-  /* Seitenleiste + Hamburger-Icon (oben links) auf dem Handy ausblenden -
-     die Top-Leiste ersetzt die Navigation komplett. */
+  /* Seite darf NIE seitlich scrollen */
+  html, body, [data-testid="stApp"], section[data-testid="stMain"]{
+    overflow-x:hidden !important; max-width:100vw !important;}
+  /* Seitenleiste + Hamburger-Icon auf dem Handy ausblenden */
   section[data-testid="stSidebar"]{display:none !important;}
   [data-testid="stSidebarCollapsedControl"],
   [data-testid="collapsedControl"],
   [data-testid="stSidebarCollapseButton"]{display:none !important;}
-  /* Streamlit-Kopfleiste schrumpfen, damit die Tab-Leiste ganz oben sitzt */
   header[data-testid="stHeader"]{height:0 !important; min-height:0 !important;}
 
   .st-key-mobilenav{
     display:block; position:sticky; top:0; z-index:99990;
-    margin:0 -1rem 8px -1rem;                 /* volle Breite bis zum Rand */
+    margin:0 calc(50% - 50vw) 8px calc(50% - 50vw);  /* exakt Rand zu Rand */
+    width:100vw;
     background:rgba(10,14,20,.98); backdrop-filter:blur(8px);
-    border-bottom:2px solid var(--amber);
-    padding:4px 4px;}
-  /* Spalten NEBENEINANDER erzwingen (Streamlit stapelt sie sonst untereinander) */
-  .st-key-mobilenav [data-testid="stHorizontalBlock"]{
-    flex-direction:row !important; flex-wrap:nowrap !important;
-    gap:2px !important; width:100%;}
-  .st-key-mobilenav [data-testid="column"]{
-    flex:1 1 0 !important; width:auto !important; min-width:0 !important;}
-  .st-key-mobilenav .stButton{width:100%;}
+    border-bottom:2px solid var(--amber); padding:4px 3px;}
+  /* 6 exakt gleich breite Icon-Zellen via CSS-Grid (kein st.columns-Flex mehr,
+     das auf manchen Streamlit-Versionen stapelt/ueberlaeuft) */
+  .st-key-mobilenav [data-testid="stVerticalBlock"]{
+    display:grid !important; grid-template-columns:repeat(6, 1fr) !important;
+    gap:3px !important; width:100% !important;}
+  .st-key-mobilenav [data-testid="stVerticalBlock"] > div{
+    min-width:0 !important; width:100% !important;}
+  .st-key-mobilenav [data-testid="stHorizontalBlock"],
+  .st-key-mobilenav [data-testid="column"],
+  .st-key-mobilenav [data-testid="stColumn"]{
+    display:contents !important;}                    /* alte Spalten-Wrapper aufloesen */
+  .st-key-mobilenav .stButton{width:100% !important;}
   .st-key-mobilenav .stButton>button{
-    width:100%; min-height:0; padding:6px 0; border:1px solid var(--line);
-    border-radius:5px; box-shadow:none; background:rgba(255,255,255,.03);
-    color:var(--muted); overflow:hidden;
-    font-size:10px; letter-spacing:0; line-height:1.2; white-space:nowrap;}
-  .st-key-mobilenav .stButton>button p{font-size:10px; margin:0;}
-  .st-key-mobilenav .stButton>button:hover{color:var(--amber); border-color:var(--amber);}
+    width:100% !important; min-height:0; padding:7px 0 5px 0;
+    border:1px solid var(--line); border-radius:7px; box-shadow:none;
+    background:rgba(255,255,255,.03); color:var(--muted); overflow:hidden;
+    font-size:19px; line-height:1.05; white-space:nowrap;}
+  .st-key-mobilenav .stButton>button p{font-size:19px; margin:0; line-height:1.05;}
+  .st-key-mobilenav .stButton>button:hover{border-color:var(--amber);}
   .st-key-mobilenav .stButton>button[kind="primary"]{
-    color:#0A0E14; background:var(--amber); border-color:var(--amber); font-weight:800;}
-  /* etwas Luft oben, kein Overlay-Abstand unten mehr noetig */
+    background:var(--amber); border-color:var(--amber);}
   section[data-testid="stMain"] .block-container,
   section.main .block-container{padding-top:6px !important;}
 }
+/* ---- Professionelle eigene Tabellen (vr-table): dunkel, unabhaengig vom Theme ---- */
+.vr-twrap{border:1px solid var(--line); background:var(--panel);
+  border-radius:6px; overflow-x:auto; margin:2px 0 6px 0;}
+table.vr-table{width:100%; border-collapse:collapse; font-family:inherit;
+  font-size:12.5px; color:var(--fg); min-width:520px;}
+table.vr-table th{position:sticky; top:0; background:#121821; color:var(--muted);
+  text-transform:uppercase; letter-spacing:1px; font-size:10.5px; font-weight:700;
+  text-align:left; padding:9px 12px; border-bottom:1px solid var(--line);
+  white-space:nowrap;}
+table.vr-table td{padding:8px 12px; border-bottom:1px solid rgba(31,39,51,.55);
+  white-space:nowrap;}
+table.vr-table tr:last-child td{border-bottom:none;}
+table.vr-table tbody tr:hover{background:rgba(255,176,0,.05);}
+table.vr-table td.num, table.vr-table th.num{text-align:right;
+  font-variant-numeric:tabular-nums;}
+table.vr-table td b.tick{color:var(--amber);}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -394,6 +415,56 @@ def svg_area_chart(pcts, color, height=250):
         f'+{hi:.1f}%</text>'
         f'<text x="6" y="{H-6}" fill="#6B7686" font-size="11" font-family="monospace">'
         f'{lo:.1f}%</text></svg>')
+
+
+def vr_table(rows, score_cols=(), signed_cols=(), height=None):
+    """Professionelle dunkle Tabelle (eigenes HTML statt st.dataframe-Canvas):
+    unabhaengig vom Streamlit-Theme, gleiche Optik auf Web & Mobile, innen
+    horizontal scrollbar statt die Seite zu verbreitern.
+    rows: Liste von dicts (gleiche Keys). score_cols: 0-100 farbig.
+    signed_cols: +gruen/-rot mit Vorzeichen."""
+    if not rows:
+        return
+    cols = list(rows[0].keys())
+    num_cols = set()
+    for c in cols:
+        for r in rows:
+            v = r.get(c)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                num_cols.add(c)
+                break
+    ths = "".join(f'<th class="{"num" if c in num_cols else ""}">{esc(str(c))}</th>'
+                  for c in cols)
+    body = ""
+    for r in rows:
+        tds = ""
+        for c in cols:
+            v = r.get(c)
+            cls = "num" if c in num_cols else ""
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                tds += f'<td class="{cls}"><span class="na">\u2014</span></td>'
+                continue
+            if c in score_cols and isinstance(v, (int, float)):
+                tds += (f'<td class="{cls}" style="color:{score_hex(v)};'
+                        f'font-weight:700">{v:.0f}</td>')
+            elif c in signed_cols and isinstance(v, (int, float)):
+                colr = "#3FB950" if v >= 0 else "#F85149"
+                sgn = "+" if v >= 0 else "\u2212"
+                tds += (f'<td class="{cls}" style="color:{colr};font-weight:700">'
+                        f'{sgn}{de(abs(v), 2)}</td>')
+            elif isinstance(v, float):
+                tds += f'<td class="{cls}">{de(v, 2)}</td>'
+            elif isinstance(v, int):
+                tds += f'<td class="{cls}">{v}</td>'
+            elif c.lower() == "ticker":
+                tds += f'<td><b class="tick">{esc(str(v))}</b></td>'
+            else:
+                tds += f'<td>{esc(str(v))}</td>'
+        body += f"<tr>{tds}</tr>"
+    hstyle = f'style="max-height:{height}px;overflow-y:auto"' if height else ""
+    st.markdown(f'<div class="vr-twrap" {hstyle}><table class="vr-table">'
+                f'<thead><tr>{ths}</tr></thead><tbody>{body}</tbody></table></div>',
+                unsafe_allow_html=True)
 
 
 def svg_hbars(pairs, color="#FFB000"):
@@ -705,17 +776,17 @@ if "pending_nav" in st.session_state:
 st.session_state.setdefault("nav", "Start")
 nav = st.session_state["nav"]
 
-# Mobile Top-Tab-Navigation: erscheint via CSS nur auf Handys, ganz oben ueber
-# dem Titel. Echte Streamlit-Buttons (kein Reload) -> Login/Status bleiben erhalten.
-MOBILE_NAV = {"Start": "\U0001f3e0 Start", "Einzelanalyse": "\U0001f4c8 Analyse",
-              "Radar": "\U0001f3af Radar", "Screener": "\U0001f50d Screen",
-              "Portfoliocheck": "\U0001f4bc Depot", "News": "\U0001f4f0 News"}
+# Mobile Top-Icon-Navigation: erscheint via CSS nur auf Handys, ganz oben, Rand
+# zu Rand. Buttons OHNE st.columns - das CSS-Grid ordnet sie in 6 gleiche Zellen
+# (robust gegen Streamlit-Versionswechsel). Icons statt Text: passt auf jedes Display.
+MOBILE_NAV = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8",
+              "Radar": "\U0001f3af", "Screener": "\U0001f50d",
+              "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
-    _mc = st.columns(len(MOBILE_NAV))
-    for _i, (_pg, _lab) in enumerate(MOBILE_NAV.items()):
-        if _mc[_i].button(_lab, key=f"mnav_{_pg}", use_container_width=True,
-                          type=("primary" if _pg == nav else "secondary")):
+    for _pg, _icon in MOBILE_NAV.items():
+        if st.button(_icon, key=f"mnav_{_pg}", use_container_width=True,
+                     help=_pg, type=("primary" if _pg == nav else "secondary")):
             if _pg != nav:
                 st.session_state["nav"] = _pg
                 st.rerun()
@@ -815,11 +886,8 @@ if nav == "Start":
                     for r in rows]
             cstyle = ["Chance", "Score"]
         df = pd.DataFrame(data)
-
-        def csc(v):
-            return f"color:{score_hex(v)};font-weight:700"
-        styled = df.style.map(csc, subset=cstyle).format(precision=2, formatter={"Preis \u20ac": "{:.2f}"})
-        st.dataframe(styled, hide_index=True, use_container_width=True, height=340)
+        vr_table(data, score_cols=("Radar-Score", "Chance", "Score"),
+                 signed_cols=("Upside %",), height=340)
         ticker_open_bar(list(df["Ticker"]), key)
 
     htabs = st.tabs(["  \U0001f3af RADAR \u00b7 HOT PICKS  ",
@@ -877,12 +945,9 @@ if nav == "Start":
                           **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
                              if an["have_pl"] else {})}
                          for r in prsort]
-                pdf = pd.DataFrame(pdata)
-                st.dataframe(
-                    pdf.style.map(lambda v: f"color:{score_hex(v)};font-weight:700", subset=["Comp."])
-                    .format(precision=2, formatter={"Wert \u20ac": "{:.2f}", "Gew. %": "{:.2f}"}),
-                    hide_index=True, use_container_width=True,
-                    height=min(len(pdf) * 36 + 40, 360))
+                vr_table(pdata, score_cols=("Comp.",),
+                         signed_cols=("Upside %", "Kauf %"),
+                         height=min(len(pdata) * 38 + 46, 360))
             if st.button("\u00d6ffnen", key=f"open_pf_{pname}", use_container_width=True):
                 st.session_state["pf_data"] = pf_records_to_df(precs)
                 st.session_state["pf_editor_key"] = st.session_state.get("pf_editor_key", 0) + 1
@@ -1046,10 +1111,9 @@ if nav == "Einzelanalyse":
                                 'BEWERTUNGSMETHODEN</div>', unsafe_allow_html=True)
                     meth = v.get("methods", {})
                     if meth:
-                        df = pd.DataFrame([{"Methode": valuation.METHOD_LABELS.get(k, k),
-                                            f"Wert/Aktie ({sym})": round(val * mult, 2)}
-                                           for k, val in meth.items()])
-                        st.dataframe(df, hide_index=True, use_container_width=True)
+                        vr_table([{"Methode": valuation.METHOD_LABELS.get(k, k),
+                                   f"Wert/Aktie ({sym})": round(val * mult, 2)}
+                                  for k, val in meth.items()])
                         if v.get("method_profile"):
                             st.caption(f"\U0001f9ed Methodenwahl f\u00fcr diese Aktie: "
                                        f"{esc(v['method_profile'])}")
@@ -1354,13 +1418,13 @@ if nav == "Einzelanalyse":
             with cc[1]:
                 st.markdown('<div class="sec-title">BEWERTUNG & ENTRY (eigene Engine)</div>',
                             unsafe_allow_html=True)
-                st.dataframe(pd.DataFrame([
+                vr_table([
                     {"Modell": "Forward-Multiple (KGV)", "Wert": e(vs["forward_multiple_pe"])},
                     {"Modell": "EV/EBITDA-Modell", "Wert": e(vs["ev_ebitda_model"])},
                     {"Modell": "DCF-Modell", "Wert": e(vs["dcf_model"])},
                     {"Modell": "Fair Value (Blend)", "Wert": e(vs["fair_value"])},
-                ]), hide_index=True, use_container_width=True)
-            st.dataframe(pd.DataFrame([
+                ])
+            vr_table([
                 {"Entry-Preis": "ohne DCF", "Basis": e(vs["entry_no_dcf"]),
                  "MOS 10%": e(vs["entry_no_dcf_mos"][0.10]),
                  "MOS 15%": e(vs["entry_no_dcf_mos"][0.15]),
@@ -1369,7 +1433,7 @@ if nav == "Einzelanalyse":
                  "MOS 10%": e(vs["entry_dcf_mos"][0.10]),
                  "MOS 15%": e(vs["entry_dcf_mos"][0.15]),
                  "MOS 20%": e(vs["entry_dcf_mos"][0.20])},
-            ]), hide_index=True, use_container_width=True)
+            ])
     with ea_tabs[3]:
         prep = _prep_for_matrix(ticker)
         if prep is None:
@@ -1569,29 +1633,12 @@ if nav == "Radar":
                  "Preis \u20ac": round((r["_price"] or 0) * r["_fx"], 2),
                  "Sektor": (r["sector"] or "")[:14]} for r in results]
         df = pd.DataFrame(rows)
-
-        def csc(v):
-            return f"color:{score_hex(v)};font-weight:700"
-        styled = (df.style.map(csc, subset=["Radar-Score", "Ereignisse", "Fundamental",
-                                            "Sch\u00e4tzungen", "Akkumulation"])
-                  .format(precision=2, formatter={"Preis \u20ac": "{:.2f}"}))
-        st.caption("Werte 0\u2013100; \u00fcber die Spalten\u00fcberschrift fahren f\u00fcr Erkl\u00e4rungen.")
-        colcfg = {
-            "Radar-Score": st.column_config.NumberColumn(
-                "Radar-Score", help="Gesamt-Fr\u00fchsignal 0\u2013100 (gewichtete Summe der vier Ebenen)"),
-            "Ereignisse": st.column_config.NumberColumn(
-                "Ereignisse", help="SEC-8-K & News: \u00dcbernahmen, Fusionen, Kooperationen, Gro\u00dfauftr\u00e4ge"),
-            "Fundamental": st.column_config.NumberColumn(
-                "Fundamental", help="Wachstumsniveau und Auftragseingang/Backlog-Hinweise"),
-            "Sch\u00e4tzungen": st.column_config.NumberColumn(
-                "Sch\u00e4tzungen", help="Schätzungs-Momentum: Analysten heben Gewinnsch\u00e4tzungen an"),
-            "Akkumulation": st.column_config.NumberColumn(
-                "Akkumulation", help="Stille Akkumulation: Insiderk\u00e4ufe, Volumen-Spikes, Chart-Setup"),
-            "Aktive Ebenen": st.column_config.NumberColumn(
-                "Aktive Ebenen", help="Wie viele der 4 Ebenen gleichzeitig stark sind (Koinzidenz)"),
-        }
-        st.dataframe(styled, hide_index=True, use_container_width=True, height=460,
-                     column_config=colcfg)
+        vr_table(rows, score_cols=("Radar-Score", "Ereignisse", "Fundamental",
+                                   "Sch\u00e4tzungen", "Akkumulation"), height=460)
+        st.caption("Werte 0\u2013100. Ereignisse = 8-K/News (\u00dcbernahmen, Auftr\u00e4ge) \u00b7 "
+                   "Fundamental = Wachstum/Backlog \u00b7 Sch\u00e4tzungen = Analysten heben "
+                   "Gewinnsch\u00e4tzungen \u00b7 Akkumulation = Insiderk\u00e4ufe/Volumen/Chart \u00b7 "
+                   "Aktive Ebenen = Koinzidenz der 4 Ebenen.")
         ticker_open_bar(list(df["Ticker"]), "radar")
 
         st.markdown('<div class="sec-title" style="margin-top:14px">'
@@ -1736,12 +1783,8 @@ if nav == "Screener":
                                    "Upside %": "{:+.2f}", "12M %": "{:+.2f}"}, na_rep="\u2014"))
                 st.success(f"{len(df)} Titel erf\u00fcllen alle Pflicht-Kriterien der "
                            f"Vorlage \u201e{vorlage}\u201c.")
-                st.dataframe(styled, hide_index=True, use_container_width=True, height=560,
-                             column_config={
-                                 "Upside %": st.column_config.NumberColumn(
-                                     "Upside %", help="Fairer Wert vs. aktueller Kurs"),
-                                 "Bonus-Fit": st.column_config.TextColumn(
-                                     "Bonus-Fit", help="Erf\u00fcllte Bonus-Kriterien (weich)")})
+                vr_table(df.to_dict("records"),
+                         signed_cols=("Upside %", "12M %"), height=560)
                 st.caption("Alle Pflicht-Kriterien sind erf\u00fcllt; \u201eBonus-Fit\u201c zeigt die "
                            "zus\u00e4tzlich erf\u00fcllten weichen Kriterien. Kein Kaufsignal \u2013 "
                            "jeden Treffer einzeln pr\u00fcfen.")
@@ -1826,38 +1869,10 @@ if nav == "Screener":
 
         if rows:
             df = pd.DataFrame(rows).sort_values("Score", ascending=False)
-
-            def csc(v):
-                try:
-                    return f"color:{score_hex(float(v))};font-weight:700"
-                except Exception:
-                    return ""
-
-            def cpm(v):
-                try:
-                    x = float(v)
-                    return "color:#3FB950" if x > 0 else ("color:#F85149" if x < 0 else "")
-                except Exception:
-                    return ""
-            styled = (df.style
-                      .map(csc, subset=["Score"])
-                      .map(cpm, subset=["6M %", "1J %", "YTD %"])
-                      .format(precision=2, formatter={"Preis \u20ac": "{:.2f}", "6M %": "{:+.2f}",
-                               "1J %": "{:+.2f}", "YTD %": "{:+.2f}"}, na_rep="\u2014"))
-            scolcfg = {
-                "Preis \u20ac": st.column_config.NumberColumn("Preis \u20ac", help="Aktueller Kurs in Euro"),
-                "6M %": st.column_config.NumberColumn("6 Mon. %", help="Kursentwicklung der letzten 6 Monate"),
-                "1J %": st.column_config.NumberColumn("1 Jahr %", help="Kursentwicklung der letzten 12 Monate"),
-                "YTD %": st.column_config.NumberColumn("Seit Jahresanfang %", help="Year-to-date"),
-                "Analyst K/H/V": st.column_config.TextColumn(
-                    "Analyst K/H/V", help="Analystenempfehlungen: Kauf / Halten / Verkauf"),
-                "Score": st.column_config.NumberColumn(
-                    "Gesamt-Score", help="Sektor-relativer Qualit\u00e4ts-/Bewertungs-Score 0\u2013100"),
-            }
-            st.dataframe(styled, hide_index=True, use_container_width=True, height=560,
-                         column_config=scolcfg)
-            st.caption(f"{len(df)} Titel \u00b7 Playbook: {screen_preset} \u00b7 "
-                       "nach Score sortiert (Spalten anklickbar zum Umsortieren).")
+            vr_table(df.to_dict("records"), score_cols=("Score",),
+                     signed_cols=("6M %", "1J %", "YTD %"), height=560)
+            st.caption(f"{len(df)} Titel \u00b7 Playbook: {screen_preset} \u00b7 nach Score "
+                       "sortiert \u00b7 Analyst K/H/V = Kauf/Halten/Verkauf-Empfehlungen.")
             if "Ticker" in df.columns:
                 ticker_open_bar(list(df["Ticker"]), "scr_custom")
         else:

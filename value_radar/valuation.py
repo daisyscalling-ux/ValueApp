@@ -370,6 +370,16 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     }
     weights = _WEIGHTS.get(preset, _WEIGHTS["quality"])
     avail = {k: v for k, v in methods.items() if v and v > 0 and k in weights}
+    # Pro Aktie nur die 3 gewichtigsten (relevantesten) Methoden verwenden/zeigen
+    if len(avail) > 3:
+        top3 = sorted(avail, key=lambda k: weights[k], reverse=True)[:3]
+        avail = {k: avail[k] for k in top3}
+
+    # Pro Aktie nur die 3 wichtigsten (hoechstgewichteten) verfuegbaren Methoden
+    # nutzen \u2013 fuer Berechnung UND Anzeige. Analysten-Anker zaehlt als Methode.
+    if len(avail) > 3:
+        top3 = sorted(avail, key=lambda k: weights[k], reverse=True)[:3]
+        avail = {k: avail[k] for k in top3}
 
     # Begruendung der Methodenwahl (pro Aktie): was wurde warum genutzt/uebersprungen
     profile_notes = []

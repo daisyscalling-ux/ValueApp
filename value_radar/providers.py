@@ -118,7 +118,11 @@ def _finnhub_bundle(ticker):
     if p:
         B["name"] = p.get("name") or None
         B["country"] = p.get("country") or None
-        B["currency"] = p.get("currency") or None
+        # WICHTIG: Finnhubs quote-Endpoint liefert fuer US-gelistete Symbole (ohne
+        # Boersen-Suffix wie .HK/.DE) IMMER USD-Kurse. Die Profil-Waehrung nennt bei
+        # China-ADRs (NTES, BABA, ...) aber teils HKD/CNY -> wuerde die EUR-Umrechnung
+        # ruinieren (NTES 111 USD -> "16 EUR"). Daher: ohne Suffix immer USD.
+        B["currency"] = "USD" if "." not in ticker else (p.get("currency") or None)
         B["industry"] = p.get("finnhubIndustry") or None
         if _num(p.get("shareOutstanding")):
             B["shares_out"] = _num(p.get("shareOutstanding")) * 1e6
@@ -267,17 +271,11 @@ def _merge_sources(ticker, A, B, C=None):
     skalengleichen Ratios (Margen/ROE/Wachstum) entscheidet der Median (Konsens)."""
     C = C or {}
     warn = []
-    # Preis UND Waehrung IMMER aus derselben Quelle waehlen. Sonst kann z.B. ein
-    # USD-ADR-Kurs (yfinance) mit einer falschen Profil-Waehrung (Finnhub liefert bei
-    # China-ADRs wie NTES teils HKD) kombiniert werden -> voellig falsche EUR-Umrechnung.
-    price = currency = None
-    for s in (A, C, B):                       # Prioritaet: yfinance, fmp, finnhub
-        if s.get("price"):
-            price = s.get("price")
-            currency = s.get("currency")      # gepaart mit dem Preis
-            break
-    if not currency:
-        currency = "USD"                      # sichere Vorgabe statt fremder Quelle
+    price = _pick(A.get("price"), C.get("price"), B.get("price"))
+    # Handelswaehrung NUR aus yfinance/fmp. Finnhubs Profil liefert teils die
+    # Bilanz-/Reporting-Waehrung (z.B. HKD bei US-ADRs wie NTES) -> das wuerde die
+    # EUR-Umrechnung voellig verzerren (NTES 111 USD -> faelschlich ~16 EUR).
+    currency = A.get("currency") or C.get("currency") or "USD"
     refs = [(n, s.get("price")) for n, s in (("yfinance", A), ("finnhub", B), ("fmp", C))
             if s.get("price")]
     if len(refs) >= 2:
@@ -391,6 +389,22 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         except Exception:
             info = {}
     A = _yf_bundle(info)
+    # Robustheit gegen yfinance-Versionswechsel/API-Aussetzer: fehlen Kurs oder
+    # Waehrung im info-Dict, liefert fast_info sie meist trotzdem (stabile API).
+    if yf is not None and (not A.get("price") or not A.get("currency")):
+        try:
+            fi = yf.Ticker(ticker).fast_info
+            if not A.get("price"):
+                A["price"] = _num(getattr(fi, "last_price", None)
+                                  or (fi.get("last_price") if hasattr(fi, "get") else None))
+            if not A.get("currency"):
+                A["currency"] = (getattr(fi, "currency", None)
+                                 or (fi.get("currency") if hasattr(fi, "get") else None))
+            if not A.get("market_cap"):
+                A["market_cap"] = _num(getattr(fi, "market_cap", None)
+                                       or (fi.get("market_cap") if hasattr(fi, "get") else None))
+        except Exception:
+            pass
     B = _finnhub_bundle(ticker)
     C = _fmp_bundle(ticker) if deep else None
     merged = _merge_sources(ticker, A, B, C)
@@ -435,31 +449,44 @@ def _sym_rank(item, query):
 
 
 def search_symbol(query: str, limit: int = 8) -> list[dict]:
-    """Namens-/Ticker-Suche via Yahoo. Liefert [{symbol,name,type,exchange}],
-    sortiert nach Relevanz mit Vorzug fuer Primaer-/Heimatlistings."""
-    if not query or requests is None:
+    """Namens-/Ticker-Suche. Yahoo zuerst; blockt Yahoo (Cookie/Crumb-Pflicht),
+    springt die Finnhub-Suche ein. Liefert [{symbol,name,type,exchange}]."""
+    if not query:
         return []
-    try:
-        r = requests.get("https://query2.finance.yahoo.com/v1/finance/search",
-                         params={"q": query, "quotesCount": limit, "newsCount": 0},
-                         headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        out = []
-        for q in r.json().get("quotes", []):
-            sym = q.get("symbol")
-            if not sym:
-                continue
-            out.append({
-                "symbol": sym,
-                "name": q.get("shortname") or q.get("longname") or "",
-                "type": q.get("quoteType") or q.get("typeDisp") or "",
-                "exchange": q.get("exchDisp") or q.get("exchange") or "",
-            })
-        # stabile Sortierung: hoeherer Rang zuerst, sonst Yahoo-Reihenfolge
-        out.sort(key=lambda it: -_sym_rank(it, query))
-        return out
-    except Exception:
-        return []
-
+    out = []
+    if requests is not None:
+        try:
+            r = requests.get("https://query2.finance.yahoo.com/v1/finance/search",
+                             params={"q": query, "quotesCount": limit, "newsCount": 0},
+                             headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            for q in r.json().get("quotes", []):
+                sym = q.get("symbol")
+                if not sym:
+                    continue
+                out.append({
+                    "symbol": sym,
+                    "name": q.get("shortname") or q.get("longname") or "",
+                    "type": q.get("quoteType") or q.get("typeDisp") or "",
+                    "exchange": q.get("exchDisp") or q.get("exchange") or "",
+                })
+        except Exception:
+            out = []
+    if not out:                                   # Fallback: Finnhub-Symbolsuche
+        try:
+            res = _fh("search", {"q": query}) or {}
+            for q in (res.get("result") or [])[:limit]:
+                sym = q.get("symbol")
+                if sym:
+                    out.append({
+                        "symbol": sym,
+                        "name": q.get("description") or "",
+                        "type": q.get("type") or "",
+                        "exchange": "",
+                    })
+        except Exception:
+            pass
+    out.sort(key=lambda it: -_sym_rank(it, query))
+    return out
 
 def _stooq_history(ticker, interval):
     """Schluesselfreie zweite Quelle (Stooq) fuer Tages-/Wochenhistorie.

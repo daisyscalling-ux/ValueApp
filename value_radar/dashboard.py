@@ -15,7 +15,6 @@ from datetime import datetime
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
-import altair as alt
 
 import providers
 import scoring
@@ -52,10 +51,10 @@ html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 .vr-head .status{color:var(--muted);font-size:12px;margin-top:2px;}
 .vr-card{border:1px solid var(--line);background:var(--panel);padding:14px 16px;
   height:100%;min-height:104px;display:flex;flex-direction:column;justify-content:center;}
-.vr-card .sub{min-height:16px;}
 .vr-card .k{color:var(--muted);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;}
 .vr-card .v{font-size:24px;font-weight:700;margin-top:4px;}
-.vr-card .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.vr-card .sub{font-size:12px;color:var(--muted);margin-top:2px;min-height:16px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .row{display:flex;align-items:center;gap:12px;margin:7px 0;}
 .row .lbl{width:130px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;}
 .row .track{flex:1;height:14px;background:#0d1219;border:1px solid var(--line);position:relative;}
@@ -94,39 +93,43 @@ section[data-testid="stSidebar"] .stButton>button:hover{
 .tickcell .stButton>button:hover{border-color:var(--amber);
   background:rgba(255,176,0,.08);}
 .rowline{border-bottom:1px solid var(--line); padding:2px 0;}
-/* ---- Mobile Bottom-Tab-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
+/* ---- Mobile Top-Tab-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
 .st-key-mobilenav{display:none;}
 @media (max-width: 820px){
   /* Seitenleiste + Hamburger-Icon (oben links) auf dem Handy ausblenden -
-     die Bottom-Leiste ersetzt die Navigation komplett. */
+     die Top-Leiste ersetzt die Navigation komplett. */
   section[data-testid="stSidebar"]{display:none !important;}
   [data-testid="stSidebarCollapsedControl"],
   [data-testid="collapsedControl"],
   [data-testid="stSidebarCollapseButton"]{display:none !important;}
+  /* Streamlit-Kopfleiste schrumpfen, damit die Tab-Leiste ganz oben sitzt */
+  header[data-testid="stHeader"]{height:0 !important; min-height:0 !important;}
 
   .st-key-mobilenav{
-    display:block; position:fixed; left:0; right:0; bottom:0; z-index:99990;
-    background:rgba(10,14,20,.96); backdrop-filter:blur(8px);
-    border-top:1px solid var(--line);
-    padding:4px 0 calc(4px + env(safe-area-inset-bottom, 0px)) 0;}
+    display:block; position:sticky; top:0; z-index:99990;
+    margin:0 -1rem 8px -1rem;                 /* volle Breite bis zum Rand */
+    background:rgba(10,14,20,.98); backdrop-filter:blur(8px);
+    border-bottom:2px solid var(--amber);
+    padding:4px 4px;}
   /* Spalten NEBENEINANDER erzwingen (Streamlit stapelt sie sonst untereinander) */
   .st-key-mobilenav [data-testid="stHorizontalBlock"]{
     flex-direction:row !important; flex-wrap:nowrap !important;
-    gap:0 !important; width:100%;}
+    gap:2px !important; width:100%;}
   .st-key-mobilenav [data-testid="column"]{
     flex:1 1 0 !important; width:auto !important; min-width:0 !important;}
   .st-key-mobilenav .stButton{width:100%;}
   .st-key-mobilenav .stButton>button{
-    width:100%; min-height:0; padding:5px 0; border:none; box-shadow:none;
-    background:transparent; color:var(--muted); overflow:hidden;
-    font-size:9px; letter-spacing:0; line-height:1.15; white-space:nowrap;}
-  .st-key-mobilenav .stButton>button p{font-size:9px; margin:0;}
-  .st-key-mobilenav .stButton>button:hover{color:var(--amber); background:transparent;}
+    width:100%; min-height:0; padding:6px 0; border:1px solid var(--line);
+    border-radius:5px; box-shadow:none; background:rgba(255,255,255,.03);
+    color:var(--muted); overflow:hidden;
+    font-size:10px; letter-spacing:0; line-height:1.2; white-space:nowrap;}
+  .st-key-mobilenav .stButton>button p{font-size:10px; margin:0;}
+  .st-key-mobilenav .stButton>button:hover{color:var(--amber); border-color:var(--amber);}
   .st-key-mobilenav .stButton>button[kind="primary"]{
-    color:var(--amber); background:transparent; font-weight:800;}
-  /* Platz schaffen, damit die Leiste den Inhalt unten nicht verdeckt */
+    color:#0A0E14; background:var(--amber); border-color:var(--amber); font-weight:800;}
+  /* etwas Luft oben, kein Overlay-Abstand unten mehr noetig */
   section[data-testid="stMain"] .block-container,
-  section.main .block-container{padding-bottom:82px !important;}
+  section.main .block-container{padding-top:6px !important;}
 }
 </style>
 """
@@ -340,6 +343,82 @@ def card(col, label, value, sub="", color="var(--fg)"):
     col.markdown(f'<div class="vr-card"><div class="k">{label}</div>'
                  f'<div class="v" style="color:{color}">{value}</div>'
                  f'<div class="sub">{sub}</div></div>', unsafe_allow_html=True)
+
+
+# --- Eigene SVG-Charts (kein altair -> immun gegen Python/altair-Versionsbrueche) ---
+def _svg_esc(s):
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def svg_sparkline(vals, color, height=44):
+    vals = [float(v) for v in vals if v is not None]
+    if len(vals) < 2:
+        return "<span class='na'>n/a</span>"
+    lo, hi = min(vals), max(vals)
+    rng = (hi - lo) or 1.0
+    W = 240
+    pts = " ".join(f"{i/(len(vals)-1)*W:.1f},{height-4-((v-lo)/rng)*(height-8):.1f}"
+                   for i, v in enumerate(vals))
+    return (f'<svg viewBox="0 0 {W} {height}" width="100%" height="{height}" '
+            f'preserveAspectRatio="none" style="display:block">'
+            f'<polyline points="{pts}" fill="none" stroke="{color}" '
+            f'stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>')
+
+
+def svg_area_chart(pcts, color, height=250):
+    """Flaechen-/Linienchart der prozentualen Entwicklung, mit Nulllinie."""
+    pcts = [float(p) for p in pcts if p is not None]
+    if len(pcts) < 2:
+        return "<span class='na'>Kein Kursverlauf verf\u00fcgbar.</span>"
+    lo, hi = min(pcts + [0.0]), max(pcts + [0.0])
+    rng = (hi - lo) or 1.0
+    W, H, pad = 700, height, 10
+
+    def yy(p):
+        return pad + (hi - p) / rng * (H - 2 * pad)
+
+    def xx(i):
+        return i / (len(pcts) - 1) * W
+    line_pts = " ".join(f"{xx(i):.1f},{yy(p):.1f}" for i, p in enumerate(pcts))
+    area_pts = f"0,{yy(lo):.1f} " + line_pts + f" {W},{yy(lo):.1f}"
+    zy = yy(0.0)
+    return (
+        f'<svg viewBox="0 0 {W} {H}" width="100%" height="{H}" '
+        f'preserveAspectRatio="none" style="display:block">'
+        f'<polygon points="{area_pts}" fill="{color}" opacity="0.12"/>'
+        f'<line x1="0" y1="{zy:.1f}" x2="{W}" y2="{zy:.1f}" stroke="#6B7686" '
+        f'stroke-width="1" stroke-dasharray="4 4"/>'
+        f'<polyline points="{line_pts}" fill="none" stroke="{color}" '
+        f'stroke-width="1.8" vector-effect="non-scaling-stroke"/>'
+        f'<text x="6" y="14" fill="#6B7686" font-size="11" font-family="monospace">'
+        f'+{hi:.1f}%</text>'
+        f'<text x="6" y="{H-6}" fill="#6B7686" font-size="11" font-family="monospace">'
+        f'{lo:.1f}%</text></svg>')
+
+
+def svg_hbars(pairs, color="#FFB000"):
+    """pairs: Liste (label, wert%). Horizontale Balken."""
+    pairs = [(str(k), float(v)) for k, v in pairs if v is not None]
+    if not pairs:
+        return "<span class='na'>n/a</span>"
+    maxv = max(v for _, v in pairs) or 1.0
+    W = 700
+    barh, gap = 18, 12
+    H = len(pairs) * (barh + gap) + 6
+    lab_w, bar_x = 0.30 * W, 0.30 * W
+    rows, y = "", 6
+    for label, v in pairs:
+        w = max(v, 0) / maxv * (W - bar_x - 60)
+        rows += (
+            f'<text x="0" y="{y+13}" fill="#9AA4B2" font-size="12" '
+            f'font-family="monospace">{_svg_esc(label[:16])}</text>'
+            f'<rect x="{bar_x:.0f}" y="{y}" width="{w:.1f}" height="{barh}" '
+            f'fill="{color}" rx="2"/>'
+            f'<text x="{bar_x + w + 6:.1f}" y="{y+13}" fill="#E6E1D3" font-size="12" '
+            f'font-family="monospace">{v:.1f}%</text>')
+        y += barh + gap
+    return (f'<svg viewBox="0 0 {W} {H}" width="100%" height="{H}" '
+            f'style="display:block">{rows}</svg>')
 
 
 # ---------------------------------------------------------------------------
@@ -618,6 +697,29 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
+PAGES = ["Start", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck", "News"]
+ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
+         "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
+if "pending_nav" in st.session_state:
+    st.session_state["nav"] = st.session_state.pop("pending_nav")
+st.session_state.setdefault("nav", "Start")
+nav = st.session_state["nav"]
+
+# Mobile Top-Tab-Navigation: erscheint via CSS nur auf Handys, ganz oben ueber
+# dem Titel. Echte Streamlit-Buttons (kein Reload) -> Login/Status bleiben erhalten.
+MOBILE_NAV = {"Start": "\U0001f3e0 Start", "Einzelanalyse": "\U0001f4c8 Analyse",
+              "Radar": "\U0001f3af Radar", "Screener": "\U0001f50d Screen",
+              "Portfoliocheck": "\U0001f4bc Depot", "News": "\U0001f4f0 News"}
+_mnav = st.container(key="mobilenav")
+with _mnav:
+    _mc = st.columns(len(MOBILE_NAV))
+    for _i, (_pg, _lab) in enumerate(MOBILE_NAV.items()):
+        if _mc[_i].button(_lab, key=f"mnav_{_pg}", use_container_width=True,
+                          type=("primary" if _pg == nav else "secondary")):
+            if _pg != nav:
+                st.session_state["nav"] = _pg
+                st.rerun()
+
 st.markdown(
     '<div class="vr-head"><div class="brand">VALUE RADAR <span class="caret">\u25ae</span></div>'
     '<div class="status">// vor die welle kommen &nbsp;\u00b7&nbsp; lokales terminal '
@@ -627,13 +729,6 @@ st.markdown(
 
 with st.sidebar:
     st.markdown('<div class="sec-title">NAVIGATION</div>', unsafe_allow_html=True)
-    PAGES = ["Start", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck", "News"]
-    ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-             "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
-    if "pending_nav" in st.session_state:
-        st.session_state["nav"] = st.session_state.pop("pending_nav")
-    st.session_state.setdefault("nav", "Start")
-    nav = st.session_state["nav"]
     # Navigation als anklickbare Boxen (ganze Zeile klickbar, keine Radio-Punkte)
     for pg in PAGES:
         active = (pg == nav)
@@ -663,22 +758,6 @@ with st.sidebar:
     st.markdown("---")
 
 
-# Mobile Bottom-Tab-Navigation: erscheint via CSS nur auf Handys/Touch-Screens.
-# Echte Streamlit-Buttons (kein Link-Reload) -> Login/Status bleiben erhalten.
-MOBILE_NAV = {"Start": "\U0001f3e0 Start", "Einzelanalyse": "\U0001f4c8 Analyse",
-              "Radar": "\U0001f3af Radar", "Screener": "\U0001f50d Screen",
-              "Portfoliocheck": "\U0001f4bc Depot", "News": "\U0001f4f0 News"}
-_mnav = st.container(key="mobilenav")
-with _mnav:
-    _mc = st.columns(len(MOBILE_NAV))
-    for _i, (_pg, _lab) in enumerate(MOBILE_NAV.items()):
-        if _mc[_i].button(_lab, key=f"mnav_{_pg}", use_container_width=True,
-                          type=("primary" if _pg == nav else "secondary")):
-            if _pg != nav:
-                st.session_state["nav"] = _pg
-                st.rerun()
-
-
 # Playbook laeuft immer automatisch im Hintergrund (nicht mehr in der UI)
 preset = "Auto"
 
@@ -703,17 +782,11 @@ if nav == "Start":
             b, last = float(h["Close"].iloc[0]), float(h["Close"].iloc[-1])
             pct = (last / b - 1) * 100 if b else 0
             hexc = "#3FB950" if pct >= 0 else "#F85149"
-            h2 = h.copy()
-            h2["i"] = range(len(h2))
-            ch = (alt.Chart(h2).mark_line(color=hexc, strokeWidth=1.4)
-                  .encode(x=alt.X("i:Q", axis=None),
-                          y=alt.Y("Close:Q", axis=None, scale=alt.Scale(zero=False)))
-                  .properties(height=44).configure_view(strokeWidth=0)
-                  .configure(background="#0A0E14"))
             st.markdown(f'<div style="font-weight:700">{nm}</div>'
                         f'<div style="color:{hexc};font-size:17px;font-weight:700">'
-                        f'{pct:+.2f} %</div>', unsafe_allow_html=True)
-            st.altair_chart(ch, use_container_width=True)
+                        f'{pct:+.2f} %</div>'
+                        + svg_sparkline(list(h["Close"]), hexc, height=44),
+                        unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -907,6 +980,19 @@ if nav == "Einzelanalyse":
                 for wmsg in (f.get("_warnings") or []):
                     st.caption(f"\u26a0 {esc(wmsg)}")
 
+                # Datenluecken erkennen: fehlen Kernkennzahlen, wird der Score kuenstlich
+                # Richtung 50 gezogen (fehlende Werte = neutral). Das passiert bei
+                # Rate-Limits der Gratis-Datenquellen. Nutzer darauf hinweisen.
+                _core = ["roe", "gross_margin", "operating_margin", "revenue_growth",
+                         "net_debt_ebitda", "current_ratio"]
+                _missing = [k for k in _core if f.get(k) is None]
+                if len(_missing) >= 3:
+                    st.warning("\u26a0 Unvollst\u00e4ndige Kennzahlen von der Datenquelle "
+                               f"({len(_missing)} Kernwerte fehlen \u2013 vermutlich Rate-Limit). "
+                               "Der Score ist dadurch evtl. zu niedrig. Bitte in der Seitenleiste "
+                               "\u201eMarktdaten neu laden\u201c klicken oder es gleich nochmal "
+                               "versuchen.")
+
                 # Quantum Score: Meta-Score ueber Qualitaet/Bewertung/Analysten/Momentum
                 q = scoring.quantum_score(s["composite"], v, intel.get("analyst"),
                                           momentum=s["category_scores"].get("momentum"))
@@ -914,22 +1000,25 @@ if nav == "Einzelanalyse":
                 c = st.columns(6)
                 if q["score"] is not None:
                     card(c[0], "\u269b\ufe0f Quantum Score", f"{q['score']:.0f}",
-                         " \u00b7 ".join(f"{k[:4]} {x}" for k, x in q["parts"].items()),
-                         score_color(q["score"]))
+                         "/ 100", score_color(q["score"]))
                 else:
                     card(c[0], "\u269b\ufe0f Quantum Score", "\u2014")
                 comp = s["composite"]
                 card(c[1], "Composite Score", f"{comp:.0f}",
                      "Value-Trap!" if s["value_trap"] else "/ 100", score_color(comp))
-                card(c[2], "Kurs", m(v["price"]))
+                card(c[2], "Kurs", m(v["price"]), "aktuell")
                 up = v["upside_pct"]
                 card(c[3], "Fair Value", m(v["fair_value"]),
                      f"Upside {de(up,2)}%" if up is not None else "\u2014",
                      "var(--green)" if (up or 0) > 0 else "var(--red)")
                 card(c[4], "12M-Target", m(v["target_12m"]),
-                     f"Analysten: {m(v['analyst_target'])}" if v.get("analyst_target") else "")
+                     f"Analysten: {m(v['analyst_target'])}" if v.get("analyst_target") else "\u2014")
                 card(c[5], f"Einstieg (MoS {int(v['margin_of_safety']*100)}%)",
-                     m(v["entry_price"]), "Kaufzone \u2264 dieser Preis", "var(--amber)")
+                     m(v["entry_price"]), "Kaufzone \u2264 Preis", "var(--amber)")
+
+                if q["score"] is not None and q.get("parts"):
+                    st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
+                               + "  \u00b7  ".join(f"{k} {x}" for k, x in q["parts"].items()))
 
                 dv = v.get("model_vs_analyst_pct")
                 if dv is not None and abs(dv) >= 25:
@@ -941,7 +1030,7 @@ if nav == "Einzelanalyse":
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
 
-                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
                 left, right = st.columns([1, 1])
 
                 with left:
@@ -1013,41 +1102,10 @@ if nav == "Einzelanalyse":
                             unsafe_allow_html=True)
 
                         hexcol = "#3FB950" if p_pct >= 0 else "#F85149"
-                        yaxis = alt.Axis(title="% seit Start", format="+.0f",
-                                         labelColor="#6B7686", domainColor="#1F2733",
-                                         tickColor="#1F2733")
-                        # kurze Zeitraeume: lueckenlose Index-Achse (keine Wochenend-Luecken)
-                        short = tf in ("Intraday", "1 Woche")
-                        if short:
-                            xchan = alt.X("_x:Q", axis=alt.Axis(title=None, labels=False,
-                                          ticks=False, domainColor="#1F2733"))
-                            rule_x, hover_field = "_x:Q", "_x"
-                        else:
-                            xaxis = alt.Axis(title=None, labelColor="#6B7686",
-                                             domainColor="#1F2733", tickColor="#1F2733")
-                            xchan = alt.X("Datum:T", axis=xaxis)
-                            rule_x, hover_field = "Datum:T", "Datum"
-
-                        base_c = alt.Chart(hist).encode(x=xchan, y=alt.Y("pct:Q", axis=yaxis))
-                        area = base_c.mark_area(opacity=0.12, color=hexcol)
-                        line = base_c.mark_line(color=hexcol, strokeWidth=1.6)
-                        zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(
-                            strokeDash=[4, 4], color="#6B7686").encode(y="y:Q")
-                        hover = alt.selection_point(fields=[hover_field], nearest=True,
-                                                    on="mouseover", empty=False)
-                        rule = alt.Chart(hist).mark_rule(color="#6B7686").encode(
-                            x=rule_x,
-                            opacity=alt.condition(hover, alt.value(0.5), alt.value(0)),
-                            tooltip=[alt.Tooltip("Datum:T", title="Datum",
-                                                 format=("%d.%m %H:%M" if short else "%d.%m.%Y")),
-                                     alt.Tooltip("Preis:Q", title=f"Preis ({sym})", format=",.2f"),
-                                     alt.Tooltip("pct:Q", title="seit Start %", format="+.2f")]
-                        ).add_params(hover)
-                        pts = line.mark_point(color=hexcol, size=45).encode(
-                            opacity=alt.condition(hover, alt.value(1), alt.value(0)))
-                        chart = (area + line + zero + rule + pts).properties(
-                            height=250).configure_view(strokeWidth=0).configure(background="#0A0E14")
-                        st.altair_chart(chart, use_container_width=True)
+                        st.markdown(svg_area_chart(list(hist["pct"]), hexcol, height=250),
+                                    unsafe_allow_html=True)
+                        st.caption(f"Zeitraum {tf} \u00b7 Achse: % seit Start "
+                                   f"(0-Linie gestrichelt).")
                     else:
                         st.markdown(f'<span class="na">Kein Kursverlauf f\u00fcr "{tf}" '
                                     'verf\u00fcgbar (Intraday/1W nur an Handelstagen).</span>',
@@ -1083,37 +1141,63 @@ if nav == "Einzelanalyse":
                         st.markdown('<span class="na">n/a (Finnhub-Key n\u00f6tig)</span>',
                                     unsafe_allow_html=True)
                     else:
-                        with st.spinner("Lade Wettbewerber-Kennzahlen ..."):
+                        peer_key = f"peers_loaded_{ticker}"
+                        if not st.session_state.get(peer_key):
+                            st.caption("Spart Datenabrufe: Wettbewerber-Kennzahlen werden "
+                                       "nur auf Wunsch geladen.")
+                            if st.button("\U0001f4ca Wettbewerber-Kennzahlen laden",
+                                         key=f"loadpeers_{ticker}"):
+                                st.session_state[peer_key] = True
+                                st.rerun()
+                            st.markdown("".join(f'<span class="pill">{p}</span>'
+                                                for p in peers), unsafe_allow_html=True)
                             prowz = []
-                            for ptk in peers[:6]:
-                                if ptk.upper() == ticker.upper():
-                                    continue
-                                pf_ = load_fundamentals(ptk)
-                                if not pf_.get("price"):
-                                    continue
-                                pep = valuation.classify_playbook(pf_)
-                                pcomp = scoring.score_stock(pf_, None, preset=pep)["composite"]
-                                pv = valuation.fair_value(pf_, None, pep)
-                                atgt = pv.get("analyst_target")
-                                prowz.append({
-                                    "Ticker": pf_["ticker"],
-                                    "Name": (pf_.get("name") or "")[:18],
-                                    "Score": round(pcomp),
-                                    "Kurs": round(pf_["price"], 2),
-                                    "Fair Value": pv.get("fair_value"),
-                                    "Upside %": pv.get("upside_pct"),
-                                    "Analysten-Ziel": atgt,
-                                    "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
-                                                      if atgt and pf_.get("price") else None)})
+                        else:
+                            with st.spinner("Lade Wettbewerber-Kennzahlen ..."):
+                                prowz = []
+                                for ptk in peers[:6]:
+                                    if ptk.upper() == ticker.upper():
+                                        continue
+                                    pf_ = load_fundamentals(ptk)
+                                    if not pf_.get("price"):
+                                        continue
+                                    pep = valuation.classify_playbook(pf_)
+                                    pcomp = scoring.score_stock(pf_, None, preset=pep)["composite"]
+                                    pv = valuation.fair_value(pf_, None, pep)
+                                    atgt = pv.get("analyst_target")
+                                    prowz.append({
+                                        "Ticker": pf_["ticker"],
+                                        "Name": (pf_.get("name") or "")[:18],
+                                        "Score": round(pcomp),
+                                        "Kurs": round(pf_["price"], 2),
+                                        "Fair Value": pv.get("fair_value"),
+                                        "Upside %": pv.get("upside_pct"),
+                                        "Analysten-Ziel": atgt,
+                                        "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
+                                                          if atgt and pf_.get("price") else None)})
                         if prowz:
                             pdf_ = pd.DataFrame(prowz)
-                            st.dataframe(
+                            evp = st.dataframe(
                                 pdf_.style.map(lambda x: f"color:{score_hex(x)};font-weight:700",
                                                subset=["Score"])
                                 .format(precision=2),
-                                hide_index=True, use_container_width=True)
-                            st.caption("Kurse/Werte in Handelsw\u00e4hrung des jeweiligen Titels.")
-                            ticker_open_bar(list(pdf_["Ticker"]), "peer")
+                                hide_index=True, use_container_width=True,
+                                on_select="rerun", selection_mode="single-row", key="peer_tbl")
+                            st.caption("\U0001f449 Zeile antippen \u2192 \u00f6ffnet den Wettbewerber. "
+                                       "Kurse/Werte in Handelsw\u00e4hrung des jeweiligen Titels.")
+                            selp = []
+                            try:
+                                selp = list(evp.selection.rows)
+                            except Exception:
+                                if isinstance(evp, dict):
+                                    selp = evp.get("selection", {}).get("rows", [])
+                            if selp:
+                                pk = str(pdf_.iloc[selp[0]]["Ticker"])
+                                if st.session_state.get("peer_pick") != pk:
+                                    st.session_state["peer_pick"] = pk
+                                    st.session_state["pending_search"] = pk
+                                    st.session_state["pending_nav"] = "Einzelanalyse"
+                                    st.rerun()
                         else:
                             st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
                                         unsafe_allow_html=True)
@@ -2046,14 +2130,9 @@ if nav == "Portfoliocheck":
         ac = st.columns(2)
         with ac[0]:
             st.markdown('<div class="sec-title">SEKTOR-ALLOKATION</div>', unsafe_allow_html=True)
-            sdf = pd.DataFrame([{"Sektor": k, "Anteil": round(v * 100, 1)}
-                                for k, v in a["sector_alloc"].items()])
-            chart = (alt.Chart(sdf).mark_bar(color="#FFB000")
-                     .encode(x=alt.X("Anteil:Q", title="%"),
-                             y=alt.Y("Sektor:N", sort="-x", title=None))
-                     .properties(height=min(len(sdf) * 30 + 20, 320))
-                     .configure_view(strokeWidth=0).configure(background="#0A0E14"))
-            st.altair_chart(chart, use_container_width=True)
+            sdf = [(k, round(v * 100, 1)) for k, v in a["sector_alloc"].items()]
+            sdf.sort(key=lambda kv: -kv[1])
+            st.markdown(svg_hbars(sdf), unsafe_allow_html=True)
         with ac[1]:
             st.markdown('<div class="sec-title">KLUMPEN & \u00dcBERSCHNEIDUNGEN</div>',
                         unsafe_allow_html=True)

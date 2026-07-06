@@ -93,45 +93,39 @@ section[data-testid="stSidebar"] .stButton>button:hover{
 .tickcell .stButton>button:hover{border-color:var(--amber);
   background:rgba(255,176,0,.08);}
 .rowline{border-bottom:1px solid var(--line); padding:2px 0;}
-/* ---- Mobile Top-Icon-Navigation (nur auf Handys/schmalen Touch-Screens) ---- */
-.st-key-mobilenav{display:none;}
+/* ---- Mobile Top-Icon-Navigation (nur Handys). Verankert an den BUTTON-Keys
+   (st-key-mnav_*), die Streamlit versionsunabhaengig als CSS-Klassen setzt -
+   unabhaengig davon, wo die Container-Klasse landet. ---- */
+div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus */
 @media (max-width: 820px){
   /* Seite darf NIE seitlich scrollen */
   html, body, [data-testid="stApp"], section[data-testid="stMain"]{
     overflow-x:hidden !important; max-width:100vw !important;}
-  /* Seitenleiste + Hamburger-Icon auf dem Handy ausblenden */
   section[data-testid="stSidebar"]{display:none !important;}
   [data-testid="stSidebarCollapsedControl"],
   [data-testid="collapsedControl"],
   [data-testid="stSidebarCollapseButton"]{display:none !important;}
   header[data-testid="stHeader"]{height:0 !important; min-height:0 !important;}
 
-  .st-key-mobilenav{
-    display:block; position:sticky; top:0; z-index:99990;
-    margin:0 calc(50% - 50vw) 8px calc(50% - 50vw);  /* exakt Rand zu Rand */
-    width:100vw;
-    background:rgba(10,14,20,.98); backdrop-filter:blur(8px);
-    border-bottom:2px solid var(--amber); padding:4px 3px;}
-  /* 6 exakt gleich breite Icon-Zellen via CSS-Grid (kein st.columns-Flex mehr,
-     das auf manchen Streamlit-Versionen stapelt/ueberlaeuft) */
-  .st-key-mobilenav [data-testid="stVerticalBlock"]{
+  div[class*="st-key-mnav_"]{display:block; min-width:0 !important;}
+  /* Der Block, der die 6 Nav-Buttons enthaelt, wird zum 6-Spalten-Grid,
+     Rand zu Rand. position:static -> die Leiste scrollt beim Runterscrollen
+     natuerlich nach oben weg und ist oben wieder da. */
+  div[data-testid="stVerticalBlock"]:has(> div[class*="st-key-mnav_"]),
+  div[data-testid="stVerticalBlock"]:has(> div > div[class*="st-key-mnav_"]){
     display:grid !important; grid-template-columns:repeat(6, 1fr) !important;
-    gap:3px !important; width:100% !important;}
-  .st-key-mobilenav [data-testid="stVerticalBlock"] > div{
-    min-width:0 !important; width:100% !important;}
-  .st-key-mobilenav [data-testid="stHorizontalBlock"],
-  .st-key-mobilenav [data-testid="column"],
-  .st-key-mobilenav [data-testid="stColumn"]{
-    display:contents !important;}                    /* alte Spalten-Wrapper aufloesen */
-  .st-key-mobilenav .stButton{width:100% !important;}
-  .st-key-mobilenav .stButton>button{
+    gap:3px !important;
+    margin:0 calc(50% - 50vw) 8px calc(50% - 50vw); width:100vw;
+    box-sizing:border-box; background:rgba(10,14,20,.98);
+    border-bottom:2px solid var(--amber); padding:4px 3px;}
+  div[class*="st-key-mnav_"] .stButton{width:100% !important;}
+  div[class*="st-key-mnav_"] .stButton>button{
     width:100% !important; min-height:0; padding:7px 0 5px 0;
     border:1px solid var(--line); border-radius:7px; box-shadow:none;
     background:rgba(255,255,255,.03); color:var(--muted); overflow:hidden;
     font-size:19px; line-height:1.05; white-space:nowrap;}
-  .st-key-mobilenav .stButton>button p{font-size:19px; margin:0; line-height:1.05;}
-  .st-key-mobilenav .stButton>button:hover{border-color:var(--amber);}
-  .st-key-mobilenav .stButton>button[kind="primary"]{
+  div[class*="st-key-mnav_"] .stButton>button p{font-size:19px; margin:0; line-height:1.05;}
+  div[class*="st-key-mnav_"] .stButton>button[kind="primary"]{
     background:var(--amber); border-color:var(--amber);}
   section[data-testid="stMain"] .block-container,
   section.main .block-container{padding-top:6px !important;}
@@ -1996,6 +1990,8 @@ if nav == "Portfoliocheck":
             st.warning("Bitte einen Namen angeben.")
     if sc2[2].button("\U0001f504 Kurse aktualisieren", use_container_width=True):
         load_intraday_price.clear()
+        fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
+        load_fundamentals.clear()         # frischer Basis-Kurs
         st.rerun()
 
     records = [{"ticker": rr.get("Ticker"), "value": None,
@@ -2126,6 +2122,31 @@ if nav == "Portfoliocheck":
                 st.session_state["nav"] = "Einzelanalyse"
                 st.rerun()
         st.caption("\U0001f449 Zeile antippen \u2192 \u00f6ffnet die Aktie in der Einzelanalyse.")
+
+        # Transparenter Rechenweg: jede Zahl gegen den Broker pruefbar machen.
+        pl_rows = [r for r in rows if r.get("shares") and r.get("ret_pct") is not None
+                   and r.get("cost_eur") is not None]
+        if pl_rows:
+            with st.expander("\U0001f50d G/V-Rechenweg anzeigen (Zahlen pr\u00fcfen)"):
+                st.caption("Formel je Position: Kosten = Anzahl \u00d7 \u00d8 Buy-in \u20ac \u00b7 "
+                           "Wert = Anzahl \u00d7 aktueller Kurs \u20ac \u00b7 G/V = Wert \u2212 Kosten. "
+                           "Weicht dein Broker ab, liegt es fast immer am KURS "
+                           "(Verz\u00f6gerung der freien Daten / anderer Handelsplatz) \u2013 "
+                           "dann \u201eKurse aktualisieren\u201c dr\u00fccken und vergleichen.")
+                calc = []
+                for r in pl_rows:
+                    sh = r["shares"]
+                    cost = r["cost_eur"]
+                    val = r["value_eur"]
+                    buyin = cost / sh if sh else None
+                    calc.append({
+                        "Ticker": r["ticker"], "Anzahl": sh,
+                        "\u00d8 Buy-in \u20ac": round(buyin, 2) if buyin else None,
+                        "Kurs \u20ac": round(r.get("price_eur") or 0, 4),
+                        "Kosten \u20ac": round(cost, 2), "Wert \u20ac": round(val, 2),
+                        "G/V \u20ac": round(val - cost, 2),
+                        "G/V %": round(r["ret_pct"], 2)})
+                vr_table(calc, signed_cols=("G/V \u20ac", "G/V %"))
 
         # Thesen-Check: konkrete Aktionen aus dem Kauf-Status
         if a["have_pl"] and a["actions"]:

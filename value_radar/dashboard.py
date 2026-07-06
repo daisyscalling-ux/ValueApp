@@ -98,52 +98,45 @@ section[data-testid="stSidebar"] .stButton>button:hover{
    unabhaengig davon, wo die Container-Klasse landet. ---- */
 div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus */
 @media (max-width: 820px){
-  /* Seite darf NIE seitlich scrollen */
-  html, body, [data-testid="stApp"], section[data-testid="stMain"]{
-    overflow-x:hidden !important; max-width:100vw !important;}
+  html, body{overflow-x:hidden;}                    /* nur Seite, NICHT die Container */
   section[data-testid="stSidebar"]{display:none !important;}
   [data-testid="stSidebarCollapsedControl"],
   [data-testid="collapsedControl"],
   [data-testid="stSidebarCollapseButton"]{display:none !important;}
   header[data-testid="stHeader"]{height:0 !important; min-height:0 !important;}
+  /* Bekannter, kleiner Seitenabstand des Hauptcontainers -> die Nav zieht sich
+     per negativem Rand exakt um diesen Betrag nach aussen = echt Rand zu Rand. */
+  section[data-testid="stMain"] .block-container,
+  section.main .block-container{
+    padding-left:12px !important; padding-right:12px !important;
+    padding-top:6px !important; max-width:100% !important;}
 
   div[class*="st-key-mnav_"]{display:block; min-width:0 !important;}
-  /* NUR der DIREKTE Elternblock der 6 Nav-Buttons wird zum Grid.
-     (Die fruehere Zusatz-Variante "> div > div" hat den Hauptblock der ganzen
-     Seite erwischt und das Layout zerlegt - daher strikt direkte Kinder.) */
   div[data-testid="stVerticalBlock"]:has(> div[class*="st-key-mnav_"]),
   .st-key-mobilenav [data-testid="stVerticalBlock"]:has(div[class*="st-key-mnav_"]){
     display:grid !important; grid-template-columns:repeat(6, 1fr) !important;
     gap:3px !important;
-    margin:0 calc(50% - 50vw) 8px calc(50% - 50vw); width:100vw;
-    box-sizing:border-box; background:rgba(10,14,20,.98);
-    border-bottom:2px solid var(--amber); padding:4px 0;}  /* buendig bis Rand */
-  /* Wrapper um die Nav duerfen den 100vw-Ueberhang nicht abschneiden */
-  div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-mnav_"]),
-  div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-mnav_"]) > div{
-    overflow:visible !important;}
+    margin-left:-12px !important; margin-right:-12px !important; margin-bottom:8px;
+    background:rgba(10,14,20,.98);
+    border-bottom:2px solid var(--amber); padding:4px 3px;}  /* = Rand zu Rand */
   div[class*="st-key-mnav_"] .stButton{width:100% !important;}
   div[class*="st-key-mnav_"] .stButton>button{
-    width:100% !important; min-height:0; padding:7px 0 5px 0;
+    width:100% !important; min-height:0; padding:8px 0 6px 0;
     border:1px solid var(--line); border-radius:7px; box-shadow:none;
     background:rgba(255,255,255,.03); color:var(--muted); overflow:hidden;
-    font-size:19px; line-height:1.05; white-space:nowrap;}
-  div[class*="st-key-mnav_"] .stButton>button p{font-size:19px; margin:0; line-height:1.05;}
+    font-size:20px; line-height:1.05; white-space:nowrap;}
+  div[class*="st-key-mnav_"] .stButton>button p{font-size:20px; margin:0; line-height:1.05;}
   div[class*="st-key-mnav_"] .stButton>button[kind="primary"]{
     background:var(--amber); border-color:var(--amber);}
-  section[data-testid="stMain"] .block-container,
-  section.main .block-container{padding-top:6px !important;}
 }
-/* ---- Klickbare Listen (vr-rows): Ticker = Link, Rest im ausgerichteten Grid ---- */
-div[class*="st-key-tkb_"] .stButton>button{
+/* ---- Klickbare Listen (vr-rows): Ticker = Link ---- */
+div[class*="st-key-tkbtn_"] .stButton>button,
+div[class*="st-key-tkbtn_"] button{
   background:transparent !important; border:none !important; box-shadow:none !important;
-  color:var(--amber) !important; font-weight:800; padding:0 !important;
-  min-height:0 !important; font-size:13px; text-align:left; letter-spacing:.5px;}
-div[class*="st-key-tkb_"] .stButton>button:hover{text-decoration:underline;}
-div[class*="st-key-vlr_"]{border-bottom:1px solid rgba(31,39,51,.55); padding:1px 0;}
-div[class*="st-key-vlr_"] [data-testid="stHorizontalBlock"]{
-  gap:8px !important; align-items:center !important;}
-div[class*="st-key-vlr_"] [data-testid="stElementContainer"]{margin:0 !important;}
+  color:var(--amber) !important; font-weight:800; padding:2px 0 !important;
+  min-height:0 !important; font-size:13px; text-align:left; letter-spacing:.5px;
+  width:100%;}
+div[class*="st-key-tkbtn_"] button:hover{text-decoration:underline;}
 .vr-lg{display:grid; gap:0 10px; align-items:center; font-size:12.5px;
   white-space:nowrap; overflow:hidden; padding:5px 0;}
 .vr-lg>div{overflow:hidden; text-overflow:ellipsis; min-width:0;}
@@ -347,12 +340,27 @@ def load_marketnews(section): return mn.get_section(section)
 def tr_de(text): return tr.translate_text(text, "de")
 
 
+def _berlin_now():
+    """Aktuelle Zeit in Europe/Berlin (deutsche Zeit), robust ohne Zusatzpakete."""
+    import datetime as dt
+    try:
+        from zoneinfo import ZoneInfo
+        return dt.datetime.now(ZoneInfo("Europe/Berlin"))
+    except Exception:
+        return dt.datetime.now()
+
+
 def fmt_ts(ts):
     if not ts:
         return ""
     try:
         import datetime as dt
-        return dt.datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M")
+        try:
+            from zoneinfo import ZoneInfo
+            return (dt.datetime.fromtimestamp(ts, ZoneInfo("Europe/Berlin"))
+                    .strftime("%d.%m.%Y %H:%M"))
+        except Exception:
+            return dt.datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M")
     except Exception:
         return ""
 
@@ -478,18 +486,18 @@ def vr_rows(rows, key_prefix, score_cols=(), signed_cols=(), name_col="Name",
                    + '</div>', unsafe_allow_html=True)
     for i, r in enumerate(rows):
         tk = str(r.get("Ticker") or "")
-        with st.container(key=f"vlr_{key_prefix}_{i}"):
-            rc = st.columns(ratio)
-            with rc[0]:
-                with st.container(key=f"tkb_{key_prefix}_{i}"):
-                    if st.button(tk or "\u2014", key=f"tkbtn_{key_prefix}_{i}"):
-                        st.session_state["pending_search"] = tk
-                        st.session_state["pending_nav"] = nav
-                        st.rerun()
-            rc[1].markdown('<div class="vr-lg" style="grid-template-columns:' + tmpl + '">'
-                           + "".join(_vr_cell(c, r.get(c), score_cols, signed_cols)
-                                     for c in other)
-                           + '</div>', unsafe_allow_html=True)
+        # KEINE Pro-Zeilen-st.container(key=...): Streamlit gruppiert Keyed-
+        # Container und zerreisst sonst die Liste. Nur st.columns (sequenziell).
+        rc = st.columns(ratio)
+        if rc[0].button(tk or "\u2014", key=f"tkbtn_{key_prefix}_{i}",
+                        use_container_width=True):
+            st.session_state["pending_search"] = tk
+            st.session_state["pending_nav"] = nav
+            st.rerun()
+        rc[1].markdown('<div class="vr-lg" style="grid-template-columns:' + tmpl + '">'
+                       + "".join(_vr_cell(c, r.get(c), score_cols, signed_cols)
+                                 for c in other)
+                       + '</div>', unsafe_allow_html=True)
 
 
 def vr_table(rows, score_cols=(), signed_cols=(), height=None):
@@ -673,12 +681,12 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
         if not raw or (not has_val and not has_shares):
             continue
         tk = raw.upper()
-        f = load_fundamentals(tk)
-        if not f.get("price"):
+        f = load_fundamentals_deep(tk)          # dieselbe Datentiefe wie Einzelanalyse
+        if not f.get("price"):                  # -> identischer Composite/Upside
             mm = search_symbols(raw)
             if mm:
                 tk = mm[0]["symbol"].upper()
-                f = load_fundamentals(tk)
+                f = load_fundamentals_deep(tk)
                 if tk != raw.upper():
                     resolved.append((raw, tk))
         if not f.get("price"):
@@ -1297,7 +1305,7 @@ if nav == "Einzelanalyse":
                                 for ptk in peers[:6]:
                                     if ptk.upper() == ticker.upper():
                                         continue
-                                    pf_ = load_fundamentals(ptk)
+                                    pf_ = load_fundamentals_deep(ptk)
                                     if not pf_.get("price"):
                                         continue
                                     pep = valuation.classify_playbook(pf_)
@@ -1525,6 +1533,9 @@ if nav == "Einzelanalyse":
 # ===========================================================================
 if nav == "News":
     st.markdown('<div class="sec-title">MARKT-NEWS</div>', unsafe_allow_html=True)
+    st.caption("\U0001f4a1 Im Briefing-Modus zeigt jede Meldung einen m\u00f6glichen Markt-Effekt "
+               "(\u2197/\u2198 Bereich + Beispiel-Ticker) \u2013 als Denkanstoss zum "
+               "Weiterrecherchieren, ausdr\u00fccklich KEIN Anlagerat.")
     nc = st.columns([1.3, 1, 1, 1.4])
     if nc[0].button("\U0001f4e1 News laden / aktualisieren", use_container_width=True):
         st.session_state["news_loaded"] = True
@@ -1578,11 +1589,25 @@ if nav == "News":
                             f'<span class="pill">{e} {esc(l)}</span>' for e, l in chips)
                         pts_html = "".join(
                             f'<div class="sum">\u2022 {esc(p)}</div>' for p in points)
+                        impl = bfg.implications(head_raw, summ_raw)
+                        impl_html = ""
+                        if impl:
+                            parts = []
+                            for im in impl:
+                                arrow = "\u2197" if im["dir"] == "up" else "\u2198"
+                                acol = "#3FB950" if im["dir"] == "up" else "#F85149"
+                                tks = ", ".join(t.upper() for t in im["tickers"][:3])
+                                parts.append(f'<span style="color:{acol}">{arrow}</span> '
+                                             f'{esc(im["area"])} <span class="na">'
+                                             f'({esc(tks)})</span>')
+                            impl_html = ('<div class="sum" style="margin-top:5px">'
+                                         '\U0001f4a1 M\u00f6glicher Effekt: '
+                                         + " \u00b7 ".join(parts) + '</div>')
                         meta = src + (f" \u00b7 {date}" if date else "") + flag
                         st.markdown(
                             f'<div class="news-box">{chip_html}'
                             f'<a href="{url}" target="_blank">{esc(head)}</a>'
-                            f'{pts_html}<div class="meta">{meta}</div></div>',
+                            f'{pts_html}{impl_html}<div class="meta">{meta}</div></div>',
                             unsafe_allow_html=True)
                     else:
                         head = tr_de(head_raw) if translate_here else head_raw
@@ -2068,7 +2093,7 @@ if nav == "Portfoliocheck":
     if live_px:
         n_live = sum(1 for r in rows if r.get("live"))
         st.caption(f"\u23f1 Intraday-Kurse aktiv f\u00fcr {n_live}/{len(rows)} Positionen \u00b7 "
-                   f"Stand {datetime.now().strftime('%H:%M:%S')} \u00b7 "
+                   f"Stand {_berlin_now().strftime('%H:%M:%S')} (dt. Zeit) \u00b7 "
                    "\u201eKurse aktualisieren\u201c f\u00fcr neuen Abruf.")
 
     if resolved:

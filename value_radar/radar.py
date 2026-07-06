@@ -120,7 +120,6 @@ def _setup(price, hi, lo, closes):
 
 def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
     """Berechnet den Radar-Score + Ebenen + konkrete Trigger fuer eine Aktie."""
-    from providers import SEC_ITEM_LABELS
     triggers = []
     closes, vols = [], []
     if hist_df is not None and not getattr(hist_df, "empty", True):
@@ -140,6 +139,7 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
             wgt = SEC_EVENT_WEIGHT.get(code)
             if wgt:
                 ev += wgt
+                from providers import SEC_ITEM_LABELS
                 triggers.append(f"8-K {f8.get('date','')}: {SEC_ITEM_LABELS.get(code, code)}")
     for kind, kws in EVENT_KW.items():
         if any(any(k in h for k in kws) for h in heads_l):

@@ -5,40 +5,23 @@ Alles hier ist bewusst anpassbar. Werte sind Startpunkte, keine Wahrheiten.
 from __future__ import annotations
 import os
 
-
-def _load_key(name: str, default: str = "") -> str:
-    """Key-Quelle in dieser Reihenfolge:
-       1) Umgebungsvariable  2) Streamlit-Secrets (.streamlit/secrets.toml bzw.
-       Secrets-UI in der Cloud)  3) Default.
-    So liegt NICHTS Sensibles im Code/Repo \u2013 wichtig fuer den Online-Deploy."""
-    v = os.environ.get(name)
-    if v:
-        return v
-    try:
-        import streamlit as _st           # nur falls verfuegbar
-        val = _st.secrets.get(name)        # wirft, wenn keine secrets.toml
-        if val:
-            return str(val)
-    except Exception:
-        pass
-    return default
-
-
 # ---------------------------------------------------------------------------
-# API-Keys. NICHT im Code hinterlegen \u2013 in .streamlit/secrets.toml (lokal) oder
-# in der Streamlit-Cloud unter Settings -> Secrets eintragen. Ohne Keys laeuft
-# alles ueber yfinance (kostenlos, aber begrenzt).
+# API-Keys (optional). Per Umgebungsvariable setzen, z.B.:
+#   export FINNHUB_API_KEY="..."   /   export FMP_API_KEY="..."
+# Ohne Keys läuft alles über yfinance (kostenlos, aber begrenzt).
 #
 # Datenquellen-Kombination je Kennzahl:
 #   1) yfinance  (Basis/Taxonomie, kein Key)
-#   2) Finnhub   (Kreuzpruefung Kurs/Marktkap./KGV/KBV)
-#   3) FMP       (4. Quelle: Konsens bei Margen/ROE/Wachstum, hist. Median-KGV;
-#                 kostenloser Key -> https://site.financialmodelingprep.com)
-#   4) Stooq/EZB (schluesselfreie Absicherung fuer Kurshistorie & Wechselkurse)
+#   2) Finnhub   (Kreuzprüfung Kurs/Marktkap./KGV/KBV; Key vorhanden)
+#   3) FMP       (4. Quelle: echter Konsens bei Margen/ROE/Wachstum; KOSTENLOSER
+#                 Key nötig -> https://site.financialmodelingprep.com/developer/docs
+#                 dann:  export FMP_API_KEY="dein_key"). Nur in der Einzelanalyse
+#                 aktiv (deep), um das Gratis-Tageslimit (~250 Calls) zu schonen.
+#   4) Stooq/EZB (schlüsselfreie Absicherung für Kurshistorie & Wechselkurse)
 # ---------------------------------------------------------------------------
-FINNHUB_API_KEY = _load_key("FINNHUB_API_KEY", "")
-FMP_API_KEY = _load_key("FMP_API_KEY", "")
-ALPHAVANTAGE_API_KEY = _load_key("ALPHAVANTAGE_API_KEY", "")
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "d8tpv3pr01qhcnk5g5k0d8tpv3pr01qhcnk5g5kg")
+FMP_API_KEY = os.getenv("FMP_API_KEY", "EdKxdl3ePaj2DxycU4AyhVWJwVfvl8F5")
+ALPHAVANTAGE_API_KEY = os.getenv("ALPHAVANTAGE_API_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Screening-Schwellen (branchenrelativ denken!). None = Kriterium aus.

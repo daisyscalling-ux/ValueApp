@@ -113,3 +113,62 @@ def reading_secs(headline: str, summary: str) -> int:
     n = len((headline or "").split()) + sum(len(p.split())
                                             for p in key_points(headline, summary))
     return max(5, round(n / 200 * 60))
+
+
+# ---------------------------------------------------------------------------
+# News -> moegliche Markt-/Aktien-Implikationen (Denkanstoss, KEIN Anlagerat)
+# ---------------------------------------------------------------------------
+# (Stichwoerter, Wirkrichtung, betroffene Bereiche, Beispiel-Ticker)
+_IMPLICATIONS = [
+    (("heat", "heatwave", "hitze", "record temperature", "travel", "tourism", "reise",
+      "urlaub", "vacation", "flight", "airline"), "up",
+     "Reise/Tourismus/Airlines", ["booking", "airbnb", "delta", "lufthansa", "ryanair"]),
+    (("rate cut", "zinssenkung", "senkt die zinsen", "dovish", "lockerung"), "up",
+     "Wachstums-/Tech-Aktien, Immobilien (niedrigere Zinsen)", ["nasdaq", "reits"]),
+    (("rate hike", "zinserh", "hawkish", "raises rates"), "down",
+     "Wachstums-/Tech-Aktien tendenziell belastet; Banken-Zinsmarge steigt",
+     ["banks"]),
+    (("oil", "\u00f6l", "opec", "crude", "gas price", "energiepreis"), "up",
+     "Energie/\u00d6lkonzerne; Fluggesellschaften/Logistik belastet",
+     ["exxon", "shell", "totalenergies"]),
+    (("chip", "semiconductor", "halbleiter", "ai demand", "datacenter", "data center"), "up",
+     "Halbleiter/AI-Infrastruktur", ["nvidia", "amd", "asml", "tsmc"]),
+    (("ev ", "electric vehicle", "e-auto", "battery", "lithium"), "up",
+     "E-Mobilit\u00e4t/Batterie/Rohstoffe", ["tesla", "byd", "albemarle"]),
+    (("defense spending", "military", "r\u00fcstung", "verteidigung", "nato", "missile",
+      "warplane", "artillery", "munition"), "up",
+     "R\u00fcstung/Verteidigung", ["rheinmetall", "lockheed", "rtx"]),
+    (("drug", "fda approval", "medikament", "zulassung", "clinical trial", "pharma"), "up",
+     "Pharma/Biotech (je nach Ausgang)", ["pfizer", "lilly", "novo nordisk"]),
+    (("housing", "immobili", "mortgage", "bau", "construction"), "up",
+     "Bau/Immobilien/Baustoffe", ["homebuilders"]),
+    (("harvest", "drought", "crop", "ernte", "d\u00fcrre", "agriculture", "getreide"), "up",
+     "Agrar/Lebensmittel/D\u00fcnger", ["adm", "nutrien", "bayer"]),
+    (("cyber", "hack", "ransomware", "datenleck", "breach"), "up",
+     "Cybersecurity", ["crowdstrike", "palo alto", "zscaler"]),
+    (("tariff", "zoll", "z\u00f6lle", "trade war", "handelskrieg", "sanction", "sanktion"), "down",
+     "Exportabh\u00e4ngige Industrie/Autobauer; Unsicherheit f\u00fcr breite M\u00e4rkte",
+     ["automakers", "industrials"]),
+    (("weak jobs", "layoffs", "arbeitslos", "rezession", "recession", "slowdown"), "down",
+     "Zykliker/Konsum belastet; defensive Werte relativ st\u00e4rker",
+     ["consumer discretionary"]),
+    (("gold", "safe haven", "sichere hafen"), "up",
+     "Gold/Minen (Krisen-Nachfrage)", ["barrick", "newmont"]),
+    (("bitcoin", "crypto", "krypto", "ethereum"), "up",
+     "Krypto-nahe Aktien/Miner", ["coinbase", "marathon"]),
+]
+
+
+def implications(headline: str, summary: str = "", max_items: int = 2) -> list:
+    """Leitet aus einer Meldung moegliche Markt-Effekte ab (Denkanstoss).
+    Rueckgabe: Liste [{dir:'up'/'down', area:str, tickers:[...]}].
+    Bewusst simpel/heuristisch - ausdruecklich KEIN Anlagerat."""
+    text = f" {headline or ''} {summary or ''} ".lower()
+    out, seen = [], set()
+    for kws, direction, area, tickers in _IMPLICATIONS:
+        if any(k in text for k in kws) and area not in seen:
+            seen.add(area)
+            out.append({"dir": direction, "area": area, "tickers": tickers})
+            if len(out) >= max_items:
+                break
+    return out

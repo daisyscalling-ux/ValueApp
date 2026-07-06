@@ -44,15 +44,36 @@ def classify_total(score):
 
 def _position_status(r):
     """Bewertet eine Position aus Rendite-seit-Kauf + Bewertung + Qualitaet.
-    Rueckgabe: (label, farbe, hinweis)."""
+    Rueckgabe: (label, farbe, hinweis). Nennt bei ueberbewerteten Gewinnern
+    konkrete Kurse fuer (Teil-)Gewinnmitnahme (kein Rat - Orientierung)."""
     ret = r.get("ret_pct")
     up = r.get("upside")
     comp = r.get("composite")
+    price = r.get("price_eur")
+    fair = r.get("fair_value_eur")
+
+    def _tp_note():
+        if price and fair and fair > 0:
+            if fair < price:            # bereits ueber fairem Wert
+                return (f" \u00b7 bereits \u00fcber Fair Value (\u2248{_eur(fair)}): Teilverkauf "
+                        "sichert die Pr\u00e4mie, Rest ggf. mit Stop sch\u00fctzen")
+            half = price + (fair - price) * 0.5
+            return (f" \u00b7 Teilgewinn \u2248{_eur(half)}, Gewinnmitnahme Richtung "
+                    f"Fair Value \u2248{_eur(fair)}")
+        if price:
+            return (f" \u00b7 grobe Marken: Teilgewinn \u2248{_eur(price*1.08)}, "
+                    f"Gewinnmitnahme \u2248{_eur(price*1.15)}")
+        return ""
+
     if ret is None:
         return ("\u2014", "neutral", "")
     if ret >= 15 and up is not None and up < 0:
-        return ("Gewinne sichern?", "gelb",
-                "l\u00e4uft gut, ist jetzt aber \u00fcberbewertet \u2013 Teilverkauf erw\u00e4gen")
+        return ("Gewinnmitnahme?", "gelb",
+                "l\u00e4uft gut, ist jetzt aber \u00fcberbewertet \u2013 Teilverkauf erw\u00e4gen"
+                + _tp_note())
+    if ret >= 25 and (up is None or up < 5):
+        return ("Teilgewinn sichern?", "gelb",
+                "deutlicher Gewinn, kaum noch Bewertungsluft" + _tp_note())
     if ret > 0 and (up is None or up >= 0):
         note = ("Gewinn und noch Bewertungsluft \u2013 halten" if up is not None
                 else "Gewinn; Bewertung unklar \u2013 halten")
@@ -64,6 +85,13 @@ def _position_status(r):
         return ("Verlust \u2013 Qualit\u00e4t ok", "gelb",
                 "im Minus, aber g\u00fcnstig & solide \u2013 nachkaufen pr\u00fcfen")
     return ("Beobachten", "neutral", "")
+
+
+def _eur(x):
+    try:
+        return f"{x:,.2f}\u20ac".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return "\u2014"
 
 
 def analyze(rows: list) -> dict:
@@ -169,7 +197,8 @@ def analyze(rows: list) -> dict:
     actions = []
     for r in rows:
         lab, col, note = r["status"]
-        if lab in ("Gewinne sichern?", "Verlust \u2013 schwach", "Verlust \u2013 Qualit\u00e4t ok"):
+        if lab in ("Gewinnmitnahme?", "Teilgewinn sichern?", "Verlust \u2013 schwach",
+                   "Verlust \u2013 Qualit\u00e4t ok"):
             actions.append({"ticker": r["ticker"], "name": r.get("name"),
                             "label": lab, "color": col, "note": note,
                             "ret_pct": r.get("ret_pct")})

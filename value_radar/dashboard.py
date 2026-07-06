@@ -878,7 +878,8 @@ st.markdown(
     '<div class="vr-head"><div class="brand">VALUE RADAR <span class="caret">\u25ae</span></div>'
     '<div class="status">// vor die welle kommen &nbsp;\u00b7&nbsp; lokales terminal '
     '&nbsp;\u00b7&nbsp; anzeige in EUR &nbsp;\u00b7&nbsp; daten: yfinance'
-    + ('  +finnhub' if config.FINNHUB_API_KEY else '') + '</div></div>',
+    + ('  +finnhub' if config.FINNHUB_API_KEY else '')
+    + ' &nbsp;\u00b7&nbsp; <span style="opacity:.7">Build 2026-07-06c</span></div></div>',
     unsafe_allow_html=True)
 
 with st.sidebar:
@@ -1032,9 +1033,7 @@ if nav == "Start":
                          signed_cols=("Upside %", "Kauf %"),
                          height=min(len(pdata) * 38 + 46, 360))
             if st.button("\u00d6ffnen", key=f"open_pf_{pname}", use_container_width=True):
-                st.session_state["pf_data"] = pf_records_to_df(precs)
-                st.session_state["pf_editor_key"] = st.session_state.get("pf_editor_key", 0) + 1
-                st.session_state["pf_cur_name"] = pname
+                st.session_state["pf_pending_load"] = pname
                 st.session_state["pending_nav"] = "Portfoliocheck"
                 st.rerun()
 
@@ -1969,22 +1968,76 @@ if nav == "Screener":
 # ===========================================================================
 if nav == "Portfoliocheck":
     st.markdown('<div class="sec-title">PORTFOLIOCHECK</div>', unsafe_allow_html=True)
-    st.caption("Ticker ODER Firmenname eintragen (wird automatisch erkannt), dann "
-               "Anzahl und \u00d8 Buy-in-Kurs. Der Wert wird automatisch aus Anzahl \u00d7 "
-               "aktuellem Intraday-Kurs berechnet. Gewinn/Verlust und Live-Kurse sind "
+    st.caption("Pro Position: Ticker ODER Firmenname, Anzahl und \u00d8 Buy-in-Kurs (\u20ac). "
+               "Wert = Anzahl \u00d7 aktueller Intraday-Kurs. Gewinn/Verlust & Live-Kurse "
                "immer aktiv.")
 
-    # --- Speicher-Verwaltung (Laden/Loeschen buendig mit dem Auswahlfeld) ---
+    # --- Positions-Zustand: Liste stabiler Zeilen-IDs + Werte in session_state ---
+    st.session_state.setdefault("pf_nextid", 0)
+
+    def _pf_add_row(tk="", sh="", bi=""):
+        i = st.session_state["pf_nextid"]
+        st.session_state["pf_nextid"] += 1
+        st.session_state[f"pf_tk_{i}"] = tk
+        st.session_state[f"pf_sh_{i}"] = sh
+        st.session_state[f"pf_bi_{i}"] = bi
+        st.session_state.setdefault("pf_ids", [])
+        st.session_state["pf_ids"].append(i)
+        return i
+
+    def _pf_load(name):
+        recs = store.load_all().get(name, [])
+        st.session_state["pf_ids"] = []
+        for rec in recs:
+            _pf_add_row(
+                str(rec.get("ticker") or ""),
+                "" if rec.get("shares") in (None, "") else str(rec.get("shares")),
+                "" if rec.get("avg_buyin") in (None, "") else str(rec.get("avg_buyin")))
+        if not st.session_state["pf_ids"]:
+            _pf_add_row()
+        st.session_state["pf_cur_name"] = name
+
+    def _pf_new():
+        st.session_state["pf_ids"] = []
+        _pf_add_row()
+        st.session_state["pf_cur_name"] = ""
+
+    # Erstbefuellung: Öffnen-Button von der Startseite, sonst automatisch das
+    # gespeicherte Portfolio (kein Apple/NVDA-Dummy mehr).
+    _pending = st.session_state.pop("pf_pending_load", None)
+    if _pending:
+        _pf_load(_pending)
+    if "pf_ids" not in st.session_state:
+        _saved0 = store.names()
+        cur = st.session_state.get("pf_cur_name")
+        if cur in _saved0:
+            _pf_load(cur)
+        elif _saved0:
+            _pf_load(_saved0[0])
+        else:
+            st.session_state["pf_ids"] = []
+            _pf_add_row()
+
+    # --- Portfolio-Auswahl: laden / neu / loeschen ---
     saved = store.names()
     sccol = st.columns([2, 1, 1], vertical_alignment="bottom")
-    pick = sccol[0].selectbox("Gespeichertes Portfolio laden", ["\u2013"] + saved)
-    if sccol[1].button("Laden", use_container_width=True) and pick != "\u2013":
-        st.session_state["pf_data"] = pf_records_to_df(store.load_all().get(pick, []))
-        st.session_state["pf_editor_key"] = st.session_state.get("pf_editor_key", 0) + 1
-        st.session_state["pf_cur_name"] = pick
-        st.rerun()
-    if sccol[2].button("L\u00f6schen", use_container_width=True) and pick != "\u2013":
-        store.delete(pick)
+    if saved:
+        curname = st.session_state.get("pf_cur_name")
+        idx = saved.index(curname) if curname in saved else 0
+        pick = sccol[0].selectbox("Gespeichertes Portfolio", saved, index=idx)
+        if sccol[1].button("Laden", use_container_width=True):
+            _pf_load(pick)
+            st.rerun()
+        if sccol[2].button("L\u00f6schen", use_container_width=True):
+            store.delete(pick)
+            _pf_new()
+            st.rerun()
+    else:
+        sccol[0].caption("Noch keine gespeicherten Portfolios \u2013 unten anlegen "
+                         "und speichern.")
+
+    if st.button("\u2795 Portfolio hinzuf\u00fcgen", use_container_width=True):
+        _pf_new()
         st.rerun()
 
     # --- Backup / Wiederherstellung (reboot-fest, weil auf DEINEM Geraet) ---
@@ -2033,28 +2086,44 @@ if nav == "Portfoliocheck":
         if up is None:
             st.session_state.pop("pf_backup_done", None)
 
-    if "pf_data" not in st.session_state or st.session_state["pf_data"] is None:
-        st.session_state["pf_data"] = pd.DataFrame([
-            {"Ticker": "AAPL", "Anzahl": "10", "\u00d8 Buy-in": "", "Kaufdatum": None},
-            {"Ticker": "MSFT", "Anzahl": "5", "\u00d8 Buy-in": "", "Kaufdatum": None},
-            {"Ticker": "NVDA", "Anzahl": "8", "\u00d8 Buy-in": "", "Kaufdatum": None}])
-    ekey = f"pf_editor_{st.session_state.get('pf_editor_key', 0)}"
-    edited = st.data_editor(
-        st.session_state["pf_data"], num_rows="dynamic", use_container_width=True, key=ekey,
-        column_config={
-            "Ticker": st.column_config.TextColumn("Ticker / Name",
-                                                  help="Ticker (AAPL, SAP.DE) ODER Firmenname \u2013 "
-                                                       "wird automatisch aufgel\u00f6st."),
-            "Anzahl": st.column_config.TextColumn(
-                "Anzahl", help="St\u00fcckzahl der Aktien. Wert = Anzahl \u00d7 aktueller Kurs."),
-            "\u00d8 Buy-in": st.column_config.TextColumn(
-                "\u00d8 Buy-in (\u20ac)",
-                help="Dein durchschnittlicher Kaufkurs je Aktie IN EURO (so wie im "
-                     "Depot angezeigt). Mit Anzahl ergibt das den exakten Gewinn/Verlust. "
-                     "Alternativ das Kaufdatum nutzen."),
-            "Kaufdatum": st.column_config.DateColumn(
-                "Kaufdatum (optional)", format="YYYY-MM-DD",
-                help="Alternative zum \u00d8 Buy-in. Leer lassen bei Sparplan/unbekannt.")})
+    st.markdown('<div class="sec-title">POSITIONEN</div>', unsafe_allow_html=True)
+    st.caption("Ticker ODER Firmenname \u00b7 Anzahl \u00b7 \u00d8 Buy-in (\u20ac, dein Kaufkurs "
+               "je Aktie wie im Depot). Wert & G/V werden automatisch berechnet.")
+    hdr = st.columns([3, 1.5, 1.8, 0.7])
+    hdr[0].markdown('<div class="vr-th">Ticker / Unternehmen</div>', unsafe_allow_html=True)
+    hdr[1].markdown('<div class="vr-th">Anzahl</div>', unsafe_allow_html=True)
+    hdr[2].markdown('<div class="vr-th">\u00d8 Buy-in (\u20ac)</div>', unsafe_allow_html=True)
+    hdr[3].markdown('<div class="vr-th"></div>', unsafe_allow_html=True)
+    _del = None
+    for i in list(st.session_state.get("pf_ids", [])):
+        rc = st.columns([3, 1.5, 1.8, 0.7], vertical_alignment="bottom")
+        rc[0].text_input("Ticker", key=f"pf_tk_{i}", label_visibility="collapsed",
+                         placeholder="z.B. Apple oder AAPL")
+        rc[1].text_input("Anzahl", key=f"pf_sh_{i}", label_visibility="collapsed",
+                         placeholder="St\u00fcck")
+        rc[2].text_input("Buy-in", key=f"pf_bi_{i}", label_visibility="collapsed",
+                         placeholder="Kaufkurs \u20ac")
+        if rc[3].button("\U0001f5d1", key=f"pf_del_{i}", help="Position entfernen"):
+            _del = i
+    if _del is not None:
+        st.session_state["pf_ids"].remove(_del)
+        for suf in ("tk", "sh", "bi"):
+            st.session_state.pop(f"pf_{suf}_{_del}", None)
+        st.rerun()
+    if st.button("\u2795 Position hinzuf\u00fcgen", use_container_width=True):
+        _pf_add_row()
+        st.rerun()
+
+    # records aus den dedizierten Feldern bauen (eine Quelle fuer Speichern & Analyse)
+    records = []
+    for i in st.session_state.get("pf_ids", []):
+        tkv = str(st.session_state.get(f"pf_tk_{i}", "") or "").strip()
+        if not tkv:
+            continue
+        records.append({"ticker": tkv, "value": None,
+                        "shares": parse_eur(st.session_state.get(f"pf_sh_{i}")),
+                        "date": None,
+                        "avg_buyin": parse_eur(st.session_state.get(f"pf_bi_{i}"))})
 
     # Speichern (Name + Button buendig) + Kurse aktualisieren
     inc_radar, inc_pl, live_px = False, True, True      # G/V & Intraday immer an
@@ -2062,32 +2131,18 @@ if nav == "Portfoliocheck":
     save_name = sc2[0].text_input("Speichern als", value=st.session_state.get("pf_cur_name", ""),
                                   placeholder="Name des Portfolios")
     if sc2[1].button("\U0001f4be Speichern", use_container_width=True):
-        recs = []
-        for _, rr in edited.iterrows():
-            tkv = str(rr.get("Ticker") or "").strip()
-            shv = parse_eur(rr.get("Anzahl"))
-            if not tkv or shv is None:
-                continue
-            kd = rr.get("Kaufdatum")
-            recs.append({"ticker": tkv, "value": None, "shares": shv,
-                         "date": pd.to_datetime(kd).date().isoformat()
-                         if (kd is not None and pd.notna(kd)) else None,
-                         "avg_buyin": parse_eur(rr.get("\u00d8 Buy-in"))})
+        recs = [r for r in records if r["ticker"] and r["shares"] is not None]
         if save_name.strip() and store.save(save_name.strip(), recs):
             st.session_state["pf_cur_name"] = save_name.strip()
-            st.success(f"Gespeichert als \u201e{save_name.strip()}\u201c.")
+            st.success(f"Gespeichert als \u201e{save_name.strip()}\u201c ({len(recs)} Positionen).")
         else:
             st.warning("Bitte einen Namen angeben.")
     if sc2[2].button("\U0001f504 Kurse aktualisieren", use_container_width=True):
         load_intraday_price.clear()
         fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
-        load_fundamentals.clear()         # frischer Basis-Kurs
+        load_fundamentals.clear()
+        load_fundamentals_deep.clear()    # frischer Basis-Kurs (tiefe Quelle)
         st.rerun()
-
-    records = [{"ticker": rr.get("Ticker"), "value": None,
-                "shares": rr.get("Anzahl"),
-                "date": rr.get("Kaufdatum"), "avg_buyin": rr.get("\u00d8 Buy-in")}
-               for _, rr in edited.iterrows()]
     with st.spinner("Analysiere Positionen (Intraday-Kurse) ..."):
         rows, invalid, resolved = build_portfolio_rows(records, inc_radar, inc_pl, live=live_px)
     if live_px:

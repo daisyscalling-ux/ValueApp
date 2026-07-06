@@ -117,7 +117,11 @@ div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus *
     gap:3px !important;
     margin:0 calc(50% - 50vw) 8px calc(50% - 50vw); width:100vw;
     box-sizing:border-box; background:rgba(10,14,20,.98);
-    border-bottom:2px solid var(--amber); padding:4px 3px;}
+    border-bottom:2px solid var(--amber); padding:4px 0;}  /* buendig bis Rand */
+  /* Wrapper um die Nav duerfen den 100vw-Ueberhang nicht abschneiden */
+  div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-mnav_"]),
+  div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-mnav_"]) > div{
+    overflow:visible !important;}
   div[class*="st-key-mnav_"] .stButton{width:100% !important;}
   div[class*="st-key-mnav_"] .stButton>button{
     width:100% !important; min-height:0; padding:7px 0 5px 0;
@@ -130,6 +134,22 @@ div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus *
   section[data-testid="stMain"] .block-container,
   section.main .block-container{padding-top:6px !important;}
 }
+/* ---- Klickbare Listen (vr-rows): Ticker = Link, Rest im ausgerichteten Grid ---- */
+div[class*="st-key-tkb_"] .stButton>button{
+  background:transparent !important; border:none !important; box-shadow:none !important;
+  color:var(--amber) !important; font-weight:800; padding:0 !important;
+  min-height:0 !important; font-size:13px; text-align:left; letter-spacing:.5px;}
+div[class*="st-key-tkb_"] .stButton>button:hover{text-decoration:underline;}
+div[class*="st-key-vlr_"]{border-bottom:1px solid rgba(31,39,51,.55); padding:1px 0;}
+div[class*="st-key-vlr_"] [data-testid="stHorizontalBlock"]{
+  gap:8px !important; align-items:center !important;}
+div[class*="st-key-vlr_"] [data-testid="stElementContainer"]{margin:0 !important;}
+.vr-lg{display:grid; gap:0 10px; align-items:center; font-size:12.5px;
+  white-space:nowrap; overflow:hidden; padding:5px 0;}
+.vr-lg>div{overflow:hidden; text-overflow:ellipsis; min-width:0;}
+.vr-lg .num{text-align:right; font-variant-numeric:tabular-nums;}
+.vr-th{color:var(--muted); text-transform:uppercase; font-size:10.5px;
+  letter-spacing:1px; font-weight:700; padding:4px 0;}
 /* ---- Professionelle eigene Tabellen (vr-table): dunkel, unabhaengig vom Theme ---- */
 .vr-twrap{border:1px solid var(--line); background:var(--panel);
   border-radius:6px; overflow-x:auto; margin:2px 0 6px 0;}
@@ -145,7 +165,11 @@ table.vr-table tr:last-child td{border-bottom:none;}
 table.vr-table tbody tr:hover{background:rgba(255,176,0,.05);}
 table.vr-table td.num, table.vr-table th.num{text-align:right;
   font-variant-numeric:tabular-nums;}
-table.vr-table td b.tick{color:var(--amber);}
+table.vr-table .tick{color:var(--amber);font-weight:800;}
+table.vr-table .vr-link{cursor:pointer;}
+table.vr-table .vr-link:hover{text-decoration:underline;}
+/* unsichtbare Ziel-Buttons fuer klickbare Ticker (per JS ausgeloest) */
+div[class*="st-key-hb_"]{display:none !important;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -409,6 +433,63 @@ def svg_area_chart(pcts, color, height=250):
         f'+{hi:.1f}%</text>'
         f'<text x="6" y="{H-6}" fill="#6B7686" font-size="11" font-family="monospace">'
         f'{lo:.1f}%</text></svg>')
+
+
+def _vr_cell(c, v, score_cols, signed_cols):
+    """Zellen-HTML fuer vr_rows (Format wie vr_table)."""
+    num = isinstance(v, (int, float)) and not isinstance(v, bool)
+    cls = "num" if num else ""
+    if v is None or (num and isinstance(v, float) and pd.isna(v)):
+        return f'<div class="{cls}"><span class="na">\u2014</span></div>'
+    if c in score_cols and num:
+        return (f'<div class="{cls}" style="color:{score_hex(v)};'
+                f'font-weight:700">{v:.0f}</div>')
+    if c in signed_cols and num:
+        colr = "#3FB950" if v >= 0 else "#F85149"
+        sgn = "+" if v >= 0 else "\u2212"
+        return (f'<div class="{cls}" style="color:{colr};font-weight:700">'
+                f'{sgn}{de(abs(v), 2)}</div>')
+    if isinstance(v, float):
+        return f'<div class="{cls}">{de(v, 2)}</div>'
+    if isinstance(v, int):
+        return f'<div class="{cls}">{v}</div>'
+    return f'<div>{esc(str(v))}</div>'
+
+
+def vr_rows(rows, key_prefix, score_cols=(), signed_cols=(), name_col="Name",
+            nav="Einzelanalyse"):
+    """Klickbare Profi-Liste: der ORANGENE TICKER ist der Link (oeffnet die
+    Einzelanalyse direkt). Kopf & Zeilen nutzen dieselbe Spaltengeometrie."""
+    if not rows:
+        return
+    other = [c for c in rows[0].keys() if c != "Ticker"]
+    tmpl = " ".join("minmax(0,1.7fr)" if c == name_col else "minmax(0,1fr)"
+                    for c in other)
+    ratio = [1.0, max(len(other), 2) * 1.15]
+
+    def _isnum(c):
+        return any(isinstance(r.get(c), (int, float)) and not isinstance(r.get(c), bool)
+                   for r in rows)
+    hc = st.columns(ratio)
+    hc[0].markdown('<div class="vr-th">Ticker</div>', unsafe_allow_html=True)
+    hc[1].markdown('<div class="vr-lg" style="grid-template-columns:' + tmpl + '">'
+                   + "".join(f'<div class="vr-th{" num" if _isnum(c) else ""}">'
+                             f'{esc(str(c))}</div>' for c in other)
+                   + '</div>', unsafe_allow_html=True)
+    for i, r in enumerate(rows):
+        tk = str(r.get("Ticker") or "")
+        with st.container(key=f"vlr_{key_prefix}_{i}"):
+            rc = st.columns(ratio)
+            with rc[0]:
+                with st.container(key=f"tkb_{key_prefix}_{i}"):
+                    if st.button(tk or "\u2014", key=f"tkbtn_{key_prefix}_{i}"):
+                        st.session_state["pending_search"] = tk
+                        st.session_state["pending_nav"] = nav
+                        st.rerun()
+            rc[1].markdown('<div class="vr-lg" style="grid-template-columns:' + tmpl + '">'
+                           + "".join(_vr_cell(c, r.get(c), score_cols, signed_cols)
+                                     for c in other)
+                           + '</div>', unsafe_allow_html=True)
 
 
 def vr_table(rows, score_cols=(), signed_cols=(), height=None):
@@ -762,7 +843,7 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
-PAGES = ["Start", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck", "News"]
+PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
 if "pending_nav" in st.session_state:
@@ -773,9 +854,9 @@ nav = st.session_state["nav"]
 # Mobile Top-Icon-Navigation: erscheint via CSS nur auf Handys, ganz oben, Rand
 # zu Rand. Buttons OHNE st.columns - das CSS-Grid ordnet sie in 6 gleiche Zellen
 # (robust gegen Streamlit-Versionswechsel). Icons statt Text: passt auf jedes Display.
-MOBILE_NAV = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8",
-              "Radar": "\U0001f3af", "Screener": "\U0001f50d",
-              "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
+MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
+              "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
+              "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
@@ -879,10 +960,10 @@ if nav == "Start":
                      "Preis \u20ac": r["price_eur"], "Sektor": (r["sector"] or "")[:16]}
                     for r in rows]
             cstyle = ["Chance", "Score"]
-        df = pd.DataFrame(data)
-        vr_table(data, score_cols=("Radar-Score", "Chance", "Score"),
-                 signed_cols=("Upside %",), height=340)
-        ticker_open_bar(list(df["Ticker"]), key)
+        vr_rows(data, key_prefix=f"hot_{key}",
+                score_cols=("Radar-Score", "Chance", "Score"),
+                signed_cols=("Upside %",))
+        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
 
     htabs = st.tabs(["  \U0001f3af RADAR \u00b7 HOT PICKS  ",
                      "  \U0001f50d SCREENER \u00b7 HOT PICKS  "])
@@ -1234,28 +1315,12 @@ if nav == "Einzelanalyse":
                                         "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
                                                           if atgt and pf_.get("price") else None)})
                         if prowz:
-                            pdf_ = pd.DataFrame(prowz)
-                            evp = st.dataframe(
-                                pdf_.style.map(lambda x: f"color:{score_hex(x)};font-weight:700",
-                                               subset=["Score"])
-                                .format(precision=2),
-                                hide_index=True, use_container_width=True,
-                                on_select="rerun", selection_mode="single-row", key="peer_tbl")
-                            st.caption("\U0001f449 Zeile antippen \u2192 \u00f6ffnet den Wettbewerber. "
-                                       "Kurse/Werte in Handelsw\u00e4hrung des jeweiligen Titels.")
-                            selp = []
-                            try:
-                                selp = list(evp.selection.rows)
-                            except Exception:
-                                if isinstance(evp, dict):
-                                    selp = evp.get("selection", {}).get("rows", [])
-                            if selp:
-                                pk = str(pdf_.iloc[selp[0]]["Ticker"])
-                                if st.session_state.get("peer_pick") != pk:
-                                    st.session_state["peer_pick"] = pk
-                                    st.session_state["pending_search"] = pk
-                                    st.session_state["pending_nav"] = "Einzelanalyse"
-                                    st.rerun()
+                            vr_rows(prowz, key_prefix="peer",
+                                    score_cols=("Score",),
+                                    signed_cols=("Upside %", "Ziel-Upside %"))
+                            st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet "
+                                       "den Wettbewerber. Kurse/Werte in Handelsw\u00e4hrung "
+                                       "des jeweiligen Titels.")
                         else:
                             st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
                                         unsafe_allow_html=True)
@@ -2059,69 +2124,22 @@ if nav == "Portfoliocheck":
                 f'  <span class="na">(Einsatz {sym_eur(a["pl_cost"])} \u2192 Wert '
                 f'{sym_eur(a["pl_value"])})</span></div>', unsafe_allow_html=True)
 
-        # Positionstabelle (Zeile antippen -> Einzelanalyse; Gewicht % entfernt)
+        # Positionsliste (orangenen Ticker anklicken -> Einzelanalyse)
         prows = sorted(rows, key=lambda r: -r["weight"])
-        any_shares = any(r.get("shares") for r in prows)
-        data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
-                 **({"Anzahl": r["shares"]} if any_shares else {}),
+        data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:18],
                  "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
-                 "Sektor": (r["sector"] or "")[:16], "Composite": round(r["composite"] or 0),
+                 "Comp.": round(r["composite"] or 0),
                  "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                  **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
                     if a["have_pl"] else {}),
                  **({"G/V \u20ac": round(r["gain_eur"], 2) if r.get("gain_eur") is not None else None}
                     if a["have_pl"] else {}),
-                 **({"Status": r["status"][0]} if a["have_pl"] else {}),
-                 **({"Radar": round(r["radar"] or 0)} if inc_radar else {}),
-                 "Playbook": r["playbook"],
-                 "Wert \u20ac": round(r["value_eur"], 2)} for r in prows]   # ganz rechts
-        dfp = pd.DataFrame(data)
-
-        def csc(v):
-            return f"color:{score_hex(v)};font-weight:700"
-
-        def gvcol(v):                                   # gruen bei Plus, rot bei Minus
-            if v is None or (isinstance(v, float) and pd.isna(v)):
-                return ""
-            return ("color:#3ddc84;font-weight:700" if v >= 0
-                    else "color:#ff5c5c;font-weight:700")
-
-        def sgn_eur(v):
-            if v is None or (isinstance(v, float) and pd.isna(v)):
-                return "\u2014"
-            return f"{'+' if v >= 0 else '\u2212'}{de(abs(v), 2)}"
-
-        def sgn_pct(v):
-            if v is None or (isinstance(v, float) and pd.isna(v)):
-                return "\u2014"
-            return f"{'+' if v >= 0 else '\u2212'}{de(abs(v), 2)} %"
-
-        subset = ["Composite"] + (["Radar"] if inc_radar else [])
-        pl_cols = [c for c in ("Kauf %", "G/V \u20ac") if c in dfp.columns]
-        fmt = {"Kurs \u20ac": "{:.2f}", "Wert \u20ac": "{:.2f}"}
-        if "Kauf %" in dfp.columns:
-            fmt["Kauf %"] = sgn_pct
-        if "G/V \u20ac" in dfp.columns:
-            fmt["G/V \u20ac"] = sgn_eur
-        styled = (dfp.style.map(csc, subset=subset).format(fmt, precision=2))
-        if pl_cols:
-            styled = styled.map(gvcol, subset=pl_cols)
-        ev = st.dataframe(styled, hide_index=True, use_container_width=True,
-                          on_select="rerun", selection_mode="single-row", key="pf_holdings")
-        sel = []
-        try:
-            sel = list(ev.selection.rows)
-        except Exception:
-            if isinstance(ev, dict):
-                sel = ev.get("selection", {}).get("rows", [])
-        if sel:
-            picked = str(dfp.iloc[sel[0]]["Ticker"])
-            if st.session_state.get("pf_hold_pick") != picked:
-                st.session_state["pf_hold_pick"] = picked
-                st.session_state["pending_search"] = picked
-                st.session_state["nav"] = "Einzelanalyse"
-                st.rerun()
-        st.caption("\U0001f449 Zeile antippen \u2192 \u00f6ffnet die Aktie in der Einzelanalyse.")
+                 "Wert \u20ac": round(r["value_eur"], 2)} for r in prows]
+        vr_rows(data, key_prefix="pfh", score_cols=("Comp.",),
+                signed_cols=("Upside %", "Kauf %", "G/V \u20ac"))
+        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse. Anzahl, Sektor, "
+                   "Status & Playbook je Position stehen im G/V-Rechenweg bzw. in der "
+                   "Einzelanalyse.")
 
         # Transparenter Rechenweg: jede Zahl gegen den Broker pruefbar machen.
         pl_rows = [r for r in rows if r.get("shares") and r.get("ret_pct") is not None
@@ -2208,25 +2226,11 @@ if nav == "Portfoliocheck":
                                  "Preis \u20ac": c["price_eur"],
                                  "F\u00fcllt L\u00fccke": "ja" if c.get("sector") in gaps else ""}
                                 for c in cands])
-            evc = st.dataframe(cdf.style.map(csc, subset=["Chance", "Score"])
-                               .format(precision=2, formatter={"Preis \u20ac": "{:.2f}"}),
-                               hide_index=True, use_container_width=True,
-                               on_select="rerun", selection_mode="single-row", key="pf_cand2")
-            selc = []
-            try:
-                selc = list(evc.selection.rows)
-            except Exception:
-                if isinstance(evc, dict):
-                    selc = evc.get("selection", {}).get("rows", [])
-            if selc:
-                pk = str(cdf.iloc[selc[0]]["Ticker"])
-                if st.session_state.get("pf_cand_pick") != pk:
-                    st.session_state["pf_cand_pick"] = pk
-                    st.session_state["pending_search"] = pk
-                    st.session_state["nav"] = "Einzelanalyse"
-                    st.rerun()
-            st.caption("\U0001f449 Zeile antippen \u2192 Einzelanalyse. \u201eChance\u201c = Qualit\u00e4t "
-                       "kombiniert mit Bewertungs-Upside. Kein Anlagerat \u2013 selbst pr\u00fcfen.")
+            vr_rows(cdf.to_dict("records"), key_prefix="pfc",
+                    score_cols=("Chance", "Score"), signed_cols=("Upside %",))
+            st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse. "
+                       "\u201eChance\u201c = Qualit\u00e4t + Bewertungs-Upside. Kein Anlagerat "
+                       "\u2013 selbst pr\u00fcfen.")
         else:
             st.info("Aktuell keine \u00fcberzeugenden Erg\u00e4nzungen gefunden (verlangt Qualit\u00e4t "
                     "Score \u2265 55, belastbarer Fair Value und glaubhaftes Upside +8 bis +80 %). "

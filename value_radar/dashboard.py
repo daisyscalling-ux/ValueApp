@@ -108,11 +108,11 @@ div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus *
   header[data-testid="stHeader"]{height:0 !important; min-height:0 !important;}
 
   div[class*="st-key-mnav_"]{display:block; min-width:0 !important;}
-  /* Der Block, der die 6 Nav-Buttons enthaelt, wird zum 6-Spalten-Grid,
-     Rand zu Rand. position:static -> die Leiste scrollt beim Runterscrollen
-     natuerlich nach oben weg und ist oben wieder da. */
+  /* NUR der DIREKTE Elternblock der 6 Nav-Buttons wird zum Grid.
+     (Die fruehere Zusatz-Variante "> div > div" hat den Hauptblock der ganzen
+     Seite erwischt und das Layout zerlegt - daher strikt direkte Kinder.) */
   div[data-testid="stVerticalBlock"]:has(> div[class*="st-key-mnav_"]),
-  div[data-testid="stVerticalBlock"]:has(> div > div[class*="st-key-mnav_"]){
+  .st-key-mobilenav [data-testid="stVerticalBlock"]:has(div[class*="st-key-mnav_"]){
     display:grid !important; grid-template-columns:repeat(6, 1fr) !important;
     gap:3px !important;
     margin:0 calc(50% - 50vw) 8px calc(50% - 50vw); width:100vw;

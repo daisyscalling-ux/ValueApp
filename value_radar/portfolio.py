@@ -133,9 +133,21 @@ def analyze(rows: list) -> dict:
     pl_gain = pl_value - pl_cost
     pl_return = (pl_gain / pl_cost * 100) if pl_cost > 0 else None
 
-    # Portfolio-Fair-Value (gewichtet ueber Upside je Position)
-    pf_fair = sum(r["value_eur"] * (1 + (r.get("upside") or 0) / 100.0) for r in rows)
-    pf_upside = (pf_fair / total - 1) * 100 if total else None
+    # Portfolio-Fair-Value: NUR ueber Positionen mit belastbarem Upside rechnen
+    # (fehlt der Upside, wurde er frueher als 0 gewertet -> Summe sprang je nach
+    # Datenlage stark). Jetzt: bewertete Positionen bilden die Basis, und die
+    # Abdeckung wird ausgewiesen -> stabile, vergleichbare Zahl.
+    valued = [r for r in rows if r.get("upside") is not None]
+    valued_val = sum(r["value_eur"] for r in valued)
+    if valued_val > 0:
+        pf_fair_valued = sum(r["value_eur"] * (1 + r["upside"] / 100.0) for r in valued)
+        pf_upside = (pf_fair_valued / valued_val - 1) * 100
+        pf_fair = pf_fair_valued + (total - valued_val)    # Rest neutral hochgerechnet
+    else:
+        pf_upside = None
+        pf_fair = total
+    pf_cov = len(valued)
+    pf_cov_pct = (valued_val / total * 100) if total else 0
 
     # Gesamtscore
     score = w_comp if w_comp is not None else 50.0
@@ -211,6 +223,7 @@ def analyze(rows: list) -> dict:
         "duplicates": duplicates,
         "w_composite": w_comp, "w_upside": w_ups, "w_radar": w_radar,
         "pf_fair_eur": pf_fair, "pf_upside": pf_upside,
+        "pf_cov": pf_cov, "pf_cov_pct": pf_cov_pct,
         "have_pl": have_pl, "pl_cost": pl_cost, "pl_value": pl_value,
         "pl_gain": pl_gain, "pl_return": pl_return, "pl_count": len(pl_rows),
         "actions": actions,

@@ -275,9 +275,9 @@ def parse_eur(s):
         return None
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_fundamentals(t): return providers.get_fundamentals(t)
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_fundamentals_deep(t): return providers.get_fundamentals(t, deep=True)
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_intel(t, name=None): return intel_mod.gather(t, name=name)
@@ -313,6 +313,8 @@ def load_div_years(t): return providers.get_dividend_years(t)
 def load_price_on(t, date): return providers.get_price_on(t, date)
 @st.cache_data(ttl=60, show_spinner=False)
 def load_intraday_price(t): return providers.get_intraday_price(t)
+@st.cache_data(ttl=60, show_spinner=False)
+def load_intraday_quote(t, cur): return providers.get_intraday_quote(t, cur)
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_analyst(t): return providers.get_analyst_ratings(t)
 @st.cache_data(ttl=600, show_spinner=False)
@@ -692,13 +694,17 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
         if not f.get("price"):
             invalid.append(raw)
             continue
-        fx = fx_to_eur(f.get("currency", "USD")) or 1.0
+        native_cur = f.get("currency", "USD")
+        fx = fx_to_eur(native_cur) or 1.0
         p_now = f.get("price")
         live_used = False
         if live:                                    # minutengenauer Kurs fuer Wert & G/V
-            p_live = load_intraday_price(tk)
+            p_live, cur_live = load_intraday_quote(tk, native_cur)
             if p_live and p_live > 0:
                 p_now = p_live
+                # Deutscher Vormittagskurs kommt in EUR -> mit EUR-FX (=1) rechnen,
+                # US-Kurs in native Waehrung -> mit deren FX. Waehrung wandert mit.
+                fx = fx_to_eur(cur_live) or 1.0
                 live_used = True
         # Wert bestimmen: Stueckzahl x Kurs (exakt) hat Vorrang, sonst manueller Wert
         if has_shares and p_now:
@@ -902,7 +908,8 @@ with st.sidebar:
                       "(ca. 30 Min.) \u2013 dadurch sind die Ergebnisse reproduzierbar."):
         for fn in (load_universe, load_fundamentals, load_fundamentals_deep, load_perf,
                    load_analyst, load_screen_extras, load_div_years, load_intel, fx_to_eur,
-                   load_history, load_history_full, load_intraday_price):
+                   load_history, load_history_full, load_intraday_price,
+                   load_intraday_quote):
             try:
                 fn.clear()
             except Exception:
@@ -2139,6 +2146,7 @@ if nav == "Portfoliocheck":
             st.warning("Bitte einen Namen angeben.")
     if sc2[2].button("\U0001f504 Kurse aktualisieren", use_container_width=True):
         load_intraday_price.clear()
+        load_intraday_quote.clear()
         fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
         load_fundamentals.clear()
         load_fundamentals_deep.clear()    # frischer Basis-Kurs (tiefe Quelle)
@@ -2178,10 +2186,13 @@ if nav == "Portfoliocheck":
         card(mc[0], "\u00d8 Composite (gew.)",
              f"{a['w_composite']:.2f}" if a["w_composite"] is not None else "\u2014",
              color=score_color(a["w_composite"] or 0))
+        cov_sub = (f"{a.get('pf_cov', 0)}/{a['n']} Pos. bewertet"
+                   if a.get("pf_cov") is not None else "")
         card(mc[1], "Erwartetes Upside",
              f"{a['pf_upside']:+.2f} %" if a["pf_upside"] is not None else "\u2014",
+             sub=cov_sub,
              color="var(--green)" if (a["pf_upside"] or 0) >= 0 else "var(--red)")
-        card(mc[2], "Portfolio-Fair-Value", sym_eur(a["pf_fair_eur"]))
+        card(mc[2], "Portfolio-Fair-Value", sym_eur(a["pf_fair_eur"]), sub=cov_sub)
         if a["have_pl"]:
             g = a["pl_gain"]
             gcol = "var(--green)" if g >= 0 else "var(--red)"

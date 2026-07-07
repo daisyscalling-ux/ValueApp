@@ -11,6 +11,7 @@ Alle Netzwerk-Calls sind defensiv in try/except gekapselt.
 from __future__ import annotations
 from typing import Any, Optional
 import math
+import time
 import config
 
 try:
@@ -45,17 +46,24 @@ def _num(x):
 # Fundamentaldaten -> normalisiertes Dict
 # ---------------------------------------------------------------------------
 def _fh(path, params):
-    """Finnhub-GET (nur wenn Key vorhanden). Gibt JSON oder None."""
+    """Finnhub-GET (nur wenn Key vorhanden). Gibt JSON oder None.
+    Mit Wiederholversuchen: transiente Aussetzer wuerden sonst dazu fuehren, dass
+    mal Sektor/Kennzahlen fehlen und Scores/Fair Value je Aufruf springen."""
     if not config.FINNHUB_API_KEY or requests is None:
         return None
-    try:
-        p = dict(params)
-        p["token"] = config.FINNHUB_API_KEY
-        r = requests.get(f"https://finnhub.io/api/v1/{path}", params=p, timeout=12)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        return None
+    p = dict(params)
+    p["token"] = config.FINNHUB_API_KEY
+    for attempt in range(3):
+        try:
+            r = requests.get(f"https://finnhub.io/api/v1/{path}", params=p, timeout=12)
+            if r.status_code == 200:
+                return r.json()
+            if r.status_code == 429:               # Rate-Limit -> kurz warten
+                time.sleep(1.2 * (attempt + 1))
+                continue
+        except Exception:
+            pass
+        time.sleep(0.5 * (attempt + 1))
     return None
 
 
@@ -186,18 +194,23 @@ def _consensus(*vals):
 
 
 def _fmp_get(path, params=None):
-    """Financial-Modeling-Prep-GET (nur wenn FMP_API_KEY gesetzt)."""
+    """Financial-Modeling-Prep-GET (nur wenn FMP_API_KEY gesetzt). Mit Retries."""
     if not config.FMP_API_KEY or requests is None:
         return None
-    try:
-        p = dict(params or {})
-        p["apikey"] = config.FMP_API_KEY
-        r = requests.get(f"https://financialmodelingprep.com/api/v3/{path}",
-                         params=p, timeout=15)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        return None
+    p = dict(params or {})
+    p["apikey"] = config.FMP_API_KEY
+    for attempt in range(3):
+        try:
+            r = requests.get(f"https://financialmodelingprep.com/api/v3/{path}",
+                             params=p, timeout=15)
+            if r.status_code == 200:
+                return r.json()
+            if r.status_code == 429:
+                time.sleep(1.2 * (attempt + 1))
+                continue
+        except Exception:
+            pass
+        time.sleep(0.5 * (attempt + 1))
     return None
 
 
@@ -384,10 +397,14 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     deep=True nur fuer Einzelanalysen verwenden (FMP-Tageslimit schonen)."""
     info = {}
     if yf is not None:
-        try:
-            info = yf.Ticker(ticker).info or {}
-        except Exception:
-            info = {}
+        for attempt in range(3):                 # Retries: yfinance faellt oft transient aus
+            try:
+                info = yf.Ticker(ticker).info or {}
+                if info.get("sector") or info.get("currentPrice") or info.get("regularMarketPrice"):
+                    break                          # brauchbare Antwort -> fertig
+            except Exception:
+                info = {}
+            time.sleep(0.6 * (attempt + 1))
     A = _yf_bundle(info)
     # Robustheit gegen yfinance-Versionswechsel/API-Aussetzer: fehlen Kurs oder
     # Waehrung im info-Dict, liefert fast_info sie meist trotzdem (stabile API).
@@ -524,28 +541,75 @@ def _stooq_last(ticker):
     return None
 
 
+def get_intraday_quote(ticker: str, native_currency: str = "USD"):
+    """Aktuellster Intraday-Kurs als (preis, waehrung).
+    Waehrend der deutschen Handelszeit (9:00-15:30), solange die US-Boerse noch
+    geschlossen ist, wird ZUERST die deutsche Notierung (Frankfurt .F / Xetra .DE,
+    in EUR) genutzt -> Kurse bewegen sich schon morgens. Sonst US-Kurs (native).
+    None-Preis, wenn nichts verfuegbar."""
+    import datetime as dt
+    try:
+        from zoneinfo import ZoneInfo
+        now = dt.datetime.now(ZoneInfo("Europe/Berlin"))
+    except Exception:
+        now = dt.datetime.now()
+    minutes = now.hour * 60 + now.minute
+    us_regular = 15 * 60 + 30 <= minutes <= 22 * 60      # grob US-Regulaerhandel (dt. Zeit)
+    de_hours = 9 * 60 <= minutes < 15 * 60 + 30          # dt. Boerse offen, US noch zu
+
+    def _us_price():
+        if yf is not None:
+            try:                                          # inkl. Pre/Post-Market
+                h = yf.Ticker(ticker).history(period="1d", interval="1m", prepost=True)
+                if h is not None and not h.empty:
+                    last = h["Close"].dropna()
+                    if len(last) and float(last.iloc[-1]) > 0:
+                        return float(last.iloc[-1])
+            except Exception:
+                pass
+        q = _fh("quote", {"symbol": ticker})
+        if q and q.get("c"):
+            try:
+                c = float(q["c"])
+                if c > 0:
+                    return c
+            except Exception:
+                pass
+        return None
+
+    def _de_price():
+        # Nur fuer Ticker ohne Boersen-Suffix (US-Titel). Best effort: die deutsche
+        # Yahoo-Notierung heisst nicht immer TICKER.F (Apple=APC.F) -> greift daher
+        # nicht bei jedem US-Titel, ist aber ein sicherer, kostenloser Versuch.
+        if "." in ticker or yf is None:
+            return None
+        for suf in (".F", ".DE"):
+            try:
+                h = yf.Ticker(ticker + suf).history(period="1d", interval="5m")
+                if h is not None and not h.empty:
+                    last = h["Close"].dropna()
+                    if len(last) and float(last.iloc[-1]) > 0:
+                        return float(last.iloc[-1])
+            except Exception:
+                continue
+        return None
+
+    if de_hours and not us_regular:            # deutscher Vormittag -> DE-Kurs zuerst
+        p = _de_price()
+        if p:
+            return p, "EUR"
+        p = _us_price()
+        return (p, native_currency) if p else (None, native_currency)
+    p = _us_price()
+    if p:
+        return p, native_currency
+    p = _de_price()
+    return (p, "EUR") if p else (None, native_currency)
+
+
 def get_intraday_price(ticker: str) -> Optional[float]:
-    """Aktuellster Intraday-Kurs (minutengenau) fuer Live-G/V im Portfolio.
-    1) Finnhub /quote (nahezu Echtzeit fuer US)  2) yfinance 1-Minuten-Historie.
-    None, wenn nichts verfuegbar -> Aufrufer nutzt dann den regulaeren Kurs."""
-    q = _fh("quote", {"symbol": ticker})
-    if q and q.get("c"):
-        try:
-            c = float(q["c"])
-            if c > 0:
-                return c
-        except Exception:
-            pass
-    if yf is not None:
-        try:
-            h = yf.Ticker(ticker).history(period="1d", interval="1m")
-            if h is not None and not h.empty:
-                last = h["Close"].dropna()
-                if len(last):
-                    return float(last.iloc[-1])
-        except Exception:
-            pass
-    return None
+    """Rueckwaertskompatibel: nur der Preis (native Waehrung)."""
+    return get_intraday_quote(ticker)[0]
 
 
 def get_price_history(ticker: str, period: str = "1y", interval: str = "1d"):

@@ -45,25 +45,37 @@ def _num(x):
 # ---------------------------------------------------------------------------
 # Fundamentaldaten -> normalisiertes Dict
 # ---------------------------------------------------------------------------
+_COOLDOWN = {}          # Quelle -> Zeitstempel, bis zu dem sie uebersprungen wird
+
+
+def _is_down(name):
+    return _COOLDOWN.get(name, 0) > time.time()
+
+
+def _trip(name, secs=90):
+    """Quelle voruebergehend deaktivieren (nach Rate-Limit/Ausfall) -> verhindert,
+    dass bei jedem weiteren Ticker erneut in Timeouts/Sleeps gelaufen wird."""
+    _COOLDOWN[name] = time.time() + secs
+
+
 def _fh(path, params):
-    """Finnhub-GET (nur wenn Key vorhanden). Gibt JSON oder None.
-    Mit Wiederholversuchen: transiente Aussetzer wuerden sonst dazu fuehren, dass
-    mal Sektor/Kennzahlen fehlen und Scores/Fair Value je Aufruf springen."""
-    if not config.FINNHUB_API_KEY or requests is None:
+    """Finnhub-GET. Ein Retry, mit Circuit-Breaker bei Rate-Limit -> schnell."""
+    if not config.FINNHUB_API_KEY or requests is None or _is_down("finnhub"):
         return None
     p = dict(params)
     p["token"] = config.FINNHUB_API_KEY
-    for attempt in range(3):
+    for attempt in range(2):
         try:
-            r = requests.get(f"https://finnhub.io/api/v1/{path}", params=p, timeout=12)
+            r = requests.get(f"https://finnhub.io/api/v1/{path}", params=p, timeout=10)
             if r.status_code == 200:
                 return r.json()
-            if r.status_code == 429:               # Rate-Limit -> kurz warten
-                time.sleep(1.2 * (attempt + 1))
-                continue
+            if r.status_code == 429:               # Limit -> nicht weiter haemmern
+                _trip("finnhub")
+                return None
         except Exception:
             pass
-        time.sleep(0.5 * (attempt + 1))
+        if attempt == 0:
+            time.sleep(0.4)
     return None
 
 
@@ -194,23 +206,24 @@ def _consensus(*vals):
 
 
 def _fmp_get(path, params=None):
-    """Financial-Modeling-Prep-GET (nur wenn FMP_API_KEY gesetzt). Mit Retries."""
-    if not config.FMP_API_KEY or requests is None:
+    """FMP-GET. Ein Retry, mit Circuit-Breaker bei Rate-Limit -> schnell."""
+    if not config.FMP_API_KEY or requests is None or _is_down("fmp"):
         return None
     p = dict(params or {})
     p["apikey"] = config.FMP_API_KEY
-    for attempt in range(3):
+    for attempt in range(2):
         try:
             r = requests.get(f"https://financialmodelingprep.com/api/v3/{path}",
-                             params=p, timeout=15)
+                             params=p, timeout=12)
             if r.status_code == 200:
                 return r.json()
             if r.status_code == 429:
-                time.sleep(1.2 * (attempt + 1))
-                continue
+                _trip("fmp")
+                return None
         except Exception:
             pass
-        time.sleep(0.5 * (attempt + 1))
+        if attempt == 0:
+            time.sleep(0.4)
     return None
 
 
@@ -396,15 +409,16 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     echten Kennzahlen-Konsens; Stooq als letzte Preis-Absicherung.
     deep=True nur fuer Einzelanalysen verwenden (FMP-Tageslimit schonen)."""
     info = {}
-    if yf is not None:
-        for attempt in range(3):                 # Retries: yfinance faellt oft transient aus
+    if yf is not None and not _is_down("yfinance"):
+        for attempt in range(2):                 # 1 Retry: yfinance faellt oft transient aus
             try:
                 info = yf.Ticker(ticker).info or {}
                 if info.get("sector") or info.get("currentPrice") or info.get("regularMarketPrice"):
-                    break                          # brauchbare Antwort -> fertig
+                    break
             except Exception:
                 info = {}
-            time.sleep(0.6 * (attempt + 1))
+            if attempt == 0:
+                time.sleep(0.4)
     A = _yf_bundle(info)
     # Robustheit gegen yfinance-Versionswechsel/API-Aussetzer: fehlen Kurs oder
     # Waehrung im info-Dict, liefert fast_info sie meist trotzdem (stabile API).

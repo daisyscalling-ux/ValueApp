@@ -55,14 +55,14 @@ def _position_status(r):
     def _tp_note():
         if price and fair and fair > 0:
             if fair < price:            # bereits ueber fairem Wert
-                return (f" \u00b7 bereits \u00fcber Fair Value (\u2248{_eur(fair)}): Teilverkauf "
-                        "sichert die Pr\u00e4mie, Rest ggf. mit Stop sch\u00fctzen")
+                return (f" \u00b7 Gewinnabsicherung: \u00fcber Fair Value (\u2248{_eur(fair)}) "
+                        f"\u2013 Teilverkauf jetzt, Rest mit Stop \u2248{_eur(price*0.92)}")
             half = price + (fair - price) * 0.5
-            return (f" \u00b7 Teilgewinn \u2248{_eur(half)}, Gewinnmitnahme Richtung "
-                    f"Fair Value \u2248{_eur(fair)}")
+            return (f" \u00b7 Gewinnabsicherung: Teilgewinn \u2248{_eur(half)}, "
+                    f"Rest Richtung Fair Value \u2248{_eur(fair)}")
         if price:
-            return (f" \u00b7 grobe Marken: Teilgewinn \u2248{_eur(price*1.08)}, "
-                    f"Gewinnmitnahme \u2248{_eur(price*1.15)}")
+            return (f" \u00b7 Gewinnabsicherung: Teilgewinn \u2248{_eur(price*1.08)}, "
+                    f"Stop \u2248{_eur(price*0.92)} (grobe Marken)")
         return ""
 
     if ret is None:

@@ -337,7 +337,7 @@ def load_eps_rev(t): return providers.get_eps_revision_light(t)
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_insider(t): return providers.get_insider_light(t)
 @st.cache_data(ttl=1200, show_spinner=False)
-def load_marketnews(section): return mn.get_section(section)
+def load_marketnews(section, free_only=False): return mn.get_section(section, free_only=free_only)
 @st.cache_data(ttl=86400, show_spinner=False)
 def tr_de(text): return tr.translate_text(text, "de")
 
@@ -860,10 +860,15 @@ def portfolio_candidates(analysis, held_tickers, held_names):
 PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
+_scroll_top_now = False
 if "pending_nav" in st.session_state:
     st.session_state["nav"] = st.session_state.pop("pending_nav")
+    _scroll_top_now = True                       # Link-Klick (auch Ticker/Peer) -> hoch
 st.session_state.setdefault("nav", "Start")
 nav = st.session_state["nav"]
+if st.session_state.get("_last_nav") != nav:     # Tab-Wechsel -> hoch
+    _scroll_top_now = True
+    st.session_state["_last_nav"] = nav
 
 # Mobile Top-Icon-Navigation: erscheint via CSS nur auf Handys, ganz oben, Rand
 # zu Rand. Buttons OHNE st.columns - das CSS-Grid ordnet sie in 6 gleiche Zellen
@@ -887,6 +892,16 @@ st.markdown(
     + ('  +finnhub' if config.FINNHUB_API_KEY else '')
     + ' &nbsp;\u00b7&nbsp; <span style="opacity:.7">Build 2026-07-06c</span></div></div>',
     unsafe_allow_html=True)
+
+if _scroll_top_now:
+    # Nach Navigation/Ticker-Klick zuverlaessig an den Seitenanfang springen.
+    components.html(
+        "<script>setTimeout(function(){try{"
+        "var d=window.parent.document;"
+        "var m=d.querySelector('section.main')||d.querySelector('[data-testid=\"stMain\"]');"
+        "if(m){m.scrollTo({top:0,left:0,behavior:'auto'});}"
+        "window.parent.scrollTo({top:0,behavior:'auto'});"
+        "}catch(e){}},60);</script>", height=0)
 
 with st.sidebar:
     st.markdown('<div class="sec-title">NAVIGATION</div>', unsafe_allow_html=True)
@@ -932,6 +947,31 @@ def resolve_preset(f):
 # START — Landing Page (Index-Charts, Hot Picks, Hot News)
 # ===========================================================================
 if nav == "Start":
+    # --- Was hat sich geaendert (aus dem Nacht-Job, falls vorhanden) ---
+    try:
+        _changes = store.get_changes()
+    except Exception:
+        _changes = []
+    if _changes:
+        st.markdown('<div class="sec-title">WAS HAT SICH GE\u00c4NDERT</div>',
+                    unsafe_allow_html=True)
+        _kind_icon = {"buyzone": "\U0001f3af", "composite": "\U0001f4ca",
+                      "upside_flip": "\U0001f504", "new_idea": "\u2728"}
+        for _c in _changes[:8]:
+            _ic = _kind_icon.get(_c.get("kind"), "\u2022")
+            _tk = esc(str(_c.get("ticker") or ""))
+            _txt = esc(str(_c.get("text") or ""))
+            _sec = esc(str(_c.get("section") or ""))
+            _when = fmt_ts(_c.get("ts"))
+            st.markdown(
+                f'<div class="news-box" style="padding:8px 12px">'
+                f'{_ic} <b class="tick">{_tk}</b> \u2013 {_txt}'
+                f'<div class="meta">{_sec}{(" \u00b7 " + _when) if _when else ""}</div></div>',
+                unsafe_allow_html=True)
+        st.caption("Automatisch \u00fcber Nacht berechnet \u00b7 kein Anlagerat. "
+                   "Ticker anklicken \u2013 oder in die Einzelanalyse eingeben.")
+        st.markdown("---")
+
     st.markdown('<div class="sec-title">M\u00c4RKTE HEUTE</div>', unsafe_allow_html=True)
     icols = st.columns(len(INDICES))
     for col, (nm, tk) in zip(icols, INDICES):
@@ -1123,6 +1163,20 @@ if nav == "Einzelanalyse":
                 st.markdown(f"### {f.get('name','')} `{ticker}`")
                 st.caption(f"{f.get('sector','?')} / {f.get('industry','?')}  \u00b7  "
                            f"{f.get('country','?')}  \u00b7  Heimatw\u00e4hrung: {cur}")
+                try:
+                    _wl = store.get_watchlist()
+                except Exception:
+                    _wl = []
+                _in_wl = ticker.upper() in _wl
+                if st.button(("\u2605 Auf Watchlist" if _in_wl else "\u2606 Zur Watchlist"),
+                             key="wl_toggle",
+                             help="Watchlist-Titel werden im Nacht-Job t\u00e4glich "
+                                  "vorberechnet und bei \u00c4nderungen gemeldet."):
+                    if _in_wl:
+                        store.watchlist_remove(ticker)
+                    else:
+                        store.watchlist_add(ticker)
+                    st.rerun()
                 bsum = (f.get("business_summary") or "").strip()
                 if bsum:
                     short = bsum[:380].rsplit(" ", 1)[0] + (" \u2026" if len(bsum) > 380 else "")
@@ -1542,7 +1596,7 @@ if nav == "News":
     st.caption("\U0001f4a1 Im Briefing-Modus zeigt jede Meldung einen m\u00f6glichen Markt-Effekt "
                "(\u2197/\u2198 Bereich + Beispiel-Ticker) \u2013 als Denkanstoss zum "
                "Weiterrecherchieren, ausdr\u00fccklich KEIN Anlagerat.")
-    nc = st.columns([1.3, 1, 1, 1.4])
+    nc = st.columns([1.3, 1, 1, 1.2])
     if nc[0].button("\U0001f4e1 News laden / aktualisieren", use_container_width=True):
         st.session_state["news_loaded"] = True
         load_marketnews.clear()
@@ -1554,10 +1608,15 @@ if nav == "News":
                               help="Schnell-Briefing: nur Themen-Chips + die 1\u20132 "
                                    "wichtigsten Kernpunkte je Meldung. F\u00fcr Details "
                                    "abschalten oder Headline anklicken.")
-    nc[3].caption("Briefing-Modus: informiert in Sekunden \u2013 Chips zeigen das Thema, "
-                  "Punkte die Kernaussage. Headline \u00f6ffnet den Artikel.")
+    free_only = nc[3].checkbox("\U0001f513 nur frei lesbar", value=False,
+                               help="Blendet Artikel bekannter Paywall-Quellen "
+                                    "(Bloomberg, WSJ, FT \u2026) aus. Reuters ist "
+                                    "\u201emetered\u201c (erste Artikel frei).")
+    st.caption("Quellen: CNBC, Reuters, Bloomberg, MarketWatch, Tagesschau u.a. \u00b7 "
+               "\U0001f513 frei lesbar \u00b7 \U0001f513\u26a0 Reuters metered \u00b7 "
+               "\U0001f512 Paywall m\u00f6glich. Headline \u00f6ffnet den Artikel.")
     if not tr.available():
-        nc[3].caption("F\u00fcr die \u00dcbersetzung: `pip install deep-translator`")
+        st.caption("F\u00fcr die \u00dcbersetzung: `pip install deep-translator`")
 
     if not st.session_state.get("news_loaded"):
         st.info("Auf \u201eNews laden\u201c klicken, um die aktuellen Markt-News zu holen.")
@@ -1568,7 +1627,7 @@ if nav == "News":
             with tabobj:
                 with st.spinner(f"Lade {section} ..."
                                 + (" + \u00fcbersetze ..." if (de_on and section != 'DAX') else "")):
-                    items = load_marketnews(section)
+                    items = load_marketnews(section, free_only=free_only)
                     translate_here = de_on and section != "DAX"
                 if not items:
                     st.markdown('<span class="na">Aktuell keine Meldungen abrufbar '
@@ -1582,6 +1641,11 @@ if nav == "News":
                     src = esc(n.get("source") or "")
                     date = fmt_ts(n.get("ts"))
                     flag = " \U0001f1e9\U0001f1ea" if translate_here else ""
+                    _acc = n.get("access", "frei")
+                    acc_badge = ({"frei": '<span style="color:#3FB950">\U0001f513 frei</span>',
+                                  "metered": '<span style="color:#FFB000">\U0001f513\u26a0 metered</span>',
+                                  "paywall": '<span style="color:#F85149">\U0001f512 Paywall</span>'}
+                                 .get(_acc, "")) + " \u00b7 "
                     if brief_on:
                         # Chips + 1-2 Kernpunkte (erst extrahieren, dann uebersetzen:
                         # spart Uebersetzungsaufrufe und haelt es schnell)
@@ -1609,7 +1673,7 @@ if nav == "News":
                             impl_html = ('<div class="sum" style="margin-top:5px">'
                                          '\U0001f4a1 M\u00f6glicher Effekt: '
                                          + " \u00b7 ".join(parts) + '</div>')
-                        meta = src + (f" \u00b7 {date}" if date else "") + flag
+                        meta = acc_badge + src + (f" \u00b7 {date}" if date else "") + flag
                         st.markdown(
                             f'<div class="news-box">{chip_html}'
                             f'<a href="{url}" target="_blank">{esc(head)}</a>'
@@ -1619,7 +1683,7 @@ if nav == "News":
                         head = tr_de(head_raw) if translate_here else head_raw
                         summ = tr_de(summ_raw) if translate_here else summ_raw
                         sum_html = f'<div class="sum">{esc(summ)}</div>' if summ else ""
-                        meta = src + (f" \u00b7 {date}" if date else "") + flag
+                        meta = acc_badge + src + (f" \u00b7 {date}" if date else "") + flag
                         st.markdown(
                             f'<div class="news-box"><a href="{url}" target="_blank">'
                             f'{esc(head)}</a>{sum_html}<div class="meta">{meta}</div></div>',
@@ -2228,9 +2292,26 @@ if nav == "Portfoliocheck":
                  "Wert \u20ac": round(r["value_eur"], 2)} for r in prows]
         vr_rows(data, key_prefix="pfh", score_cols=("Comp.",),
                 signed_cols=("Upside %", "Kauf %", "G/V \u20ac"))
-        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse. Anzahl, Sektor, "
-                   "Status & Playbook je Position stehen im G/V-Rechenweg bzw. in der "
-                   "Einzelanalyse.")
+        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
+
+        # Status je Position (wie frueher "Im Plus - halten" etc.) - inkl. konkreter
+        # Gewinnabsicherungs-Marke, wo sie zutrifft.
+        st.markdown('<div class="sec-title" style="margin-top:8px">STATUS JE POSITION</div>',
+                    unsafe_allow_html=True)
+        _scol = {"gr\u00fcn": "#3FB950", "gruen": "#3FB950", "gelb": "#FFB000",
+                 "rot": "#F85149", "neutral": "#6B7686"}
+        for r in prows:
+            lab, col, note = r.get("status", ("\u2014", "neutral", ""))
+            dot = _scol.get(col, "#6B7686")
+            line = (f'<span style="color:{dot};font-size:15px">\u25cf</span> '
+                    f'<b class="tick">{esc(r["ticker"])}</b> '
+                    f'<span style="color:{dot};font-weight:700">{esc(lab)}</span>')
+            if note:
+                line += f'<div class="sum" style="margin:1px 0 0 20px">{esc(note)}</div>'
+            st.markdown(f'<div class="rowline" style="padding:6px 0">{line}</div>',
+                        unsafe_allow_html=True)
+        st.caption("Absicherungs-Marken sind grobe Orientierung aus Kurs & Fair Value \u2013 "
+                   "kein Anlagerat.")
 
         # Transparenter Rechenweg: jede Zahl gegen den Broker pruefbar machen.
         pl_rows = [r for r in rows if r.get("shares") and r.get("ret_pct") is not None

@@ -23,6 +23,9 @@ FEEDS = {
         "https://feeds.marketwatch.com/marketwatch/topstories/",
         "https://www.cnbc.com/id/20910258/device/rss/rss.html",   # CNBC Markets
         "https://www.cnbc.com/id/100003114/device/rss/rss.html",  # CNBC Top News
+        "https://feeds.bloomberg.com/markets/news.rss",           # Bloomberg Markets
+        # Reuters ueber Google-News (Reuters eigene RSS sind groesstenteils eingestellt)
+        "https://news.google.com/rss/search?q=site:reuters.com+when:2d&hl=en-US&gl=US&ceid=US:en",
     ],
     "DAX": [
         "https://www.tagesschau.de/wirtschaft/index~rss2.xml",
@@ -38,12 +41,28 @@ FEEDS = {
         "https://www.investing.com/rss/news_25.rss",              # Stock Market News
         "https://feeds.marketwatch.com/marketwatch/marketpulse/",
         "https://www.cnbc.com/id/20910258/device/rss/rss.html",   # CNBC Markets
+        "https://feeds.bloomberg.com/technology/news.rss",        # Bloomberg Tech
+        "https://news.google.com/rss/search?q=site:reuters.com+business+when:2d&hl=en-US&gl=US&ceid=US:en",
     ],
     "Yahoo US": [
         "https://finance.yahoo.com/news/rssindex",
         "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US",
     ],
 }
+
+# Bekannte HART-paywalled Domains -> "Paywall moeglich". Nicht abschliessend,
+# aber deckt die wichtigsten Finanzquellen ab. Reuters ist "metered" (erste
+# Artikel frei) -> als eher frei behandelt, aber separat gekennzeichnet.
+_PAYWALLED = {
+    "bloomberg.com", "wsj.com", "ft.com", "nytimes.com", "economist.com",
+    "barrons.com", "seekingalpha.com", "investors.com", "theinformation.com",
+    "thetimes.co.uk", "nikkei.com", "asia.nikkei.com", "scmp.com",
+    "handelsblatt.com",
+}
+_METERED = {"reuters.com"}          # metered: meist lesbar, kann aber zumachen
+# Ueberwiegend frei lesbare Domains (nur zur Kennzeichnung)
+_FREE = {"cnbc.com", "marketwatch.com", "finanzen.net", "tagesschau.de",
+         "investing.com", "finance.yahoo.com", "yahoo.com"}
 
 _ATOM = "{http://www.w3.org/2005/Atom}"
 _CONTENT = "{http://purl.org/rss/1.0/modules/content/}encoded"
@@ -78,9 +97,24 @@ def _parse_date(s):
 
 def _domain(url):
     try:
-        return re.sub(r"^www\.", "", url.split("/")[2])
+        return re.sub(r"^www\.", "", url.split("/")[2]).lower()
     except Exception:
         return ""
+
+
+def _matches(domain, dset):
+    return any(domain == d or domain.endswith("." + d) for d in dset)
+
+
+def access_of(url, source_url=""):
+    """Klassifiziert die Lesbarkeit: 'frei', 'metered' oder 'paywall'.
+    Nutzt bevorzugt die echte Quell-Domain (source_url aus Google-News)."""
+    dom = _domain(source_url) or _domain(url)
+    if _matches(dom, _PAYWALLED):
+        return "paywall"
+    if _matches(dom, _METERED):
+        return "metered"
+    return "frei"                      # bekannt frei ODER unbekannt -> als frei behandeln
 
 
 def fetch_feed(url, limit=12):
@@ -102,33 +136,41 @@ def fetch_feed(url, limit=12):
         for it in items[:limit]:
             desc = it.findtext("description") or it.findtext(_CONTENT)
             srcel = it.find("source")
+            src_url = srcel.get("url") if srcel is not None else ""
+            link = (it.findtext("link") or "").strip()
             out.append({
                 "headline": (it.findtext("title") or "").strip(),
-                "url": (it.findtext("link") or "").strip(),
+                "url": link,
                 "source": (srcel.text if srcel is not None else None) or chan_title,
                 "ts": _parse_date(it.findtext("pubDate") or it.findtext("{http://purl.org/dc/elements/1.1/}date")),
                 "summary": _clean(desc),
+                "access": access_of(link, src_url),
             })
     else:  # Atom
         for e in root.findall(f".//{_ATOM}entry")[:limit]:
             le = e.find(f"{_ATOM}link")
+            href = le.get("href") if le is not None else ""
             out.append({
                 "headline": (e.findtext(f"{_ATOM}title") or "").strip(),
-                "url": le.get("href") if le is not None else "",
+                "url": href,
                 "source": chan_title,
                 "ts": _parse_date(e.findtext(f"{_ATOM}updated") or e.findtext(f"{_ATOM}published")),
                 "summary": _clean(e.findtext(f"{_ATOM}summary") or e.findtext(f"{_ATOM}content")),
+                "access": access_of(href),
             })
     return [x for x in out if x["headline"]]
 
 
-def get_section(section, limit=12):
-    """Meldungen einer Sektion: gemerged, dedupliziert, neueste zuerst."""
+def get_section(section, limit=12, free_only=False):
+    """Meldungen einer Sektion: gemerged, dedupliziert, neueste zuerst.
+    free_only=True blendet Artikel mit 'paywall'-Status aus."""
     items, seen = [], set()
     for url in FEEDS.get(section, []):
         for it in fetch_feed(url):
             key = it["headline"][:80].lower()
             if key in seen:
+                continue
+            if free_only and it.get("access") == "paywall":
                 continue
             seen.add(key)
             items.append(it)

@@ -98,3 +98,96 @@ def import_json(raw, merge: bool = True) -> int:
             n += 1
     _write(d)
     return n
+
+
+# ---------------------------------------------------------------------------
+# Watchlist + Aenderungs-Feed (fuer Nacht-Job "precompute" und Startseite).
+# Liegen in der Zusatz-Ablage (Google-Sheet A2) bzw. lokal in einer Aux-Datei.
+# ---------------------------------------------------------------------------
+AUX_PATH = os.path.join(os.path.expanduser("~"), ".value_radar_aux.json")
+
+
+def _load_aux() -> dict:
+    g = _sheet()
+    if g is not None:
+        try:
+            return g.load_aux() or {}
+        except Exception:
+            pass
+    try:
+        with open(AUX_PATH, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_aux(d: dict) -> bool:
+    g = _sheet()
+    if g is not None:
+        try:
+            if g.save_aux(d):
+                return True
+        except Exception:
+            pass
+    try:
+        with open(AUX_PATH, "w", encoding="utf-8") as fh:
+            json.dump(d, fh, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
+
+
+def get_watchlist() -> list:
+    wl = _load_aux().get("watchlist", [])
+    return wl if isinstance(wl, list) else []
+
+
+def set_watchlist(tickers: list) -> bool:
+    d = _load_aux()
+    seen, clean = set(), []
+    for t in tickers:
+        t = str(t or "").strip().upper()
+        if t and t not in seen:
+            seen.add(t)
+            clean.append(t)
+    d["watchlist"] = clean
+    return _save_aux(d)
+
+
+def watchlist_add(ticker: str) -> bool:
+    wl = get_watchlist()
+    t = str(ticker or "").strip().upper()
+    if t and t not in wl:
+        wl.append(t)
+    return set_watchlist(wl)
+
+
+def watchlist_remove(ticker: str) -> bool:
+    t = str(ticker or "").strip().upper()
+    return set_watchlist([x for x in get_watchlist() if x != t])
+
+
+def get_changes() -> list:
+    """Aenderungs-Feed (vom Nacht-Job erzeugt) fuer die Startseite."""
+    ch = _load_aux().get("changes", [])
+    return ch if isinstance(ch, list) else []
+
+
+def set_changes(items: list) -> bool:
+    d = _load_aux()
+    d["changes"] = items[:60]
+    return _save_aux(d)
+
+
+def get_snapshot() -> dict:
+    """Letzter Berechnungs-Stand (fuer den Tagesvergleich im Nacht-Job)."""
+    snap = _load_aux().get("snapshot", {})
+    return snap if isinstance(snap, dict) else {}
+
+
+def set_snapshot(snap: dict) -> bool:
+    d = _load_aux()
+    d["snapshot"] = snap
+    d["snapshot_ts"] = __import__("time").time()
+    return _save_aux(d)

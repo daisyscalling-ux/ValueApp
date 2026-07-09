@@ -15,27 +15,58 @@ und store.py nutzt automatisch den lokalen Datei-Speicher. Nichts crasht.
 """
 from __future__ import annotations
 import json
+import os
 
 _SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _WS = "unset"          # Cache: "unset" | None | worksheet-Objekt
 
 
+def _creds_and_id():
+    """Zugangsdaten + Sheet-ID beschaffen. Funktioniert BEIDES:
+    - in Streamlit ueber st.secrets
+    - standalone (Cron/GitHub-Actions) ueber Umgebungsvariablen:
+        GSHEET_ID  und  GCP_SERVICE_ACCOUNT (kompletter JSON-String)
+        oder GOOGLE_APPLICATION_CREDENTIALS (Pfad zur JSON-Datei)."""
+    creds_info, sheet_id = None, None
+    # 1) Streamlit-Secrets (App-Kontext)
+    try:
+        import streamlit as st
+        try:
+            creds_info = st.secrets.get("gcp_service_account")
+            sheet_id = st.secrets.get("GSHEET_ID")
+        except Exception:
+            pass
+    except Exception:
+        pass
+    # 2) Umgebungsvariablen (Standalone/Cron)
+    if not sheet_id:
+        sheet_id = os.getenv("GSHEET_ID")
+    if not creds_info:
+        raw = os.getenv("GCP_SERVICE_ACCOUNT")
+        if raw:
+            try:
+                creds_info = json.loads(raw)
+            except Exception:
+                creds_info = None
+    if not creds_info:
+        path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    creds_info = json.load(fh)
+            except Exception:
+                creds_info = None
+    return creds_info, sheet_id
+
+
 def _worksheet():
-    """Gibt das Worksheet zurueck oder None. Ergebnis wird prozessweit gecacht,
-    damit nicht bei jedem Rerun neu authentifiziert wird."""
+    """Gibt das Worksheet zurueck oder None. Prozessweit gecacht."""
     global _WS
     if _WS != "unset":
         return _WS
     _WS = None
     try:
-        import streamlit as st
-        creds_info = None
-        sheet_id = None
-        try:
-            creds_info = st.secrets.get("gcp_service_account")
-            sheet_id = st.secrets.get("GSHEET_ID")
-        except Exception:
-            return None
+        creds_info, sheet_id = _creds_and_id()
         if not creds_info or not sheet_id:
             return None
         import gspread
@@ -76,6 +107,33 @@ def save_all(d: dict) -> bool:
         return False
     try:
         ws.update_acell("A1", json.dumps(d, ensure_ascii=False))
+        return True
+    except Exception:
+        return False
+
+
+# --- Zusatz-Ablage (Watchlist, Snapshot, Aenderungs-Feed) in Zelle A2 ---------
+# Portfolios bleiben unveraendert in A1; alles Weitere liegt als EIN JSON in A2.
+def load_aux() -> dict:
+    ws = _worksheet()
+    if ws is None:
+        return {}
+    try:
+        raw = ws.acell("A2").value
+        if not raw:
+            return {}
+        d = json.loads(raw)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_aux(d: dict) -> bool:
+    ws = _worksheet()
+    if ws is None:
+        return False
+    try:
+        ws.update_acell("A2", json.dumps(d, ensure_ascii=False))
         return True
     except Exception:
         return False

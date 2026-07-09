@@ -31,6 +31,7 @@ METHOD_LABELS = {
     "fwd_pe": "Forward-Multiple (EPS n\u00e4chstes Jahr)",
     "fwd_composite": "Forward-Multiple 2 (KGV+EV/EBITDA-Schnitt)",
     "hist_pe": "Markt-Fair-Value (hist. Median-KGV)",
+    "fallback": "Konsens-/Median-Sch\u00e4tzung (Rueckfall)",
 }
 
 _SECTOR_PB = {
@@ -369,17 +370,52 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "analyst": analyst_target(fund),
     }
     weights = _WEIGHTS.get(preset, _WEIGHTS["quality"])
-    avail = {k: v for k, v in methods.items() if v and v > 0 and k in weights}
-    # Pro Aktie nur die 3 gewichtigsten (relevantesten) Methoden verwenden/zeigen
-    if len(avail) > 3:
-        top3 = sorted(avail, key=lambda k: weights[k], reverse=True)[:3]
-        avail = {k: avail[k] for k in top3}
+    price = fund.get("price")
 
-    # Pro Aktie nur die 3 wichtigsten (hoechstgewichteten) verfuegbaren Methoden
-    # nutzen \u2013 fuer Berechnung UND Anzeige. Analysten-Anker zaehlt als Methode.
-    if len(avail) > 3:
-        top3 = sorted(avail, key=lambda k: weights[k], reverse=True)[:3]
-        avail = {k: avail[k] for k in top3}
+    # -- Robuste Methodenauswahl (verhindert die >1000%-Divergenzen) ------------
+    # 1) Verfuegbare, positive Methoden im Playbook.
+    raw = {k: v for k, v in methods.items() if v and v > 0 and k in weights}
+
+    # 2) Plausibilitaets-Filter gegen den Kurs: Ein einzelner Fair Value, der
+    #    <0.25x oder >4x Kurs impliziert, stammt fast immer aus einer fuer diese
+    #    Aktie ungeeigneten Methode (neg. EBITDA, Blasen-KGV, DCF ohne FCF). Raus.
+    def _plausible(v):
+        return True if not price else (0.25 * price <= v <= 4.0 * price)
+    sane = {k: v for k, v in raw.items() if _plausible(v)}
+
+    # 3) Ausreisser gegen den Median der plausiblen Methoden entfernen: nur was
+    #    im Band [Median/2, Median*2] liegt, bildet den "Core". So kann eine
+    #    einzelne stark abweichende Methode das Ergebnis nicht mehr verzerren.
+    if len(sane) >= 3:
+        med0 = _median(list(sane.values()))
+        core = {k: v for k, v in sane.items()
+                if med0 and (med0 / 2.0) <= v <= (med0 * 2.0)}
+        if len(core) < 2:
+            core = dict(sane)
+    else:
+        core = dict(sane)
+
+    # 4) Analysten-Konsens als marktbasierten Anker IMMER einbeziehen (wenn
+    #    plausibel) - stabilisiert gerade schwer bewertbare Titel.
+    anl_raw = methods.get("analyst")
+    anl_ok = bool(anl_raw and anl_raw > 0 and _plausible(anl_raw))
+    if anl_ok:
+        core["analyst"] = anl_raw
+
+    # 5) Letzter Rueckfall, falls alles gefiltert wurde: Analystenziel, sonst
+    #    der (gegen den Kurs geklammerte) Median aller Rohwerte -> nie "kein Wert".
+    used_fallback = False
+    if not core:
+        fb = anl_raw if (anl_raw and anl_raw > 0) else _median(list(raw.values()))
+        if fb and price:
+            fb = max(min(fb, 2.0 * price), 0.5 * price)
+        if fb:
+            core = {"fallback": fb}
+            used_fallback = True
+
+    # 6) Anzeige: die (bis zu) 3 Methoden, die dem Ergebnis am naechsten liegen -
+    #    sie erklaeren den Fair Value und wirken konsistent (statt 3x nach Gewicht).
+    avail = dict(core)
 
     # Begruendung der Methodenwahl (pro Aktie): was wurde warum genutzt/uebersprungen
     profile_notes = []
@@ -403,27 +439,33 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     if "analyst" not in avail:
         profile_notes.append("kein Analysten-Konsensziel verf\u00fcgbar")
 
-    # Divergenz Modell vs. Analysten transparent machen
-    model_vals = [v for k, v in avail.items() if k != "analyst"]
+    # Divergenz Modell vs. Analysten transparent machen (Core ohne Analyst)
+    model_vals = [v for k, v in core.items() if k not in ("analyst", "fallback")]
     model_fv = _median(model_vals) if model_vals else None
-    anl = avail.get("analyst")
+    anl = core.get("analyst") or (anl_raw if anl_ok else None)
     divergence = (round((anl / model_fv - 1) * 100, 1)
                   if (anl and model_fv) else None)
 
     fv, capped, lo, hi, spread = None, False, None, None, None
-    if avail:
-        vals = list(avail.values())
+    if core:
+        vals = list(core.values())
         lo, hi = min(vals), max(vals)
         med = _median(vals)
         spread = round((hi - lo) / med * 100, 0) if med else None
-        wsum = sum(weights[k] for k in avail)
-        fv = sum(avail[k] * weights[k] for k in avail) / wsum if wsum else med
-        price = fund.get("price")
-        if fv and price:
+        # Gewichteter Schnitt der Core-Methoden (Playbook-Gewichte, renormalisiert;
+        # unbekannte Keys wie 'fallback' erhalten ein neutrales Gewicht).
+        wsum = sum(weights.get(k, 0.15) for k in core)
+        fv = (sum(core[k] * weights.get(k, 0.15) for k in core) / wsum) if wsum else med
+        if fv and price:                            # letzter Sicherheits-Deckel
             if fv > price * config.FAIR_VALUE_MAX_MULT:
                 fv, capped = price * config.FAIR_VALUE_MAX_MULT, True
             elif fv < price * config.FAIR_VALUE_MIN_MULT:
                 fv, capped = price * config.FAIR_VALUE_MIN_MULT, True
+
+    # Anzeige auf die 3 dem Ergebnis naechsten Methoden reduzieren (repraesentativ)
+    if fv and len(avail) > 3:
+        near = sorted(avail.items(), key=lambda kv: abs(kv[1] - fv))[:3]
+        avail = dict(near)
 
     mos = config.MARGIN_OF_SAFETY.get(preset, 0.20)
     entry = fv * (1 - mos) if fv else None
@@ -435,15 +477,28 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     price = fund.get("price")
     upside = ((fv / price - 1) * 100) if (fv and price) else None
 
-    # Verlaesslichkeit: gekappte, stark streuende oder duenn belegte Werte sind unsicher
-    n_methods = len(avail)
-    reliable = bool(fv) and (not capped) and n_methods >= 2 and (spread is None or spread <= 80)
-    if n_methods >= 3 and not capped and (spread or 0) <= 50:
-        confidence = "hoch"
-    elif n_methods >= 2 and not capped and (spread or 0) <= 80:
+    # Verlaesslichkeit auf Basis des bereinigten Core (Ausreisser sind schon raus,
+    # daher ist die Streuung aussagekraeftig). Ein plausibler Analysten-Anker hebt
+    # die Verlaesslichkeit auf mind. "mittel" - so erreichen deutlich mehr Titel
+    # eine belastbare Angabe statt "niedrig/kein Wert".
+    n_core = len([k for k in core if k != "fallback"])
+    has_anchor = "analyst" in core
+    sp = spread if spread is not None else 999
+    if used_fallback or n_core == 0:
+        confidence, reliable = "niedrig", False
+    elif n_core >= 3 and sp <= 35:
+        confidence, reliable = "hoch", True
+    elif n_core >= 2 and sp <= 60:
+        confidence, reliable = "mittel", True
+    elif n_core == 1 and has_anchor:               # nur Analysten-Anker -> brauchbar
+        confidence, reliable = "mittel", True
+    elif n_core >= 2 and sp <= 90:                 # noch vertretbare Streuung
+        confidence, reliable = "mittel", True
+    else:                                          # echte, grosse Uneinigkeit -> ehrlich
+        confidence, reliable = "niedrig", False
+    if capped and confidence == "hoch":
         confidence = "mittel"
-    else:
-        confidence = "niedrig"
+    n_methods = len(avail)
 
     return {
         "ticker": fund.get("ticker"),

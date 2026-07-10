@@ -2340,40 +2340,8 @@ if nav == "Portfoliocheck":
         else:
             st.session_state["pf_records"] = []
 
-    # --- Portfolio-Auswahl: laden / neu / loeschen ---
+    # (Auswahl/Laden/Löschen stehen jetzt UNTER der Analyse, direkt bei "bearbeiten".)
     saved = store.names()
-    sccol = st.columns([2, 1, 1], vertical_alignment="bottom")
-    if saved:
-        curname = st.session_state.get("pf_cur_name")
-        idx = saved.index(curname) if curname in saved else 0
-        pick = sccol[0].selectbox("Gespeichertes Portfolio", saved, index=idx)
-        if sccol[1].button("Laden", use_container_width=True):
-            _pf_load(pick)
-            st.rerun()
-        if sccol[2].button("L\u00f6schen", use_container_width=True):
-            st.session_state["pf_confirm_delete"] = pick
-            st.rerun()
-        # Zweistufige Bestaetigung: kein versehentliches Loeschen mehr.
-        if st.session_state.get("pf_confirm_delete") == pick:
-            st.warning(f"\u26a0\ufe0f Portfolio **\u201e{pick}\u201c** wirklich l\u00f6schen? "
-                       "Das kann nicht r\u00fcckg\u00e4ngig gemacht werden.")
-            ccol = st.columns(2)
-            if ccol[0].button("\U0001f5d1\ufe0f Ja, endg\u00fcltig l\u00f6schen",
-                              use_container_width=True, key="pf_del_yes"):
-                store.delete(pick)
-                st.session_state.pop("pf_confirm_delete", None)
-                _pf_new()
-                st.rerun()
-            if ccol[1].button("Abbrechen", use_container_width=True, key="pf_del_no"):
-                st.session_state.pop("pf_confirm_delete", None)
-                st.rerun()
-    else:
-        sccol[0].caption("Noch keine gespeicherten Portfolios \u2013 unten anlegen "
-                         "und speichern.")
-
-    if st.button("\u2795 Portfolio hinzuf\u00fcgen", use_container_width=True):
-        _pf_new()
-        st.rerun()
 
     # --- Backup / Wiederherstellung (reboot-fest, weil auf DEINEM Geraet) ---
     with st.expander("\U0001f5c4\ufe0f Backup / Wiederherstellen "
@@ -2638,6 +2606,37 @@ if nav == "Portfoliocheck":
             st.info("Aktuell keine \u00fcberzeugenden Erg\u00e4nzungen gefunden (verlangt Qualit\u00e4t "
                     "Score \u2265 55, belastbarer Fair Value und glaubhaftes Upside +8 bis +80 %). "
                     "Bewusst lieber nichts vorschlagen als \u00fcberteuerte Titel.")
+
+    # --- Portfolio wechseln / anlegen / loeschen (direkt unter der Tabelle) ---
+    st.markdown("---")
+    if saved:
+        wc = st.columns([2, 1], vertical_alignment="bottom")
+        curname = st.session_state.get("pf_cur_name")
+        idx = saved.index(curname) if curname in saved else 0
+        pick = wc[0].selectbox("Portfolio wechseln", saved, index=idx)
+        if pick != curname:                      # sofort laden, kein extra "Laden"-Button
+            _pf_load(pick)
+            st.rerun()
+        if wc[1].button("\U0001f5d1\ufe0f L\u00f6schen", use_container_width=True):
+            st.session_state["pf_confirm_delete"] = curname
+            st.rerun()
+        if st.session_state.get("pf_confirm_delete"):
+            _dn = st.session_state["pf_confirm_delete"]
+            st.warning(f"\u26a0\ufe0f Portfolio \u201e{_dn}\u201c wirklich l\u00f6schen? "
+                       "Kann nicht r\u00fcckg\u00e4ngig gemacht werden.")
+            dcc = st.columns(2)
+            if dcc[0].button("\U0001f5d1\ufe0f Ja, endg\u00fcltig l\u00f6schen",
+                             use_container_width=True, key="pf_del_yes"):
+                store.delete(_dn)
+                st.session_state.pop("pf_confirm_delete", None)
+                _pf_new()
+                st.rerun()
+            if dcc[1].button("Abbrechen", use_container_width=True, key="pf_del_no"):
+                st.session_state.pop("pf_confirm_delete", None)
+                st.rerun()
+    if st.button("\u2795 Portfolio hinzuf\u00fcgen", use_container_width=True):
+        _pf_new()
+        st.rerun()
 
     # --- Portfolio bearbeiten / anlegen: kompakter Tabellen-Editor, eingeklappt ---
     st.markdown("---")

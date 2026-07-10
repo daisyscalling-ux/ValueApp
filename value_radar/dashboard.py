@@ -114,7 +114,7 @@ div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus *
   div[class*="st-key-mnav_"]{display:block; min-width:0 !important;}
   div[data-testid="stVerticalBlock"]:has(> div[class*="st-key-mnav_"]),
   .st-key-mobilenav [data-testid="stVerticalBlock"]:has(div[class*="st-key-mnav_"]){
-    display:grid !important; grid-template-columns:repeat(6, 1fr) !important;
+    display:grid !important; grid-template-columns:repeat(7, 1fr) !important;
     gap:3px !important;
     margin-left:-12px !important; margin-right:-12px !important; margin-bottom:8px;
     background:rgba(10,14,20,.98);
@@ -428,6 +428,67 @@ def _svg_esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+def svg_index_chart(vals, times, base_val, color, height=132):
+    """Kompaktes Index-Chart mit 0-Linie (Vortagesschluss/Tagesstart als Referenz),
+    Zeit-Achse unten und Wert-Achse rechts. Fuellung gruen ueber / rot unter der
+    0-Linie. Fuer die 'Maerkte heute'-Kacheln (2 nebeneinander)."""
+    vals = [float(v) for v in vals if v is not None]
+    if len(vals) < 2:
+        return "<span class='na'>n/a</span>"
+    base = float(base_val) if base_val else vals[0]
+    W, H = 320, height
+    pad_l, pad_r, pad_t, pad_b = 4, 46, 8, 16
+    pw, ph = W - pad_l - pad_r, H - pad_t - pad_b
+    lo, hi = min(min(vals), base), max(max(vals), base)
+    rng = (hi - lo) or 1.0
+
+    def X(i):
+        return pad_l + i / (len(vals) - 1) * pw
+
+    def Y(v):
+        return pad_t + (1 - (v - lo) / rng) * ph
+
+    pts = [(X(i), Y(v)) for i, v in enumerate(vals)]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    y0 = Y(base)
+    # Flaeche zwischen Linie und 0-Linie
+    area = (f'{pad_l:.1f},{y0:.1f} ' + line + f' {X(len(vals)-1):.1f},{y0:.1f}')
+    up = vals[-1] >= base
+    fill = "rgba(63,185,80,.14)" if up else "rgba(248,81,73,.14)"
+    # Zeit-Labels (Anfang/Ende)
+    def _t(i):
+        try:
+            return times[i].strftime("%H:%M")
+        except Exception:
+            return ""
+    t0, t1 = _t(0), _t(-1)
+    # Wert-Labels (Hoch/Tief/0-Linie) rechts
+    def _fmt(v):
+        return f"{v:,.0f}".replace(",", ".")
+    return (
+        f'<svg viewBox="0 0 {W} {H}" width="100%" height="{H}" '
+        f'preserveAspectRatio="none" style="display:block">'
+        f'<polygon points="{area}" fill="{fill}" stroke="none"/>'
+        # 0-Linie (Referenz)
+        f'<line x1="{pad_l}" y1="{y0:.1f}" x2="{pad_l+pw}" y2="{y0:.1f}" '
+        f'stroke="#6B7686" stroke-width="1" stroke-dasharray="3,3" '
+        f'vector-effect="non-scaling-stroke"/>'
+        f'<polyline points="{line}" fill="none" stroke="{color}" '
+        f'stroke-width="1.8" vector-effect="non-scaling-stroke"/>'
+        # Wert-Achse (rechts): Hoch, 0-Linie, Tief
+        f'<text x="{pad_l+pw+3}" y="{pad_t+7:.1f}" fill="#8b95a3" '
+        f'font-size="9">{_fmt(hi)}</text>'
+        f'<text x="{pad_l+pw+3}" y="{y0+3:.1f}" fill="#9aa4b2" '
+        f'font-size="9">{_fmt(base)}</text>'
+        f'<text x="{pad_l+pw+3}" y="{pad_t+ph:.1f}" fill="#8b95a3" '
+        f'font-size="9">{_fmt(lo)}</text>'
+        # Zeit-Achse (unten): Start / Ende
+        f'<text x="{pad_l}" y="{H-4}" fill="#8b95a3" font-size="9">{t0}</text>'
+        f'<text x="{pad_l+pw}" y="{H-4}" fill="#8b95a3" font-size="9" '
+        f'text-anchor="end">{t1}</text>'
+        f'</svg>')
+
+
 def svg_sparkline(vals, color, height=44):
     vals = [float(v) for v in vals if v is not None]
     if len(vals) < 2:
@@ -622,7 +683,7 @@ def load_index(ticker):
         h = providers.get_price_history(ticker, period="5d", interval="60m")
     if h is None or h.empty:
         return None
-    return h[["Close"]].reset_index(drop=True)
+    return h[["Close"]].copy()          # DatetimeIndex fuer die Zeit-Achse behalten
 
 
 def opportunity_score(composite, upside, reliable):
@@ -804,6 +865,7 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
             "composite": comp, "upside": up_reliable,
             "price_eur": (p_now or 0) * fx, "live": live_used,
             "fair_value_eur": fv_reliable * fx if fv_reliable else None,
+            "entry_eur": (v.get("entry_price") * fx) if v.get("entry_price") else None,
             "radar": rscore, "playbook": ep,
             "ret_pct": ret_pct, "cost_eur": cost_eur, "gain_eur": gain_eur})
     return rows, invalid, resolved
@@ -888,9 +950,10 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
-PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck"]
+PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist", "Portfoliocheck"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-         "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
+         "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Portfoliocheck": "\U0001f4bc",
+         "News": "\U0001f4f0"}
 _scroll_top_now = False
 # Klick auf einen orangenen Ticker-Link (?open=TICKER) in einer vr_table:
 # in die Einzelanalyse springen. Der Parameter wird sofort wieder entfernt.
@@ -922,7 +985,8 @@ if st.session_state.get("_last_nav") != nav:     # Tab-Wechsel -> hoch
 # (robust gegen Streamlit-Versionswechsel). Icons statt Text: passt auf jedes Display.
 MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-              "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc"}
+              "Screener": "\U0001f50d", "Watchlist": "\u2b50",
+              "Portfoliocheck": "\U0001f4bc"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
@@ -994,6 +1058,31 @@ def resolve_preset(f):
 # START — Landing Page (Index-Charts, Hot Picks, Hot News)
 # ===========================================================================
 if nav == "Start":
+    # --- Watchlist-Alarm: Titel in Kaufzone (aus dem Nacht-Snapshot, ohne Netz) ---
+    try:
+        _wl = set(store.get_watchlist())
+        _snap = store.get_snapshot() if _wl else {}
+        _bz = []
+        for _t in _wl:
+            _s = _snap.get(_t) if isinstance(_snap, dict) else None
+            if _s and _s.get("entry") and _s.get("price") and _s["price"] <= _s["entry"]:
+                _bz.append((_t, _s.get("price"), _s.get("entry")))
+    except Exception:
+        _bz = []
+    if _bz:
+        st.markdown('<div class="sec-title">\u2b50 WATCHLIST-ALARM</div>',
+                    unsafe_allow_html=True)
+        for _t, _p, _e in _bz:
+            st.markdown(
+                f'<div class="news-box" style="border-color:#3FB950;padding:8px 12px">'
+                f'\U0001f3af <a href="?open={esc(_t)}" target="_self" class="tick" '
+                f'style="text-decoration:none">{esc(_t)}</a> in Kaufzone \u2013 '
+                f'Kurs \u2248{_p:.2f} \u2264 Einstieg \u2248{_e:.2f}'
+                f'<div class="meta">Watchlist \u00b7 Stand letzte Nacht-Berechnung</div></div>',
+                unsafe_allow_html=True)
+        st.caption("Orangenen Ticker anklicken \u2192 Einzelanalyse. Kein Anlagerat.")
+        st.markdown("---")
+
     # --- Was hat sich geaendert (aus dem Nacht-Job, falls vorhanden) ---
     try:
         _changes = store.get_changes()
@@ -1020,22 +1109,28 @@ if nav == "Start":
         st.markdown("---")
 
     st.markdown('<div class="sec-title">M\u00c4RKTE HEUTE</div>', unsafe_allow_html=True)
-    icols = st.columns(len(INDICES))
-    for col, (nm, tk) in zip(icols, INDICES):
-        h = load_index(tk)
-        with col:
-            if h is None or h.empty:
-                st.markdown(f'<div style="font-weight:700">{nm}</div>'
-                            '<span class="na">n/a</span>', unsafe_allow_html=True)
-                continue
-            b, last = float(h["Close"].iloc[0]), float(h["Close"].iloc[-1])
-            pct = (last / b - 1) * 100 if b else 0
-            hexc = "#3FB950" if pct >= 0 else "#F85149"
-            st.markdown(f'<div style="font-weight:700">{nm}</div>'
-                        f'<div style="color:{hexc};font-size:17px;font-weight:700">'
-                        f'{pct:+.2f} %</div>'
-                        + svg_sparkline(list(h["Close"]), hexc, height=44),
-                        unsafe_allow_html=True)
+    st.caption("Tagesverlauf je Index \u00b7 gestrichelte Linie = Startwert (0 %). "
+               "Rechts der Indexstand, unten die Uhrzeit.")
+    for row_start in range(0, len(INDICES), 2):          # zwei Kacheln pro Zeile
+        rcols = st.columns(2)
+        for col, (nm, tk) in zip(rcols, INDICES[row_start:row_start + 2]):
+            with col:
+                h = load_index(tk)
+                if h is None or h.empty:
+                    st.markdown(f'<div style="font-weight:700">{nm}</div>'
+                                '<span class="na">n/a</span>', unsafe_allow_html=True)
+                    continue
+                closes = list(h["Close"])
+                times = list(h.index)
+                b, last = float(closes[0]), float(closes[-1])
+                pct = (last / b - 1) * 100 if b else 0
+                hexc = "#3FB950" if pct >= 0 else "#F85149"
+                st.markdown(
+                    f'<div style="font-weight:700;font-size:14px">{nm}</div>'
+                    f'<div style="color:{hexc};font-size:16px;font-weight:700">'
+                    f'{pct:+.2f} %</div>'
+                    + svg_index_chart(closes, times, b, hexc, height=132),
+                    unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -2124,6 +2219,70 @@ if nav == "Screener":
         else:
             st.info("Kein Titel besteht alle Filter \u2013 Schwellen lockern oder "
                     "mehr Titel laden.")
+
+
+# ===========================================================================
+# WATCHLIST
+# ===========================================================================
+if nav == "Watchlist":
+    st.markdown('<div class="sec-title">WATCHLIST</div>', unsafe_allow_html=True)
+    st.caption("Beobachtete Titel \u2013 t\u00e4glich vom Nacht-Job \u00fcberwacht. Erreicht ein "
+               "Titel die Kaufzone (Kurs \u2264 Einstieg), erscheint das auf der Startseite. "
+               "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
+
+    wl = store.get_watchlist()
+    ac = st.columns([2, 1])
+    new_tk = ac[0].text_input("Ticker/Unternehmen hinzuf\u00fcgen", key="wl_add_input",
+                              placeholder="z.B. NVDA, SAP.DE, Palantir",
+                              label_visibility="collapsed")
+    if ac[1].button("\u2795 Hinzuf\u00fcgen", use_container_width=True):
+        raw = (new_tk or "").strip()
+        if raw:
+            tk = raw.upper()
+            f0 = load_fundamentals(tk)
+            if not f0.get("price"):              # Name -> Ticker aufloesen
+                mm = search_symbols(raw)
+                if mm:
+                    tk = mm[0]["symbol"].upper()
+            store.watchlist_add(tk)
+            st.session_state.pop("wl_add_input", None)
+            st.rerun()
+
+    if not wl:
+        st.info("Noch keine Titel auf der Watchlist. Oben hinzuf\u00fcgen \u2013 oder in der "
+                "Einzelanalyse den Button \u201e\u2606 Zur Watchlist\u201c nutzen.")
+    else:
+        with st.spinner("Watchlist wird berechnet (Mehrquellen-Abgleich) ..."):
+            wrows, _winv, _wres = build_portfolio_rows(
+                [{"ticker": t} for t in wl], inc_radar=False, inc_pl=False, live=True)
+        buyzone = [r for r in wrows
+                   if r.get("entry_eur") and r.get("price_eur")
+                   and r["price_eur"] <= r["entry_eur"]]
+        if buyzone:
+            st.success("\U0001f3af In Kaufzone: "
+                       + ", ".join(f"{r['ticker']} ({sym_eur(r['price_eur'])} "
+                                   f"\u2264 {sym_eur(r['entry_eur'])})" for r in buyzone))
+        data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:20],
+                 "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
+                 "Comp.": round(r["composite"]) if r.get("composite") is not None else None,
+                 "Fair \u20ac": round(r["fair_value_eur"], 2) if r.get("fair_value_eur") else None,
+                 "Einstieg \u20ac": round(r["entry_eur"], 2) if r.get("entry_eur") else None,
+                 "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
+                 "Zone": ("\U0001f7e2 Kauf" if (r.get("entry_eur") and r.get("price_eur")
+                          and r["price_eur"] <= r["entry_eur"]) else "\u2013")}
+                for r in wrows]
+        vr_table(data, score_cols=("Comp.",), signed_cols=("Upside %",),
+                 height=min(len(data) * 40 + 46, 520))
+        st.caption("\u201eEinstieg \u20ac\u201c = modellierter Kaufkurs mit Sicherheitsmarge. "
+                   "\U0001f7e2 = Kurs hat die Kaufzone erreicht. Kein Anlagerat.")
+
+        rc = st.columns([2, 1])
+        rem = rc[0].selectbox("Titel entfernen", ["\u2014"] + wl, key="wl_rem_sel",
+                              label_visibility="collapsed")
+        if rc[1].button("\U0001f5d1\ufe0f Entfernen", use_container_width=True):
+            if rem and rem != "\u2014":
+                store.watchlist_remove(rem)
+                st.rerun()
 
 
 # ===========================================================================

@@ -289,6 +289,34 @@ def load_history(t, p, i):
 def fx_to_eur(c): return providers.get_fx_to_eur(c)
 
 
+_DE_SUFFIX_PRIORITY = {
+    "DE": 1, "F": 2, "MU": 3, "SG": 4, "BE": 5, "HM": 6, "HA": 7, "DU": 8,
+    "VI": 9, "L": 10, "PA": 11, "AS": 12, "MI": 13, "SW": 14, "MC": 15,
+}
+
+
+def _collapse_listings(tickers):
+    """Doppel-Notierungen DERSELBEN Aktie (z.B. AMZ.DE + AMZ.F) auf eine reduzieren -
+    heimatnaehere Notierung gewinnt. Selbst-enthalten in dashboard.py, damit die
+    Entdopplung auch dann greift, wenn market_screener.py aelter ist."""
+    out, base_pos = [], {}
+    for t in tickers:
+        if "." not in t:
+            out.append(t)
+            continue
+        base, suf = t.split(".", 1)
+        pri = _DE_SUFFIX_PRIORITY.get(suf.upper(), 50)
+        if base not in base_pos:
+            base_pos[base] = len(out)
+            out.append(t)
+        else:
+            i = base_pos[base]
+            prev_suf = out[i].split(".", 1)[1] if "." in out[i] else ""
+            if pri < _DE_SUFFIX_PRIORITY.get(prev_suf.upper(), 50):
+                out[i] = t
+    return out
+
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_universe(regions, min_mcap_eur_bn, size):
     """Gecachtes Universum mit STABILEM Schluessel (EUR-Schwelle, kein Live-FX).
@@ -297,7 +325,8 @@ def load_universe(regions, min_mcap_eur_bn, size):
     (innerhalb der Cache-Dauer). Die EUR->USD-Umrechnung passiert intern und
     wird im Cache eingefroren, statt den Schluessel zu verwackeln."""
     usd = providers.get_fx_to_eur("USD") or 0.92
-    return ms.get_universe(list(regions), (min_mcap_eur_bn * 1e9) / usd, int(size))
+    tickers, src = ms.get_universe(list(regions), (min_mcap_eur_bn * 1e9) / usd, int(size))
+    return _collapse_listings(tickers), src
 
 
 def mcap_eur_bn(fd):
@@ -542,7 +571,9 @@ def vr_table(rows, score_cols=(), signed_cols=(), height=None):
             elif isinstance(v, int):
                 tds += f'<td class="{cls}">{v}</td>'
             elif c.lower() == "ticker":
-                tds += f'<td><b class="tick">{esc(str(v))}</b></td>'
+                _tk = esc(str(v))
+                tds += (f'<td><a href="?open={_tk}" target="_self" '
+                        f'class="tick" style="text-decoration:none">{_tk}</a></td>')
             else:
                 tds += f'<td>{esc(str(v))}</td>'
         body += f"<tr>{tds}</tr>"
@@ -861,6 +892,22 @@ PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Portfoliocheck"
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
 _scroll_top_now = False
+# Klick auf einen orangenen Ticker-Link (?open=TICKER) in einer vr_table:
+# in die Einzelanalyse springen. Der Parameter wird sofort wieder entfernt.
+try:
+    _open_tk = st.query_params.get("open")
+except Exception:
+    _open_tk = None
+if _open_tk:
+    st.session_state["pending_search"] = str(_open_tk).upper()
+    st.session_state["pending_nav"] = "Einzelanalyse"
+    try:
+        del st.query_params["open"]
+    except Exception:
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
 if "pending_nav" in st.session_state:
     st.session_state["nav"] = st.session_state.pop("pending_nav")
     _scroll_top_now = True                       # Link-Klick (auch Ticker/Peer) -> hoch
@@ -1840,7 +1887,7 @@ if nav == "Radar":
                    "Fundamental = Wachstum/Backlog \u00b7 Sch\u00e4tzungen = Analysten heben "
                    "Gewinnsch\u00e4tzungen \u00b7 Akkumulation = Insiderk\u00e4ufe/Volumen/Chart \u00b7 "
                    "Aktive Ebenen = Koinzidenz der 4 Ebenen.")
-        ticker_open_bar(list(df["Ticker"]), "radar")
+        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
 
         st.markdown('<div class="sec-title" style="margin-top:14px">'
                     'TOP-TREFFER \u00b7 KONKRETE TRIGGER</div>', unsafe_allow_html=True)
@@ -1988,9 +2035,8 @@ if nav == "Screener":
                          signed_cols=("Upside %", "12M %"), height=560)
                 st.caption("Alle Pflicht-Kriterien sind erf\u00fcllt; \u201eBonus-Fit\u201c zeigt die "
                            "zus\u00e4tzlich erf\u00fcllten weichen Kriterien. Kein Kaufsignal \u2013 "
-                           "jeden Treffer einzeln pr\u00fcfen.")
-                if "Ticker" in df.columns:
-                    ticker_open_bar(list(df["Ticker"]), "scr_preset")
+                           "jeden Treffer einzeln pr\u00fcfen. \U0001f449 Orangenen Ticker anklicken "
+                           "\u2192 Einzelanalyse.")
             else:
                 st.info("Keine Aktie erf\u00fcllt alle Pflicht-Kriterien \u2013 mehr Titel laden "
                         "oder Regionen erweitern.")
@@ -2073,9 +2119,8 @@ if nav == "Screener":
             vr_table(df.to_dict("records"), score_cols=("Score",),
                      signed_cols=("6M %", "1J %", "YTD %"), height=560)
             st.caption(f"{len(df)} Titel \u00b7 Playbook: {screen_preset} \u00b7 nach Score "
-                       "sortiert \u00b7 Analyst K/H/V = Kauf/Halten/Verkauf-Empfehlungen.")
-            if "Ticker" in df.columns:
-                ticker_open_bar(list(df["Ticker"]), "scr_custom")
+                       "sortiert \u00b7 Analyst K/H/V = Kauf/Halten/Verkauf-Empfehlungen. "
+                       "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
         else:
             st.info("Kein Titel besteht alle Filter \u2013 Schwellen lockern oder "
                     "mehr Titel laden.")
@@ -2147,9 +2192,22 @@ if nav == "Portfoliocheck":
             _pf_load(pick)
             st.rerun()
         if sccol[2].button("L\u00f6schen", use_container_width=True):
-            store.delete(pick)
-            _pf_new()
+            st.session_state["pf_confirm_delete"] = pick
             st.rerun()
+        # Zweistufige Bestaetigung: kein versehentliches Loeschen mehr.
+        if st.session_state.get("pf_confirm_delete") == pick:
+            st.warning(f"\u26a0\ufe0f Portfolio **\u201e{pick}\u201c** wirklich l\u00f6schen? "
+                       "Das kann nicht r\u00fcckg\u00e4ngig gemacht werden.")
+            ccol = st.columns(2)
+            if ccol[0].button("\U0001f5d1\ufe0f Ja, endg\u00fcltig l\u00f6schen",
+                              use_container_width=True, key="pf_del_yes"):
+                store.delete(pick)
+                st.session_state.pop("pf_confirm_delete", None)
+                _pf_new()
+                st.rerun()
+            if ccol[1].button("Abbrechen", use_container_width=True, key="pf_del_no"):
+                st.session_state.pop("pf_confirm_delete", None)
+                st.rerun()
     else:
         sccol[0].caption("Noch keine gespeicherten Portfolios \u2013 unten anlegen "
                          "und speichern.")
@@ -2337,8 +2395,9 @@ if nav == "Portfoliocheck":
                  **({"G/V \u20ac": round(r["gain_eur"], 2) if r.get("gain_eur") is not None else None}
                     if a["have_pl"] else {}),
                  "Wert \u20ac": round(r["value_eur"], 2)} for r in prows]
-        vr_rows(data, key_prefix="pfh", score_cols=("Comp.",),
-                signed_cols=("Upside %", "Kauf %", "G/V \u20ac"))
+        vr_table(data, score_cols=("Comp.",),
+                 signed_cols=("Upside %", "Kauf %", "G/V \u20ac"),
+                 height=min(len(data) * 40 + 46, 460))
         st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
 
         # Status je Position (wie frueher "Im Plus - halten" etc.) - inkl. konkreter
@@ -2445,8 +2504,9 @@ if nav == "Portfoliocheck":
                                  "Preis \u20ac": c["price_eur"],
                                  "F\u00fcllt L\u00fccke": "ja" if c.get("sector") in gaps else ""}
                                 for c in cands])
-            vr_rows(cdf.to_dict("records"), key_prefix="pfc",
-                    score_cols=("Chance", "Score"), signed_cols=("Upside %",))
+            vr_table(cdf.to_dict("records"),
+                     score_cols=("Chance", "Score"), signed_cols=("Upside %",),
+                     height=min(len(cdf) * 40 + 46, 460))
             st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse. "
                        "\u201eChance\u201c = Qualit\u00e4t + Bewertungs-Upside. Kein Anlagerat "
                        "\u2013 selbst pr\u00fcfen.")

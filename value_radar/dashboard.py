@@ -1046,21 +1046,8 @@ if nav == "Start":
     saved_all = store.load_all()
     if saved_all:
         st.markdown('<div class="sec-title">MEINE PORTFOLIOS</div>', unsafe_allow_html=True)
-        if not st.session_state.get("home_pf_loaded"):
-            st.caption(f"{len(saved_all)} gespeichert. \u201e\u00d6ffnen\u201c l\u00e4dt eins direkt in den "
-                       "Check \u2013 oder alle hier kurz \u00fcberblicken.")
-            oc = st.columns([1.2, 1])
-            if oc[0].button("\u25b6 \u00dcbersicht berechnen", use_container_width=True):
-                st.session_state["home_pf_loaded"] = True
-                st.rerun()
-            for pname in saved_all:
-                if st.button(f"\U0001f4c2 {pname} \u00f6ffnen", key=f"quickopen_{pname}",
-                             use_container_width=True):
-                    st.session_state["pf_pending_load"] = pname
-                    st.session_state["pending_nav"] = "Portfoliocheck"
-                    st.rerun()
-        else:
-            st.caption("Beim \u00d6ffnen neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
+        st.caption("Beim Start neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
+        if True:
             def render_saved_portfolio(pname, precs):
                 with st.spinner(f"Berechne {pname} ..."):
                     prows, _inv, _res = build_portfolio_rows(precs, inc_radar=False, inc_pl=True)
@@ -1260,16 +1247,20 @@ if nav == "Einzelanalyse":
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
 
-                # Frischer Katalysator / "Kurs vorausgeeilt"-Warnung (aus Kurshistorie)
-                try:
-                    _hc = load_history_full(ticker)
-                    _closes = ([float(x) for x in _hc["Close"].dropna().tolist()]
-                               if _hc is not None and not _hc.empty else [])
-                except Exception:
-                    _closes = []
-                _cf = radar.catalyst_flag(_closes, price=f.get("price"),
-                                          fair_value=v.get("fair_value"))
-                if _cf.get("trigger"):
+                # Frischer Katalysator / "Kurs vorausgeeilt"-Warnung (aus Kurshistorie).
+                # Defensiv: faellt eine aeltere radar.py ohne catalyst_flag auf, wird der
+                # Block einfach uebersprungen statt die Analyse abzubrechen.
+                _cf = None
+                if hasattr(radar, "catalyst_flag"):
+                    try:
+                        _hc = load_history_full(ticker)
+                        _closes = ([float(x) for x in _hc["Close"].dropna().tolist()]
+                                   if _hc is not None and not _hc.empty else [])
+                        _cf = radar.catalyst_flag(_closes, price=f.get("price"),
+                                                  fair_value=v.get("fair_value"))
+                    except Exception:
+                        _cf = None
+                if _cf and _cf.get("trigger"):
                     _up = (_cf.get("info") or {}).get("dir") == "up"
                     _col = "#3FB950" if _up else "#F85149"
                     st.markdown(

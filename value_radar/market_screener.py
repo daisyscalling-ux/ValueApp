@@ -132,4 +132,36 @@ def get_universe(regions: list[str], min_mcap_usd: float,
         if t and t not in seen:
             seen.add(t)
             uniq.append(t)
+    uniq = collapse_listings(uniq)          # Doppel-Notierungen VOR dem Laden entfernen
     return uniq[:size], src
+
+
+# Prioritaet der Boersen-Suffixe: heimatnahe/liquide Notierung bevorzugen.
+_SUFFIX_PRIORITY = {
+    "DE": 1, "F": 2, "MU": 3, "SG": 4, "BE": 5, "HM": 6, "HA": 7, "DU": 8,
+    "VI": 9, "L": 10, "PA": 11, "AS": 12, "MI": 13, "SW": 14, "MC": 15,
+    "BR": 16, "ST": 17, "HE": 18, "OL": 19, "CO": 20,
+}
+
+
+def collapse_listings(tickers):
+    """Mehrfach-Notierungen DERSELBEN Aktie auf eine reduzieren, BEVOR geladen wird.
+    Beispiel: AMZ.DE + AMZ.F (beide Frankfurt/Xetra) -> nur die heimatnaehere (.DE).
+    Ticker OHNE Boersen-Suffix (US-Heimatlisting) bleiben unveraendert; nur
+    suffixierte Varianten mit gleichem Basissymbol werden zusammengefasst."""
+    out, base_pos = [], {}
+    for t in tickers:
+        if "." not in t:
+            out.append(t)                    # US/ohne Suffix: unveraendert lassen
+            continue
+        base, suf = t.split(".", 1)
+        pri = _SUFFIX_PRIORITY.get(suf.upper(), 50)
+        if base not in base_pos:
+            base_pos[base] = len(out)
+            out.append(t)
+        else:
+            i = base_pos[base]
+            prev_suf = out[i].split(".", 1)[1] if "." in out[i] else ""
+            if pri < _SUFFIX_PRIORITY.get(prev_suf.upper(), 50):
+                out[i] = t                   # heimatnaehere Notierung gewinnt
+    return out

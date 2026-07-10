@@ -1021,75 +1021,97 @@ if nav == "Start":
                 signed_cols=("Upside %",))
         st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
 
-    htabs = st.tabs(["  \U0001f3af RADAR \u00b7 HOT PICKS  ",
-                     "  \U0001f50d SCREENER \u00b7 HOT PICKS  "])
-    with htabs[0]:
-        st.caption("Radar-Scan \u00fcber kuratierte Inflektions-/Breakout-Kandidaten "
-                   "(Semis, AI, Power, Defense, Uran, Biotech) \u2013 nach Radar-Score sortiert.")
-        with st.spinner("Lade Radar Hot Picks ... (erster Aufruf dauert l\u00e4nger)"):
-            hot_table(home_radar_picks(10), "radar", "home_radar_tbl")
-    with htabs[1]:
-        st.caption("Qualit\u00e4ts-Scan (weltweit) \u2013 nach \u201eChance\u201c sortiert "
-                   "(Qualit\u00e4t + verl\u00e4sslicher Bewertungs-Upside). Upside leer = Fair Value unsicher.")
-        with st.spinner("Lade Screener Hot Picks ..."):
-            hot_table(home_screener_picks(10), "screener", "home_screen_tbl")
+    if not st.session_state.get("home_hot_loaded"):
+        st.markdown('<div class="sec-title">HOT PICKS</div>', unsafe_allow_html=True)
+        if st.button("\u25b6 Radar- & Screener-Hot-Picks laden", use_container_width=True):
+            st.session_state["home_hot_loaded"] = True
+            st.rerun()
+        st.caption("Der Scan dauert beim ersten Mal etwas \u2013 wird separat geladen, "
+                   "damit die Startseite sofort reagiert.")
+    else:
+        htabs = st.tabs(["  \U0001f3af RADAR \u00b7 HOT PICKS  ",
+                         "  \U0001f50d SCREENER \u00b7 HOT PICKS  "])
+        with htabs[0]:
+            st.caption("Radar-Scan \u00fcber kuratierte Inflektions-/Breakout-Kandidaten "
+                       "(Semis, AI, Power, Defense, Uran, Biotech) \u2013 nach Radar-Score sortiert.")
+            with st.spinner("Lade Radar Hot Picks ... (erster Aufruf dauert l\u00e4nger)"):
+                hot_table(home_radar_picks(10), "radar", "home_radar_tbl")
+        with htabs[1]:
+            st.caption("Qualit\u00e4ts-Scan (weltweit) \u2013 nach \u201eChance\u201c sortiert "
+                       "(Qualit\u00e4t + verl\u00e4sslicher Bewertungs-Upside). Upside leer = Fair Value unsicher.")
+            with st.spinner("Lade Screener Hot Picks ..."):
+                hot_table(home_screener_picks(10), "screener", "home_screen_tbl")
 
     st.markdown("---")
     saved_all = store.load_all()
     if saved_all:
         st.markdown('<div class="sec-title">MEINE PORTFOLIOS</div>', unsafe_allow_html=True)
-        st.caption("Beim Start neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
-        def render_saved_portfolio(pname, precs):
-            with st.spinner(f"Berechne {pname} ..."):
-                prows, _inv, _res = build_portfolio_rows(precs, inc_radar=False, inc_pl=True)
-            if not prows:
-                st.markdown(
-                    f'<div class="news-box" style="font-size:12px"><b>{esc(pname)}</b>'
-                    '<div class="meta">keine g\u00fcltigen Positionen</div></div>',
-                    unsafe_allow_html=True)
-            else:
-                an = pf.analyze(prows)
-                pvcol = {"buy": "var(--green)", "watch": "var(--amber)",
-                         "drop": "var(--red)"}[an["vkey"]]
-                pl_line = ""
-                if an["have_pl"] and an["pl_return"] is not None:
-                    g = an["pl_gain"]
-                    gcol = "var(--green)" if g >= 0 else "var(--red)"
-                    pl_line = (f'<div style="font-size:11px;color:{gcol}">G/V: '
-                               f'{an["pl_return"]:+.2f} % \u00b7 '
-                               f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}</div>')
-                st.markdown(
-                    f'<div class="news-box" style="font-size:12px;line-height:1.45">'
-                    f'<b style="font-size:13px">{esc(pname)}</b> &nbsp;'
-                    f'<b style="color:{pvcol}">{an["label"]} \u00b7 {an["score"]:.2f}/100</b>'
-                    f'<div class="meta" style="font-size:11px">{sym_eur(an["total_eur"])} \u00b7 '
-                    f'{an["n"]} Pos. \u00b7 gr\u00f6\u00dfte {an["max_pos"]*100:.2f} % \u00b7 '
-                    f'{esc(an["max_sector_name"])} {an["max_sector"]*100:.2f} %</div>'
-                    f'{pl_line}</div>', unsafe_allow_html=True)
-                prsort = sorted(prows, key=lambda r: -r["weight"])
-                pdata = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:16],
-                          "Wert \u20ac": round(r["value_eur"], 2),
-                          "Gew. %": round(r["weight"] * 100, 2),
-                          "Sektor": (r["sector"] or "")[:12],
-                          "Comp.": round(r["composite"] or 0),
-                          "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
-                          **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
-                             if an["have_pl"] else {})}
-                         for r in prsort]
-                vr_table(pdata, score_cols=("Comp.",),
-                         signed_cols=("Upside %", "Kauf %"),
-                         height=min(len(pdata) * 38 + 46, 360))
-            if st.button("\u00d6ffnen", key=f"open_pf_{pname}", use_container_width=True):
-                st.session_state["pf_pending_load"] = pname
-                st.session_state["pending_nav"] = "Portfoliocheck"
+        if not st.session_state.get("home_pf_loaded"):
+            st.caption(f"{len(saved_all)} gespeichert. \u201e\u00d6ffnen\u201c l\u00e4dt eins direkt in den "
+                       "Check \u2013 oder alle hier kurz \u00fcberblicken.")
+            oc = st.columns([1.2, 1])
+            if oc[0].button("\u25b6 \u00dcbersicht berechnen", use_container_width=True):
+                st.session_state["home_pf_loaded"] = True
                 st.rerun()
+            for pname in saved_all:
+                if st.button(f"\U0001f4c2 {pname} \u00f6ffnen", key=f"quickopen_{pname}",
+                             use_container_width=True):
+                    st.session_state["pf_pending_load"] = pname
+                    st.session_state["pending_nav"] = "Portfoliocheck"
+                    st.rerun()
+        else:
+            st.caption("Beim \u00d6ffnen neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
+            def render_saved_portfolio(pname, precs):
+                with st.spinner(f"Berechne {pname} ..."):
+                    prows, _inv, _res = build_portfolio_rows(precs, inc_radar=False, inc_pl=True)
+                if not prows:
+                    st.markdown(
+                        f'<div class="news-box" style="font-size:12px"><b>{esc(pname)}</b>'
+                        '<div class="meta">keine g\u00fcltigen Positionen</div></div>',
+                        unsafe_allow_html=True)
+                else:
+                    an = pf.analyze(prows)
+                    pvcol = {"buy": "var(--green)", "watch": "var(--amber)",
+                             "drop": "var(--red)"}[an["vkey"]]
+                    pl_line = ""
+                    if an["have_pl"] and an["pl_return"] is not None:
+                        g = an["pl_gain"]
+                        gcol = "var(--green)" if g >= 0 else "var(--red)"
+                        pl_line = (f'<div style="font-size:11px;color:{gcol}">G/V: '
+                                   f'{an["pl_return"]:+.2f} % \u00b7 '
+                                   f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}</div>')
+                    st.markdown(
+                        f'<div class="news-box" style="font-size:12px;line-height:1.45">'
+                        f'<b style="font-size:13px">{esc(pname)}</b> &nbsp;'
+                        f'<b style="color:{pvcol}">{an["label"]} \u00b7 {an["score"]:.2f}/100</b>'
+                        f'<div class="meta" style="font-size:11px">{sym_eur(an["total_eur"])} \u00b7 '
+                        f'{an["n"]} Pos. \u00b7 gr\u00f6\u00dfte {an["max_pos"]*100:.2f} % \u00b7 '
+                        f'{esc(an["max_sector_name"])} {an["max_sector"]*100:.2f} %</div>'
+                        f'{pl_line}</div>', unsafe_allow_html=True)
+                    prsort = sorted(prows, key=lambda r: -r["weight"])
+                    pdata = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:16],
+                              "Wert \u20ac": round(r["value_eur"], 2),
+                              "Gew. %": round(r["weight"] * 100, 2),
+                              "Sektor": (r["sector"] or "")[:12],
+                              "Comp.": round(r["composite"] or 0),
+                              "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
+                              **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
+                                 if an["have_pl"] else {})}
+                             for r in prsort]
+                    vr_table(pdata, score_cols=("Comp.",),
+                             signed_cols=("Upside %", "Kauf %"),
+                             height=min(len(pdata) * 38 + 46, 360))
+                if st.button("\u00d6ffnen", key=f"open_pf_{pname}", use_container_width=True):
+                    st.session_state["pf_pending_load"] = pname
+                    st.session_state["pending_nav"] = "Portfoliocheck"
+                    st.rerun()
 
-        items = list(saved_all.items())
-        for i in range(0, len(items), 2):       # zwei Portfolios pro Zeile nebeneinander
-            cols = st.columns(2)
-            for j, (pname, precs) in enumerate(items[i:i + 2]):
-                with cols[j]:
-                    render_saved_portfolio(pname, precs)
+            items = list(saved_all.items())
+            for i in range(0, len(items), 2):       # zwei Portfolios pro Zeile nebeneinander
+                cols = st.columns(2)
+                for j, (pname, precs) in enumerate(items[i:i + 2]):
+                    with cols[j]:
+                        render_saved_portfolio(pname, precs)
 
     st.markdown("---")
     st.markdown('<div class="sec-title">HOT NEWS \u00b7 SCHNELL-BRIEFING</div>',
@@ -1238,6 +1260,27 @@ if nav == "Einzelanalyse":
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
 
+                # Frischer Katalysator / "Kurs vorausgeeilt"-Warnung (aus Kurshistorie)
+                try:
+                    _hc = load_history_full(ticker)
+                    _closes = ([float(x) for x in _hc["Close"].dropna().tolist()]
+                               if _hc is not None and not _hc.empty else [])
+                except Exception:
+                    _closes = []
+                _cf = radar.catalyst_flag(_closes, price=f.get("price"),
+                                          fair_value=v.get("fair_value"))
+                if _cf.get("trigger"):
+                    _up = (_cf.get("info") or {}).get("dir") == "up"
+                    _col = "#3FB950" if _up else "#F85149"
+                    st.markdown(
+                        f'<div class="news-box" style="border-color:{_col}">'
+                        f'<b style="color:{_col}">{esc(_cf["trigger"])}</b>'
+                        + (f'<div class="sum">\u26a0\ufe0f {esc(_cf["warning"])}</div>'
+                           if _cf.get("warning") else "")
+                        + '<div class="meta">Frisch erkannter Kurs-Katalysator \u2013 '
+                          'zum Beobachten und Lernen, kein Anlagerat.</div></div>',
+                        unsafe_allow_html=True)
+
                 st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
                 left, right = st.columns([1, 1])
 
@@ -1284,9 +1327,22 @@ if nav == "Einzelanalyse":
                                    "Dieser Titel wird nicht als Vorschlag verwendet.")
 
                 with right:
-                    st.markdown('<div class="sec-title">KURSVERLAUF</div>', unsafe_allow_html=True)
+                    st.markdown('<div id="vr-chart-anchor"></div>'
+                                '<div class="sec-title">KURSVERLAUF</div>',
+                                unsafe_allow_html=True)
                     tf = st.radio("Zeitraum", list(TIMEFRAMES.keys()), index=0,
-                                  horizontal=True, label_visibility="collapsed")
+                                  horizontal=True, label_visibility="collapsed",
+                                  key="ea_tf")
+                    # Beim Zeitraum-Wechsel NICHT ans Seitenende springen, sondern
+                    # sanft zum Chart zuruecksetzen.
+                    if st.session_state.get("_ea_tf_seen") not in (None, tf):
+                        components.html(
+                            "<script>setTimeout(function(){try{"
+                            "var d=window.parent.document;"
+                            "var e=d.getElementById('vr-chart-anchor');"
+                            "if(e){e.scrollIntoView({block:'start',behavior:'auto'});}"
+                            "}catch(e){}},60);</script>", height=0)
+                    st.session_state["_ea_tf_seen"] = tf
                     period, interval = TIMEFRAMES[tf]
                     hist = load_history(ticker, period, interval)
                     if hist is not None and not hist.empty:

@@ -22,6 +22,9 @@ import os
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "d8tpv3pr01qhcnk5g5k0d8tpv3pr01qhcnk5g5kg")
 FMP_API_KEY = os.getenv("FMP_API_KEY", "EdKxdl3ePaj2DxycU4AyhVWJwVfvl8F5")
 ALPHAVANTAGE_API_KEY = os.getenv("ALPHAVANTAGE_API_KEY", "")
+# Tiingo: saubere Kurse + verlaessliche Waehrung (EOD + US-Intraday via IEX).
+# Nur Preis/Waehrung - KEINE Fundamentaldaten (im Gratis-Tarif nicht enthalten).
+TIINGO_API_KEY = os.getenv("TIINGO_API_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Screening-Schwellen (branchenrelativ denken!). None = Kriterium aus.

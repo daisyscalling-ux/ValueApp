@@ -227,6 +227,71 @@ def _fmp_get(path, params=None):
     return None
 
 
+# ---------------------------------------------------------------------------
+# Tiingo: saubere Kurse + verlaessliche Waehrung. NUR Preis/Waehrung, keine
+# Fundamentaldaten (im Gratis-Tarif nicht enthalten). Best effort mit
+# Circuit-Breaker; faellt bei Fehlern lautlos auf die anderen Quellen zurueck.
+# ---------------------------------------------------------------------------
+_TIINGO_META = {}          # Ticker -> {"currency":..., "name":...} (prozess-Cache)
+
+
+def _tiingo_get(path, params=None):
+    key = getattr(config, "TIINGO_API_KEY", "")
+    if not key or requests is None or _is_down("tiingo"):
+        return None
+    p = dict(params or {})
+    p["token"] = key
+    for attempt in range(2):
+        try:
+            r = requests.get(f"https://api.tiingo.com/{path}", params=p,
+                             headers={"Content-Type": "application/json"}, timeout=10)
+            if r.status_code == 200:
+                return r.json()
+            if r.status_code in (429, 403):        # Limit/kein Zugriff -> pausieren
+                _trip("tiingo")
+                return None
+        except Exception:
+            pass
+        if attempt == 0:
+            time.sleep(0.4)
+    return None
+
+
+def _tiingo_meta(ticker):
+    """Metadaten (v.a. Waehrung) - einmal je Ticker, gecacht."""
+    if ticker in _TIINGO_META:
+        return _TIINGO_META[ticker]
+    meta = {}
+    d = _tiingo_get(f"tiingo/daily/{ticker}")
+    if isinstance(d, dict):
+        meta = {"currency": (d.get("priceCurrency") or d.get("currency") or "").upper() or None,
+                "name": d.get("name") or None}
+    _TIINGO_META[ticker] = meta
+    return meta
+
+
+def _tiingo_eod(ticker):
+    """Letzter EOD-Schlusskurs (adjustiert) + Waehrung, gepaart. (preis, waehrung)."""
+    d = _tiingo_get(f"tiingo/daily/{ticker}/prices")
+    px = None
+    if isinstance(d, list) and d:
+        row = d[-1]
+        px = _num(row.get("adjClose")) or _num(row.get("close"))
+    cur = (_tiingo_meta(ticker) or {}).get("currency")
+    return (px if px and px > 0 else None), cur
+
+
+def _tiingo_iex(ticker):
+    """US-Intraday (IEX) letzter/mid Preis. (preis, waehrung) - IEX ist USD."""
+    d = _tiingo_get(f"iex/{ticker}")
+    if isinstance(d, list) and d:
+        row = d[0]
+        px = _num(row.get("last")) or _num(row.get("tngoLast")) or _num(row.get("mid"))
+        if px and px > 0:
+            return px, "USD"
+    return None, None
+
+
 def _fmp_bundle(ticker):
     """Vierte Quelle (FMP) normalisiert. Margen/ROE/Wachstum kommen bereits als
     Ratio (0-1) -> direkt mit yfinance vergleichbar, ideal zum Gegenpruefen."""
@@ -291,17 +356,29 @@ def _fmp_bundle(ticker):
     return {k: v for k, v in B.items() if v is not None}
 
 
-def _merge_sources(ticker, A, B, C=None):
+def _merge_sources(ticker, A, B, C=None, use_tiingo=False):
     """Kombiniert mehrere normalisierte Quellen feldweise. Eindeutige Groessen
     (Kurs, Aktien, KGV/KBV) werden konsistent abgeleitet/gegengeprueft; bei
     skalengleichen Ratios (Margen/ROE/Wachstum) entscheidet der Median (Konsens)."""
     C = C or {}
     warn = []
-    price = _pick(A.get("price"), C.get("price"), B.get("price"))
-    # Handelswaehrung NUR aus yfinance/fmp. Finnhubs Profil liefert teils die
-    # Bilanz-/Reporting-Waehrung (z.B. HKD bei US-ADRs wie NTES) -> das wuerde die
-    # EUR-Umrechnung voellig verzerren (NTES 111 USD -> faelschlich ~16 EUR).
-    currency = A.get("currency") or C.get("currency") or "USD"
+    # Tiingo zuerst (nur deep): sauberer Kurs + verlaessliche Waehrung, GEPAART aus
+    # EINER Quelle -> behebt Waehrungs-Verwechslungen strukturell (z.B. NTES).
+    t_px = t_cur = None
+    if use_tiingo:
+        try:
+            t_px, t_cur = _tiingo_eod(ticker)
+        except Exception:
+            t_px = t_cur = None
+    if t_px:
+        price = t_px
+        currency = t_cur or A.get("currency") or C.get("currency") or "USD"
+    else:
+        price = _pick(A.get("price"), C.get("price"), B.get("price"))
+        # Handelswaehrung NUR aus yfinance/fmp. Finnhubs Profil liefert teils die
+        # Bilanz-/Reporting-Waehrung (z.B. HKD bei US-ADRs wie NTES) -> das wuerde die
+        # EUR-Umrechnung voellig verzerren (NTES 111 USD -> faelschlich ~16 EUR).
+        currency = A.get("currency") or C.get("currency") or "USD"
     refs = [(n, s.get("price")) for n, s in (("yfinance", A), ("finnhub", B), ("fmp", C))
             if s.get("price")]
     if len(refs) >= 2:
@@ -438,7 +515,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             pass
     B = _finnhub_bundle(ticker)
     C = _fmp_bundle(ticker) if deep else None
-    merged = _merge_sources(ticker, A, B, C)
+    merged = _merge_sources(ticker, A, B, C, use_tiingo=deep)
     if merged.get("price") is None:                 # Quelle: Stooq als letzte Absicherung
         sp = _stooq_last(ticker)
         if sp:
@@ -572,6 +649,14 @@ def get_intraday_quote(ticker: str, native_currency: str = "USD"):
     de_hours = 9 * 60 <= minutes < 15 * 60 + 30          # dt. Boerse offen, US noch zu
 
     def _us_price():
+        # Tiingo IEX zuerst (saubere US-Intraday-Referenz), dann yfinance, dann Finnhub.
+        if "." not in ticker:
+            try:
+                tpx, _ = _tiingo_iex(ticker)
+                if tpx and tpx > 0:
+                    return tpx
+            except Exception:
+                pass
         if yf is not None:
             try:                                          # inkl. Pre/Post-Market
                 h = yf.Ticker(ticker).history(period="1d", interval="1m", prepost=True)

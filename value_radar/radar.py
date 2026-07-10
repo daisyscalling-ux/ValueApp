@@ -118,6 +118,50 @@ def _setup(price, hi, lo, closes):
     return (0, None)
 
 
+def _catalyst(closes, events, spike):
+    """Erkennt einen FRISCHEN, scharfen Kursausbruch. Es zaehlen nur die juengsten
+    Sessions (1/3/5 Tage) -> die Frische ist eingebaut: eine Bewegung von letzter
+    Woche ist morgen aus dem Fenster. Bestaetigung durch News/Volumen verstaerkt.
+    Rueckgabe: (bonus_punkte, trigger|None, info|None)."""
+    cl = [c for c in (closes or []) if c and c > 0]
+    if len(cl) < 6:
+        return 0, None, None
+
+    def ret(n):
+        return (cl[-1] / cl[-1 - n] - 1) if (len(cl) > n and cl[-1 - n]) else None
+    moves = [x for x in (ret(1), ret(3), ret(5)) if x is not None]
+    if not moves:
+        return 0, None, None
+    up_move, dn_move = max(moves), min(moves)
+    confirmed = (events >= 14) or bool(spike and spike > 1.8)
+    if up_move >= 0.08:                       # frischer Ausbruch nach oben
+        base = 22 if up_move >= 0.20 else (14 if up_move >= 0.12 else 8)
+        pts = min(base + (12 if confirmed else 0), 34)
+        why = "mit News/Volumen" if confirmed else "ohne klaren Ausl\u00f6ser"
+        trig = f"\U0001f525 Frischer Ausbruch +{up_move*100:.0f}% ({why})"
+        return pts, trig, {"dir": "up", "move": round(up_move * 100, 1),
+                           "confirmed": bool(confirmed), "fresh": True}
+    if dn_move <= -0.12:                       # scharfer Absturz -> nur Sichtbarkeit
+        trig = f"\u26a0 Kurssturz {dn_move*100:.0f}% \u2013 Ereignis pr\u00fcfen"
+        return 0, trig, {"dir": "down", "move": round(dn_move * 100, 1),
+                         "confirmed": bool(confirmed), "fresh": True}
+    return 0, None, None
+
+
+def catalyst_flag(closes, price=None, fair_value=None):
+    """Leichtgewichtiger Katalysator-Hinweis aus der Kurshistorie allein (kein
+    News-Abruf noetig) - fuer Einzelanalyse/Portfolio. Enthaelt zusaetzlich die
+    Warnung, wenn der Kurs dem fairen Wert nach einem Ausbruch weit vorauseilt."""
+    _pts, trig, info = _catalyst(closes or [], 0, None)
+    warning = None
+    if info and info.get("dir") == "up" and price and fair_value and fair_value > 0:
+        if price > fair_value * 1.5:
+            warning = ("Kurs der Nachricht weit vorausgeeilt \u2013 liegt deutlich "
+                       f"\u00fcber dem fairen Wert. Euphorie? Beobachten, nicht "
+                       "hinterherlaufen.")
+    return {"trigger": trig, "info": info, "warning": warning}
+
+
 def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
     """Berechnet den Radar-Score + Ebenen + konkrete Trigger fuer eine Aktie."""
     triggers = []
@@ -197,8 +241,14 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
             triggers.append(trig)
     accumulation = min(ac, 100)
 
+    # ---- Frischer Katalysator (News/Ausbruch, zeitlich frisch) ----
+    cat_pts, cat_trig, cat_info = _catalyst(closes, events, spike)
+    if cat_trig:
+        triggers.insert(0, cat_trig)
+
     # ---- Gewichteter Score + Koinzidenz-Bonus ----
     score = (0.30 * events + 0.20 * fundamental + 0.25 * estimates + 0.25 * accumulation)
+    score = min(100, score + cat_pts)          # frischer Katalysator als Bonus obendrauf
     firing = sum(1 for x in (events, fundamental, estimates, accumulation) if x >= 40)
     if firing >= 4:
         score = min(100, score * 1.25); triggers.insert(0, "\u26a1 Mehrfach-Signal (4 Ebenen)")
@@ -213,5 +263,6 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
         "layers": {"events": round(events), "fundamental": round(fundamental),
                    "estimates": round(estimates), "accumulation": round(accumulation)},
         "firing": firing,
+        "catalyst": cat_info,
         "triggers": triggers,
     }

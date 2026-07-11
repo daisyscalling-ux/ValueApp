@@ -114,7 +114,7 @@ div[class*="st-key-mnav_"]{display:none;}          /* Desktop: Nav-Buttons aus *
   div[class*="st-key-mnav_"]{display:block; min-width:0 !important;}
   div[data-testid="stVerticalBlock"]:has(> div[class*="st-key-mnav_"]),
   .st-key-mobilenav [data-testid="stVerticalBlock"]:has(div[class*="st-key-mnav_"]){
-    display:grid !important; grid-template-columns:repeat(7, 1fr) !important;
+    display:grid !important; grid-template-columns:repeat(4, 1fr) !important;
     gap:3px !important;
     margin-left:-12px !important; margin-right:-12px !important; margin-bottom:8px;
     background:rgba(10,14,20,.98);
@@ -535,6 +535,21 @@ def svg_area_chart(pcts, color, height=250):
         f'{lo:.1f}%</text></svg>')
 
 
+def display_upside(v, price):
+    """EINE Upside-Logik fuer alle Oberflaechen (Einzelanalyse, Portfolio,
+    Watchlist): Modell-Upside, wenn der Fair Value nicht gekappt wurde; sonst
+    Analysten-Kursziel als Rueckfall. Verhindert, dass dieselbe Aktie je nach
+    Tab verschiedene Upsides zeigt."""
+    capped = v.get("fair_value_capped")
+    up_model = v.get("upside_pct")
+    atgt = v.get("analyst_target")
+    if up_model is not None and not capped:
+        return up_model
+    if atgt and price:
+        return round((atgt / price - 1) * 100, 1)
+    return up_model
+
+
 def _vr_cell(c, v, score_cols, signed_cols):
     """Zellen-HTML fuer vr_rows (Format wie vr_table)."""
     num = isinstance(v, (int, float)) and not isinstance(v, bool)
@@ -590,6 +605,76 @@ def vr_rows(rows, key_prefix, score_cols=(), signed_cols=(), name_col="Name",
                        + "".join(_vr_cell(c, r.get(c), score_cols, signed_cols)
                                  for c in other)
                        + '</div>', unsafe_allow_html=True)
+
+
+def _trend_metrics(closes):
+    """200-Tage-Linie, Momentum (20/60T) und annualisierte 30T-Volatilitaet.
+    Entscheidend fuer Shorts: NICHT gegen einen laufenden Aufwaertstrend shorten."""
+    import statistics
+    cl = [float(c) for c in (closes or []) if c and c > 0]
+    if len(cl) < 30:
+        return {}
+    price = cl[-1]
+    sma200 = sum(cl[-200:]) / min(len(cl), 200)
+    mom20 = (cl[-1] / cl[-21] - 1) if len(cl) > 21 else None
+    mom60 = (cl[-1] / cl[-61] - 1) if len(cl) > 61 else None
+    rets = [cl[i] / cl[i - 1] - 1 for i in range(max(1, len(cl) - 30), len(cl))]
+    vol = (statistics.pstdev(rets) * (252 ** 0.5) * 100) if len(rets) > 2 else None
+    return {"sma200": sma200, "above_sma": price > sma200,
+            "mom20": mom20, "mom60": mom60, "vol": vol}
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def longshort_candidates(regions, min_mcap_eur_bn, size):
+    """Einheitlicher Long/Short-Screen ueber ein begrenztes Universum (flache
+    Datentiefe, um API-Limits zu schonen). Rueckgabe: (longs, shorts).
+
+    LONG  = Qualitaet hoch + klarer Bewertungs-Upside + kein Absturz-Momentum.
+    SHORT = deutlich ueberbewertet + schwaechere Qualitaet + KEIN starker
+            Aufwaertstrend (sonst Squeeze-Gefahr). Volatilitaet = nur Kontext.
+    """
+    tickers, _src = load_universe(regions, min_mcap_eur_bn, size)
+    longs, shorts = [], []
+    for t in tickers:
+        f = load_fundamentals(t)
+        price = f.get("price")
+        if not price:
+            continue
+        ep = valuation.classify_playbook(f)
+        s = scoring.score_stock(f, None, preset=ep)
+        comp = s.get("composite")
+        v = valuation.fair_value(f, None, ep)
+        up = display_upside(v, price)
+        if comp is None or up is None:
+            continue
+        hist = load_history_full(t)
+        tm = _trend_metrics(list(hist["Close"])) if (hist is not None and not hist.empty) else {}
+        above = tm.get("above_sma")
+        mom20, mom60, vol = tm.get("mom20"), tm.get("mom60"), tm.get("vol")
+        fx = fx_to_eur(f.get("currency", "USD")) or 1.0
+        trend = ("\u2191 \u00fcber 200T" if above else "\u2193 unter 200T") if above is not None else "\u2014"
+        base = {"Ticker": t, "Name": (f.get("name") or "")[:18],
+                "Kurs \u20ac": round(price * fx, 2), "Comp.": round(comp),
+                "Upside %": round(up, 1),
+                "Vola %": round(vol) if vol else None, "Trend": trend}
+
+        # LONG: Qualitaet + Bewertungsabstand, nicht im freien Fall
+        if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
+            lscore = comp * 0.6 + min(up, 60) * 0.5 + (6 if above else 0)
+            longs.append({**base, "Chance": round(lscore)})
+
+        # SHORT: ueberbewertet + schwaecher + kein starker Aufwaertstrend
+        if up <= -20 and comp <= 52:
+            strong_uptrend = bool(above and (mom60 or 0) > 0.15)
+            rolling_over = (mom20 or 0) < 0
+            if not strong_uptrend and (not above or rolling_over):
+                sscore = (-up) * 0.5 + (60 - comp) * 0.4 \
+                    + (10 if rolling_over else 0) - (15 if above else 0)
+                shorts.append({**base, "Risiko-Fit": round(sscore)})
+
+    longs.sort(key=lambda r: -r["Chance"])
+    shorts.sort(key=lambda r: -r["Risiko-Fit"])
+    return longs[:15], shorts[:15]
 
 
 def vr_table(rows, score_cols=(), signed_cols=(), height=None):
@@ -809,19 +894,8 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
         ep = valuation.classify_playbook(f)
         comp = scoring.score_stock(f, None, preset=ep)["composite"]
         v = valuation.fair_value(f, None, ep)
-        # Upside: Modell-Upside, wenn nicht gekappt. Sonst als Rueckfall das
-        # Analysten-Kursziel (deckt Titel wie NetEase ab, wo das Modell kappt
-        # oder Daten fehlen). So bleibt fast immer ein sinnvoller Wert stehen.
         capped = v.get("fair_value_capped")
-        up_model = v.get("upside_pct")
-        atgt = v.get("analyst_target")
-        base_price = f.get("price")
-        if up_model is not None and not capped:
-            up_reliable = up_model
-        elif atgt and base_price:
-            up_reliable = round((atgt / base_price - 1) * 100, 1)
-        else:
-            up_reliable = up_model            # ggf. gekappt, aber besser als leer
+        up_reliable = display_upside(v, f.get("price"))   # EINE Logik ueberall
         fv_reliable = v.get("fair_value") if not capped else None
         rscore = None
         if inc_radar:
@@ -950,10 +1024,11 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
-PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist", "Portfoliocheck"]
+PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist",
+         "Long/Short", "Portfoliocheck"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-         "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Portfoliocheck": "\U0001f4bc",
-         "News": "\U0001f4f0"}
+         "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
+         "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0"}
 _scroll_top_now = False
 # Klick auf einen orangenen Ticker-Link (?open=TICKER) in einer vr_table:
 # in die Einzelanalyse springen. Der Parameter wird sofort wieder entfernt.
@@ -986,7 +1061,7 @@ if st.session_state.get("_last_nav") != nav:     # Tab-Wechsel -> hoch
 MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
               "Screener": "\U0001f50d", "Watchlist": "\u2b50",
-              "Portfoliocheck": "\U0001f4bc"}
+              "Long/Short": "\u2696\ufe0f", "Portfoliocheck": "\U0001f4bc"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
@@ -1058,6 +1133,21 @@ def resolve_preset(f):
 # START — Landing Page (Index-Charts, Hot Picks, Hot News)
 # ===========================================================================
 if nav == "Start":
+    # --- KI-Nacht-Briefing (Claude), falls vorhanden ---
+    try:
+        _brief = store.get_briefing()
+    except Exception:
+        _brief = ""
+    if _brief:
+        st.markdown('<div class="sec-title">\U0001f9e0 KI-BRIEFING</div>',
+                    unsafe_allow_html=True)
+        st.markdown(
+            '<div class="news-box" style="border-left:3px solid var(--amber)">'
+            + esc(_brief).replace("\n", "<br>")
+            + '<div class="meta">Automatisch \u00fcber Nacht von Claude erstellt \u00b7 '
+              'kein Anlagerat</div></div>', unsafe_allow_html=True)
+        st.markdown("---")
+
     # --- Watchlist-Alarm: Titel in Kaufzone (aus dem Nacht-Snapshot, ohne Netz) ---
     try:
         _wl = set(store.get_watchlist())
@@ -1366,7 +1456,7 @@ if nav == "Einzelanalyse":
                 card(c[1], "Composite Score", f"{comp:.0f}",
                      "Value-Trap!" if s["value_trap"] else "/ 100", score_color(comp))
                 card(c[2], "Kurs", m(v["price"]), "aktuell")
-                up = v["upside_pct"]
+                up = display_upside(v, f.get("price"))   # identisch zum Portfolio
                 card(c[3], "Fair Value", m(v["fair_value"]),
                      f"Upside {de(up,2)}%" if up is not None else "\u2014",
                      "var(--green)" if (up or 0) > 0 else "var(--red)")
@@ -2283,6 +2373,75 @@ if nav == "Watchlist":
             if rem and rem != "\u2014":
                 store.watchlist_remove(rem)
                 st.rerun()
+
+
+# ===========================================================================
+# LONG / SHORT-RADAR (experimentell)
+# ===========================================================================
+if nav == "Long/Short":
+    st.markdown('<div class="sec-title">\u2696\ufe0f LONG / SHORT-RADAR</div>',
+                unsafe_allow_html=True)
+    st.caption("Einheitlicher Screen nach beiden Richtungen. LONG = Qualit\u00e4t + "
+               "Bewertungs-Upside. SHORT = deutlich \u00fcberbewertet + schw\u00e4chere "
+               "Qualit\u00e4t + KEIN starker Aufw\u00e4rtstrend. Volatilit\u00e4t = nur Kontext. "
+               "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
+    st.warning("\u26a0\ufe0f Experimentell & ausdr\u00fccklich kein Anlagerat. Short-Positionen "
+               "haben theoretisch unbegrenztes Verlustrisiko (Squeeze). \u201eNur teuer\u201c "
+               "ist kein Short-Grund \u2013 der Trendfilter blendet laufende Aufw\u00e4rtstrends "
+               "bewusst aus, aber pr\u00fcfe jeden Fall selbst.")
+
+    lc = st.columns([1.4, 1, 1])
+    region_choice = lc[0].selectbox(
+        "Markt", ["USA + Europa", "Nur USA", "Nur Europa", "Breit (inkl. Asien)"],
+        key="ls_region")
+    depth = lc[1].select_slider("Tiefe", ["schnell", "mittel", "gr\u00fcndlich"],
+                                value="mittel", key="ls_depth")
+    _REG = {"USA + Europa": ["us", "de", "fr", "gb", "nl", "ch"],
+            "Nur USA": ["us"], "Nur Europa": ["de", "fr", "gb", "nl", "ch", "it", "es"],
+            "Breit (inkl. Asien)": ["us", "de", "fr", "gb", "nl", "ch", "jp", "hk"]}
+    _SIZE = {"schnell": 60, "mittel": 100, "gr\u00fcndlich": 160}
+
+    if lc[2].button("\U0001f50d Scan starten", use_container_width=True):
+        st.session_state["ls_run"] = True
+
+    if st.session_state.get("ls_run"):
+        with st.spinner("Scanne Universum (Kennzahlen + Trend) \u2013 der erste Lauf "
+                        "dauert etwas ..."):
+            longs, shorts = longshort_candidates(
+                tuple(_REG[region_choice]), 5.0, _SIZE[depth])
+
+        st.markdown('<div class="sec-title" style="color:#3FB950">\U0001f7e2 LONG-KANDIDATEN'
+                    '</div>', unsafe_allow_html=True)
+        if longs:
+            vr_table([{k: v for k, v in r.items() if k != "Vola %"} for r in longs],
+                     score_cols=("Comp.", "Chance"), signed_cols=("Upside %",),
+                     height=min(len(longs) * 40 + 46, 520))
+            st.caption("Sortiert nach \u201eChance\u201c (Qualit\u00e4t + Bewertungs-Upside). "
+                       "\u2191 \u00fcber 200T = Aufw\u00e4rtstrend best\u00e4tigt die Idee.")
+        else:
+            st.info("Keine \u00fcberzeugenden Long-Kandidaten in diesem Universum "
+                    "(verlangt Composite \u2265 58 und Upside \u2265 +10 %).")
+
+        st.markdown('<div class="sec-title" style="color:#F85149;margin-top:14px">'
+                    '\U0001f534 SHORT-KANDIDATEN \u00b7 mit Vorsicht</div>',
+                    unsafe_allow_html=True)
+        if shorts:
+            vr_table(shorts, score_cols=("Comp.", "Risiko-Fit"),
+                     signed_cols=("Upside %",),
+                     height=min(len(shorts) * 40 + 46, 520))
+            st.caption("Nur Titel, die \u00fcberbewertet UND nicht in starkem Aufw\u00e4rtstrend "
+                       "sind. \u2193 unter 200T oder abdrehendes Momentum st\u00fctzt die Short-These. "
+                       "Hohe \u201eVola %\u201c = gr\u00f6\u00dferes Squeeze-Risiko.")
+        else:
+            st.info("Aktuell keine vertretbaren Short-Kandidaten \u2013 entweder nichts stark "
+                    "genug \u00fcberbewertet, oder die \u00dcberbewerteten laufen noch im "
+                    "Aufw\u00e4rtstrend (bewusst ausgeblendet).")
+        st.caption("Flache Datentiefe (API-schonend) \u2013 jeden Treffer vor einer "
+                   "Entscheidung in der Einzelanalyse mit tiefen Daten gegenpr\u00fcfen.")
+    else:
+        st.info("\u201eScan starten\u201c dr\u00fccken. Der Scan pr\u00fcft je Titel Kennzahlen, "
+                "Bewertung und Kurstrend \u2013 er l\u00e4uft separat, damit der Tab sofort "
+                "reagiert.")
 
 
 # ===========================================================================

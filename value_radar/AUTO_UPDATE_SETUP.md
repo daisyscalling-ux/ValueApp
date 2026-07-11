@@ -28,7 +28,6 @@ Lege diese Secrets an:
 | `GCP_SERVICE_ACCOUNT` | der **komplette Inhalt** der Service-Account-JSON-Datei (einfach reinkopieren) |
 | `FINNHUB_API_KEY` | dein Finnhub-Key |
 | `FMP_API_KEY` | dein FMP-Key |
-| `TIINGO_API_KEY` | optional: dein Tiingo-Key (sauberere Kurse/Währung; nur Preis, keine Fundamentaldaten) |
 | `SMTP_HOST` | z. B. `smtp.gmail.com` |
 | `SMTP_PORT` | `587` (STARTTLS) oder `465` (SSL) |
 | `SMTP_USER` | deine Absender-E-Mail |

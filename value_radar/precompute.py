@@ -63,11 +63,13 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
     s = scoring.score_stock(f, None, preset=preset)
     comp = s.get("composite")
     v = valuation.fair_value(f, None, preset)
+    # EXAKT dieselbe Upside-Logik wie in der App (display_upside):
+    # Modell-Upside wenn nicht gekappt, sonst Analysten-Ziel als Rueckfall.
     up = v.get("upside_pct")
     if v.get("fair_value_capped"):
-        up = None
-    if up is None and v.get("analyst_target") and f.get("price"):
-        up = round((v["analyst_target"] / f["price"] - 1) * 100, 1)
+        if v.get("analyst_target") and f.get("price"):
+            up = round((v["analyst_target"] / f["price"] - 1) * 100, 1)
+        # sonst: gekappter Modellwert bleibt stehen (wie App)
     analyst = None
     if deep:
         try:
@@ -254,12 +256,39 @@ def run():
     store.set_changes(feed[:60])
     print(f"{len(changes)} neue Aenderung(en) erkannt.")
 
+    # 5b) KI-Briefing (ein Claude-Aufruf; erklaert News + neue Screener/Radar-Titel).
+    #     Defensiv: ohne Key / bei Fehler bleibt briefing = None.
+    briefing_text = None
+    try:
+        import ai_briefing
+        news_items = []
+        try:
+            import marketnews
+            for sec in ("US-Markt", "Aktien-News"):
+                news_items += marketnews.get_section(sec, limit=6)
+        except Exception:
+            news_items = []
+        briefing_text = ai_briefing.generate(
+            changes, news_items, holdings, watch, scr, rad)
+        if briefing_text:
+            store.set_briefing(briefing_text)
+            print("[precompute] KI-Briefing erzeugt.")
+    except Exception as e:
+        print(f"[precompute] KI-Briefing uebersprungen: {e}")
+
+    # 5c) Fortlaufende Hedgefonds-Papier-Portfolios pruefen/anpassen (2x taeglich)
+    try:
+        import hedgefund
+        hedgefund.run_all()
+    except Exception as e:
+        print(f"[precompute] Hedgefonds-Update uebersprungen: {e}")
+
     # 6) E-Mail
-    _send_email(changes, holdings, watch, scr, rad, started)
+    _send_email(changes, holdings, watch, scr, rad, started, briefing_text)
     print("=== precompute fertig ===")
 
 
-def _send_email(changes, holdings, watch, scr, rad, started):
+def _send_email(changes, holdings, watch, scr, rad, started, briefing_text=None):
     subj = (f"Value Radar \u2013 {len(changes)} \u00c4nderung(en) "
             f"({started:%d.%m.%Y})")
     if not changes:
@@ -290,10 +319,21 @@ def _send_email(changes, holdings, watch, scr, rad, started):
             ch_html += f"<h3>\u0394 {sec}</h3><ul>" + "".join(
                 f"<li>{c['text']}</li>" for c in lst) + "</ul>"
 
+    briefing_html = ""
+    if briefing_text:
+        _safe = (briefing_text.replace("&", "&amp;").replace("<", "&lt;")
+                 .replace(">", "&gt;").replace("\n", "<br>"))
+        briefing_html = (
+            "<div style='background:#f6f8fa;border-left:4px solid #FFB000;"
+            "padding:12px 16px;margin:8px 0;border-radius:4px'>"
+            "<h3 style='margin:0 0 8px 0'>\U0001f9e0 KI-Briefing (Claude)</h3>"
+            f"<div style='font-size:14px;line-height:1.5'>{_safe}</div></div>")
+
     html = (
         f"<div style='font-family:Arial,sans-serif;color:#111'>"
         f"<h2>Value Radar \u2013 T\u00e4gliches Update</h2>"
         f"<p style='color:#666'>Stand {started:%d.%m.%Y %H:%M} (dt. Zeit)</p>"
+        f"{briefing_html}"
         f"{ch_html}"
         f"{_rows_html('Portfolio', list(holdings.values()))}"
         f"{_rows_html('Watchlist', list(watch.values()))}"

@@ -98,9 +98,10 @@ def analyze(rows: list) -> dict:
     """rows: je Position dict mit ticker, name, value_eur, sector, country,
     composite, upside, price_eur, fair_value_eur, radar (optional), playbook,
     optional ret_pct/gain_eur/cost_eur (Gewinn/Verlust seit Kauf)."""
-    total = sum(r["value_eur"] for r in rows) or 1.0
+    total = sum(r["value_eur"] for r in rows)
+    denom = total or 1.0                    # Division-Schutz, Anzeige bleibt echt
     for r in rows:
-        r["weight"] = r["value_eur"] / total
+        r["weight"] = r["value_eur"] / denom
         r["status"] = _position_status(r)
 
     weights = sorted((r["weight"] for r in rows), reverse=True)

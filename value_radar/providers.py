@@ -52,10 +52,21 @@ def _is_down(name):
     return _COOLDOWN.get(name, 0) > time.time()
 
 
-def _trip(name, secs=90):
-    """Quelle voruebergehend deaktivieren (nach Rate-Limit/Ausfall) -> verhindert,
-    dass bei jedem weiteren Ticker erneut in Timeouts/Sleeps gelaufen wird."""
-    _COOLDOWN[name] = time.time() + secs
+_FAILS = {}             # Quelle -> Anzahl aufeinanderfolgender Fehler
+
+
+def _trip(name, secs=60):
+    """Quelle erst nach 2 aufeinanderfolgenden Fehlern voruebergehend deaktivieren.
+    Ein einzelner transienter 429 soll NICHT sofort alle folgenden Ticker um die
+    Quelle bringen (das drueckte sonst Scores/Fair Values im ganzen Portfolio)."""
+    _FAILS[name] = _FAILS.get(name, 0) + 1
+    if _FAILS[name] >= 2:
+        _COOLDOWN[name] = time.time() + secs
+
+
+def _ok(name):
+    """Erfolgreicher Abruf -> Fehlerzaehler zuruecksetzen."""
+    _FAILS[name] = 0
 
 
 def _fh(path, params):
@@ -68,6 +79,7 @@ def _fh(path, params):
         try:
             r = requests.get(f"https://finnhub.io/api/v1/{path}", params=p, timeout=10)
             if r.status_code == 200:
+                _ok("finnhub")
                 return r.json()
             if r.status_code == 429:               # Limit -> nicht weiter haemmern
                 _trip("finnhub")
@@ -216,6 +228,7 @@ def _fmp_get(path, params=None):
             r = requests.get(f"https://financialmodelingprep.com/api/v3/{path}",
                              params=p, timeout=12)
             if r.status_code == 200:
+                _ok("fmp")
                 return r.json()
             if r.status_code == 429:
                 _trip("fmp")
@@ -246,6 +259,7 @@ def _tiingo_get(path, params=None):
             r = requests.get(f"https://api.tiingo.com/{path}", params=p,
                              headers={"Content-Type": "application/json"}, timeout=10)
             if r.status_code == 200:
+                _ok("tiingo")
                 return r.json()
             if r.status_code in (429, 403):        # Limit/kein Zugriff -> pausieren
                 _trip("tiingo")

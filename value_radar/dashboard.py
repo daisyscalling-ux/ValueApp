@@ -2427,6 +2427,51 @@ if nav == "Watchlist":
 # LONG / SHORT-RADAR (experimentell)
 # ===========================================================================
 if nav == "Long/Short":
+    st.markdown('<div class="sec-title">\U0001f3db\ufe0f LAUFENDE STRATEGIE-PORTFOLIOS '
+                '(Papier)</div>', unsafe_allow_html=True)
+    try:
+        _hf = store.get_hf()
+    except Exception:
+        _hf = {}
+    if not _hf:
+        st.info("Noch keine laufenden Portfolios. Sie werden vom Nacht-Job (2\u00d7 t\u00e4glich) "
+                "automatisch angelegt und gef\u00fchrt \u2013 oder hier per Knopf gestartet.")
+    _sn = {"marktneutral": "Marktneutral (L100/S100)", "130/30": "130/30",
+           "quality_long": "Qualit\u00e4ts-Long"}
+    for _k, _s in (_hf or {}).items():
+        _v, _c0 = _s.get("value_eur", 0), _s.get("start_capital", 10000)
+        _ret = (_v / _c0 - 1) * 100 if _c0 else 0
+        _col = "#3FB950" if _ret >= 0 else "#F85149"
+        with st.expander(f"{_sn.get(_k, _k)} \u00b7 {sym_eur(_v)} "
+                         f"({_ret:+.1f} %) \u00b7 {len(_s.get('positions', []))} Pos.",
+                         expanded=(_k == "marktneutral")):
+            _rows = [{"Ticker": p["ticker"], "Richtung": ("\U0001f7e2 Long" if p["dir"] == "long"
+                       else "\U0001f534 Short"), "Einstieg \u20ac": p["entry_eur"],
+                      "Kurs \u20ac": p.get("last_eur"), "G/V %": p.get("pl_pct"),
+                      "St\u00fcck": p["qty"]} for p in _s.get("positions", [])]
+            if _rows:
+                vr_table(_rows, signed_cols=("G/V %",),
+                         height=min(len(_rows) * 40 + 46, 420))
+            st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 letzte Pr\u00fcfung: "
+                       f"{fmt_ts(_s.get('last_check'))} \u00b7 Regeln: Long TP +20/SL \u221210, "
+                       "Short TP +15/SL \u221210, danach Slots neu bef\u00fcllt.")
+            _tr = _s.get("trades", [])[:5]
+            if _tr:
+                st.caption("Letzte Trades: " + " \u00b7 ".join(
+                    f"{t['action']} {t['ticker']} ({t['dir']}"
+                    + (f", {t['pl_pct']:+.0f}%" if t.get("pl_pct") is not None else "")
+                    + f", {t['why']})" for t in _tr))
+    if st.button("\U0001f504 Jetzt pr\u00fcfen & anpassen (dauert etwas)",
+                 use_container_width=True):
+        with st.spinner("Pr\u00fcfe Positionen und f\u00fclle Slots ..."):
+            try:
+                import hedgefund
+                hedgefund.run_all(scan_size=50)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Update fehlgeschlagen: {e}")
+    st.markdown("---")
+
     st.markdown('<div class="sec-title">\u2696\ufe0f LONG / SHORT-RADAR</div>',
                 unsafe_allow_html=True)
     st.caption("Einheitlicher Screen nach beiden Richtungen. LONG = Qualit\u00e4t + "

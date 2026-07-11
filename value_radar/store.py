@@ -191,3 +191,28 @@ def set_snapshot(snap: dict) -> bool:
     d["snapshot"] = snap
     d["snapshot_ts"] = __import__("time").time()
     return _save_aux(d)
+
+
+def get_briefing() -> str:
+    """KI-Nacht-Briefing (Text) fuer die Startseite."""
+    b = _load_aux().get("briefing", "")
+    return b if isinstance(b, str) else ""
+
+
+def set_briefing(text: str) -> bool:
+    d = _load_aux()
+    d["briefing"] = (text or "")[:8000]
+    d["briefing_ts"] = __import__("time").time()
+    return _save_aux(d)
+
+
+def get_hf() -> dict:
+    """Fortlaufende Hedgefonds-Papier-Portfolios (je Strategie)."""
+    d = _load_aux().get("hedgefund", {})
+    return d if isinstance(d, dict) else {}
+
+
+def set_hf(d: dict) -> bool:
+    a = _load_aux()
+    a["hedgefund"] = d
+    return _save_aux(a)

@@ -677,6 +677,54 @@ def longshort_candidates(regions, min_mcap_eur_bn, size):
     return longs[:15], shorts[:15]
 
 
+def hedgefund_proposal(longs, shorts, strategy, capital_eur):
+    """Baut aus den Long/Short-Kandidaten einen Portfolio-Vorschlag nach einer
+    klassischen Hedgefonds-Strategie. Rein regelbasiert und deterministisch:
+    Gewicht ~ Signalstaerke, gedeckelt (max 12 % je Position), normalisiert.
+
+    Strategien:
+      'marktneutral'  Long 100 % / Short 100 %  (Netto ~0: Marktrichtung egal,
+                      es zaehlt nur Long-schlaegt-Short)
+      '130/30'        Long 130 % / Short 30 %   (klassisch; braucht real Margin!)
+      'quality_long'  Long 100 % / kein Short   (Qualitaets-Buch, kein Hebel)
+    """
+    LEGS = {"marktneutral": (1.0, 1.0), "130/30": (1.3, 0.3),
+            "quality_long": (1.0, 0.0)}
+    long_x, short_x = LEGS.get(strategy, (1.0, 0.0))
+
+    def _book(rows, key, budget, n_max=8):
+        rows = [r for r in rows if r.get("Kurs \u20ac")][:n_max]
+        if not rows or budget <= 0:
+            return [], 0.0
+        raw = [max(float(r.get(key) or 0), 1.0) for r in rows]
+        w = [x / sum(raw) for x in raw]
+        cap_amt = 0.15 * capital_eur          # harter Klumpen-Deckel: 15 % je Position
+        book = []
+        for r, wi in zip(rows, w):
+            amt = min(budget * wi, cap_amt)   # KEINE Renormalisierung: greift der
+            shares = int(amt / r["Kurs \u20ac"])  # Deckel, bleibt Kapital uninvestiert
+            book.append({"Ticker": r["Ticker"], "Name": r["Name"],
+                         "Kurs \u20ac": r["Kurs \u20ac"], "Comp.": r.get("Comp."),
+                         "Upside %": r.get("Upside %"), "Trend": r.get("Trend"),
+                         "Gewicht %": round(amt / capital_eur * 100, 1),
+                         "Betrag \u20ac": round(amt, 0), "St\u00fcck": shares})
+        return book, sum(b["Betrag \u20ac"] for b in book)
+
+    lbook, lsum = _book(longs, "Chance", capital_eur * long_x)
+    sbook, ssum = _book(shorts, "Risiko-Fit", capital_eur * short_x)
+    gross = (lsum + ssum) / capital_eur * 100 if capital_eur else 0
+    net = (lsum - ssum) / capital_eur * 100 if capital_eur else 0
+
+    def _wavg(book, key):
+        tot = sum(b["Betrag \u20ac"] for b in book)
+        vals = [(b.get(key), b["Betrag \u20ac"]) for b in book if b.get(key) is not None]
+        return (sum(v * w for v, w in vals) / tot) if (tot and vals) else None
+    return {"long": lbook, "short": sbook,
+            "gross_pct": round(gross), "net_pct": round(net),
+            "l_comp": _wavg(lbook, "Comp."), "l_up": _wavg(lbook, "Upside %"),
+            "s_up": _wavg(sbook, "Upside %")}
+
+
 def vr_table(rows, score_cols=(), signed_cols=(), height=None):
     """Professionelle dunkle Tabelle (eigenes HTML statt st.dataframe-Canvas):
     unabhaengig vom Streamlit-Theme, gleiche Optik auf Web & Mobile, innen
@@ -2438,6 +2486,54 @@ if nav == "Long/Short":
                     "Aufw\u00e4rtstrend (bewusst ausgeblendet).")
         st.caption("Flache Datentiefe (API-schonend) \u2013 jeden Treffer vor einer "
                    "Entscheidung in der Einzelanalyse mit tiefen Daten gegenpr\u00fcfen.")
+
+        # ---------- HEDGEFONDS-MODUS: konkreter Portfolio-Vorschlag ----------
+        st.markdown('<div class="sec-title" style="margin-top:16px">\U0001f3db\ufe0f '
+                    'HEDGEFONDS-MODUS \u00b7 Portfolio-Vorschlag</div>',
+                    unsafe_allow_html=True)
+        hc = st.columns([1.4, 1, 1])
+        strat_label = hc[0].selectbox("Strategie", [
+            "Marktneutral (Long 100 / Short 100)",
+            "130/30 (Long 130 / Short 30)",
+            "Qualit\u00e4ts-Long (nur Long)"], key="hf_strat")
+        capital = parse_eur(hc[1].text_input("Kapital \u20ac", value="10000",
+                                             key="hf_capital")) or 10000.0
+        _SMAP = {"Marktneutral (Long 100 / Short 100)": "marktneutral",
+                 "130/30 (Long 130 / Short 30)": "130/30",
+                 "Qualit\u00e4ts-Long (nur Long)": "quality_long"}
+        if hc[2].button("\U0001f3db\ufe0f Portfolio vorschlagen", use_container_width=True):
+            st.session_state["hf_show"] = True
+        if st.session_state.get("hf_show"):
+            hp = hedgefund_proposal(longs, shorts, _SMAP[strat_label], capital)
+            mc = st.columns(4)
+            card(mc[0], "Brutto-Exposure", f"{hp['gross_pct']} %")
+            card(mc[1], "Netto-Exposure", f"{hp['net_pct']} %",
+                 sub="~0 = marktneutral" if _SMAP[strat_label] == "marktneutral" else "")
+            card(mc[2], "\u00d8 Composite (Long)",
+                 f"{hp['l_comp']:.0f}" if hp["l_comp"] is not None else "\u2014")
+            card(mc[3], "Gew. Upside (Long)",
+                 f"{hp['l_up']:+.1f} %" if hp["l_up"] is not None else "\u2014",
+                 color="var(--green)")
+            if hp["long"]:
+                st.markdown('<div class="sec-title" style="color:#3FB950">LONG-BUCH</div>',
+                            unsafe_allow_html=True)
+                vr_table(hp["long"], score_cols=("Comp.",),
+                         signed_cols=("Upside %",),
+                         height=min(len(hp["long"]) * 40 + 46, 420))
+            if hp["short"]:
+                st.markdown('<div class="sec-title" style="color:#F85149">SHORT-BUCH</div>',
+                            unsafe_allow_html=True)
+                vr_table(hp["short"], score_cols=("Comp.",),
+                         signed_cols=("Upside %",),
+                         height=min(len(hp["short"]) * 40 + 46, 420))
+                st.caption("Gew. Upside Short-Buch: "
+                           + (f"{hp['s_up']:+.1f} % (negativ = These intakt)"
+                              if hp["s_up"] is not None else "\u2014"))
+            st.caption("Regelbasierte Konstruktion: Gewicht ~ Signalst\u00e4rke, max. 12 % je "
+                       "Position, St\u00fcckzahlen auf dein Kapital gerechnet. F\u00fcr dein "
+                       "externes Testdepot \u2013 kein Anlagerat. 130/30 & Marktneutral "
+                       "erfordern real Margin/Leerverkauf beim Broker; Vorschlag hier ist "
+                       "eine Simulation zum Lernen.")
     else:
         st.info("\u201eScan starten\u201c dr\u00fccken. Der Scan pr\u00fcft je Titel Kennzahlen, "
                 "Bewertung und Kurstrend \u2013 er l\u00e4uft separat, damit der Tab sofort "

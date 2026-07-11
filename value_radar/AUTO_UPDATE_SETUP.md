@@ -1,79 +1,118 @@
-# Tägliche Vorberechnung + E-Mail-Benachrichtigung einrichten
+"""
+ai_briefing.py — EIN Claude-Aufruf pro Nacht: erklaert die News und fasst zusammen,
+welche neuen Aktien in Screener/Radar einen Score erreicht haben, plus die
+wichtigsten Portfolio-/Watchlist-Aenderungen.
 
-Ein nächtlicher Job (`precompute.py`) rechnet **Portfolio, Watchlist, Screener und
-Radar** einmal täglich durch, vergleicht mit dem Vortag, schreibt die Änderungen
-ins Google Sheet (die App zeigt sie auf der Startseite unter „Was hat sich
-geändert") und schickt dir eine **E-Mail-Zusammenfassung**. Ausgeführt wird er
-kostenlos von **GitHub Actions** (kein KI-Token nötig).
+WICHTIG:
+- Claude ist hier nur die SPRACH-/EINORDNUNGS-Schicht. Alle Zahlen (Scores, Fair
+  Value, Upside) kommen deterministisch aus dem Code und werden Claude nur als
+  Fakten uebergeben. Claude rechnet nichts, sondern erklaert/priorisiert.
+- Laeuft ueber die Anthropic-API (pro Token abgerechnet, NICHT vom Abo gedeckt).
+  Standardmodell: Haiku (guenstig, passend). Ueber AI_BRIEFING_MODEL aenderbar.
+- Vollstaendig defensiv: kein Key / Fehler / Timeout -> gibt None zurueck, der
+  Nacht-Job laeuft normal weiter (regelbasierte Zusammenfassung als Rueckfall).
+"""
+from __future__ import annotations
+import os
+import json
 
-> Ehrlich vorab: Screener/Radar laufen im Job **bewusst begrenzt** (Top-Ideen aus
-> einem gedeckelten Universum, flache Datentiefe), um das FMP-Gratislimit und die
-> Laufzeit zu schonen. Portfolio + Watchlist werden voll (deep) gerechnet.
+try:
+    import requests
+except Exception:
+    requests = None
 
----
+# Guenstiges, passendes Modell als Standard (ausdruecklich KEIN Opus).
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
-## Voraussetzung
-Google Sheets muss als Speicher laufen (siehe `GOOGLE_SHEETS_SETUP.md`). Der
-Nacht-Job schreibt in dasselbe Sheet, aus dem die App liest.
 
----
+def available() -> bool:
+    return bool(os.getenv("ANTHROPIC_API_KEY") and requests is not None)
 
-## Schritt 1 — GitHub-Secrets anlegen
-Im Repo: **Settings → Secrets and variables → Actions → New repository secret**.
-Lege diese Secrets an:
 
-| Secret | Wert |
-|---|---|
-| `GSHEET_ID` | die Sheet-ID (wie in Streamlit) |
-| `GCP_SERVICE_ACCOUNT` | der **komplette Inhalt** der Service-Account-JSON-Datei (einfach reinkopieren) |
-| `FINNHUB_API_KEY` | dein Finnhub-Key |
-| `FMP_API_KEY` | dein FMP-Key |
-| `SMTP_HOST` | z. B. `smtp.gmail.com` |
-| `SMTP_PORT` | `587` (STARTTLS) oder `465` (SSL) |
-| `SMTP_USER` | deine Absender-E-Mail |
-| `SMTP_PASS` | **App-Passwort** (bei Gmail nötig, s. u.) |
-| `EMAIL_TO` | Empfänger (darf = `SMTP_USER` sein) |
+def _rows_brief(rows, keys=("ticker", "name", "composite", "upside", "quantum")):
+    out = []
+    for r in (rows or [])[:12]:
+        out.append({k: r.get(k) for k in keys if r.get(k) is not None})
+    return out
 
-**Gmail:** Normales Passwort funktioniert nicht. Aktiviere 2-Faktor-Anmeldung und
-erstelle ein **App-Passwort** (Google-Konto → Sicherheit → App-Passwörter). Dieses
-16-stellige Passwort kommt in `SMTP_PASS`.
 
-`GCP_SERVICE_ACCOUNT` unterscheidet sich vom Streamlit-Format: In Streamlit war es
-ein `[gcp_service_account]`-TOML-Block — hier ist es der **rohe JSON-Inhalt** der
-Datei (mit den `{ ... }`-Klammern), am einfachsten aus der heruntergeladenen
-Service-Account-JSON kopiert.
+def _news_brief(news_items, limit=8):
+    out = []
+    for n in (news_items or [])[:limit]:
+        out.append({"title": (n.get("headline") or "")[:160],
+                    "source": n.get("source"),
+                    "summary": (n.get("summary") or "")[:240]})
+    return out
 
----
 
-## Schritt 2 — Workflow hochladen
-Die Datei `value_radar/.github/workflows/precompute.yml` liegt im Paket. Lade den
-Ordner `.github/workflows/` mit ins Repo (Struktur beibehalten). GitHub erkennt den
-Workflow dann automatisch unter dem Reiter **Actions**.
+def generate(changes, news_items, holdings, watch, screener_rows, radar_rows,
+             model=None, timeout=60):
+    """Erzeugt den Briefing-Text (deutsch) oder None bei Fehler/kein Key."""
+    if not available():
+        print("[ai_briefing] Kein ANTHROPIC_API_KEY - Briefing uebersprungen.")
+        return None
+    model = model or os.getenv("AI_BRIEFING_MODEL") or DEFAULT_MODEL
 
----
+    facts = {
+        "aenderungen": [
+            {"section": c.get("section"), "ticker": c.get("ticker"),
+             "text": c.get("text"), "kind": c.get("kind")}
+            for c in (changes or [])[:25]
+        ],
+        "portfolio": _rows_brief(list((holdings or {}).values())),
+        "watchlist": _rows_brief(list((watch or {}).values())),
+        "screener_top": _rows_brief(screener_rows),
+        "radar_top": _rows_brief(radar_rows),
+        "news": _news_brief(news_items),
+    }
 
-## Schritt 3 — Testen
-Unter **Actions → value-radar-nightly → Run workflow** kannst du ihn **sofort
-manuell** starten (nicht auf die Nacht warten). Danach:
-- Im Log siehst du, was berechnet wurde.
-- Prüfe dein Postfach (E-Mail).
-- Öffne die App-Startseite → „Was hat sich geändert".
+    system = (
+        "Du bist ein nuechterner Finanz-Analyst-Assistent fuer ein privates "
+        "Lern-Tool. Sprache: Deutsch. Du bekommst FAKTEN (bereits berechnete "
+        "Kennzahlen, erkannte Aenderungen, aktuelle Schlagzeilen) und sollst sie "
+        "erklaeren und priorisieren - NICHT neu berechnen, NICHTS erfinden. "
+        "Nenne nur Titel/Zahlen, die in den Fakten stehen. Wenn etwas unklar ist, "
+        "sage es. Gib ausdruecklich KEINE Kauf-/Verkaufsempfehlung; formuliere als "
+        "Beobachtung und Denkanstoss. Halte dich kurz und konkret."
+    )
+    instruction = (
+        "Erstelle ein kompaktes Morgen-Briefing mit diesen Abschnitten:\n"
+        "1) WICHTIGSTES ZUERST: 2-4 Stichpunkte zu den relevantesten Aenderungen "
+        "(Kaufzone erreicht, starke Score-Bewegung, neuer Titel in Screener/Radar).\n"
+        "2) NEUE KANDIDATEN: Welche NEUEN Aktien haben in Screener bzw. Radar einen "
+        "Score erreicht? Nenne Ticker + kurz warum interessant (aus den Fakten).\n"
+        "3) NEWS-EINORDNUNG: Zu den 2-3 wichtigsten Schlagzeilen je 1 Satz, welcher "
+        "Bereich/welche Titel betroffen sein KOENNTEN (Denkanstoss).\n"
+        "4) PORTFOLIO-BLICK: 1-2 Saetze zum Zustand (z.B. auffaellige Position, "
+        "Klumpenrisiko), nur wenn aus den Fakten ableitbar.\n"
+        "Schliesse mit einem kurzen Hinweis, dass dies kein Anlagerat ist.\n\n"
+        "FAKTEN (JSON):\n" + json.dumps(facts, ensure_ascii=False)
+    )
 
-Beim **ersten** Lauf gibt es noch keinen Vortagsvergleich → es kommen kaum
-„Änderungen", aber Portfolio/Watchlist/Screener/Radar werden im Sheet und in der
-E-Mail-Übersicht aufgeführt. Ab dem zweiten Lauf werden echte Änderungen erkannt.
-
----
-
-## Zeitplan ändern
-In `precompute.yml` die `cron`-Zeile anpassen (UTC!). `15 5 * * *` = 05:15 UTC
-≈ 07:15 deutscher Zeit. Für z. B. 06:00 dt. Zeit im Winter → `0 5 * * *`.
-
-## Watchlist füllen
-In der App: Einzelanalyse öffnen → Button **„☆ Zur Watchlist"**. Diese Titel
-werden nachts mitgerechnet und überwacht.
-
-## Kosten
-GitHub Actions ist für öffentliche und (in großzügigem Rahmen) private Repos
-kostenlos. Der Job braucht nur wenige Minuten pro Tag. Es fallen **keine**
-Anthropic-/API-Kosten an — das ist reine Datenverarbeitung, keine KI.
+    try:
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": model,
+                "max_tokens": 1400,
+                "system": system,
+                "messages": [{"role": "user", "content": instruction}],
+            },
+            timeout=timeout,
+        )
+        if r.status_code != 200:
+            print(f"[ai_briefing] API {r.status_code}: {r.text[:200]}")
+            return None
+        data = r.json()
+        parts = [b.get("text", "") for b in data.get("content", [])
+                 if b.get("type") == "text"]
+        text = "\n".join(p for p in parts if p).strip()
+        return text or None
+    except Exception as e:
+        print(f"[ai_briefing] Fehler: {e}")
+        return None

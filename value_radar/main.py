@@ -1,171 +1,193 @@
-#!/usr/bin/env python3
 """
-main.py — Orchestrierung & CLI für das Value-Radar.
+gsheet.py — optionaler Google-Sheets-Speicher fuer Portfolios.
 
-Befehle:
-  screen  --universe FILE [--preset P]   Universum screenen + ranken
-  score   --ticker T [--preset P]        Scoring eines Titels
-  value   --ticker T [--preset P]        Bewertung (FairValue/Target/Einstieg)
-  intel   --ticker T                     News/Peers/Supply-Chain/Insider
-  report  --ticker T [--preset P]        Voller Einzelbericht (alles kombiniert)
+Damit ueberleben gespeicherte Portfolios auch Reboots der Streamlit-Cloud
+(das dortige Dateisystem ist fluechtig). Die Portfolios werden als EIN JSON-Text
+in Zelle A1 eines Google Sheets abgelegt (einfach, robust, ein Nutzer).
 
-Universe-Datei: ein Ticker pro Zeile (Zeilen mit # werden ignoriert).
-Preset: quality | cyclical | inflection
+Aktiv NUR, wenn in den Streamlit-Secrets beides gesetzt ist:
+    [gcp_service_account]        # der komplette Service-Account-JSON-Inhalt
+    ...
+    GSHEET_ID = "<Sheet-ID aus der URL>"
+
+Ist das nicht gesetzt oder tritt ein Fehler auf, meldet available() = False,
+und store.py nutzt automatisch den lokalen Datei-Speicher. Nichts crasht.
 """
 from __future__ import annotations
-import argparse
-import sys
-import providers
-import scoring
-import valuation
-import intel as intel_mod
+import json
+import os
+
+_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+_WS = "unset"          # Cache: "unset" | None | worksheet-Objekt
 
 
-def _load_universe(path: str) -> list[str]:
-    out = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            t = line.strip()
-            if t and not t.startswith("#"):
-                out.append(t.split()[0].upper())
-    return out
+def _creds_and_id():
+    """Zugangsdaten + Sheet-ID beschaffen. Funktioniert BEIDES:
+    - in Streamlit ueber st.secrets
+    - standalone (Cron/GitHub-Actions) ueber Umgebungsvariablen:
+        GSHEET_ID  und  GCP_SERVICE_ACCOUNT (kompletter JSON-String)
+        oder GOOGLE_APPLICATION_CREDENTIALS (Pfad zur JSON-Datei)."""
+    creds_info, sheet_id = None, None
+    # 1) Streamlit-Secrets (App-Kontext)
+    try:
+        import streamlit as st
+        try:
+            creds_info = st.secrets.get("gcp_service_account")
+            sheet_id = st.secrets.get("GSHEET_ID")
+        except Exception:
+            pass
+    except Exception:
+        pass
+    # 2) Umgebungsvariablen (Standalone/Cron)
+    if not sheet_id:
+        sheet_id = os.getenv("GSHEET_ID")
+    if not creds_info:
+        raw = os.getenv("GCP_SERVICE_ACCOUNT")
+        if raw:
+            try:
+                creds_info = json.loads(raw)
+            except Exception:
+                creds_info = None
+    if not creds_info:
+        path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    creds_info = json.load(fh)
+            except Exception:
+                creds_info = None
+    return creds_info, sheet_id
 
 
-def _passes_screen(f: dict) -> bool:
-    import config
-    th = config.SCREEN_THRESHOLDS
+def _worksheet():
+    """Gibt das Worksheet zurueck oder None. Prozessweit gecacht."""
+    global _WS
+    if _WS != "unset":
+        return _WS
+    _WS = None
+    try:
+        creds_info, sheet_id = _creds_and_id()
+        if not creds_info or not sheet_id:
+            return None
+        import gspread
+        from google.oauth2.service_account import Credentials
+        creds = Credentials.from_service_account_info(dict(creds_info), scopes=_SCOPES)
+        gc = gspread.authorize(creds)
+        _WS = gc.open_by_key(str(sheet_id)).sheet1
+    except Exception:
+        _WS = None
+    return _WS
 
-    def le(key, cap):  # kleiner-gleich
-        v = f.get(key)
-        return v is None or v <= cap
 
-    def ge(key, floor):  # groesser-gleich
-        v = f.get(key)
-        return v is None or v >= floor
-
-    mc = f.get("market_cap")
-    if mc is not None and mc < th["min_market_cap"]:
+def available() -> bool:
+    try:
+        return _worksheet() is not None
+    except Exception:
         return False
-    checks = [
-        le("ev_ebitda", th["max_ev_ebitda"]),
-        le("pb", th["max_pb"]),
-        ge("fcf_yield", th["min_fcf_yield"]),
-        le("peg", th["max_peg"]),
-        ge("roe", th["min_roic"]),  # ROE als ROIC-Proxy ohne Premiumdaten
-        le("net_debt_ebitda", th["max_net_debt_ebitda"]),
-        ge("current_ratio", th["min_current_ratio"]),
-        ge("revenue_growth", th["min_revenue_growth"]),
-    ]
-    return all(checks)
 
 
-def cmd_screen(args):
-    tickers = _load_universe(args.universe)
-    print(f"Lade {len(tickers)} Titel ...", file=sys.stderr)
-    funds = []
-    for t in tickers:
-        f = providers.get_fundamentals(t)
-        if f.get("price"):
-            funds.append(f)
-    # branchenrelatives Scoring innerhalb des geladenen Universums
-    passed = [f for f in funds if _passes_screen(f)]
-    print(f"{len(passed)}/{len(funds)} bestehen den Screen.\n", file=sys.stderr)
-
-    scored = []
-    for f in passed:
-        peers = [p for p in funds if p.get("sector") == f.get("sector")
-                 and p.get("ticker") != f.get("ticker")]
-        s = scoring.score_stock(f, peers or None, preset=args.preset)
-        scored.append(s)
-    scored.sort(key=lambda x: x["composite"], reverse=True)
-
-    print(f"{'Rank':<5}{'Ticker':<8}{'Score':<8}{'Sector':<22}{'Trap'}")
-    print("-" * 60)
-    for i, s in enumerate(scored, 1):
-        trap = "!" if s["value_trap"] else ""
-        print(f"{i:<5}{s['ticker']:<8}{s['composite']:<8}"
-              f"{(s['sector'] or '')[:20]:<22}{trap}")
+def load_all():
+    """Alle Portfolios als dict, oder None wenn Sheets nicht verfuegbar."""
+    ws = _worksheet()
+    if ws is None:
+        return None
+    try:
+        raw = ws.acell("A1").value
+        if not raw:
+            return {}
+        d = json.loads(raw)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
 
 
-def cmd_score(args):
-    f = providers.get_fundamentals(args.ticker)
-    s = scoring.score_stock(f, None, preset=args.preset)
-    print(f"\n{s['ticker']} ({s['name']}) — Preset: {args.preset}")
-    print(f"Composite: {s['composite']}/100  ValueTrap: {s['value_trap']}")
-    print("Kategorien:")
-    for k, v in s["category_scores"].items():
-        print(f"  {k:<12}{v}")
+def save_all(d: dict) -> bool:
+    ws = _worksheet()
+    if ws is None:
+        return False
+    try:
+        ws.update_acell("A1", json.dumps(d, ensure_ascii=False))
+        return True
+    except Exception:
+        return False
 
 
-def cmd_value(args):
-    f = providers.get_fundamentals(args.ticker)
-    v = valuation.fair_value(f, None, preset=args.preset)
-    print(f"\n{v['ticker']} — Bewertung ({args.preset})")
-    print(f"  Kurs aktuell:    {v['price']}")
-    print(f"  Fair Value:      {v['fair_value']}")
-    print(f"  12M-Target:      {v['target_12m']}")
-    print(f"  Einstieg (MoS {int(v['margin_of_safety']*100)}%): {v['entry_price']}")
-    print(f"  Upside zu FV:    {v['upside_pct']}%")
-    print(f"  WACC:            {v['wacc']}")
-    print(f"  Reverse-DCF impl. Wachstum: {v['reverse_dcf_implied_growth']}")
-    print(f"  Methoden: {v['methods']}")
+# --- Zusatz-Ablage (Watchlist, Snapshot, Aenderungs-Feed) in Zelle A2 ---------
+# Portfolios bleiben unveraendert in A1; alles Weitere liegt als EIN JSON in A2.
+def load_aux() -> dict:
+    ws = _worksheet()
+    if ws is None:
+        return {}
+    try:
+        raw = ws.acell("A2").value
+        if not raw:
+            return {}
+        d = json.loads(raw)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
 
 
-def cmd_intel(args):
-    data = intel_mod.gather(args.ticker)
-    print(intel_mod.format_report(data))
+def save_aux(d: dict) -> bool:
+    ws = _worksheet()
+    if ws is None:
+        return False
+    try:
+        ws.update_acell("A2", json.dumps(d, ensure_ascii=False))
+        return True
+    except Exception:
+        return False
 
 
-def cmd_report(args):
-    t = args.ticker
-    f = providers.get_fundamentals(t)
-    data = intel_mod.gather(t)
-    f["_catalyst_score"] = data["catalyst_score"]  # Intel fliesst ins Scoring
-    s = scoring.score_stock(f, None, preset=args.preset)
-    v = valuation.fair_value(f, None, preset=args.preset)
-
-    print("=" * 60)
-    print(f" {f.get('name')} ({t})  |  {f.get('sector')} / {f.get('industry')}")
-    print(f" Playbook-Preset: {args.preset}")
-    print("=" * 60)
-    print(f"\n[SCORING]  Composite {s['composite']}/100  "
-          f"(ValueTrap: {s['value_trap']})")
-    for k, val in s["category_scores"].items():
-        print(f"   {k:<12}{val}")
-    print(f"\n[BEWERTUNG]")
-    print(f"   Kurs {v['price']} | FairValue {v['fair_value']} | "
-          f"12M-Target {v['target_12m']} | Einstieg {v['entry_price']} "
-          f"(MoS {int(v['margin_of_safety']*100)}%)")
-    print(f"   Upside {v['upside_pct']}% | WACC {v['wacc']} | "
-          f"Rev-DCF impl. g {v['reverse_dcf_implied_growth']}")
-    print(f"   Methoden: {v['methods']}")
-    print(intel_mod.format_report(data))
-    print("\n" + "=" * 60)
+def reset_cache():
+    global _WS
+    _WS = "unset"
 
 
-def main():
-    p = argparse.ArgumentParser(description="Value-Radar: Vor die Welle kommen.")
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    sp = sub.add_parser("screen"); sp.add_argument("--universe", required=True)
-    sp.add_argument("--preset", default="quality")
-    sp.set_defaults(func=cmd_screen)
-
-    sc = sub.add_parser("score"); sc.add_argument("--ticker", required=True)
-    sc.add_argument("--preset", default="quality"); sc.set_defaults(func=cmd_score)
-
-    sv = sub.add_parser("value"); sv.add_argument("--ticker", required=True)
-    sv.add_argument("--preset", default="quality"); sv.set_defaults(func=cmd_value)
-
-    si = sub.add_parser("intel"); si.add_argument("--ticker", required=True)
-    si.set_defaults(func=cmd_intel)
-
-    sr = sub.add_parser("report"); sr.add_argument("--ticker", required=True)
-    sr.add_argument("--preset", default="quality"); sr.set_defaults(func=cmd_report)
-
-    args = p.parse_args()
-    args.func(args)
-
-
-if __name__ == "__main__":
-    main()
+def diagnose() -> str:
+    """Gibt im Klartext zurueck, WARUM Google Sheets (nicht) funktioniert.
+    Macht echte Aufrufe -> nur auf Knopfdruck verwenden, nicht bei jedem Rerun."""
+    try:
+        import streamlit as st
+    except Exception as e:
+        return f"Streamlit nicht verf\u00fcgbar: {e}"
+    try:
+        creds = st.secrets.get("gcp_service_account")
+    except Exception:
+        creds = None
+    try:
+        sid = st.secrets.get("GSHEET_ID")
+    except Exception:
+        sid = None
+    if not creds:
+        return ("Der Secrets-Block [gcp_service_account] fehlt (oder ist leer). "
+                "In den Secrets muss die Zeile [gcp_service_account] \u00fcber "
+                "type = \"service_account\" stehen.")
+    if not sid:
+        return "GSHEET_ID fehlt in den Secrets."
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+    except Exception as e:
+        return f"Google-Pakete nicht installiert (requirements.txt?): {e}"
+    try:
+        c = Credentials.from_service_account_info(dict(creds), scopes=_SCOPES)
+    except Exception as e:
+        return ("Zugangsdaten ung\u00fcltig \u2013 meist ist der private_key nicht "
+                f"vollst\u00e4ndig/korrekt kopiert. Details: {e}")
+    try:
+        gc = gspread.authorize(c)
+    except Exception as e:
+        return f"Authentifizierung fehlgeschlagen: {e}"
+    try:
+        sh = gc.open_by_key(str(sid))
+    except Exception as e:
+        return ("Sheet nicht erreichbar. Pr\u00fcfe: (1) Google-Sheets-API im Projekt "
+                "aktiviert? (2) Sheet mit der client_email als Bearbeiter geteilt? "
+                "(3) GSHEET_ID korrekt? "
+                f"Details: {e}")
+    try:
+        sh.sheet1.acell("A1").value
+        return "OK"
+    except Exception as e:
+        return f"Zugriff auf Tabellenblatt 1 fehlgeschlagen: {e}"

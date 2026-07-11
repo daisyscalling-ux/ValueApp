@@ -1,156 +1,92 @@
-"""
-hedgefund.py — fortlaufende Papier-Portfolios je Hedgefonds-Strategie.
+# Value Radar online stellen — privat, nur für dich, mit Passwort + Biometrie
 
-Regeln (deterministisch, pro Pruefung):
-  - LONG schliessen bei Gewinn >= +20 % oder Verlust <= -10 %
-  - SHORT schliessen bei Gewinn >= +15 % (Kurs gefallen) oder Verlust <= -10 %
-  - Freie Slots werden mit neuen Kandidaten aus dem Scan gefuellt
-  - Positionsgroesse: gleichgewichtet je Slot, 15 %-Deckel, EUR-basiert
-Strategien: marktneutral (8L/8S), 130/30 (8L/3S), quality_long (8L/0S).
-Zustand liegt persistent in store-Aux (Google Sheet) -> App und Cron teilen ihn.
-Laeuft standalone (Cron, 2x taeglich) UND on-demand aus der App.
-"""
-from __future__ import annotations
-import time
+Ziel: Die App läuft in der Streamlit Cloud, **nur du** kommst rein (privat
+freigegeben **und** Passwort-Gate), und du meldest dich bequem per
+**Fingerabdruck/FaceID** über deinen Passwortmanager an.
 
-import providers
-import scoring
-import valuation
-import store
+---
 
-TP_LONG, SL_LONG = 20.0, -10.0
-TP_SHORT, SL_SHORT = 15.0, -10.0
-STRATS = {"marktneutral": (8, 8), "130/30": (8, 3), "quality_long": (8, 0)}
-START_CAPITAL = 10000.0
-POS_CAP = 0.15
+## Schritt 0 — einmal vorbereiten (am PC)
 
+1. Kostenloses Konto auf https://github.com anlegen.
+2. **Neues, PRIVATES Repository** erstellen (z. B. `value-radar`). Wichtig:
+   „Private" wählen, nicht „Public".
+3. Den kompletten Ordner `value_radar` hochladen (**ohne** die Datei
+   `.streamlit/secrets.toml` — die bleibt lokal! Die `.gitignore` sorgt schon
+   dafür, dass sie nicht mitgeht).
 
-def _price_eur(t):
-    f = providers.get_fundamentals(t)
-    p = f.get("price")
-    if not p:
-        return None, None
-    fx = providers.get_fx_to_eur(f.get("currency", "USD")) or 1.0
-    return p * fx, f
+> Prüfen: Im Repo darf **keine** `secrets.toml` liegen. `secrets.toml.example`
+> darf dabei sein — die enthält keine echten Keys.
 
+---
 
-def _pl_pct(pos, price_eur):
-    e = pos["entry_eur"]
-    if not e or not price_eur:
-        return None
-    r = (price_eur / e - 1) * 100
-    return r if pos["dir"] == "long" else -r
+## Schritt 1 — App deployen
 
+1. Auf https://share.streamlit.io mit GitHub anmelden.
+2. **Create app → Deploy a public app from GitHub** → dein privates Repo wählen.
+3. Main file: `dashboard.py` → **Deploy**.
 
-def candidates(size=60):
-    """Kompakter Long/Short-Scan (flach) fuer die Slot-Befuellung."""
-    try:
-        import market_screener as ms
-        usd = providers.get_fx_to_eur("USD") or 0.92
-        tks, _ = ms.get_universe(["us", "de", "fr", "gb", "nl"], 5e9 / usd, size)
-    except Exception:
-        return [], []
-    longs, shorts = [], []
-    for t in tks:
-        f = providers.get_fundamentals(t)
-        price = f.get("price")
-        if not price:
-            continue
-        ep = valuation.classify_playbook(f)
-        comp = scoring.score_stock(f, None, preset=ep)["composite"]
-        v = valuation.fair_value(f, None, ep)
-        up = v.get("upside_pct")
-        if v.get("fair_value_capped") and v.get("analyst_target"):
-            up = (v["analyst_target"] / price - 1) * 100
-        if comp is None or up is None:
-            continue
-        h = providers.get_price_history(t, period="1y", interval="1d")
-        above = mom20 = mom60 = None
-        if h is not None and not h.empty:
-            cl = [float(x) for x in h["Close"].dropna()]
-            if len(cl) > 61:
-                above = cl[-1] > sum(cl[-200:]) / min(len(cl), 200)
-                mom20, mom60 = cl[-1] / cl[-21] - 1, cl[-1] / cl[-61] - 1
-        if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
-            longs.append((comp * 0.6 + min(up, 60) * 0.5, t))
-        if up <= -20 and comp <= 52:
-            if not (above and (mom60 or 0) > 0.15) and ((not above) or (mom20 or 0) < 0):
-                shorts.append(((-up) * 0.5 + (60 - comp) * 0.4, t))
-    longs.sort(reverse=True)
-    shorts.sort(reverse=True)
-    return [t for _, t in longs], [t for _, t in shorts]
+---
 
+## Schritt 2 — Secrets setzen (Passwort + API-Keys)
 
-def rebalance(state, longs_cand, shorts_cand):
-    """Eine Pruefung: TP/SL anwenden, dann freie Slots fuellen. Mutiert state."""
-    now = time.time()
-    held = {p["ticker"] for p in state["positions"]}
-    # 1) Exits
-    keep = []
-    for p in state["positions"]:
-        pe, _ = _price_eur(p["ticker"])
-        if pe is None:
-            keep.append(p)
-            continue
-        pl = _pl_pct(p, pe)
-        tp, sl = (TP_LONG, SL_LONG) if p["dir"] == "long" else (TP_SHORT, SL_SHORT)
-        if pl is not None and (pl >= tp - 1e-6 or pl <= sl + 1e-6):
-            proceeds = p["qty"] * p["entry_eur"] * (1 + pl / 100)
-            state["cash"] += proceeds
-            state["trades"].insert(0, {
-                "ts": now, "action": "close", "ticker": p["ticker"],
-                "dir": p["dir"], "pl_pct": round(pl, 1),
-                "why": ("Take-Profit" if pl >= tp else "Stop-Loss")})
-            held.discard(p["ticker"])
-        else:
-            p["last_eur"] = round(pe, 2)
-            p["pl_pct"] = round(pl, 1) if pl is not None else None
-            keep.append(p)
-    state["positions"] = keep
-    # 2) Entries (freie Slots)
-    nl, ns = STRATS[state["strategy"]]
-    for direction, n_max, cands in (("long", nl, longs_cand), ("short", ns, shorts_cand)):
-        cur = [p for p in state["positions"] if p["dir"] == direction]
-        for t in cands:
-            if len(cur) >= n_max or t in held:
-                continue
-            pe, _ = _price_eur(t)
-            if not pe:
-                continue
-            budget = min(state["cash"] * 0.5, POS_CAP * state["start_capital"])
-            qty = int(budget / pe)
-            if qty < 1 or budget < 50:
-                break
-            state["cash"] -= qty * pe
-            pos = {"ticker": t, "dir": direction, "entry_eur": round(pe, 2),
-                   "qty": qty, "opened": now, "last_eur": round(pe, 2), "pl_pct": 0.0}
-            state["positions"].append(pos)
-            cur.append(pos)
-            held.add(t)
-            state["trades"].insert(0, {"ts": now, "action": "open", "ticker": t,
-                                       "dir": direction, "pl_pct": None, "why": "Signal"})
-    state["trades"] = state["trades"][:40]
-    # 3) Gesamtwert
-    val = state["cash"]
-    for p in state["positions"]:
-        pl = p.get("pl_pct") or 0
-        val += p["qty"] * p["entry_eur"] * (1 + pl / 100)
-    state["value_eur"] = round(val, 2)
-    state["last_check"] = now
-    return state
+In Streamlit Cloud: **Manage app → Settings → Secrets** und diesen Inhalt
+eintragen (deine echten Werte einsetzen):
 
+```toml
+APP_PASSWORD = "ein-langes-einzigartiges-passwort"
+FINNHUB_API_KEY = "dein_finnhub_key"
+FMP_API_KEY     = "dein_fmp_key"
+```
 
-def run_all(scan_size=60):
-    """Alle Strategie-Portfolios pruefen/anpassen (Cron-Einstieg, 2x taeglich)."""
-    hf = store.get_hf() or {}
-    lc, sc = candidates(scan_size)
-    for strat in STRATS:
-        st_ = hf.get(strat) or {"strategy": strat, "start_capital": START_CAPITAL,
-                                "cash": START_CAPITAL, "positions": [], "trades": [],
-                                "created": time.time()}
-        st_["strategy"] = strat
-        hf[strat] = rebalance(st_, lc, sc)
-        print(f"[hedgefund] {strat}: Wert {hf[strat]['value_eur']:.0f} EUR, "
-              f"{len(hf[strat]['positions'])} Positionen")
-    store.set_hf(hf)
-    return hf
+Speichern → die App startet neu. Beim Öffnen erscheint jetzt das **Login**.
+Ohne korrektes Passwort kommt niemand ins Dashboard.
+
+---
+
+## Schritt 3 — Zugriff auf DICH beschränken (privat)
+
+In Streamlit Cloud: **Manage app → Settings → Sharing**:
+
+- Auf **„Only specific people can view this app"** stellen.
+- **Nur deine eigene E-Mail-Adresse** freigeben (die, mit der du dich bei
+  Google/GitHub anmeldest).
+
+Damit gilt: Fremde sehen nicht mal die App (Zugriff gesperrt), UND selbst wenn
+jemand den Link hätte, bräuchte er zusätzlich das Passwort. Doppelter Schutz.
+
+---
+
+## Schritt 4 — Anmeldung per Fingerabdruck/FaceID (Biometrie)
+
+Die App kann Biometrie nicht selbst abfragen (das darf keine Web-App). Der
+saubere Weg läuft über deinen **Passwortmanager**:
+
+1. App-Link im Handy-Browser öffnen, Passwort einmal eingeben.
+2. Der Passwortmanager (iCloud-Schlüsselbund / Google Passwortmanager /
+   Bitwarden …) fragt „Passwort speichern?" → **Ja**.
+3. Ab dann füllt er das Passwortfeld automatisch aus und entsperrt sich dabei
+   per **Fingerabdruck/FaceID**. Fühlt sich an wie ein biometrischer Login,
+   ist aber sicher (deine Biometrie verlässt nie das Gerät).
+
+Optional noch bequemer: bei **Google/GitHub einen Passkey** einrichten — dann
+läuft schon der Login beim Identity-Provider biometrisch.
+
+---
+
+## Schritt 5 — wie eine App aufs Handy
+
+Im Handy-Chrome die App-URL öffnen → Menü → **„Zum Startbildschirm hinzufügen"**.
+Liegt als Icon, öffnet im Vollbild.
+
+---
+
+## Wichtige Hinweise
+
+- **Keys niemals im Code / im Repo.** Sie gehören ausschließlich in die Secrets.
+  Wenn ein Key je öffentlich war: bei Finnhub/FMP neu generieren.
+- **Gespeicherte Portfolios**: liegen lokal als Datei auf dem jeweiligen Rechner.
+  In der Cloud sind sie an die App-Instanz gebunden und nicht privat pro Nutzer —
+  für dich als Einzelnutzer aber unproblematisch.
+- Kostenlose Cloud „schläft" bei Nichtnutzung; der erste Aufruf danach braucht
+  ein paar Sekunden zum Aufwachen.

@@ -1,181 +1,83 @@
-# Kaufauswahl mit Value Radar — Schritt für Schritt (mit Werten)
+# Portfolios dauerhaft speichern mit Google Sheets
 
-Diese Anleitung verbindet alle Module (Screener, Radar, Einzelanalyse, Matrix 1, Matrix 2,
-News) zu **einer Entscheidungskette**: von der Idee bis zum Einstiegskurs. Die genannten
-Schwellen sind Startwerte — bewusst streng, damit am Ende wenige, gute Kandidaten übrig bleiben.
-
-> Grundsatz: Das Tool liefert **Kandidaten, keine Kaufsignale**. Jede Stufe ist ein Filter.
-> Wer durch alle Stufen kommt, ist eine *Idee zum genaueren Prüfen* — nicht automatisch ein Kauf.
+Damit deine gespeicherten Portfolios **jeden Reboot der Streamlit-Cloud überleben**,
+kann die App sie in ein Google Sheet schreiben. Einmal einrichten (ca. 10 Min),
+danach läuft es automatisch. Ist es nicht eingerichtet, nutzt die App weiter den
+lokalen Speicher + Backup-Datei – nichts geht kaputt.
 
 ---
 
-## Die zwei Wege
+## Schritt 1 — Google Cloud Projekt & Service-Account
 
-- **Weg A — Qualität & Value:** solide, profitable Firmen zu vernünftigem Preis kaufen.
-  Startpunkt: **Screener**.
-- **Weg B — Vor die Welle:** das „Micron/Nvidia von morgen" früh erwischen.
-  Startpunkt: **Radar**.
-
-Beide Wege münden ab Stufe 2 in dieselbe Prüfkette.
-
----
-
-## Stufe 0 — Marktüberblick (optional, 2 Minuten)
-
-Tab **NEWS**. Kurz US-Markt / DAX / Yahoo US überfliegen: Ist die Großwetterlage riskant
-(Zinsen, Crash-Schlagzeilen)? Wenn ja → kleinere Positionen, mehr Geduld beim Einstieg.
+1. Gehe zu https://console.cloud.google.com → oben ein **neues Projekt** anlegen
+   (z. B. „value-radar").
+2. Menü → **APIs & Services → Library** → suche **„Google Sheets API"** →
+   **Enable**.
+3. Menü → **APIs & Services → Credentials → Create Credentials →
+   Service account**. Namen vergeben (z. B. „value-radar-bot"), erstellen.
+4. Den erstellten Service-Account anklicken → Reiter **Keys → Add Key →
+   Create new key → JSON**. Es lädt eine **JSON-Datei** herunter – die brauchen
+   wir gleich. Darin steht u. a. eine E-Mail wie
+   `value-radar-bot@...gserviceaccount.com`.
 
 ---
 
-## Stufe 1 — Ideen finden
+## Schritt 2 — Google Sheet anlegen und teilen
 
-### Weg A — Screener
-1. Tab **SCREENER** → Vorlage **„Value & Qualität"**.
-2. Regionen wählen (z. B. us, de, nl, fr, gb, ch — mehr Länder = mehr Treffer, langsamer).
-3. „Max. Titel laden" 80–150.
-4. Ergebnisliste lesen:
-   - **Bonus-Fit ≥ 5/7** (möglichst viele weiche Kriterien erfüllt).
-   - **Upside % positiv** (Kurs unter fairem Wert).
-   - Sortiere nach Bonus-Fit, dann Upside.
-
-Alternative für gefallene Schwergewichte: Vorlage **„Turnaround / Comeback"**
-→ Treffer mit **Bonus-Fit ≥ 2/3**.
-
-### Weg B — Radar
-1. Tab **RADAR** → Modus *Thema*, *Branche marktweit* oder *Marktweit*.
-2. „Max. Titel scannen" 40–80.
-3. Kandidaten in der Tabelle:
-   - **Radar-Score ≥ 60** (Frühsignal stark).
-   - **Aktive Ebenen ≥ 3** (mehrere Signale gleichzeitig = Koinzidenz, wertvoller als ein Einzelwert).
-4. **Zeile anklicken** → öffnet die Aktie direkt in der Einzelanalyse.
+1. Lege ein leeres Google Sheet an (https://sheets.new). Name egal.
+2. Kopiere die **Sheet-ID** aus der URL:
+   `https://docs.google.com/spreadsheets/d/`**`DIESE_LANGE_ID`**`/edit`
+3. Klicke im Sheet auf **Teilen** und teile es mit der **Service-Account-E-Mail**
+   aus Schritt 1 (die `...gserviceaccount.com`-Adresse) als **Bearbeiter/Editor**.
+   Das ist wichtig – sonst darf die App nicht schreiben.
 
 ---
 
-## Stufe 2 — Einzelanalyse: Schnellcheck (~1 Min je Aktie)
+## Schritt 3 — Secrets in Streamlit eintragen
 
-Tab **EINZELANALYSE**. Fünf Werte-Gates oben in den Kacheln:
+In Streamlit Cloud: **Manage app → Settings → Secrets**. Füge Folgendes ein –
+den Block `[gcp_service_account]` füllst du mit den Werten aus der JSON-Datei:
 
-| Wert | Gut | Schwellen |
-|---|---|---|
-| **Composite Score** | je höher desto besser | ≥ 66 stark (grün) · 50–65 ok · < 50 meiden |
-| **Playbook** | korrekt erkannt? | „Auto" sollte passen; sonst manuell überschreiben |
-| **Fair Value vs. Kurs** | Kurs < Fair Value | **Upside ≥ +15 %** (Sicherheitspuffer) |
-| **Bewertungsspanne / Streuung** | eng = verlässlich | **≤ 50 %** vertrauenswürdig · > 60 % = Warnung, vorsichtig |
-| **Einstieg (Kaufzone)** | Kurs ≤ Einstieg | sonst auf Rücksetzer in die Kaufzone warten |
+```toml
+GSHEET_ID = "DIESE_LANGE_ID_AUS_DER_SHEET_URL"
 
-Fällt eine Aktie hier durch (z. B. Composite < 50 oder negativer Upside), **aussortieren**.
+[gcp_service_account]
+type = "service_account"
+project_id = "dein-projekt-id"
+private_key_id = "..."
+private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+client_email = "value-radar-bot@...gserviceaccount.com"
+client_id = "..."
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/..."
+```
 
----
+Wichtig beim `private_key`: Er muss exakt so übernommen werden, mit den
+`\n` als Zeilenumbrüche in Anführungszeichen (genau wie in der JSON-Datei).
 
-## Stufe 3 — Matrix 1: Qualitäts-Gate
-
-Tab **MATRIX 1** (15 Kriterien, max. 45 Punkte). Die Werte werden automatisch befüllt,
-du kannst sie überschreiben, wenn du es besser weißt.
-
-| Gesamt /45 | Einstufung | Aktion |
-|---|---|---|
-| **≥ 36** | High Conviction | bevorzugter Kandidat |
-| **30–35** | Sehr gut | kaufbar |
-| **24–29** | Watchlist | beobachten, noch nicht kaufen |
-| **< 24** | — | aussortieren |
-
-**Mindesthürde zum Weitermachen: ≥ 30.**
+Speichern → die App startet neu.
 
 ---
 
-## Stufe 4 — Matrix 2: Momentum & Timing
+## Schritt 4 — fertig
 
-Tab **MATRIX 2** (4 gewichtete Kategorien, 0–100):
-Fundamental-Momentum 40 % · Kapitalqualität 30 % · Sentiment 15 % · Narrativ 15 %.
+Öffne den Portfoliocheck → Bereich **„🗄️ Backup / Wiederherstellen"**. Steht dort
+grün **„☁️ Cloud-Speicher aktiv (Google Sheets)"**, funktioniert alles: Ab jetzt
+werden Portfolios ins Google Sheet geschrieben und überstehen jeden Reboot.
 
-| Gesamt /100 | Bedeutung |
-|---|---|
-| **≥ 70** | starkes Momentum — gutes Timing |
-| **55–69** | ok |
-| **< 55** | Timing abwarten (Qualität evtl. da, aber noch kein Rückenwind) |
-
-Besonders auf **Fundamental-Momentum** achten (höchstes Gewicht).
+Falls dort nichts Grünes steht, prüfe: Sheets-API aktiviert? Sheet mit der
+Service-Account-E-Mail geteilt? `GSHEET_ID` korrekt? `private_key` vollständig?
 
 ---
 
-## Stufe 5 — Katalysator & Technik (in Einzelanalyse + Radar)
+## Hinweise
 
-- **Insider-Trades (30 Tage):** Käufe ≥ Verkäufe; keine massiven Verkäufe.
-- **Analystenrating:** positiv bzw. Kursziel über aktuellem Kurs.
-- **Technik:** **Kurs > SMA200** und **RSI < 70** (nicht überkauft).
-  Bei Turnaround stattdessen: **„Boden gebildet" = ja**.
-- **Konkreter Trigger?** Radar-Ereignisse/News: Übernahme, Großauftrag, Kooperation,
-  angehobene Schätzungen — ein *Grund*, warum es jetzt laufen sollte.
-
----
-
-## Stufe 6 — Die Kauf-Scorecard (Ampel)
-
-### Pflicht — ALLE müssen erfüllt sein
-1. Composite Score **≥ 55**
-2. Matrix 1 **≥ 30**
-3. Upside **≥ +15 %** (Kurs unter Fair Value)
-4. Bewertungs-Streuung **≤ 60 %**
-5. Keine massiven Insider-Verkäufe
-6. **Kurs > SMA200** *oder* **Boden gebildet** (Weg B / Turnaround)
-
-### Bonus — je 1 Punkt (Ziel: ≥ 3 von 5)
-- Matrix 2 **≥ 70**
-- Radar-Score **≥ 60** (Weg B)
-- **PEG < 1**
-- Analystenrating positiv
-- Insiderkäufe vorhanden
-
-**Entscheidung:** alle 6 Pflicht-Gates erfüllt **und ≥ 3 Bonuspunkte** → echter Kaufkandidat.
-Sonst: Watchlist oder verwerfen.
-
----
-
-## Stufe 7 — Einstieg & Positionsgröße
-
-- **Kaufzone** = Fair Value × (1 − Sicherheitsabschlag/MOS):
-  - quality −18 % · cyclical −25 % · inflection −25 % · financial −20 %.
-  - Liegt der Kurs darüber: **gestaffelt** kaufen (z. B. 3 Tranchen) oder auf Rücksetzer warten.
-- **Positionsgröße:** pro Einzelwert z. B. max. 5–8 % des Depots; auf mehrere Werte/Branchen streuen.
-- **These notieren:** Warum kaufst du (1–2 Sätze)? Was wäre das Signal, dass die These *gebrochen*
-  ist (z. B. Fundamental-Momentum kippt, Wachstum bricht weg)? Das ist deine Verkaufsregel.
-
----
-
-## Worked Example (Schema)
-
-1. Screener „Value & Qualität" → *Firma X*: Bonus-Fit 6/7, Upside +22 %.
-2. Einzelanalyse: Composite 71 (grün), Playbook quality (Auto), Streuung 38 %, Kurs leicht über Kaufzone.
-3. Matrix 1: 34/45 → sehr gut. ✔
-4. Matrix 2: 73/100 → starkes Momentum. ✔ (Bonus)
-5. Technik: Kurs > SMA200, RSI 58, Analyst positiv. ✔ (2 Bonus)
-6. Scorecard: 6/6 Pflicht + 3 Bonus → **Kaufkandidat**.
-7. Einstieg: Kurs noch ~6 % über Kaufzone → erste Tranche jetzt, zweite/dritte bei Rücksetzer.
-
----
-
-## Kurz-Referenz der wichtigsten Schwellen
-
-| Modul | Kennzahl | Schwelle |
-|---|---|---|
-| Screener | Bonus-Fit (Value&Q / Turnaround) | ≥ 5/7 / ≥ 2/3 |
-| Radar | Radar-Score / Aktive Ebenen | ≥ 60 / ≥ 3 |
-| Einzelanalyse | Composite Score | ≥ 55 (≥ 66 stark) |
-| Einzelanalyse | Upside (Kurs < Fair Value) | ≥ +15 % |
-| Einzelanalyse | Bewertungs-Streuung | ≤ 60 % |
-| Matrix 1 | Gesamt /45 | ≥ 30 (≥ 36 top) |
-| Matrix 2 | Gesamt /100 | ≥ 70 |
-| Technik | RSI / SMA200 | RSI < 70 · Kurs > SMA200 |
-| Bewertung | PEG (Wachstum) | < 1 günstig |
-
----
-
-## Ehrliche Grenzen
-
-- **Keine Kaufsignale.** Die Kette filtert Ideen; die Kaufentscheidung triffst du.
-- **Freie Daten haben Lücken** (Forward-EPS-Schätzungen, fehlende Felder, Finnhub-Free-Limit).
-  Bei „n/a" das Kriterium manuell prüfen, nicht blind vertrauen.
-- **Fair Value ist eine Schätzung**, kein Kursziel. Eine große Streuung heißt: niedrige Sicherheit.
-- **Näherungen im Screener:** 5-Jahres-Wachstum ≈ TTM-Wachstum, Eigenkapitalquote ≈ Verschuldungsgrad,
-  Marktposition ≈ Bruttomarge × ROE.
-- Streue über mehrere Werte und kauf nie alles auf einmal.
+- **Sicherheit:** Der Service-Account hat nur Zugriff auf genau dieses eine Sheet
+  (weil nur dieses mit ihm geteilt ist). Die Secrets liegen verschlüsselt in
+  Streamlit, nicht im Code/Repo.
+- **Format:** Die App legt alle Portfolios als ein JSON in Zelle **A1** ab. Du
+  kannst da reinschauen, solltest die Zelle aber nicht von Hand bearbeiten.
+- Die Backup-Datei-Funktion (Download/Import) bleibt zusätzlich verfügbar – als
+  zweite Sicherung oder zum Umziehen.

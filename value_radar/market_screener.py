@@ -151,17 +151,22 @@ def collapse_listings(tickers):
     suffixierte Varianten mit gleichem Basissymbol werden zusammengefasst."""
     out, base_pos = [], {}
     for t in tickers:
-        if "." not in t:
-            out.append(t)                    # US/ohne Suffix: unveraendert lassen
-            continue
-        base, suf = t.split(".", 1)
-        pri = _SUFFIX_PRIORITY.get(suf.upper(), 50)
+        # Basissymbol + Prioritaet. Ticker OHNE Suffix = Heimatnotierung -> Prioritaet 0
+        # (gewinnt). Vorher wurden sie gar nicht registriert -> AMZ und AMZ.DE
+        # ueberlebten beide.
+        if "." in t:
+            base, suf = t.split(".", 1)
+            pri = _SUFFIX_PRIORITY.get(suf.upper(), 50)
+        else:
+            base, pri = t, 0
         if base not in base_pos:
             base_pos[base] = len(out)
             out.append(t)
         else:
             i = base_pos[base]
-            prev_suf = out[i].split(".", 1)[1] if "." in out[i] else ""
-            if pri < _SUFFIX_PRIORITY.get(prev_suf.upper(), 50):
-                out[i] = t                   # heimatnaehere Notierung gewinnt
+            prev = out[i]
+            prev_pri = (_SUFFIX_PRIORITY.get(prev.split(".", 1)[1].upper(), 50)
+                        if "." in prev else 0)
+            if pri < prev_pri:
+                out[i] = t
     return out

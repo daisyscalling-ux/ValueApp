@@ -31,6 +31,11 @@ THEMES = {
                        "VST", "CEG", "EOG", "FANG", "AR"],
     "Healthcare/Biotech Mid": ["VKTX", "CRNX", "RXRX", "TEM", "HIMS", "EXAS",
                                "NTRA", "ALNY", "SRPT", "MDGL"],
+    "Financials & Banken": ["C", "JPM", "BAC", "WFC", "GS", "MS", "SCHW", "USB",
+                            "PNC", "COF", "AXP", "BLK", "KKR", "APO",
+                            "DBK.DE", "CBK.DE", "ALV.DE", "MUV2.DE"],
+    "Konsum & Industrie": ["AMZN", "COST", "WMT", "HD", "MCD", "NKE", "SBUX",
+                           "CAT", "DE", "HON", "GE", "UNP", "UPS", "BA"],
 }
 
 # Hauptbranchen fuer den marktweiten Branchen-Scan (yfinance-Sektor, optional Branchen-Stichwort)

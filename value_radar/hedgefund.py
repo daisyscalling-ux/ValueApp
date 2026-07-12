@@ -73,21 +73,93 @@ def _data_ok(f, need=5):
 
 
 def _quality_gate(f, s, v, direction, min_groups=5):
-    """Mindestanforderungen fuers Depot. Leitgedanke: Es geht um DATENLAGE, nicht
-    um Meinungs-Uebereinstimmung. Sind die Kennzahlen da, ist eine Uneinigkeit der
-    Bewertungsmethoden ein Informationsgehalt - kein Ausschlussgrund.
-    min_groups niedriger setzen, wenn nur flache Daten vorliegen (Screening-Anzeige)."""
+    """Mindestanforderungen fuers Depot.
+
+    LONG folgt der SCORECARD-Logik (die verwirft einen Titel bei 2+ verfehlten
+    Pflichtkriterien). Hart, weil sie den Kern eines Kaufkandidaten ausmachen:
+      - Composite >= 55  (Qualitaet)
+      - Upside >= +15 % UND belastbarer Fair Value
+      - kein Value-Trap-Verdacht
+    Weich (ein Verfehlen ist erlaubt, wie bei "Knapp - Watchlist"):
+      - Bewertungs-Streuung <= 60 %
+    BP fiel genau hier durch: Composite 50, unbelastbarer Fair Value, Streuung 116 %
+    -> in der Scorecard "Verwerfen", also auch kein Long-Kandidat.
+
+    SHORT/PUT: Datenlage muss stimmen, ein unsicherer Fair Value ist aber kein K.o.
+    (die These lebt ja gerade von der Fehlbewertung)."""
     ok_data, n = _data_ok(f, need=min_groups)
     if not ok_data:                                  # Kernschutz gegen BHPL.XC & Co.
         return False, f"nur {n}/9 Kennzahlen-Gruppen vorhanden"
     if (v.get("n_methods") or 0) < 2:
         return False, "Fair Value aus nur einer Methode"
-    # Unsicherer Fair Value nur dann ein K.o., wenn ZUSAETZLICH die Datenlage duenn ist.
+
+    if direction == "long":
+        comp = s.get("composite")
+        if comp is None or comp < 55:
+            return False, f"Composite {comp:.0f} < 55 (Scorecard-Pflicht)" if comp \
+                else "kein Composite"
+        up = v.get("upside_pct")
+        if up is None or up < 15 or not v.get("reliable"):
+            return False, (f"Upside {up} / Fair Value nicht belastbar "
+                           "(Scorecard-Pflicht)")
+        if s.get("value_trap"):
+            return False, "Value-Trap-Verdacht"
+        spread = v.get("spread_pct")
+        if spread is not None and spread > 90:       # weit jenseits der Scorecard
+            return False, f"Bewertungs-Streuung {spread:.0f} % (unbrauchbar)"
+        return True, "ok"
+
+    # Short-/Put-Seite
     if not v.get("reliable") and n < min_groups + 1:
         return False, "Fair Value unsicher bei d\u00fcnner Datenlage"
-    if direction == "long" and s.get("value_trap"):
-        return False, "Value-Trap-Verdacht"
     return True, "ok"
+
+
+_SC_CACHE = {}          # Ticker -> (ok, verdict, missing, evaluated) je Lauf
+
+
+def scorecard_ok(ticker, f, s, v):
+    """Laesst die ECHTE Scorecard laufen (alle 6 Pflichtkriterien) statt einer
+    Nachbildung. Frueher pruefte der Hedgefonds nur Composite/Upside/Value-Trap -
+    Matrix 1 (Setup), Insider-Verkaeufe und der Trendfilter fehlten. Genau dadurch
+    kam BP ins Long-Buch, obwohl die Scorecard es verwirft.
+
+    Rueckgabe: (ok, urteil, offene_punkte, evaluated)
+      evaluated=False heisst: Pruefung war NICHT moeglich (Modul/Daten fehlen).
+      Der Aufrufer entscheidet dann bewusst - neue Titel werden abgelehnt,
+      bestehende Positionen aber NICHT wegen eines Fehlers liquidiert."""
+    if ticker in _SC_CACHE:
+        return _SC_CACHE[ticker]
+    try:
+        import matrices as mx
+        import scorecard as sc
+        import intel as intel_mod
+    except Exception as e:
+        res = (False, "Scorecard nicht pruefbar", f"Modul fehlt: {e}", False)
+        _SC_CACHE[ticker] = res
+        return res
+    try:
+        hist = providers.get_price_history(ticker, period="1y", interval="1d")
+        try:
+            intel = intel_mod.gather(ticker, name=f.get("name"))
+        except Exception:
+            intel = {}
+        try:
+            extras = providers.get_screen_extras(ticker)
+        except Exception:
+            extras = {}
+        sig = mx.build_signals(f, hist, intel.get("analyst"), extras)
+        m1 = mx.auto_m1_total(sig)
+        m2 = mx.auto_m2_total(sig)
+        r = sc.evaluate(f, v, s.get("composite"), m1, m2, extras,
+                        intel.get("insider"), intel.get("analyst"))
+        failed = [m["label"] for m in r.get("mandatory", []) if not m["ok"]]
+        ok = r.get("mand_pass") == r.get("mand_total")      # ALLE Pflichtkriterien
+        res = (ok, r.get("verdict", ""), "; ".join(failed), True)
+    except Exception as e:
+        res = (False, "Scorecard-Fehler", str(e), False)
+    _SC_CACHE[ticker] = res
+    return res
 
 
 def candidates(size=60):
@@ -123,7 +195,7 @@ def candidates(size=60):
             up = (v["analyst_target"] / price - 1) * 100
         if comp is None or up is None:
             continue
-        if comp >= 55 and up >= 8:
+        if comp >= 52 and up >= 10:      # weiter Vorscan, hartes Gate spaeter
             pre_l.append(t)
         elif up <= -8:                              # weit gefasst: Puts brauchen weniger
             pre_s.append(t)
@@ -158,7 +230,15 @@ def candidates(size=60):
             strong_uptrend = bool(above and (mom60 or 0) > 0.15)
 
             if direction == "long":
-                if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
+                # Schwellen konsistent mit der Scorecard (Composite >= 55, Upside >= 15).
+                if comp >= 55 and up >= 15 and (mom60 is None or mom60 > -0.20):
+                    # ECHTE Scorecard: ALLE Pflichtkriterien muessen erfuellt sein
+                    # (inkl. Matrix-1-Setup, Insider, Trend) - sonst kein Long-Buch.
+                    sc_ok, verdict, missing, _ev = scorecard_ok(t, f, s, v)
+                    if not sc_ok:                    # auch bei "nicht pruefbar": NICHT rein
+                        print(f"[hedgefund] {t} verworfen (long): Scorecard "
+                              f"\"{verdict}\" - offen: {missing}")
+                        continue
                     longs.append((comp * 0.6 + min(up, 60) * 0.5, t))
                 continue
             # --- Short-Seite ---
@@ -187,9 +267,10 @@ def _trail_stop(peak_pl):
     return 5.0 * math.floor(peak_pl / 5.0) - 5.0
 
 
-def rebalance(state, longs_cand, shorts_cand, put_cand=None):
+def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
     """Eine Pruefung: TP/SL anwenden, dann freie Slots fuellen. Mutiert state.
-    put_cand = mildere Liste fuer die KO-Put-Beimischung (siehe candidates())."""
+    put_cand = mildere Liste fuer die KO-Put-Beimischung (siehe candidates()).
+    revalidate = bestehende Aktien-Longs erneut gegen die Scorecard pruefen."""
     now = time.time()
     held = {p["ticker"] for p in state["positions"]}
     # 1) Exits
@@ -227,6 +308,23 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None):
                 exit_why = "Stop-Loss"
             elif trail is not None and pl <= trail + 1e-6:
                 exit_why = f"Gewinn-Stop (+{trail:.0f} %)"
+        # Bestehende AKTIEN-Longs erneut gegen die Scorecard pruefen: faellt ein Titel
+        # inzwischen durch (Signal erloschen), wird er geschlossen - sonst bliebe er
+        # bis zum Stop-Loss liegen (so hing BP im Depot).
+        if (exit_why is None and p["dir"] == "long" and p.get("type") != "ko"
+                and revalidate):
+            try:
+                _f = providers.get_fundamentals(p["ticker"], deep=True)
+                _ep = valuation.classify_playbook(_f)
+                _s = scoring.score_stock(_f, None, preset=_ep)
+                _v = valuation.fair_value(_f, None, _ep)
+                _ok, _verd, _miss, _ev = scorecard_ok(p["ticker"], _f, _s, _v)
+                if _ev and not _ok:      # nur schliessen, wenn wirklich geprueft wurde
+                    exit_why = "Signal erloschen (Scorecard)"
+                    print(f"[hedgefund] {p['ticker']} geschlossen: Scorecard "
+                          f"\"{_verd}\" - offen: {_miss}")
+            except Exception:
+                pass
         if exit_why:
             cost = p["qty"] * p["entry_eur"]
             proceeds = cost * (1 + pl / 100)
@@ -345,6 +443,7 @@ def fresh_state(strategy):
 def reset(strategy, refill=True, scan_size=50):
     """Ein Strategie-Depot komplett neu aufsetzen (alle Positionen verwerfen).
     refill=True baut direkt nach den aktuellen Regeln neu auf."""
+    _SC_CACHE.clear()
     hf = store.get_hf() or {}
     st_ = fresh_state(strategy)
     if refill:
@@ -357,6 +456,7 @@ def reset(strategy, refill=True, scan_size=50):
 
 def run_all(scan_size=60):
     """Alle Strategie-Portfolios pruefen/anpassen (Cron-Einstieg, 2x taeglich)."""
+    _SC_CACHE.clear()                     # Scorecard-Urteile je Lauf frisch holen
     hf = store.get_hf() or {}
     lc, sc, pc = candidates(scan_size)
     print(f"[hedgefund] Kandidaten: {len(lc)} Long, {len(sc)} Short, {len(pc)} KO-Put")

@@ -1,12 +1,13 @@
 # WICHTIG: Hauptversionen sind bewusst FESTGENAGELT.
-# Der Cloud-Neustart am 04.07. hat ungetestete neue Hauptversionen installiert
-# (yfinance 1.x, pandas 3.x) - andere Datenfelder, kaputte Suche, falsche Scores.
-# Diese Pins stellen den getesteten Stand wieder her. Nur bewusst anheben!
+# Streamlit Cloud erzwingt derzeit Python 3.14 (runtime.txt wird IGNORIERT).
+# Auf 3.14 gab es Abstuerze (Segmentation fault) durch native Pakete
+# (pyarrow/numpy). Diese Pins halten den getesteten Stand.
 yfinance>=0.2.40,<0.3
 pandas>=2.0,<3
-numpy<3
-streamlit>=1.41
-altair>=5.4,<5.5   # 5.5.0 crasht auf Python 3.14 (TypedDict closed=True)
+numpy>=2.1,<3
+streamlit>=1.41,<2
+altair>=5.4,<5.5      # 5.5.0 crasht auf Python 3.14 (TypedDict closed=True)
+pyarrow>=18,<26       # Segfault-Quelle auf 3.14 -> Bereich eingegrenzt
 requests>=2.31
 openpyxl>=3.1
 deep-translator>=1.11

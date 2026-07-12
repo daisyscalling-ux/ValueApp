@@ -550,19 +550,19 @@ def svg_area_chart(pcts, color, height=250):
         f'{lo:.1f}%</text></svg>')
 
 
-def render_pf_stats(rows, a):
-    """Statistik unter dem Portfolio: Gesamt-G/V (gruen/rot) und Win-Quote -
-    offen (laufende Positionen) und realisiert (aus dem Logbuch)."""
-    st.markdown('<div class="sec-title" style="margin-top:10px">STATISTIK</div>',
-                unsafe_allow_html=True)
+def render_pf_stats():
+    """Statistik im Logbuch: Gesamt-G/V (gruen/rot) und Win-Quote - offen (laufende
+    Positionen, aus der zuletzt berechneten Analyse) und realisiert (aus dem Logbuch)."""
+    st.markdown('<div class="sec-title">STATISTIK</div>', unsafe_allow_html=True)
 
-    # --- Offene Positionen ---
-    scored = [r for r in rows if r.get("ret_pct") is not None]
-    wins = [r for r in scored if (r.get("ret_pct") or 0) > 0]
-    win_pct = (len(wins) / len(scored) * 100) if scored else None
-    gain_open = a.get("pl_gain") if a.get("have_pl") else None
-    cost_open = a.get("pl_cost") or 0
+    # --- Offene Positionen (von der Analyse-Ansicht hinterlegt) ---
+    _o = st.session_state.get("pf_stats_open") or {}
+    n_scored, n_wins = _o.get("scored", 0), _o.get("wins", 0)
+    win_pct = (n_wins / n_scored * 100) if n_scored else None
+    gain_open = _o.get("gain")
+    cost_open = _o.get("cost") or 0
     gain_open_pct = (gain_open / cost_open * 100) if (gain_open is not None and cost_open) else None
+    scored, wins = range(n_scored), range(n_wins)
 
     # --- Realisiert (Logbuch) ---
     try:
@@ -606,6 +606,9 @@ def render_pf_stats(rows, a):
             f'<div style="margin-top:6px;font-size:17px">Gesamt (offen + realisiert): '
             f'<b style="color:{_sig(total)}">{_eur(total)}</b></div>',
             unsafe_allow_html=True)
+    if not n_scored:
+        st.caption("Offene Werte erscheinen, sobald ein Portfolio in der Ansicht "
+                   "\u201eAnalyse\u201c geladen wurde.")
     st.caption("Win % = Anteil der Positionen bzw. protokollierten Verk\u00e4ufe im Plus. "
                "Realisierte Werte stammen aus dem Logbuch \u2013 sie sind nur so "
                "vollst\u00e4ndig wie deine Eintr\u00e4ge. Kein Anlagerat.")
@@ -720,13 +723,25 @@ def render_hf_logbook():
 
 
 def render_pf_logbook():
-    """Portfolio-Logbuch: automatische Verkaeufe + manuelle Eintraege."""
+    """Portfolio-Logbuch: Statistik + automatische Verkaeufe + manuelle Eintraege."""
+    render_pf_stats()
+    st.markdown('<div class="sec-title" style="margin-top:12px">TRANSAKTIONEN</div>',
+                unsafe_allow_html=True)
     try:
         log = store.get_pf_log()
     except Exception:
         log = []
 
     with st.expander("\u2795 Transaktion manuell eintragen", expanded=not log):
+        try:
+            _pfs = store.names()
+        except Exception:
+            _pfs = []
+        _cur = st.session_state.get("pf_cur_name", "")
+        _opts = _pfs if _pfs else []
+        _opts = _opts + ["\u2014 ohne Zuordnung \u2014"]
+        _idx = _opts.index(_cur) if _cur in _opts else len(_opts) - 1
+        m_pf = st.selectbox("Portfolio / Strategie", _opts, index=_idx, key="pfl_pf")
         c1 = st.columns([1, 1, 1])
         m_typ = c1[0].selectbox("Typ", ["Verkauf", "Kauf", "Dividende", "Sonstiges"],
                                 key="pfl_typ")
@@ -746,7 +761,7 @@ def render_pf_logbook():
                 q, p = parse_eur(m_qty), parse_eur(m_px)
                 store.pf_log_add({
                     "ts": time.time(), "datum": m_dt or "",
-                    "portfolio": st.session_state.get("pf_cur_name", ""),
+                    "portfolio": ("" if m_pf.startswith("\u2014") else m_pf),
                     "typ": m_typ, "ticker": m_tk.strip().upper(),
                     "anzahl": q, "kurs_eur": p,
                     "betrag_eur": round((q or 0) * (p or 0), 2) if (q and p) else None,
@@ -3023,12 +3038,18 @@ if nav == "Portfoliocheck":
                 st.caption("Kompakte Tabelle: Ticker/Unternehmen, Anzahl, \u00d8 Buy-in (\u20ac). "
                            "Unterste leere Zeile = neue Position; Zeile markieren + Entf = "
                            "l\u00f6schen. Danach \u00fcbernehmen bzw. speichern.")
+                # WICHTIG: alle Spalten als reine Strings. Gemischte Typen (leere
+                # Strings + Zahlen) belasten die Arrow-Konvertierung von
+                # st.data_editor - auf Python 3.14 eine Absturzquelle.
                 _seed = pd.DataFrame(
-                    [{"Ticker/Unternehmen": r.get("ticker", ""),
-                      "Anzahl": ("" if r.get("shares") in (None, "") else r.get("shares")),
-                      "\u00d8 Buy-in (\u20ac)": ("" if r.get("avg_buyin") in (None, "") else r.get("avg_buyin"))}
+                    [{"Ticker/Unternehmen": str(r.get("ticker") or ""),
+                      "Anzahl": ("" if r.get("shares") in (None, "")
+                                 else str(r.get("shares"))),
+                      "\u00d8 Buy-in (\u20ac)": ("" if r.get("avg_buyin") in (None, "")
+                                                 else str(r.get("avg_buyin")))}
                      for r in st.session_state.get("pf_records", [])]
-                    or [{"Ticker/Unternehmen": "", "Anzahl": "", "\u00d8 Buy-in (\u20ac)": ""}])
+                    or [{"Ticker/Unternehmen": "", "Anzahl": "",
+                         "\u00d8 Buy-in (\u20ac)": ""}]).astype(str)
                 _edited = st.data_editor(_seed, num_rows="dynamic", use_container_width=True,
                                          hide_index=True, key="pf_editor")
                 _name = st.text_input("Speichern als",
@@ -3314,8 +3335,13 @@ if nav == "Portfoliocheck":
                     else:
                         st.session_state.pop("pf_confirm_sell", None)
 
-                # Statistik: Gesamt-G/V + Win-Quote (offen und realisiert)
-                render_pf_stats(rows, a)
+                # Offene Kennzahlen fuer die Statistik im Logbuch hinterlegen
+                _sc = [r for r in rows if r.get("ret_pct") is not None]
+                st.session_state["pf_stats_open"] = {
+                    "scored": len(_sc),
+                    "wins": sum(1 for r in _sc if (r.get("ret_pct") or 0) > 0),
+                    "gain": a.get("pl_gain") if a.get("have_pl") else None,
+                    "cost": a.get("pl_cost") or 0}
 
                 # Status je Position (wie frueher "Im Plus - halten" etc.) - inkl. konkreter
                 # Gewinnabsicherungs-Marke, wo sie zutrifft.

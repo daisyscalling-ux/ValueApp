@@ -199,6 +199,15 @@ def rebalance(state, longs_cand, shorts_cand):
     state["positions"] = keep
     # 2) Entries (freie Slots)
     nl, ns = STRATS[state["strategy"]]
+    if state["strategy"] == "core_ko":
+        # Der Aktien-Kern und die KO-Calls greifen auf DIESELBE Long-Liste zu.
+        # Ohne Reserve frisst der Kern alle Kandidaten -> es blieben nur Puts uebrig.
+        # Daher: mindestens 2 Long-Kandidaten fuer KO-Calls freihalten.
+        n_ko_calls_open = max(KO_N - 1 - len([p for p in state["positions"]
+                                              if p.get("type") == "ko"
+                                              and p["ko_dir"] == "call"]), 0)
+        reserve = min(2, n_ko_calls_open) if longs_cand else 0
+        nl = max(min(nl, len(longs_cand) - reserve), 2)
     for direction, n_max, cands in (("long", nl, longs_cand), ("short", ns, shorts_cand)):
         cur = [p for p in state["positions"] if p["dir"] == direction]
         for t in cands:
@@ -232,20 +241,20 @@ def rebalance(state, longs_cand, shorts_cand):
         # traegt man dasselbe Firmenrisiko doppelt (Aktie + gehebelter Schein).
         calls = [t for t in longs_cand if t not in core_t and t not in ko_t]
         puts = [t for t in shorts_cand if t not in core_t and t not in ko_t]
-        have_call = any(p["ko_dir"] == "call" for p in kos)
-        have_put = any(p["ko_dir"] == "put" for p in kos)
+        # Ausgewogene Mischung: immer die Richtung mit dem kleineren Bestand zuerst.
+        # Bei 3 freien Slots ergibt das 2 Calls + 1 Put (statt "was uebrig bleibt").
+        n_free = max(KO_N - len(kos), 0)
+        cnt = {"call": sum(1 for p in kos if p["ko_dir"] == "call"),
+               "put": sum(1 for p in kos if p["ko_dir"] == "put")}
+        pool = {"call": calls, "put": puts}
         plan = []
-        # Immer BEIDE Richtungen: zuerst je einen Put und einen Call sichern ...
-        if not have_put and puts:
-            plan.append(("put", puts.pop(0)))
-        if not have_call and calls:
-            plan.append(("call", calls.pop(0)))
-        # ... dann restliche Slots abwechselnd auffuellen.
-        while len(kos) + len(plan) < KO_N and (calls or puts):
-            if calls and len(kos) + len(plan) < KO_N:
-                plan.append(("call", calls.pop(0)))
-            if puts and len(kos) + len(plan) < KO_N:
-                plan.append(("put", puts.pop(0)))
+        for _ in range(n_free):
+            order = sorted(("call", "put"),
+                           key=lambda d: cnt[d] + sum(1 for x, _ in plan if x == d))
+            pick = next((d for d in order if pool[d]), None)
+            if pick is None:
+                break                                # kein Kandidat mehr verfuegbar
+            plan.append((pick, pool[pick].pop(0)))
         for kd, t in plan:
             pe, _ = _price_eur(t)
             budget = min(state["cash"], KO_EACH * state["start_capital"])

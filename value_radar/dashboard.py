@@ -630,6 +630,63 @@ def render_hf_logbook():
         return
     entries.sort(key=lambda e: -(e.get("ts") or 0))
 
+    # ---------- Statistik ueber alle Strategien ----------
+    closed = [e for e in entries if e.get("action") == "close"
+              and e.get("pl_pct") is not None]
+    wins = [e for e in closed if (e.get("pl_pct") or 0) > 0]
+    win_pct = (len(wins) / len(closed) * 100) if closed else None
+    gain_eur = sum(e.get("gain_eur") or 0 for e in closed) if closed else None
+    avg_pct = (sum(e["pl_pct"] for e in closed) / len(closed)) if closed else None
+    depot_val = sum(s.get("value_eur") or 0 for s in hf.values())
+    depot_start = sum(s.get("start_capital") or 0 for s in hf.values())
+    depot_ret = ((depot_val / depot_start - 1) * 100) if depot_start else None
+
+    def _sig(v):
+        return "var(--green)" if (v or 0) >= 0 else "var(--red)"
+
+    def _eur(v):
+        return ("+" if (v or 0) >= 0 else "\u2212") + sym_eur(abs(v or 0))
+
+    st.markdown('<div class="sec-title">STATISTIK \u00b7 alle Strategien</div>',
+                unsafe_allow_html=True)
+    sc = st.columns(4)
+    card(sc[0], "G/V realisiert",
+         _eur(gain_eur) if gain_eur is not None else "\u2014",
+         f"aus {len(closed)} geschlossenen Trades" if closed else "noch keine",
+         _sig(gain_eur))
+    card(sc[1], "Win %",
+         f"{win_pct:.0f} %" if win_pct is not None else "\u2014",
+         f"{len(wins)} von {len(closed)} im Plus" if closed else "\u2014",
+         "var(--green)" if (win_pct or 0) >= 50 else "var(--red)")
+    card(sc[2], "\u00d8 Trade",
+         f"{avg_pct:+.1f} %" if avg_pct is not None else "\u2014",
+         "Durchschnitt je Trade", _sig(avg_pct))
+    card(sc[3], "Depotwert gesamt", sym_eur(depot_val),
+         f"{depot_ret:+.1f} % seit Start" if depot_ret is not None else "",
+         _sig(depot_ret))
+
+    # Aufschluesselung je Strategie
+    per = []
+    for k, s in hf.items():
+        cl = [t for t in s.get("trades", [])
+              if t.get("action") == "close" and t.get("pl_pct") is not None]
+        w = sum(1 for t in cl if t["pl_pct"] > 0)
+        v0, v1 = s.get("start_capital") or 0, s.get("value_eur") or 0
+        per.append({"Strategie": names.get(k, k),
+                    "Wert \u20ac": round(v1, 2),
+                    "Rendite %": round((v1 / v0 - 1) * 100, 2) if v0 else None,
+                    "Trades": len(cl),
+                    "Win %": round(w / len(cl) * 100) if cl else None,
+                    "G/V \u20ac": round(sum(t.get("gain_eur") or 0 for t in cl), 2) if cl else None,
+                    "Offen": len(s.get("positions", []))})
+    if per:
+        vr_table(per, signed_cols=("Rendite %", "G/V \u20ac"),
+                 height=min(len(per) * 40 + 46, 260))
+    st.caption("Realisiert = nur geschlossene Trades. Offene Positionen stecken im "
+               "Depotwert. Papierhandel \u2013 ohne Geb\u00fchren, Spread und Leihkosten.")
+
+    st.markdown('<div class="sec-title" style="margin-top:12px">TRADES</div>',
+                unsafe_allow_html=True)
     fc = st.columns([1.3, 1.3, 1])
     strat_f = fc[0].selectbox("Strategie", ["alle"] + sorted({e["_strat"] for e in entries}),
                               key="hf_log_strat")
@@ -646,9 +703,10 @@ def render_hf_logbook():
              "Aktion": ("\U0001f7e2 Kauf" if e.get("action") == "open"
                         else "\U0001f534 Verkauf"),
              "Ticker": e.get("ticker", ""), "Richtung": e.get("dir", ""),
-             "G/V %": e.get("pl_pct"),
+             "G/V %": e.get("pl_pct"), "G/V \u20ac": e.get("gain_eur"),
              "Grund": e.get("why", "")} for e in rows[:200]]
-    vr_table(data, signed_cols=("G/V %",), height=min(len(data) * 40 + 46, 620))
+    vr_table(data, signed_cols=("G/V %", "G/V \u20ac"),
+             height=min(len(data) * 40 + 46, 620))
     st.caption("Automatisch protokolliert bei jedem Lauf. \u201eGrund\u201c: Signal = "
                "neue Position \u00b7 Take-Profit / Stop-Loss / Gewinn-Stop / Knock-out = "
                "Schlie\u00dfung nach Regel.")
@@ -1416,6 +1474,48 @@ def resolve_preset(f):
 # START — Landing Page (Index-Charts, Hot Picks, Hot News)
 # ===========================================================================
 if nav == "Start":
+    # --- Neue Hedgefonds-Trades (alle Strategien, letzte 48 h) ---
+    try:
+        _hfs = store.get_hf() or {}
+    except Exception:
+        _hfs = {}
+    _sname = {"marktneutral": "Marktneutral", "130/30": "130/30",
+              "quality_long": "Qualit\u00e4ts-Long", "core_ko": "Aktien + KO 3x"}
+    _cut = time.time() - 48 * 3600
+    _newtr = []
+    for _k, _s in _hfs.items():
+        for _t in _s.get("trades", []):
+            if (_t.get("ts") or 0) >= _cut:
+                _newtr.append({**_t, "_strat": _sname.get(_k, _k)})
+    _newtr.sort(key=lambda e: -(e.get("ts") or 0))
+    if _newtr:
+        st.markdown('<div class="sec-title">\u2696\ufe0f NEUE TRADES '
+                    '(Long/Short \u00b7 letzte 48 h)</div>', unsafe_allow_html=True)
+        for _t in _newtr[:8]:
+            _open = _t.get("action") == "open"
+            _col = "#3FB950" if _open else "#F85149"
+            _pl = _t.get("pl_pct")
+            _pl_txt = ""
+            if _pl is not None:
+                _pc = "#3FB950" if _pl >= 0 else "#F85149"
+                _pl_txt = (f' \u00b7 <b style="color:{_pc}">{_pl:+.1f} %</b>'
+                           + (f' ({sym_eur(_t["gain_eur"])})'
+                              if _t.get("gain_eur") is not None else ""))
+            st.markdown(
+                f'<div class="news-box" style="border-color:{_col};padding:8px 12px">'
+                f'<b style="color:{_col}">{"\U0001f7e2 Kauf" if _open else "\U0001f534 Verkauf"}</b> '
+                f'<a href="?open={esc(_t.get("ticker",""))}" target="_self" class="tick" '
+                f'style="text-decoration:none">{esc(_t.get("ticker",""))}</a> '
+                f'<span class="na">({esc(str(_t.get("dir","")))})</span>{_pl_txt}'
+                f'<div class="meta">{esc(_t["_strat"])} \u00b7 {esc(_t.get("why",""))} '
+                f'\u00b7 {fmt_ts(_t.get("ts"))}</div></div>',
+                unsafe_allow_html=True)
+        if st.button("\u2696\ufe0f Zum Long/Short-Logbuch", use_container_width=True):
+            st.session_state["pending_nav"] = "Long/Short"
+            st.session_state["ls_view"] = "\U0001f4d3 Logbuch"
+            st.rerun()
+        st.markdown("---")
+
     # --- KI-Nacht-Briefing (Claude), falls vorhanden ---
     try:
         _brief = store.get_briefing()

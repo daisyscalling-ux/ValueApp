@@ -203,9 +203,11 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None):
         if p.get("type") == "ko":             # Knock-out: Barriere durchbrochen -> 0
             hit = (pe <= p["barrier_eur"]) if p["ko_dir"] == "call" else (pe >= p["barrier_eur"])
             if hit:
+                _cost = p["qty"] * p["entry_eur"]
                 state["trades"].insert(0, {"ts": now, "action": "close",
                     "ticker": p["ticker"], "dir": f'KO-{p["ko_dir"]}',
-                    "pl_pct": -100.0, "why": "Knock-out"})
+                    "pl_pct": -100.0, "gain_eur": round(-_cost, 2),
+                    "einsatz_eur": round(_cost, 2), "why": "Knock-out"})
                 held.discard(p["ticker"])
                 continue
             tp, sl = TP_KO, SL_KO
@@ -226,12 +228,15 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None):
             elif trail is not None and pl <= trail + 1e-6:
                 exit_why = f"Gewinn-Stop (+{trail:.0f} %)"
         if exit_why:
-            proceeds = p["qty"] * p["entry_eur"] * (1 + pl / 100)
+            cost = p["qty"] * p["entry_eur"]
+            proceeds = cost * (1 + pl / 100)
             state["cash"] += proceeds
             state["trades"].insert(0, {
                 "ts": now, "action": "close", "ticker": p["ticker"],
                 "dir": (f'KO-{p["ko_dir"]}' if p.get("type") == "ko" else p["dir"]),
                 "pl_pct": round(pl, 1),
+                "gain_eur": round(proceeds - cost, 2),      # echter Euro-Gewinn/-Verlust
+                "einsatz_eur": round(cost, 2),
                 "why": exit_why})
             held.discard(p["ticker"])
         else:

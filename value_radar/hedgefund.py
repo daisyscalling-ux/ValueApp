@@ -48,16 +48,56 @@ def _pl_pct(pos, price_eur):
     return r if pos["dir"] == "long" else -r
 
 
+_CORE_FIELDS = (
+    ("eps_trailing", "eps_forward"),
+    ("revenue_growth",),
+    ("operating_margin", "profit_margin", "gross_margin"),
+    ("roe", "roa"),
+    ("free_cashflow", "ebitda"),
+    ("market_cap",),
+    ("pb", "book_value_ps"),
+    ("total_debt", "net_debt", "cash"),
+    ("ev_ebitda", "pe_forward", "pe_trailing"),
+)
+
+
+def _data_ok(f, need=6):
+    """Wieviele Kennzahlen-Gruppen sind WIRKLICH vorhanden? Das Scoring fuellt
+    fehlende Werte mit 50 (neutral) auf - ohne diese Pruefung koennen datenarme
+    Notierungen (z.B. BHPL.XC) einen scheinbar soliden Composite bekommen,
+    obwohl kaum eine Zahl echt ist."""
+    have = sum(1 for grp in _CORE_FIELDS
+               if any(f.get(k) not in (None, "") for k in grp))
+    return have >= need, have
+
+
+def _quality_gate(f, s, v, direction):
+    """Harte Mindestanforderungen, damit ein Titel ins Depot darf."""
+    ok_data, n_have = _data_ok(f)
+    if not ok_data:
+        return False, f"nur {n_have}/9 Kennzahlen-Gruppen vorhanden"
+    if not v.get("reliable") or v.get("confidence") == "niedrig":
+        return False, "Fair Value nicht belastbar"
+    if (v.get("n_methods") or 0) < 2:
+        return False, "Fair Value aus nur einer Methode"
+    if direction == "long" and s.get("value_trap"):
+        return False, "Value-Trap-Verdacht"
+    return True, "ok"
+
+
 def candidates(size=60):
-    """Kompakter Long/Short-Scan (flach) fuer die Slot-Befuellung."""
+    """Long/Short-Kandidaten. Zweistufig: flacher Vorscan (API-schonend), dann
+    TIEFE Pruefung der Shortlist (volle Datenquellen) + harte Qualitaets-Gates.
+    So kommen keine datenarmen Titel mehr ins Depot."""
     try:
         import market_screener as ms
         usd = providers.get_fx_to_eur("USD") or 0.92
         tks, _ = ms.get_universe(["us", "de", "fr", "gb", "nl"], 5e9 / usd, size)
     except Exception:
         return [], []
-    longs, shorts = [], []
-    for t in tks:
+
+    pre_l, pre_s = [], []
+    for t in tks:                                   # Stufe 1: flacher Vorscan
         f = providers.get_fundamentals(t)
         price = f.get("price")
         if not price:
@@ -70,21 +110,50 @@ def candidates(size=60):
             up = (v["analyst_target"] / price - 1) * 100
         if comp is None or up is None:
             continue
-        h = providers.get_price_history(t, period="1y", interval="1d")
-        above = mom20 = mom60 = None
-        if h is not None and not h.empty:
-            cl = [float(x) for x in h["Close"].dropna()]
-            if len(cl) > 61:
-                above = cl[-1] > sum(cl[-200:]) / min(len(cl), 200)
-                mom20, mom60 = cl[-1] / cl[-21] - 1, cl[-1] / cl[-61] - 1
-        if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
-            longs.append((comp * 0.6 + min(up, 60) * 0.5, t))
-        if up <= -20 and comp <= 52:
-            if not (above and (mom60 or 0) > 0.15) and ((not above) or (mom20 or 0) < 0):
-                shorts.append(((-up) * 0.5 + (60 - comp) * 0.4, t))
-    longs.sort(reverse=True)
-    shorts.sort(reverse=True)
-    return [t for _, t in longs], [t for _, t in shorts]
+        if comp >= 55 and up >= 8:
+            pre_l.append(t)
+        elif up <= -18 and comp <= 55:
+            pre_s.append(t)
+
+    def _verify(tickers, direction, limit=12):
+        out = []
+        for t in tickers[:limit]:                   # Stufe 2: tiefe Pruefung
+            f = providers.get_fundamentals(t, deep=True)
+            price = f.get("price")
+            if not price:
+                continue
+            ep = valuation.classify_playbook(f)
+            s = scoring.score_stock(f, None, preset=ep)
+            comp = s["composite"]
+            v = valuation.fair_value(f, None, ep)
+            up = v.get("upside_pct")
+            if v.get("fair_value_capped") and v.get("analyst_target"):
+                up = (v["analyst_target"] / price - 1) * 100
+            if comp is None or up is None:
+                continue
+            ok, why = _quality_gate(f, s, v, direction)
+            if not ok:
+                print(f"[hedgefund] {t} verworfen ({direction}): {why}")
+                continue
+            h = providers.get_price_history(t, period="1y", interval="1d")
+            above = mom20 = mom60 = None
+            if h is not None and not h.empty:
+                cl = [float(x) for x in h["Close"].dropna()]
+                if len(cl) > 61:
+                    above = cl[-1] > sum(cl[-200:]) / min(len(cl), 200)
+                    mom20, mom60 = cl[-1] / cl[-21] - 1, cl[-1] / cl[-61] - 1
+            if direction == "long":
+                if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
+                    out.append((comp * 0.6 + min(up, 60) * 0.5, t))
+            else:
+                if up <= -20 and comp <= 52:
+                    if not (above and (mom60 or 0) > 0.15) and \
+                       ((not above) or (mom20 or 0) < 0):
+                        out.append(((-up) * 0.5 + (60 - comp) * 0.4, t))
+        out.sort(reverse=True)
+        return [t for _, t in out]
+
+    return _verify(pre_l, "long"), _verify(pre_s, "short")
 
 
 def rebalance(state, longs_cand, shorts_cand):

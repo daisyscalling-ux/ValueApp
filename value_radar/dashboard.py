@@ -634,6 +634,11 @@ def longshort_candidates(regions, min_mcap_eur_bn, size):
             Aufwaertstrend (sonst Squeeze-Gefahr). Volatilitaet = nur Kontext.
     """
     tickers, _src = load_universe(regions, min_mcap_eur_bn, size)
+    try:
+        import hedgefund as _hf
+        _gate = _hf._quality_gate
+    except Exception:
+        _gate = None
     longs, shorts = [], []
     for t in tickers:
         f = load_fundamentals(t)
@@ -647,6 +652,12 @@ def longshort_candidates(regions, min_mcap_eur_bn, size):
         up = display_upside(v, price)
         if comp is None or up is None:
             continue
+        # Datenqualitaets-Gate: fehlende Kennzahlen werden im Scoring mit 50
+        # aufgefuellt -> ohne diese Pruefung rutschen datenarme Notierungen durch.
+        if _gate is not None:
+            _ok, _why = _gate(f, s, v, "long" if up >= 0 else "short")
+            if not _ok:
+                continue
         hist = load_history_full(t)
         tm = _trend_metrics(list(hist["Close"])) if (hist is not None and not hist.empty) else {}
         above = tm.get("above_sma")
@@ -2460,6 +2471,13 @@ if nav == "Long/Short":
                           "KO-Scheine 3\u00d7 Hebel, ~12 % des Depots, TP +45/SL \u221230, "
                           "Knock-out bei \u00b133 % \u00b7 KO-Basiswerte sind bewusst ANDERE "
                           "Unternehmen als der Kern, immer Call UND Put beigemischt.")
+                st.info("\u2139\ufe0f Die KO-Scheine sind **simuliert**, keine echten "
+                        "Zertifikate: kein Emittent/ISIN, konstanter Hebel 3\u00d7, "
+                        "Barriere \u00b133 %, ohne Aufgeld, Spread und Finanzierungskosten. "
+                        "Reale Knock-outs haben einen **dynamischen** Hebel (er steigt, "
+                        "je n\u00e4her der Kurs der Barriere kommt) und k\u00f6nnen "
+                        "**intraday** ausknocken \u2013 die Simulation ist also g\u00fctiger "
+                        "als die Realit\u00e4t.")
             st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 letzte Pr\u00fcfung: "
                        f"{fmt_ts(_s.get('last_check'))} \u00b7 {_rules}")
             _tr = _s.get("trades", [])[:5]

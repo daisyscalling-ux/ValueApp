@@ -2461,14 +2461,19 @@ if nav == "Long/Short":
             _rows = [{"Ticker": p["ticker"], "Richtung": (f'\U0001f680 KO-{p["ko_dir"]} 3x' if p.get("type") == "ko"
                        else ("\U0001f7e2 Long" if p["dir"] == "long" else "\U0001f534 Short")), "Einstieg \u20ac": p["entry_eur"],
                       "Kurs \u20ac": p.get("last_eur"), "G/V %": p.get("pl_pct"),
+                      "Gewinn-Stop": (f"+{p['trail_stop']:.0f} %"
+                                      if p.get("trail_stop") is not None else "\u2013"),
                       "St\u00fcck": p["qty"]} for p in _s.get("positions", [])]
             if _rows:
                 vr_table(_rows, signed_cols=("G/V %",),
                          height=min(len(_rows) * 40 + 46, 420))
-            _rules = ("Regeln: Long TP +20/SL \u221210, Short TP +15/SL \u221210, "
+            _rules = ("Regeln: Long TP +20/SL \u221210, Short TP +15/SL \u221210 \u00b7 "
+                      "Gewinn-Stop: ab +15 % zieht der Stop auf +10 % nach und steigt "
+                      "in 5er-Schritten mit (+20 \u2192 +15, +25 \u2192 +20 \u2026) \u00b7 "
                       "danach Slots neu bef\u00fcllt.")
             if _k == "core_ko":
                 _rules = ("Regeln: Aktien-Kern (6 Titel) TP +20/SL \u221210 \u00b7 "
+                          "Gewinn-Stop ab +15 % (dann +10 %, in 5er-Schritten mit) \u00b7 "
                           "KO-Scheine 3\u00d7 Hebel, ~12 % des Depots, TP +45/SL \u221230, "
                           "Knock-out bei \u00b133 % \u00b7 KO-Basiswerte sind bewusst ANDERE "
                           "Unternehmen als der Kern, immer Call UND Put beigemischt.")

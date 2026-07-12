@@ -11,6 +11,7 @@ Zustand liegt persistent in store-Aux (Google Sheet) -> App und Cron teilen ihn.
 Laeuft standalone (Cron, 2x taeglich) UND on-demand aus der App.
 """
 from __future__ import annotations
+import math
 import time
 
 import providers
@@ -177,6 +178,15 @@ def candidates(size=60):
             [t for _, t in puts])
 
 
+def _trail_stop(peak_pl):
+    """Gewinn-Sicherung (Ratchet): ab +15 % Gewinn wird der Stop nachgezogen und
+    steigt dann in 5er-Schritten mit. +15 -> Stop +10, +20 -> +15, +25 -> +20 ...
+    Der Stop faellt NIE wieder zurueck (er haengt am hoechsten erreichten Gewinn)."""
+    if peak_pl is None or peak_pl < 15.0:
+        return None
+    return 5.0 * math.floor(peak_pl / 5.0) - 5.0
+
+
 def rebalance(state, longs_cand, shorts_cand, put_cand=None):
     """Eine Pruefung: TP/SL anwenden, dann freie Slots fuellen. Mutiert state.
     put_cand = mildere Liste fuer die KO-Put-Beimischung (siehe candidates())."""
@@ -201,14 +211,28 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None):
             tp, sl = TP_KO, SL_KO
         else:
             tp, sl = (TP_LONG, SL_LONG) if p["dir"] == "long" else (TP_SHORT, SL_SHORT)
-        if pl is not None and (pl >= tp - 1e-6 or pl <= sl + 1e-6):
+        # Gewinn-Sicherung: hoechsten erreichten Gewinn merken, Stop nachziehen.
+        peak = max(p.get("peak_pl") or 0.0, pl if pl is not None else 0.0)
+        p["peak_pl"] = round(peak, 1)
+        trail = _trail_stop(peak)
+        p["trail_stop"] = trail
+
+        exit_why = None
+        if pl is not None:
+            if pl >= tp - 1e-6:
+                exit_why = "Take-Profit"
+            elif pl <= sl + 1e-6:
+                exit_why = "Stop-Loss"
+            elif trail is not None and pl <= trail + 1e-6:
+                exit_why = f"Gewinn-Stop (+{trail:.0f} %)"
+        if exit_why:
             proceeds = p["qty"] * p["entry_eur"] * (1 + pl / 100)
             state["cash"] += proceeds
             state["trades"].insert(0, {
                 "ts": now, "action": "close", "ticker": p["ticker"],
                 "dir": (f'KO-{p["ko_dir"]}' if p.get("type") == "ko" else p["dir"]),
                 "pl_pct": round(pl, 1),
-                "why": ("Take-Profit" if pl >= tp else "Stop-Loss")})
+                "why": exit_why})
             held.discard(p["ticker"])
         else:
             p["last_eur"] = round(pe, 2)
@@ -245,7 +269,8 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None):
                 break
             state["cash"] -= qty * pe
             pos = {"ticker": t, "dir": direction, "entry_eur": round(pe, 2),
-                   "qty": qty, "opened": now, "last_eur": round(pe, 2), "pl_pct": 0.0}
+                   "qty": qty, "opened": now, "last_eur": round(pe, 2), "pl_pct": 0.0,
+                   "peak_pl": 0.0, "trail_stop": None}
             state["positions"].append(pos)
             cur.append(pos)
             held.add(t)
@@ -286,7 +311,8 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None):
             pos = {"ticker": t, "dir": "long", "type": "ko", "ko_dir": kd,
                    "leverage": KO_LEV, "barrier_eur": round(barrier, 2),
                    "entry_eur": round(pe, 2), "qty": qty, "opened": now,
-                   "last_eur": round(pe, 2), "pl_pct": 0.0}
+                   "last_eur": round(pe, 2), "pl_pct": 0.0,
+                   "peak_pl": 0.0, "trail_stop": None}
             state["positions"].append(pos)
             kos.append(pos)
             ko_t.add(t)

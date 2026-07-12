@@ -10,6 +10,7 @@ Start:  streamlit run dashboard.py        Browser: http://localhost:8501
   - Alle Geldbetraege in EUR
 """
 from __future__ import annotations
+import time
 import html
 from datetime import datetime
 import streamlit as st
@@ -159,6 +160,10 @@ table.vr-table tbody tr:hover{background:rgba(255,176,0,.05);}
 table.vr-table td.num, table.vr-table th.num{text-align:right;
   font-variant-numeric:tabular-nums;}
 table.vr-table .tick{color:var(--amber);font-weight:800;}
+table.vr-table .sellbtn{display:inline-block;width:20px;height:20px;line-height:18px;
+  text-align:center;border:1px solid #F85149;border-radius:3px;color:#F85149;
+  font-size:11px;font-weight:700;text-decoration:none;background:rgba(248,81,73,.08);}
+table.vr-table .sellbtn:hover{background:#F85149;color:#0A0E14;}
 table.vr-table .vr-link{cursor:pointer;}
 table.vr-table .vr-link:hover{text-decoration:underline;}
 /* unsichtbare Ziel-Buttons fuer klickbare Ticker (per JS ausgeloest) */
@@ -436,8 +441,8 @@ def svg_index_chart(vals, times, base_val, color, height=132):
     if len(vals) < 2:
         return "<span class='na'>n/a</span>"
     base = float(base_val) if base_val else vals[0]
-    W, H = 320, height
-    pad_l, pad_r, pad_t, pad_b = 4, 46, 8, 16
+    W, H = 400, 150                      # festes Seitenverhaeltnis -> keine Verzerrung
+    pad_l, pad_r, pad_t, pad_b = 6, 54, 12, 20
     pw, ph = W - pad_l - pad_r, H - pad_t - pad_b
     lo, hi = min(min(vals), base), max(max(vals), base)
     rng = (hi - lo) or 1.0
@@ -466,8 +471,8 @@ def svg_index_chart(vals, times, base_val, color, height=132):
     def _fmt(v):
         return f"{v:,.0f}".replace(",", ".")
     return (
-        f'<svg viewBox="0 0 {W} {H}" width="100%" height="{H}" '
-        f'preserveAspectRatio="none" style="display:block">'
+        f'<svg viewBox="0 0 {W} {H}" '
+        f'style="display:block;width:100%;height:auto">'
         f'<polygon points="{area}" fill="{fill}" stroke="none"/>'
         # 0-Linie (Referenz)
         f'<line x1="{pad_l}" y1="{y0:.1f}" x2="{pad_l+pw}" y2="{y0:.1f}" '
@@ -522,8 +527,8 @@ def svg_area_chart(pcts, color, height=250):
     area_pts = f"0,{yy(lo):.1f} " + line_pts + f" {W},{yy(lo):.1f}"
     zy = yy(0.0)
     return (
-        f'<svg viewBox="0 0 {W} {H}" width="100%" height="{H}" '
-        f'preserveAspectRatio="none" style="display:block">'
+        f'<svg viewBox="0 0 {W} {H}" '
+        f'style="display:block;width:100%;height:auto">'
         f'<polygon points="{area_pts}" fill="{color}" opacity="0.12"/>'
         f'<line x1="0" y1="{zy:.1f}" x2="{W}" y2="{zy:.1f}" stroke="#6B7686" '
         f'stroke-width="1" stroke-dasharray="4 4"/>'
@@ -533,6 +538,133 @@ def svg_area_chart(pcts, color, height=250):
         f'+{hi:.1f}%</text>'
         f'<text x="6" y="{H-6}" fill="#6B7686" font-size="11" font-family="monospace">'
         f'{lo:.1f}%</text></svg>')
+
+
+def render_hf_logbook():
+    """Automatisches Logbuch: alle ausgefuehrten Trades ALLER Strategien."""
+    try:
+        hf = store.get_hf() or {}
+    except Exception:
+        hf = {}
+    names = {"marktneutral": "Marktneutral", "130/30": "130/30",
+             "quality_long": "Qualit\u00e4ts-Long", "core_ko": "Aktien + KO 3x"}
+    entries = []
+    for k, s in hf.items():
+        for t in s.get("trades", []):
+            entries.append({**t, "_strat": names.get(k, k)})
+    if not entries:
+        st.info("Noch keine Trades protokolliert. Sobald der automatische Lauf "
+                "(2\u00d7 t\u00e4glich) oder \u201eJetzt pr\u00fcfen\u201c eine Position "
+                "er\u00f6ffnet oder schlie\u00dft, erscheint sie hier.")
+        return
+    entries.sort(key=lambda e: -(e.get("ts") or 0))
+
+    fc = st.columns([1.3, 1.3, 1])
+    strat_f = fc[0].selectbox("Strategie", ["alle"] + sorted({e["_strat"] for e in entries}),
+                              key="hf_log_strat")
+    act_f = fc[1].selectbox("Art", ["alle", "nur K\u00e4ufe/Er\u00f6ffnungen",
+                                    "nur Verk\u00e4ufe/Schlie\u00dfungen"], key="hf_log_act")
+    rows = [e for e in entries
+            if (strat_f == "alle" or e["_strat"] == strat_f)
+            and (act_f == "alle"
+                 or (act_f.startswith("nur K\u00e4ufe") and e.get("action") == "open")
+                 or (act_f.startswith("nur Verk") and e.get("action") == "close"))]
+    fc[2].metric("Eintr\u00e4ge", len(rows))
+
+    data = [{"Zeitpunkt": fmt_ts(e.get("ts")), "Strategie": e["_strat"],
+             "Aktion": ("\U0001f7e2 Kauf" if e.get("action") == "open"
+                        else "\U0001f534 Verkauf"),
+             "Ticker": e.get("ticker", ""), "Richtung": e.get("dir", ""),
+             "G/V %": e.get("pl_pct"),
+             "Grund": e.get("why", "")} for e in rows[:200]]
+    vr_table(data, signed_cols=("G/V %",), height=min(len(data) * 40 + 46, 620))
+    st.caption("Automatisch protokolliert bei jedem Lauf. \u201eGrund\u201c: Signal = "
+               "neue Position \u00b7 Take-Profit / Stop-Loss / Gewinn-Stop / Knock-out = "
+               "Schlie\u00dfung nach Regel.")
+    try:
+        st.download_button("\u2b07\ufe0f Als CSV",
+                           pd.DataFrame(data).to_csv(index=False).encode("utf-8"),
+                           "hedgefonds_logbuch.csv", "text/csv",
+                           use_container_width=True)
+    except Exception:
+        pass
+
+
+def render_pf_logbook():
+    """Portfolio-Logbuch: automatische Verkaeufe + manuelle Eintraege."""
+    try:
+        log = store.get_pf_log()
+    except Exception:
+        log = []
+
+    with st.expander("\u2795 Transaktion manuell eintragen", expanded=not log):
+        c1 = st.columns([1, 1, 1])
+        m_typ = c1[0].selectbox("Typ", ["Verkauf", "Kauf", "Dividende", "Sonstiges"],
+                                key="pfl_typ")
+        m_tk = c1[1].text_input("Ticker", key="pfl_tk", placeholder="z.B. AAPL")
+        m_dt = c1[2].text_input("Datum", value=_berlin_now().strftime("%d.%m.%Y"),
+                                key="pfl_dt")
+        c2 = st.columns([1, 1, 1])
+        m_qty = c2[0].text_input("Anzahl", key="pfl_qty", placeholder="St\u00fcck")
+        m_px = c2[1].text_input("Kurs \u20ac", key="pfl_px", placeholder="je Aktie")
+        m_gv = c2[2].text_input("G/V \u20ac (optional)", key="pfl_gv")
+        m_note = st.text_input("Notiz", key="pfl_note",
+                               placeholder="z.B. Teilverkauf, Gewinnmitnahme")
+        if st.button("\U0001f4be Eintragen", use_container_width=True):
+            if not (m_tk or "").strip():
+                st.warning("Bitte einen Ticker angeben.")
+            else:
+                q, p = parse_eur(m_qty), parse_eur(m_px)
+                store.pf_log_add({
+                    "ts": time.time(), "datum": m_dt or "",
+                    "portfolio": st.session_state.get("pf_cur_name", ""),
+                    "typ": m_typ, "ticker": m_tk.strip().upper(),
+                    "anzahl": q, "kurs_eur": p,
+                    "betrag_eur": round((q or 0) * (p or 0), 2) if (q and p) else None,
+                    "gv_eur": parse_eur(m_gv), "notiz": (m_note or "").strip(),
+                    "quelle": "manuell"})
+                for k in ("pfl_tk", "pfl_qty", "pfl_px", "pfl_gv", "pfl_note"):
+                    st.session_state.pop(k, None)
+                st.rerun()
+
+    if not log:
+        st.info("Noch keine Eintr\u00e4ge. Verk\u00e4ufe \u00fcber den \u2715-Button in der "
+                "Positionstabelle landen automatisch hier \u2013 oder oben manuell "
+                "eintragen.")
+        return
+
+    data = [{"Datum": e.get("datum", ""), "Typ": e.get("typ", ""),
+             "Ticker": e.get("ticker", ""), "Anzahl": e.get("anzahl"),
+             "Kurs \u20ac": e.get("kurs_eur"), "Betrag \u20ac": e.get("betrag_eur"),
+             "G/V \u20ac": e.get("gv_eur"), "Portfolio": e.get("portfolio", ""),
+             "Quelle": e.get("quelle", ""), "Notiz": (e.get("notiz") or "")[:30]}
+            for e in log]
+    vr_table(data, signed_cols=("G/V \u20ac",), height=min(len(data) * 40 + 46, 620))
+
+    realized = sum(e.get("gv_eur") or 0 for e in log if e.get("typ") == "Verkauf")
+    st.caption(f"Realisiertes Ergebnis aus protokollierten Verk\u00e4ufen: "
+               f"{'+' if realized >= 0 else '\u2212'}{sym_eur(abs(realized))} "
+               "(nur aus den hier eingetragenen G/V-Werten \u2013 unvollst\u00e4ndig, wenn "
+               "du Eintr\u00e4ge ohne G/V erfasst hast).")
+
+    lc = st.columns([2, 1])
+    try:
+        lc[0].download_button("\u2b07\ufe0f Als CSV",
+                              pd.DataFrame(data).to_csv(index=False).encode("utf-8"),
+                              "portfolio_logbuch.csv", "text/csv",
+                              use_container_width=True)
+    except Exception:
+        pass
+    _del = lc[1].selectbox("Eintrag l\u00f6schen", ["\u2014"] + [
+        f"{i+1}. {e.get('datum','')} {e.get('typ','')} {e.get('ticker','')}"
+        for i, e in enumerate(log)], key="pfl_del")
+    if _del != "\u2014" and st.button("\U0001f5d1\ufe0f L\u00f6schen",
+                                      use_container_width=True):
+        idx = int(_del.split(".")[0]) - 1
+        if 0 <= idx < len(log):
+            log.pop(idx)
+            store.set_pf_log(log)
+            st.rerun()
 
 
 def display_upside(v, price):
@@ -780,6 +912,12 @@ def vr_table(rows, score_cols=(), signed_cols=(), height=None):
                 _tk = esc(str(v))
                 tds += (f'<td><a href="?open={_tk}" target="_self" '
                         f'class="tick" style="text-decoration:none">{_tk}</a></td>')
+            elif c == "\u2013\u2013":            # Aktionsspalte: kleiner Verkaufs-Button
+                _sk = esc(str(v))
+                tds += (f'<td style="text-align:center">'
+                        f'<a href="?sell={_sk}" target="_self" class="sellbtn" '
+                        f'title="{_sk} verkaufen (mit Best\u00e4tigung)">\u2715</a></td>'
+                        if v else '<td></td>')
             else:
                 tds += f'<td>{esc(str(v))}</td>'
         body += f"<tr>{tds}</tr>"
@@ -1096,6 +1234,20 @@ try:
     _open_tk = st.query_params.get("open")
 except Exception:
     _open_tk = None
+try:
+    _sell_tk = st.query_params.get("sell")
+except Exception:
+    _sell_tk = None
+if _sell_tk:                                  # Verkaufs-Button in der Positionstabelle
+    st.session_state["pf_confirm_sell"] = str(_sell_tk).upper()
+    st.session_state["pending_nav"] = "Portfoliocheck"
+    try:
+        del st.query_params["sell"]
+    except Exception:
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
 if _open_tk:
     st.session_state["pending_search"] = str(_open_tk).upper()
     st.session_state["pending_nav"] = "Einzelanalyse"
@@ -2439,207 +2591,214 @@ if nav == "Watchlist":
 # LONG / SHORT-RADAR (experimentell)
 # ===========================================================================
 if nav == "Long/Short":
-    st.markdown('<div class="sec-title">\U0001f3db\ufe0f LAUFENDE STRATEGIE-PORTFOLIOS '
-                '(Papier)</div>', unsafe_allow_html=True)
-    try:
-        _hf = store.get_hf()
-    except Exception:
-        _hf = {}
-    if not _hf:
-        st.info("Noch keine laufenden Portfolios. Sie werden vom Nacht-Job (2\u00d7 t\u00e4glich) "
-                "automatisch angelegt und gef\u00fchrt \u2013 oder hier per Knopf gestartet.")
-    _sn = {"marktneutral": "Marktneutral (L100/S100)", "130/30": "130/30",
-           "quality_long": "Qualit\u00e4ts-Long",
-           "core_ko": "Aktien + KO-Hebel 3x (8\u201315 % Beimischung)"}
-    for _k, _s in (_hf or {}).items():
-        _v, _c0 = _s.get("value_eur", 0), _s.get("start_capital", 10000)
-        _ret = (_v / _c0 - 1) * 100 if _c0 else 0
-        _col = "#3FB950" if _ret >= 0 else "#F85149"
-        with st.expander(f"{_sn.get(_k, _k)} \u00b7 {sym_eur(_v)} "
-                         f"({_ret:+.1f} %) \u00b7 {len(_s.get('positions', []))} Pos.",
-                         expanded=(_k == "marktneutral")):
-            _rows = [{"Ticker": p["ticker"], "Richtung": (f'\U0001f680 KO-{p["ko_dir"]} 3x' if p.get("type") == "ko"
-                       else ("\U0001f7e2 Long" if p["dir"] == "long" else "\U0001f534 Short")), "Einstieg \u20ac": p["entry_eur"],
-                      "Kurs \u20ac": p.get("last_eur"), "G/V %": p.get("pl_pct"),
-                      "Gewinn-Stop": (f"+{p['trail_stop']:.0f} %"
-                                      if p.get("trail_stop") is not None else "\u2013"),
-                      "St\u00fcck": p["qty"]} for p in _s.get("positions", [])]
-            if _rows:
-                vr_table(_rows, signed_cols=("G/V %",),
-                         height=min(len(_rows) * 40 + 46, 420))
-            _rules = ("Regeln: Long TP +20/SL \u221210, Short TP +15/SL \u221210 \u00b7 "
-                      "Gewinn-Stop: ab +15 % zieht der Stop auf +10 % nach und steigt "
-                      "in 5er-Schritten mit (+20 \u2192 +15, +25 \u2192 +20 \u2026) \u00b7 "
-                      "danach Slots neu bef\u00fcllt.")
-            if _k == "core_ko":
-                _rules = ("Regeln: Aktien-Kern (6 Titel) TP +20/SL \u221210 \u00b7 "
-                          "Gewinn-Stop ab +15 % (dann +10 %, in 5er-Schritten mit) \u00b7 "
-                          "KO-Scheine 3\u00d7 Hebel, ~12 % des Depots, TP +45/SL \u221230, "
-                          "Knock-out bei \u00b133 % \u00b7 KO-Basiswerte sind bewusst ANDERE "
-                          "Unternehmen als der Kern, immer Call UND Put beigemischt.")
-                st.info("\u2139\ufe0f Die KO-Scheine sind **simuliert**, keine echten "
-                        "Zertifikate: kein Emittent/ISIN, konstanter Hebel 3\u00d7, "
-                        "Barriere \u00b133 %, ohne Aufgeld, Spread und Finanzierungskosten. "
-                        "Reale Knock-outs haben einen **dynamischen** Hebel (er steigt, "
-                        "je n\u00e4her der Kurs der Barriere kommt) und k\u00f6nnen "
-                        "**intraday** ausknocken \u2013 die Simulation ist also g\u00fctiger "
-                        "als die Realit\u00e4t.")
-            st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 letzte Pr\u00fcfung: "
-                       f"{fmt_ts(_s.get('last_check'))} \u00b7 {_rules}")
-            _tr = _s.get("trades", [])[:5]
-            if _tr:
-                st.caption("Letzte Trades: " + " \u00b7 ".join(
-                    f"{t['action']} {t['ticker']} ({t['dir']}"
-                    + (f", {t['pl_pct']:+.0f}%" if t.get("pl_pct") is not None else "")
-                    + f", {t['why']})" for t in _tr))
+    _lst_a, _lst_b = st.tabs(["  \U0001f3db\ufe0f STRATEGIEN  ",
+                              "  \U0001f4d3 LOGBUCH  "])
+    with _lst_b:
+        st.markdown('<div class="sec-title">\U0001f4d3 TRADE-LOGBUCH \u00b7 alle '
+                    'Strategien</div>', unsafe_allow_html=True)
+        render_hf_logbook()
+    with _lst_a:
+        st.markdown('<div class="sec-title">\U0001f3db\ufe0f LAUFENDE STRATEGIE-PORTFOLIOS '
+                    '(Papier)</div>', unsafe_allow_html=True)
+        try:
+            _hf = store.get_hf()
+        except Exception:
+            _hf = {}
+        if not _hf:
+            st.info("Noch keine laufenden Portfolios. Sie werden vom Nacht-Job (2\u00d7 t\u00e4glich) "
+                    "automatisch angelegt und gef\u00fchrt \u2013 oder hier per Knopf gestartet.")
+        _sn = {"marktneutral": "Marktneutral (L100/S100)", "130/30": "130/30",
+               "quality_long": "Qualit\u00e4ts-Long",
+               "core_ko": "Aktien + KO-Hebel 3x (8\u201315 % Beimischung)"}
+        for _k, _s in (_hf or {}).items():
+            _v, _c0 = _s.get("value_eur", 0), _s.get("start_capital", 10000)
+            _ret = (_v / _c0 - 1) * 100 if _c0 else 0
+            _col = "#3FB950" if _ret >= 0 else "#F85149"
+            with st.expander(f"{_sn.get(_k, _k)} \u00b7 {sym_eur(_v)} "
+                             f"({_ret:+.1f} %) \u00b7 {len(_s.get('positions', []))} Pos.",
+                             expanded=(_k == "marktneutral")):
+                _rows = [{"Ticker": p["ticker"], "Richtung": (f'\U0001f680 KO-{p["ko_dir"]} 3x' if p.get("type") == "ko"
+                           else ("\U0001f7e2 Long" if p["dir"] == "long" else "\U0001f534 Short")), "Einstieg \u20ac": p["entry_eur"],
+                          "Kurs \u20ac": p.get("last_eur"), "G/V %": p.get("pl_pct"),
+                          "Gewinn-Stop": (f"+{p['trail_stop']:.0f} %"
+                                          if p.get("trail_stop") is not None else "\u2013"),
+                          "St\u00fcck": p["qty"]} for p in _s.get("positions", [])]
+                if _rows:
+                    vr_table(_rows, signed_cols=("G/V %",),
+                             height=min(len(_rows) * 40 + 46, 420))
+                _rules = ("Regeln: Long TP +20/SL \u221210, Short TP +15/SL \u221210 \u00b7 "
+                          "Gewinn-Stop: ab +15 % zieht der Stop auf +10 % nach und steigt "
+                          "in 5er-Schritten mit (+20 \u2192 +15, +25 \u2192 +20 \u2026) \u00b7 "
+                          "danach Slots neu bef\u00fcllt.")
+                if _k == "core_ko":
+                    _rules = ("Regeln: Aktien-Kern (6 Titel) TP +20/SL \u221210 \u00b7 "
+                              "Gewinn-Stop ab +15 % (dann +10 %, in 5er-Schritten mit) \u00b7 "
+                              "KO-Scheine 3\u00d7 Hebel, ~12 % des Depots, TP +45/SL \u221230, "
+                              "Knock-out bei \u00b133 % \u00b7 KO-Basiswerte sind bewusst ANDERE "
+                              "Unternehmen als der Kern, immer Call UND Put beigemischt.")
+                    st.info("\u2139\ufe0f Die KO-Scheine sind **simuliert**, keine echten "
+                            "Zertifikate: kein Emittent/ISIN, konstanter Hebel 3\u00d7, "
+                            "Barriere \u00b133 %, ohne Aufgeld, Spread und Finanzierungskosten. "
+                            "Reale Knock-outs haben einen **dynamischen** Hebel (er steigt, "
+                            "je n\u00e4her der Kurs der Barriere kommt) und k\u00f6nnen "
+                            "**intraday** ausknocken \u2013 die Simulation ist also g\u00fctiger "
+                            "als die Realit\u00e4t.")
+                st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 letzte Pr\u00fcfung: "
+                           f"{fmt_ts(_s.get('last_check'))} \u00b7 {_rules}")
+                _tr = _s.get("trades", [])[:5]
+                if _tr:
+                    st.caption("Letzte Trades: " + " \u00b7 ".join(
+                        f"{t['action']} {t['ticker']} ({t['dir']}"
+                        + (f", {t['pl_pct']:+.0f}%" if t.get("pl_pct") is not None else "")
+                        + f", {t['why']})" for t in _tr))
 
-            # --- Zuruecksetzen (mit Bestaetigung) ---
-            if st.button("\u21ba Portfolio zur\u00fccksetzen", key=f"hf_reset_{_k}",
-                         use_container_width=True):
-                st.session_state["hf_confirm_reset"] = _k
-                st.rerun()
-            if st.session_state.get("hf_confirm_reset") == _k:
-                st.warning(f"\u26a0\ufe0f \u201e{_sn.get(_k, _k)}\u201c wirklich zur\u00fccksetzen? "
-                           "Alle Positionen und die Trade-Historie dieser Strategie "
-                           "werden verworfen und das Depot startet neu mit "
-                           f"{sym_eur(_s.get('start_capital', 10000))} Papiergeld.")
-                _rc = st.columns(2)
-                if _rc[0].button("\u21ba Ja, neu aufsetzen", key=f"hf_reset_yes_{_k}",
-                                 use_container_width=True):
-                    with st.spinner("Setze zur\u00fcck und baue nach aktuellen Regeln neu auf ..."):
-                        try:
-                            import hedgefund
-                            hedgefund.reset(_k, refill=True, scan_size=50)
-                            st.session_state.pop("hf_confirm_reset", None)
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Zur\u00fccksetzen fehlgeschlagen: {e}")
-                if _rc[1].button("Abbrechen", key=f"hf_reset_no_{_k}",
-                                 use_container_width=True):
-                    st.session_state.pop("hf_confirm_reset", None)
+                # --- Zuruecksetzen (mit Bestaetigung) ---
+                if st.button("\u21ba Portfolio zur\u00fccksetzen", key=f"hf_reset_{_k}",
+                             use_container_width=True):
+                    st.session_state["hf_confirm_reset"] = _k
                     st.rerun()
-    if st.button("\U0001f504 Jetzt pr\u00fcfen & anpassen (dauert etwas)",
-                 use_container_width=True):
-        with st.spinner("Pr\u00fcfe Positionen und f\u00fclle Slots ..."):
-            try:
-                import hedgefund
-                hedgefund.run_all(scan_size=50)
-                st.rerun()
-            except Exception as e:
-                st.error(f"Update fehlgeschlagen: {e}")
-    st.markdown("---")
+                if st.session_state.get("hf_confirm_reset") == _k:
+                    st.warning(f"\u26a0\ufe0f \u201e{_sn.get(_k, _k)}\u201c wirklich zur\u00fccksetzen? "
+                               "Alle Positionen und die Trade-Historie dieser Strategie "
+                               "werden verworfen und das Depot startet neu mit "
+                               f"{sym_eur(_s.get('start_capital', 10000))} Papiergeld.")
+                    _rc = st.columns(2)
+                    if _rc[0].button("\u21ba Ja, neu aufsetzen", key=f"hf_reset_yes_{_k}",
+                                     use_container_width=True):
+                        with st.spinner("Setze zur\u00fcck und baue nach aktuellen Regeln neu auf ..."):
+                            try:
+                                import hedgefund
+                                hedgefund.reset(_k, refill=True, scan_size=50)
+                                st.session_state.pop("hf_confirm_reset", None)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Zur\u00fccksetzen fehlgeschlagen: {e}")
+                    if _rc[1].button("Abbrechen", key=f"hf_reset_no_{_k}",
+                                     use_container_width=True):
+                        st.session_state.pop("hf_confirm_reset", None)
+                        st.rerun()
+        if st.button("\U0001f504 Jetzt pr\u00fcfen & anpassen (dauert etwas)",
+                     use_container_width=True):
+            with st.spinner("Pr\u00fcfe Positionen und f\u00fclle Slots ..."):
+                try:
+                    import hedgefund
+                    hedgefund.run_all(scan_size=50)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Update fehlgeschlagen: {e}")
+        st.markdown("---")
 
-    st.markdown('<div class="sec-title">\u2696\ufe0f LONG / SHORT-RADAR</div>',
-                unsafe_allow_html=True)
-    st.caption("Einheitlicher Screen nach beiden Richtungen. LONG = Qualit\u00e4t + "
-               "Bewertungs-Upside. SHORT = deutlich \u00fcberbewertet + schw\u00e4chere "
-               "Qualit\u00e4t + KEIN starker Aufw\u00e4rtstrend. Volatilit\u00e4t = nur Kontext. "
-               "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
-    st.warning("\u26a0\ufe0f Experimentell & ausdr\u00fccklich kein Anlagerat. Short-Positionen "
-               "haben theoretisch unbegrenztes Verlustrisiko (Squeeze). \u201eNur teuer\u201c "
-               "ist kein Short-Grund \u2013 der Trendfilter blendet laufende Aufw\u00e4rtstrends "
-               "bewusst aus, aber pr\u00fcfe jeden Fall selbst.")
-
-    lc = st.columns([1.4, 1, 1])
-    region_choice = lc[0].selectbox(
-        "Markt", ["USA + Europa", "Nur USA", "Nur Europa", "Breit (inkl. Asien)"],
-        key="ls_region")
-    depth = lc[1].select_slider("Tiefe", ["schnell", "mittel", "gr\u00fcndlich"],
-                                value="mittel", key="ls_depth")
-    _REG = {"USA + Europa": ["us", "de", "fr", "gb", "nl", "ch"],
-            "Nur USA": ["us"], "Nur Europa": ["de", "fr", "gb", "nl", "ch", "it", "es"],
-            "Breit (inkl. Asien)": ["us", "de", "fr", "gb", "nl", "ch", "jp", "hk"]}
-    _SIZE = {"schnell": 60, "mittel": 100, "gr\u00fcndlich": 160}
-
-    if lc[2].button("\U0001f50d Scan starten", use_container_width=True):
-        st.session_state["ls_run"] = True
-
-    if st.session_state.get("ls_run"):
-        with st.spinner("Scanne Universum (Kennzahlen + Trend) \u2013 der erste Lauf "
-                        "dauert etwas ..."):
-            longs, shorts = longshort_candidates(
-                tuple(_REG[region_choice]), 5.0, _SIZE[depth])
-
-        st.markdown('<div class="sec-title" style="color:#3FB950">\U0001f7e2 LONG-KANDIDATEN'
-                    '</div>', unsafe_allow_html=True)
-        if longs:
-            vr_table([{k: v for k, v in r.items() if k != "Vola %"} for r in longs],
-                     score_cols=("Comp.", "Chance"), signed_cols=("Upside %",),
-                     height=min(len(longs) * 40 + 46, 520))
-            st.caption("Sortiert nach \u201eChance\u201c (Qualit\u00e4t + Bewertungs-Upside). "
-                       "\u2191 \u00fcber 200T = Aufw\u00e4rtstrend best\u00e4tigt die Idee.")
-        else:
-            st.info("Keine \u00fcberzeugenden Long-Kandidaten in diesem Universum "
-                    "(verlangt Composite \u2265 58 und Upside \u2265 +10 %).")
-
-        st.markdown('<div class="sec-title" style="color:#F85149;margin-top:14px">'
-                    '\U0001f534 SHORT-KANDIDATEN \u00b7 mit Vorsicht</div>',
+        st.markdown('<div class="sec-title">\u2696\ufe0f LONG / SHORT-RADAR</div>',
                     unsafe_allow_html=True)
-        if shorts:
-            vr_table(shorts, score_cols=("Comp.", "Risiko-Fit"),
-                     signed_cols=("Upside %",),
-                     height=min(len(shorts) * 40 + 46, 520))
-            st.caption("Nur Titel, die \u00fcberbewertet UND nicht in starkem Aufw\u00e4rtstrend "
-                       "sind. \u2193 unter 200T oder abdrehendes Momentum st\u00fctzt die Short-These. "
-                       "Hohe \u201eVola %\u201c = gr\u00f6\u00dferes Squeeze-Risiko.")
-        else:
-            st.info("Aktuell keine vertretbaren Short-Kandidaten \u2013 entweder nichts stark "
-                    "genug \u00fcberbewertet, oder die \u00dcberbewerteten laufen noch im "
-                    "Aufw\u00e4rtstrend (bewusst ausgeblendet).")
-        st.caption("Flache Datentiefe (API-schonend) \u2013 jeden Treffer vor einer "
-                   "Entscheidung in der Einzelanalyse mit tiefen Daten gegenpr\u00fcfen.")
+        st.caption("Einheitlicher Screen nach beiden Richtungen. LONG = Qualit\u00e4t + "
+                   "Bewertungs-Upside. SHORT = deutlich \u00fcberbewertet + schw\u00e4chere "
+                   "Qualit\u00e4t + KEIN starker Aufw\u00e4rtstrend. Volatilit\u00e4t = nur Kontext. "
+                   "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
+        st.warning("\u26a0\ufe0f Experimentell & ausdr\u00fccklich kein Anlagerat. Short-Positionen "
+                   "haben theoretisch unbegrenztes Verlustrisiko (Squeeze). \u201eNur teuer\u201c "
+                   "ist kein Short-Grund \u2013 der Trendfilter blendet laufende Aufw\u00e4rtstrends "
+                   "bewusst aus, aber pr\u00fcfe jeden Fall selbst.")
 
-        # ---------- HEDGEFONDS-MODUS: konkreter Portfolio-Vorschlag ----------
-        st.markdown('<div class="sec-title" style="margin-top:16px">\U0001f3db\ufe0f '
-                    'HEDGEFONDS-MODUS \u00b7 Portfolio-Vorschlag</div>',
-                    unsafe_allow_html=True)
-        hc = st.columns([1.4, 1, 1])
-        strat_label = hc[0].selectbox("Strategie", [
-            "Marktneutral (Long 100 / Short 100)",
-            "130/30 (Long 130 / Short 30)",
-            "Qualit\u00e4ts-Long (nur Long)"], key="hf_strat")
-        capital = parse_eur(hc[1].text_input("Kapital \u20ac", value="10000",
-                                             key="hf_capital")) or 10000.0
-        _SMAP = {"Marktneutral (Long 100 / Short 100)": "marktneutral",
-                 "130/30 (Long 130 / Short 30)": "130/30",
-                 "Qualit\u00e4ts-Long (nur Long)": "quality_long"}
-        if hc[2].button("\U0001f3db\ufe0f Portfolio vorschlagen", use_container_width=True):
-            st.session_state["hf_show"] = True
-        if st.session_state.get("hf_show"):
-            hp = hedgefund_proposal(longs, shorts, _SMAP[strat_label], capital)
-            mc = st.columns(4)
-            card(mc[0], "Brutto-Exposure", f"{hp['gross_pct']} %")
-            card(mc[1], "Netto-Exposure", f"{hp['net_pct']} %",
-                 sub="~0 = marktneutral" if _SMAP[strat_label] == "marktneutral" else "")
-            card(mc[2], "\u00d8 Composite (Long)",
-                 f"{hp['l_comp']:.0f}" if hp["l_comp"] is not None else "\u2014")
-            card(mc[3], "Gew. Upside (Long)",
-                 f"{hp['l_up']:+.1f} %" if hp["l_up"] is not None else "\u2014",
-                 color="var(--green)")
-            if hp["long"]:
-                st.markdown('<div class="sec-title" style="color:#3FB950">LONG-BUCH</div>',
-                            unsafe_allow_html=True)
-                vr_table(hp["long"], score_cols=("Comp.",),
+        lc = st.columns([1.4, 1, 1])
+        region_choice = lc[0].selectbox(
+            "Markt", ["USA + Europa", "Nur USA", "Nur Europa", "Breit (inkl. Asien)"],
+            key="ls_region")
+        depth = lc[1].select_slider("Tiefe", ["schnell", "mittel", "gr\u00fcndlich"],
+                                    value="mittel", key="ls_depth")
+        _REG = {"USA + Europa": ["us", "de", "fr", "gb", "nl", "ch"],
+                "Nur USA": ["us"], "Nur Europa": ["de", "fr", "gb", "nl", "ch", "it", "es"],
+                "Breit (inkl. Asien)": ["us", "de", "fr", "gb", "nl", "ch", "jp", "hk"]}
+        _SIZE = {"schnell": 60, "mittel": 100, "gr\u00fcndlich": 160}
+
+        if lc[2].button("\U0001f50d Scan starten", use_container_width=True):
+            st.session_state["ls_run"] = True
+
+        if st.session_state.get("ls_run"):
+            with st.spinner("Scanne Universum (Kennzahlen + Trend) \u2013 der erste Lauf "
+                            "dauert etwas ..."):
+                longs, shorts = longshort_candidates(
+                    tuple(_REG[region_choice]), 5.0, _SIZE[depth])
+
+            st.markdown('<div class="sec-title" style="color:#3FB950">\U0001f7e2 LONG-KANDIDATEN'
+                        '</div>', unsafe_allow_html=True)
+            if longs:
+                vr_table([{k: v for k, v in r.items() if k != "Vola %"} for r in longs],
+                         score_cols=("Comp.", "Chance"), signed_cols=("Upside %",),
+                         height=min(len(longs) * 40 + 46, 520))
+                st.caption("Sortiert nach \u201eChance\u201c (Qualit\u00e4t + Bewertungs-Upside). "
+                           "\u2191 \u00fcber 200T = Aufw\u00e4rtstrend best\u00e4tigt die Idee.")
+            else:
+                st.info("Keine \u00fcberzeugenden Long-Kandidaten in diesem Universum "
+                        "(verlangt Composite \u2265 58 und Upside \u2265 +10 %).")
+
+            st.markdown('<div class="sec-title" style="color:#F85149;margin-top:14px">'
+                        '\U0001f534 SHORT-KANDIDATEN \u00b7 mit Vorsicht</div>',
+                        unsafe_allow_html=True)
+            if shorts:
+                vr_table(shorts, score_cols=("Comp.", "Risiko-Fit"),
                          signed_cols=("Upside %",),
-                         height=min(len(hp["long"]) * 40 + 46, 420))
-            if hp["short"]:
-                st.markdown('<div class="sec-title" style="color:#F85149">SHORT-BUCH</div>',
-                            unsafe_allow_html=True)
-                vr_table(hp["short"], score_cols=("Comp.",),
-                         signed_cols=("Upside %",),
-                         height=min(len(hp["short"]) * 40 + 46, 420))
-                st.caption("Gew. Upside Short-Buch: "
-                           + (f"{hp['s_up']:+.1f} % (negativ = These intakt)"
-                              if hp["s_up"] is not None else "\u2014"))
-            st.caption("Regelbasierte Konstruktion: Gewicht ~ Signalst\u00e4rke, max. 12 % je "
-                       "Position, St\u00fcckzahlen auf dein Kapital gerechnet. F\u00fcr dein "
-                       "externes Testdepot \u2013 kein Anlagerat. 130/30 & Marktneutral "
-                       "erfordern real Margin/Leerverkauf beim Broker; Vorschlag hier ist "
-                       "eine Simulation zum Lernen.")
-    else:
-        st.info("\u201eScan starten\u201c dr\u00fccken. Der Scan pr\u00fcft je Titel Kennzahlen, "
-                "Bewertung und Kurstrend \u2013 er l\u00e4uft separat, damit der Tab sofort "
-                "reagiert.")
+                         height=min(len(shorts) * 40 + 46, 520))
+                st.caption("Nur Titel, die \u00fcberbewertet UND nicht in starkem Aufw\u00e4rtstrend "
+                           "sind. \u2193 unter 200T oder abdrehendes Momentum st\u00fctzt die Short-These. "
+                           "Hohe \u201eVola %\u201c = gr\u00f6\u00dferes Squeeze-Risiko.")
+            else:
+                st.info("Aktuell keine vertretbaren Short-Kandidaten \u2013 entweder nichts stark "
+                        "genug \u00fcberbewertet, oder die \u00dcberbewerteten laufen noch im "
+                        "Aufw\u00e4rtstrend (bewusst ausgeblendet).")
+            st.caption("Flache Datentiefe (API-schonend) \u2013 jeden Treffer vor einer "
+                       "Entscheidung in der Einzelanalyse mit tiefen Daten gegenpr\u00fcfen.")
+
+            # ---------- HEDGEFONDS-MODUS: konkreter Portfolio-Vorschlag ----------
+            st.markdown('<div class="sec-title" style="margin-top:16px">\U0001f3db\ufe0f '
+                        'HEDGEFONDS-MODUS \u00b7 Portfolio-Vorschlag</div>',
+                        unsafe_allow_html=True)
+            hc = st.columns([1.4, 1, 1])
+            strat_label = hc[0].selectbox("Strategie", [
+                "Marktneutral (Long 100 / Short 100)",
+                "130/30 (Long 130 / Short 30)",
+                "Qualit\u00e4ts-Long (nur Long)"], key="hf_strat")
+            capital = parse_eur(hc[1].text_input("Kapital \u20ac", value="10000",
+                                                 key="hf_capital")) or 10000.0
+            _SMAP = {"Marktneutral (Long 100 / Short 100)": "marktneutral",
+                     "130/30 (Long 130 / Short 30)": "130/30",
+                     "Qualit\u00e4ts-Long (nur Long)": "quality_long"}
+            if hc[2].button("\U0001f3db\ufe0f Portfolio vorschlagen", use_container_width=True):
+                st.session_state["hf_show"] = True
+            if st.session_state.get("hf_show"):
+                hp = hedgefund_proposal(longs, shorts, _SMAP[strat_label], capital)
+                mc = st.columns(4)
+                card(mc[0], "Brutto-Exposure", f"{hp['gross_pct']} %")
+                card(mc[1], "Netto-Exposure", f"{hp['net_pct']} %",
+                     sub="~0 = marktneutral" if _SMAP[strat_label] == "marktneutral" else "")
+                card(mc[2], "\u00d8 Composite (Long)",
+                     f"{hp['l_comp']:.0f}" if hp["l_comp"] is not None else "\u2014")
+                card(mc[3], "Gew. Upside (Long)",
+                     f"{hp['l_up']:+.1f} %" if hp["l_up"] is not None else "\u2014",
+                     color="var(--green)")
+                if hp["long"]:
+                    st.markdown('<div class="sec-title" style="color:#3FB950">LONG-BUCH</div>',
+                                unsafe_allow_html=True)
+                    vr_table(hp["long"], score_cols=("Comp.",),
+                             signed_cols=("Upside %",),
+                             height=min(len(hp["long"]) * 40 + 46, 420))
+                if hp["short"]:
+                    st.markdown('<div class="sec-title" style="color:#F85149">SHORT-BUCH</div>',
+                                unsafe_allow_html=True)
+                    vr_table(hp["short"], score_cols=("Comp.",),
+                             signed_cols=("Upside %",),
+                             height=min(len(hp["short"]) * 40 + 46, 420))
+                    st.caption("Gew. Upside Short-Buch: "
+                               + (f"{hp['s_up']:+.1f} % (negativ = These intakt)"
+                                  if hp["s_up"] is not None else "\u2014"))
+                st.caption("Regelbasierte Konstruktion: Gewicht ~ Signalst\u00e4rke, max. 12 % je "
+                           "Position, St\u00fcckzahlen auf dein Kapital gerechnet. F\u00fcr dein "
+                           "externes Testdepot \u2013 kein Anlagerat. 130/30 & Marktneutral "
+                           "erfordern real Margin/Leerverkauf beim Broker; Vorschlag hier ist "
+                           "eine Simulation zum Lernen.")
+        else:
+            st.info("\u201eScan starten\u201c dr\u00fccken. Der Scan pr\u00fcft je Titel Kennzahlen, "
+                    "Bewertung und Kurstrend \u2013 er l\u00e4uft separat, damit der Tab sofort "
+                    "reagiert.")
 
 
 # ===========================================================================
@@ -2651,397 +2810,461 @@ if nav == "Portfoliocheck":
                "Wert = Anzahl \u00d7 aktueller Intraday-Kurs. Gewinn/Verlust & Live-Kurse "
                "immer aktiv.")
 
-    # --- Aktuelles Portfolio als Liste von dicts in session_state["pf_records"] ---
-    def _pf_load(name):
-        recs = store.load_all().get(name, [])
-        st.session_state["pf_records"] = [
-            {"ticker": str(r.get("ticker") or ""),
-             "shares": r.get("shares"),
-             "avg_buyin": r.get("avg_buyin")} for r in recs]
-        st.session_state["pf_cur_name"] = name
-        st.session_state["pf_edit_open"] = False
-        st.session_state.pop("pf_editor", None)
+    _pt_a, _pt_b = st.tabs(["  \U0001f4ca ANALYSE  ", "  \U0001f4d3 LOGBUCH  "])
+    with _pt_b:
+        st.markdown('<div class="sec-title">\U0001f4d3 PORTFOLIO-LOGBUCH</div>',
+                    unsafe_allow_html=True)
+        st.caption("Verk\u00e4ufe \u00fcber den \u2715-Button landen automatisch hier. "
+                   "Zus\u00e4tzlich kannst du Transaktionen manuell eintragen.")
+        render_pf_logbook()
+    with _pt_a:
 
-    def _pf_new():
-        st.session_state["pf_records"] = []
-        st.session_state["pf_cur_name"] = ""
-        st.session_state["pf_edit_open"] = True        # Editor gleich aufklappen
-        st.session_state.pop("pf_editor", None)
+        # --- Aktuelles Portfolio als Liste von dicts in session_state["pf_records"] ---
+        def _pf_load(name):
+            recs = store.load_all().get(name, [])
+            st.session_state["pf_records"] = [
+                {"ticker": str(r.get("ticker") or ""),
+                 "shares": r.get("shares"),
+                 "avg_buyin": r.get("avg_buyin")} for r in recs]
+            st.session_state["pf_cur_name"] = name
+            st.session_state["pf_edit_open"] = False
+            st.session_state.pop("pf_editor", None)
 
-    def _editor_to_records(df):
-        out = []
-        try:
-            recs = df.to_dict("records")
-        except Exception:
-            recs = []
-        for r in recs:
-            tk = str(r.get("Ticker/Unternehmen") or "").strip()
-            if not tk:
-                continue
-            out.append({"ticker": tk, "shares": r.get("Anzahl"),
-                        "avg_buyin": r.get("\u00d8 Buy-in (\u20ac)")})
-        return out
+        def _pf_new():
+            st.session_state["pf_records"] = []
+            st.session_state["pf_cur_name"] = ""
+            st.session_state["pf_edit_open"] = True        # Editor gleich aufklappen
+            st.session_state.pop("pf_editor", None)
 
-    def _render_pf_editor():
-        st.markdown("---")
-        with st.expander("\u270f\ufe0f Portfolio bearbeiten / anlegen",
-                         expanded=st.session_state.get("pf_edit_open", False)):
-            st.caption("Kompakte Tabelle: Ticker/Unternehmen, Anzahl, \u00d8 Buy-in (\u20ac). "
-                       "Unterste leere Zeile = neue Position; Zeile markieren + Entf = "
-                       "l\u00f6schen. Danach \u00fcbernehmen bzw. speichern.")
-            _seed = pd.DataFrame(
-                [{"Ticker/Unternehmen": r.get("ticker", ""),
-                  "Anzahl": ("" if r.get("shares") in (None, "") else r.get("shares")),
-                  "\u00d8 Buy-in (\u20ac)": ("" if r.get("avg_buyin") in (None, "") else r.get("avg_buyin"))}
-                 for r in st.session_state.get("pf_records", [])]
-                or [{"Ticker/Unternehmen": "", "Anzahl": "", "\u00d8 Buy-in (\u20ac)": ""}])
-            _edited = st.data_editor(_seed, num_rows="dynamic", use_container_width=True,
-                                     hide_index=True, key="pf_editor")
-            _name = st.text_input("Speichern als",
-                                  value=st.session_state.get("pf_cur_name", ""),
-                                  placeholder="Name des Portfolios", key="pf_save_name")
-            _ec = st.columns(2)
-            if _ec[0].button("\u2714\ufe0f \u00dcbernehmen (nur anzeigen)",
-                             use_container_width=True):
-                st.session_state["pf_records"] = _editor_to_records(_edited)
-                st.session_state["pf_edit_open"] = True
-                st.session_state.pop("pf_editor", None)
-                st.rerun()
-            if _ec[1].button("\U0001f4be \u00dcbernehmen & speichern",
-                             use_container_width=True):
-                _recs = _editor_to_records(_edited)
-                st.session_state["pf_records"] = _recs
-                _clean = [{"ticker": r["ticker"], "value": None, "date": None,
-                           "shares": parse_eur(r.get("shares")),
-                           "avg_buyin": parse_eur(r.get("avg_buyin"))}
-                          for r in _recs if r["ticker"]]
-                if _name.strip() and store.save(_name.strip(), _clean):
-                    st.session_state["pf_cur_name"] = _name.strip()
-                    st.session_state["pf_edit_open"] = False
+        def _editor_to_records(df):
+            out = []
+            try:
+                recs = df.to_dict("records")
+            except Exception:
+                recs = []
+            for r in recs:
+                tk = str(r.get("Ticker/Unternehmen") or "").strip()
+                if not tk:
+                    continue
+                out.append({"ticker": tk, "shares": r.get("Anzahl"),
+                            "avg_buyin": r.get("\u00d8 Buy-in (\u20ac)")})
+            return out
+
+        def _render_pf_editor():
+            st.markdown("---")
+            with st.expander("\u270f\ufe0f Portfolio bearbeiten / anlegen",
+                             expanded=st.session_state.get("pf_edit_open", False)):
+                st.caption("Kompakte Tabelle: Ticker/Unternehmen, Anzahl, \u00d8 Buy-in (\u20ac). "
+                           "Unterste leere Zeile = neue Position; Zeile markieren + Entf = "
+                           "l\u00f6schen. Danach \u00fcbernehmen bzw. speichern.")
+                _seed = pd.DataFrame(
+                    [{"Ticker/Unternehmen": r.get("ticker", ""),
+                      "Anzahl": ("" if r.get("shares") in (None, "") else r.get("shares")),
+                      "\u00d8 Buy-in (\u20ac)": ("" if r.get("avg_buyin") in (None, "") else r.get("avg_buyin"))}
+                     for r in st.session_state.get("pf_records", [])]
+                    or [{"Ticker/Unternehmen": "", "Anzahl": "", "\u00d8 Buy-in (\u20ac)": ""}])
+                _edited = st.data_editor(_seed, num_rows="dynamic", use_container_width=True,
+                                         hide_index=True, key="pf_editor")
+                _name = st.text_input("Speichern als",
+                                      value=st.session_state.get("pf_cur_name", ""),
+                                      placeholder="Name des Portfolios", key="pf_save_name")
+                _ec = st.columns(2)
+                if _ec[0].button("\u2714\ufe0f \u00dcbernehmen (nur anzeigen)",
+                                 use_container_width=True):
+                    st.session_state["pf_records"] = _editor_to_records(_edited)
+                    st.session_state["pf_edit_open"] = True
                     st.session_state.pop("pf_editor", None)
-                    st.success(f"Gespeichert als \u201e{_name.strip()}\u201c "
-                               f"({len(_clean)} Positionen).")
+                    st.rerun()
+                if _ec[1].button("\U0001f4be \u00dcbernehmen & speichern",
+                                 use_container_width=True):
+                    _recs = _editor_to_records(_edited)
+                    st.session_state["pf_records"] = _recs
+                    _clean = [{"ticker": r["ticker"], "value": None, "date": None,
+                               "shares": parse_eur(r.get("shares")),
+                               "avg_buyin": parse_eur(r.get("avg_buyin"))}
+                              for r in _recs if r["ticker"]]
+                    if _name.strip() and store.save(_name.strip(), _clean):
+                        st.session_state["pf_cur_name"] = _name.strip()
+                        st.session_state["pf_edit_open"] = False
+                        st.session_state.pop("pf_editor", None)
+                        st.success(f"Gespeichert als \u201e{_name.strip()}\u201c "
+                                   f"({len(_clean)} Positionen).")
+                        st.rerun()
+                    else:
+                        st.warning("Bitte einen Namen f\u00fcr das Portfolio angeben.")
+
+        # KEIN Auto-Laden mehr: beim Öffnen des Tabs wird nichts berechnet.
+        # Ein Portfolio wird erst geladen, wenn man es explizit anklickt.
+        _pending = st.session_state.pop("pf_pending_load", None)
+        if _pending:
+            _pf_load(_pending)
+        st.session_state.setdefault("pf_records", [])
+        st.session_state.setdefault("pf_cur_name", "")
+
+        saved = store.names()
+
+        # --- Gespeichertes Portfolio laden (explizit, ein Button je Portfolio) ---
+        if saved:
+            st.markdown('<div class="vr-th">Gespeichertes Portfolio laden</div>',
+                        unsafe_allow_html=True)
+            for pname in saved:
+                active = (pname == st.session_state.get("pf_cur_name"))
+                lc = st.columns([3, 1])
+                if lc[0].button(("\u2705 " if active else "\U0001f4c2 ") + pname,
+                                key=f"pfload_{pname}", use_container_width=True,
+                                type="primary" if active else "secondary"):
+                    _pf_load(pname)
+                    st.rerun()
+                if lc[1].button("\U0001f5d1\ufe0f", key=f"pfdel_{pname}",
+                                use_container_width=True, help=f"{pname} l\u00f6schen"):
+                    st.session_state["pf_confirm_delete"] = pname
+                    st.rerun()
+            if st.session_state.get("pf_confirm_delete"):
+                _dn = st.session_state["pf_confirm_delete"]
+                st.warning(f"\u26a0\ufe0f Portfolio \u201e{_dn}\u201c wirklich l\u00f6schen? "
+                           "Kann nicht r\u00fcckg\u00e4ngig gemacht werden.")
+                dcc = st.columns(2)
+                if dcc[0].button("\U0001f5d1\ufe0f Ja, endg\u00fcltig l\u00f6schen",
+                                 use_container_width=True, key="pf_del_yes"):
+                    store.delete(_dn)
+                    st.session_state.pop("pf_confirm_delete", None)
+                    if _dn == st.session_state.get("pf_cur_name"):
+                        _pf_new()
+                        st.session_state["pf_edit_open"] = False
+                    st.rerun()
+                if dcc[1].button("Abbrechen", use_container_width=True, key="pf_del_no"):
+                    st.session_state.pop("pf_confirm_delete", None)
+                    st.rerun()
+        else:
+            st.caption("Noch keine gespeicherten Portfolios \u2013 unten \u201e\u2795 Portfolio "
+                       "hinzuf\u00fcgen\u201c und im Editor anlegen.")
+        if st.button("\u2795 Portfolio hinzuf\u00fcgen", use_container_width=True):
+            _pf_new()
+            st.rerun()
+
+        # --- Backup / Wiederherstellung (reboot-fest, weil auf DEINEM Geraet) ---
+        with st.expander("\U0001f5c4\ufe0f Backup / Wiederherstellen "
+                         "(wichtig bei der Online-Version!)"):
+            if store.backend() == "sheet":
+                st.success("\u2601\ufe0f Cloud-Speicher aktiv (Google Sheets) \u2013 deine Portfolios "
+                           "\u00fcberleben Reboots automatisch. Das Backup unten ist optional.")
+            else:
+                st.caption("In der Streamlit-Cloud wird der lokale Speicher bei jedem Reboot "
+                           "geleert \u2013 gespeicherte Portfolios gehen dann verloren. L\u00f6sung: "
+                           "entweder Google Sheets als Cloud-Speicher einrichten (siehe "
+                           "GOOGLE_SHEETS_SETUP.md) ODER hier ein Backup herunterladen (liegt auf "
+                           "deinem Ger\u00e4t) und nach einem Reboot wieder importieren.")
+                if st.button("\U0001f50d Google-Sheets-Verbindung testen"):
+                    try:
+                        import gsheet
+                        gsheet.reset_cache()
+                        msg = gsheet.diagnose()
+                    except Exception as e:
+                        msg = f"Diagnose nicht m\u00f6glich: {e}"
+                    if msg == "OK":
+                        st.success("Verbindung steht! Bitte die App einmal neu laden \u2013 "
+                                   "dann wird oben \u201eCloud-Speicher aktiv\u201c angezeigt.")
+                    else:
+                        st.error(msg)
+            bc = st.columns([1, 1])
+            bc[0].download_button(
+                "\u2b07\ufe0f Backup herunterladen", data=store.export_json(),
+                file_name="value_radar_portfolios.json", mime="application/json",
+                use_container_width=True,
+                disabled=not store.names())
+            up = bc[1].file_uploader("\u2b06\ufe0f Backup importieren (.json)", type=["json"],
+                                     key="pf_backup_upload", label_visibility="collapsed")
+            if up is not None and not st.session_state.get("pf_backup_done"):
+                try:
+                    nimp = store.import_json(up.read().decode("utf-8"), merge=True)
+                except Exception:
+                    nimp = 0
+                if nimp:
+                    st.session_state["pf_backup_done"] = True
+                    st.success(f"{nimp} Portfolio(s) importiert. Oben unter \u201eLaden\u201c ausw\u00e4hlen.")
                     st.rerun()
                 else:
-                    st.warning("Bitte einen Namen f\u00fcr das Portfolio angeben.")
+                    st.warning("Kein g\u00fcltiges Backup erkannt.")
+            if up is None:
+                st.session_state.pop("pf_backup_done", None)
 
-    # KEIN Auto-Laden mehr: beim Öffnen des Tabs wird nichts berechnet.
-    # Ein Portfolio wird erst geladen, wenn man es explizit anklickt.
-    _pending = st.session_state.pop("pf_pending_load", None)
-    if _pending:
-        _pf_load(_pending)
-    st.session_state.setdefault("pf_records", [])
-    st.session_state.setdefault("pf_cur_name", "")
+        # records aus dem aktuell geladenen Portfolio (pf_records) bauen
+        records = []
+        for r in st.session_state.get("pf_records", []):
+            tkv = str(r.get("ticker") or "").strip()
+            if not tkv:
+                continue
+            records.append({"ticker": tkv, "value": None,
+                            "shares": parse_eur(r.get("shares")),
+                            "date": None,
+                            "avg_buyin": parse_eur(r.get("avg_buyin"))})
 
-    saved = store.names()
-
-    # --- Gespeichertes Portfolio laden (explizit, ein Button je Portfolio) ---
-    if saved:
-        st.markdown('<div class="vr-th">Gespeichertes Portfolio laden</div>',
-                    unsafe_allow_html=True)
-        for pname in saved:
-            active = (pname == st.session_state.get("pf_cur_name"))
-            lc = st.columns([3, 1])
-            if lc[0].button(("\u2705 " if active else "\U0001f4c2 ") + pname,
-                            key=f"pfload_{pname}", use_container_width=True,
-                            type="primary" if active else "secondary"):
-                _pf_load(pname)
-                st.rerun()
-            if lc[1].button("\U0001f5d1\ufe0f", key=f"pfdel_{pname}",
-                            use_container_width=True, help=f"{pname} l\u00f6schen"):
-                st.session_state["pf_confirm_delete"] = pname
-                st.rerun()
-        if st.session_state.get("pf_confirm_delete"):
-            _dn = st.session_state["pf_confirm_delete"]
-            st.warning(f"\u26a0\ufe0f Portfolio \u201e{_dn}\u201c wirklich l\u00f6schen? "
-                       "Kann nicht r\u00fcckg\u00e4ngig gemacht werden.")
-            dcc = st.columns(2)
-            if dcc[0].button("\U0001f5d1\ufe0f Ja, endg\u00fcltig l\u00f6schen",
-                             use_container_width=True, key="pf_del_yes"):
-                store.delete(_dn)
-                st.session_state.pop("pf_confirm_delete", None)
-                if _dn == st.session_state.get("pf_cur_name"):
-                    _pf_new()
-                    st.session_state["pf_edit_open"] = False
-                st.rerun()
-            if dcc[1].button("Abbrechen", use_container_width=True, key="pf_del_no"):
-                st.session_state.pop("pf_confirm_delete", None)
-                st.rerun()
-    else:
-        st.caption("Noch keine gespeicherten Portfolios \u2013 unten \u201e\u2795 Portfolio "
-                   "hinzuf\u00fcgen\u201c und im Editor anlegen.")
-    if st.button("\u2795 Portfolio hinzuf\u00fcgen", use_container_width=True):
-        _pf_new()
-        st.rerun()
-
-    # --- Backup / Wiederherstellung (reboot-fest, weil auf DEINEM Geraet) ---
-    with st.expander("\U0001f5c4\ufe0f Backup / Wiederherstellen "
-                     "(wichtig bei der Online-Version!)"):
-        if store.backend() == "sheet":
-            st.success("\u2601\ufe0f Cloud-Speicher aktiv (Google Sheets) \u2013 deine Portfolios "
-                       "\u00fcberleben Reboots automatisch. Das Backup unten ist optional.")
-        else:
-            st.caption("In der Streamlit-Cloud wird der lokale Speicher bei jedem Reboot "
-                       "geleert \u2013 gespeicherte Portfolios gehen dann verloren. L\u00f6sung: "
-                       "entweder Google Sheets als Cloud-Speicher einrichten (siehe "
-                       "GOOGLE_SHEETS_SETUP.md) ODER hier ein Backup herunterladen (liegt auf "
-                       "deinem Ger\u00e4t) und nach einem Reboot wieder importieren.")
-            if st.button("\U0001f50d Google-Sheets-Verbindung testen"):
-                try:
-                    import gsheet
-                    gsheet.reset_cache()
-                    msg = gsheet.diagnose()
-                except Exception as e:
-                    msg = f"Diagnose nicht m\u00f6glich: {e}"
-                if msg == "OK":
-                    st.success("Verbindung steht! Bitte die App einmal neu laden \u2013 "
-                               "dann wird oben \u201eCloud-Speicher aktiv\u201c angezeigt.")
-                else:
-                    st.error(msg)
-        bc = st.columns([1, 1])
-        bc[0].download_button(
-            "\u2b07\ufe0f Backup herunterladen", data=store.export_json(),
-            file_name="value_radar_portfolios.json", mime="application/json",
-            use_container_width=True,
-            disabled=not store.names())
-        up = bc[1].file_uploader("\u2b06\ufe0f Backup importieren (.json)", type=["json"],
-                                 key="pf_backup_upload", label_visibility="collapsed")
-        if up is not None and not st.session_state.get("pf_backup_done"):
-            try:
-                nimp = store.import_json(up.read().decode("utf-8"), merge=True)
-            except Exception:
-                nimp = 0
-            if nimp:
-                st.session_state["pf_backup_done"] = True
-                st.success(f"{nimp} Portfolio(s) importiert. Oben unter \u201eLaden\u201c ausw\u00e4hlen.")
-                st.rerun()
-            else:
-                st.warning("Kein g\u00fcltiges Backup erkannt.")
-        if up is None:
-            st.session_state.pop("pf_backup_done", None)
-
-    # records aus dem aktuell geladenen Portfolio (pf_records) bauen
-    records = []
-    for r in st.session_state.get("pf_records", []):
-        tkv = str(r.get("ticker") or "").strip()
-        if not tkv:
-            continue
-        records.append({"ticker": tkv, "value": None,
-                        "shares": parse_eur(r.get("shares")),
-                        "date": None,
-                        "avg_buyin": parse_eur(r.get("avg_buyin"))})
-
-    inc_radar, inc_pl, live_px = False, True, True      # G/V & Intraday immer an
-    if not records:
-        st.info("Kein Portfolio geladen. Oben ein gespeichertes anklicken (\u201eLaden\u201c) "
-                "\u2013 oder \u201e\u2795 Portfolio hinzuf\u00fcgen\u201c und im Editor Positionen "
-                "eintragen.")
-        _render_pf_editor()
-    else:
-        if st.button("\U0001f504 Kurse aktualisieren", use_container_width=True):
-            load_intraday_price.clear()
-            load_intraday_quote.clear()
-            fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
-            load_fundamentals.clear()
-            load_fundamentals_deep.clear()    # frischer Basis-Kurs (tiefe Quelle)
-            st.rerun()
-        with st.spinner("Analysiere Positionen (Intraday-Kurse) ..."):
-            rows, invalid, resolved = build_portfolio_rows(records, inc_radar, inc_pl, live=live_px)
-        if live_px:
-            n_live = sum(1 for r in rows if r.get("live"))
-            st.caption(f"\u23f1 Intraday-Kurse aktiv f\u00fcr {n_live}/{len(rows)} Positionen \u00b7 "
-                       f"Stand {_berlin_now().strftime('%H:%M:%S')} (dt. Zeit) \u00b7 "
-                       "\u201eKurse aktualisieren\u201c f\u00fcr neuen Abruf.")
-
-        if resolved:
-            st.caption("Erkannt: " + "  \u00b7  ".join(f"{esc(a0)} \u2192 {esc(b0)}"
-                                                       for a0, b0 in resolved))
-        if invalid:
-            st.warning("Nicht gefunden / keine Daten: " + ", ".join(invalid))
-
-        if not rows:
-            st.info("Mindestens eine g\u00fcltige Position (Ticker/Name + Wert > 0) eintragen.")
-        else:
-            a = pf.analyze(rows)
-
-            vcol = {"buy": "var(--green)", "watch": "var(--amber)", "drop": "var(--red)"}[a["vkey"]]
-            st.markdown(
-                f'<div style="border:1px solid {vcol};border-radius:10px;padding:16px;margin:8px 0 14px">'
-                f'<div style="color:{vcol};font-size:26px;font-weight:800">Portfolio: {a["label"]} '
-                f'\u00b7 {a["score"]:.2f}/100</div>'
-                f'<div class="meta" style="margin-top:4px">Gesamtwert {sym_eur(a["total_eur"])} \u00b7 '
-                f'{a["n"]} Positionen \u00b7 effektiv {a["eff_positions"]:.2f} \u00b7 '
-                f'gr\u00f6\u00dfte Position {a["max_pos"]*100:.2f} % \u00b7 '
-                f'Top-Sektor {esc(a["max_sector_name"])} {a["max_sector"]*100:.2f} %</div></div>',
-                unsafe_allow_html=True)
-
-            ncards = 5 if a["have_pl"] else 4
-            mc = st.columns(ncards)
-            card(mc[0], "\u00d8 Composite (gew.)",
-                 f"{a['w_composite']:.2f}" if a["w_composite"] is not None else "\u2014",
-                 color=score_color(a["w_composite"] or 0))
-            cov_sub = (f"{a.get('pf_cov', 0)}/{a['n']} Pos. bewertet"
-                       if a.get("pf_cov") is not None else "")
-            card(mc[1], "Erwartetes Upside",
-                 f"{a['pf_upside']:+.2f} %" if a["pf_upside"] is not None else "\u2014",
-                 sub=cov_sub,
-                 color="var(--green)" if (a["pf_upside"] or 0) >= 0 else "var(--red)")
-            card(mc[2], "Portfolio-Fair-Value", sym_eur(a["pf_fair_eur"]), sub=cov_sub)
-            if a["have_pl"]:
-                g = a["pl_gain"]
-                gcol = "var(--green)" if g >= 0 else "var(--red)"
-                gtxt = f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}'
-                card(mc[3], "Gewinn/Verlust ges.", gtxt,
-                     sub=f"{a['pl_return']:+.2f} %" if a["pl_return"] is not None else "",
-                     color=gcol)
-            card(mc[ncards - 1], "\u00d8 Radar (gew.)",
-                 f"{a['w_radar']:.2f}" if a["w_radar"] is not None else "\u2013")
-
-            # Detailzeile Gewinn/Verlust seit Kauf
-            if a["have_pl"]:
-                g = a["pl_gain"]
-                gcol = "var(--green)" if g >= 0 else "var(--red)"
-                st.markdown(
-                    f'<div style="padding:8px 0 2px">Seit Kauf ({a["pl_count"]} von {a["n"]} '
-                    f'Positionen mit Kauf-Info): '
-                    f'<b style="color:{gcol}">{a["pl_return"]:+.2f} %  \u00b7  '
-                    f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}</b>'
-                    f'  <span class="na">(Einsatz {sym_eur(a["pl_cost"])} \u2192 Wert '
-                    f'{sym_eur(a["pl_value"])})</span></div>', unsafe_allow_html=True)
-
-            # Positionsliste (orangenen Ticker anklicken -> Einzelanalyse)
-            prows = sorted(rows, key=lambda r: -r["weight"])
-            data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:18],
-                     "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
-                     "Comp.": round(r["composite"] or 0),
-                     "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
-                     **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
-                        if a["have_pl"] else {}),
-                     **({"G/V \u20ac": round(r["gain_eur"], 2) if r.get("gain_eur") is not None else None}
-                        if a["have_pl"] else {}),
-                     "Wert \u20ac": round(r["value_eur"], 2)} for r in prows]
-            vr_table(data, score_cols=("Comp.",),
-                     signed_cols=("Upside %", "Kauf %", "G/V \u20ac"),
-                     height=min(len(data) * 40 + 46, 460))
-            st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
-
-            # Status je Position (wie frueher "Im Plus - halten" etc.) - inkl. konkreter
-            # Gewinnabsicherungs-Marke, wo sie zutrifft.
-            st.markdown('<div class="sec-title" style="margin-top:8px">STATUS JE POSITION</div>',
-                        unsafe_allow_html=True)
-            _scol = {"gr\u00fcn": "#3FB950", "gruen": "#3FB950", "gelb": "#FFB000",
-                     "rot": "#F85149", "neutral": "#6B7686"}
-            for r in prows:
-                lab, col, note = r.get("status", ("\u2014", "neutral", ""))
-                dot = _scol.get(col, "#6B7686")
-                line = (f'<span style="color:{dot};font-size:15px">\u25cf</span> '
-                        f'<b class="tick">{esc(r["ticker"])}</b> '
-                        f'<span style="color:{dot};font-weight:700">{esc(lab)}</span>')
-                if note:
-                    line += f'<div class="sum" style="margin:1px 0 0 20px">{esc(note)}</div>'
-                st.markdown(f'<div class="rowline" style="padding:6px 0">{line}</div>',
-                            unsafe_allow_html=True)
-            st.caption("Absicherungs-Marken sind grobe Orientierung aus Kurs & Fair Value \u2013 "
-                       "kein Anlagerat.")
-
-            # Transparenter Rechenweg: jede Zahl gegen den Broker pruefbar machen.
-            pl_rows = [r for r in rows if r.get("shares") and r.get("ret_pct") is not None
-                       and r.get("cost_eur") is not None]
-            if pl_rows:
-                with st.expander("\U0001f50d G/V-Rechenweg anzeigen (Zahlen pr\u00fcfen)"):
-                    st.caption("Formel je Position: Kosten = Anzahl \u00d7 \u00d8 Buy-in \u20ac \u00b7 "
-                               "Wert = Anzahl \u00d7 aktueller Kurs \u20ac \u00b7 G/V = Wert \u2212 Kosten. "
-                               "Weicht dein Broker ab, liegt es fast immer am KURS "
-                               "(Verz\u00f6gerung der freien Daten / anderer Handelsplatz) \u2013 "
-                               "dann \u201eKurse aktualisieren\u201c dr\u00fccken und vergleichen.")
-                    calc = []
-                    for r in pl_rows:
-                        sh = r["shares"]
-                        cost = r["cost_eur"]
-                        val = r["value_eur"]
-                        buyin = cost / sh if sh else None
-                        calc.append({
-                            "Ticker": r["ticker"], "Anzahl": sh,
-                            "\u00d8 Buy-in \u20ac": round(buyin, 2) if buyin else None,
-                            "Kurs \u20ac": round(r.get("price_eur") or 0, 4),
-                            "Kosten \u20ac": round(cost, 2), "Wert \u20ac": round(val, 2),
-                            "G/V \u20ac": round(val - cost, 2),
-                            "G/V %": round(r["ret_pct"], 2)})
-                    vr_table(calc, signed_cols=("G/V \u20ac", "G/V %"))
-
-            # Thesen-Check: konkrete Aktionen aus dem Kauf-Status
-            if a["have_pl"] and a["actions"]:
-                st.markdown('<div class="sec-title">THESEN-CHECK \u00b7 Aktionen aus Gewinn/Verlust</div>',
-                            unsafe_allow_html=True)
-                cmap = {"rot": "var(--red)", "gelb": "var(--amber)", "gr\u00fcn": "var(--green)",
-                        "neutral": "var(--muted)"}
-                for x in a["actions"]:
-                    rp = f" ({x['ret_pct']:+.2f} %)" if x.get("ret_pct") is not None else ""
-                    st.markdown(
-                        f'<div class="news-box"><a>{esc(x["ticker"])} \u2014 {esc(x["name"] or "")}'
-                        f'</a> <b style="color:{cmap[x["color"]]}">{esc(x["label"])}{rp}</b>'
-                        f'<div class="meta">{esc(x["note"])}</div></div>', unsafe_allow_html=True)
-
-
-            # Sektor-Allokation
-            ac = st.columns(2)
-            with ac[0]:
-                st.markdown('<div class="sec-title">SEKTOR-ALLOKATION</div>', unsafe_allow_html=True)
-                sdf = [(k, round(v * 100, 1)) for k, v in a["sector_alloc"].items()]
-                sdf.sort(key=lambda kv: -kv[1])
-                st.markdown(svg_hbars(sdf), unsafe_allow_html=True)
-            with ac[1]:
-                st.markdown('<div class="sec-title">KLUMPEN & \u00dcBERSCHNEIDUNGEN</div>',
-                            unsafe_allow_html=True)
-                cmap = {"rot": "var(--red)", "gelb": "var(--amber)", "gr\u00fcn": "var(--green)"}
-                for col, txt in a["flags"]:
-                    st.markdown(f'<div style="padding:6px 10px;border-bottom:1px solid #1F2733">'
-                                f'<b style="color:{cmap[col]}">\u25cf</b>&nbsp; {esc(txt)}</div>',
-                                unsafe_allow_html=True)
-
-            # Schwaechste Positionen
-            if a["weak"]:
-                st.markdown('<div class="sec-title">SCHW\u00c4CHSTE POSITIONEN \u00b7 reduzieren/ersetzen pr\u00fcfen</div>',
-                            unsafe_allow_html=True)
-                for w in a["weak"]:
-                    st.markdown(f'<div class="news-box"><a>{esc(w["ticker"])} \u2014 {esc(w["name"] or "")}</a>'
-                                f'<div class="meta">{esc(" \u00b7 ".join(w["reasons"]))}</div></div>',
-                                unsafe_allow_html=True)
-
-            # Portfolio bearbeiten: direkt unter dem Portfolio, VOR den Ideen.
+        inc_radar, inc_pl, live_px = False, True, True      # G/V & Intraday immer an
+        if not records:
+            st.info("Kein Portfolio geladen. Oben ein gespeichertes anklicken (\u201eLaden\u201c) "
+                    "\u2013 oder \u201e\u2795 Portfolio hinzuf\u00fcgen\u201c und im Editor Positionen "
+                    "eintragen.")
             _render_pf_editor()
+        else:
+            if st.button("\U0001f504 Kurse aktualisieren", use_container_width=True):
+                load_intraday_price.clear()
+                load_intraday_quote.clear()
+                fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
+                load_fundamentals.clear()
+                load_fundamentals_deep.clear()    # frischer Basis-Kurs (tiefe Quelle)
+                st.rerun()
+            with st.spinner("Analysiere Positionen (Intraday-Kurse) ..."):
+                rows, invalid, resolved = build_portfolio_rows(records, inc_radar, inc_pl, live=live_px)
+            if live_px:
+                n_live = sum(1 for r in rows if r.get("live"))
+                st.caption(f"\u23f1 Intraday-Kurse aktiv f\u00fcr {n_live}/{len(rows)} Positionen \u00b7 "
+                           f"Stand {_berlin_now().strftime('%H:%M:%S')} (dt. Zeit) \u00b7 "
+                           "\u201eKurse aktualisieren\u201c f\u00fcr neuen Abruf.")
 
-            # Vorschlaege zum Erg\u00e4nzen (aus Screener-Hot-Picks, Sektor-Luecken bevorzugt)
-            st.markdown('<div class="sec-title">IDEEN ZUM ERG\u00c4NZEN \u00b7 Qualit\u00e4t mit Bewertungsabstand</div>',
-                        unsafe_allow_html=True)
-            if a["gaps"]:
-                st.caption("Unterrepr\u00e4sentierte Sektoren: " + ", ".join(a["gaps"][:6])
-                           + "  \u00b7  Kandidaten aus US, DE, FR, GB, NL, CH, CA, JP, HK.")
-            with st.spinner("Suche passende Kandidaten (mehrere L\u00e4nder) ..."):
-                held_t = {r["ticker"] for r in rows}
-                held_n = {(r["name"] or "").lower() for r in rows}
-                gaps = set(a["gaps"])
-                cands = portfolio_candidates(a, held_t, held_n)
-            if cands:
-                cdf = pd.DataFrame([{"Ticker": c["ticker"], "Name": (c["name"] or "")[:22],
-                                     "Chance": round(c.get("opportunity") or 0),
-                                     "Score": c["score"],
-                                     "Upside %": round(c["upside"], 2) if c.get("upside") is not None else None,
-                                     "Sektor": (c["sector"] or "")[:16],
-                                     "Land": (c.get("country") or "")[:14],
-                                     "Preis \u20ac": c["price_eur"],
-                                     "F\u00fcllt L\u00fccke": "ja" if c.get("sector") in gaps else ""}
-                                    for c in cands])
-                vr_table(cdf.to_dict("records"),
-                         score_cols=("Chance", "Score"), signed_cols=("Upside %",),
-                         height=min(len(cdf) * 40 + 46, 460))
-                st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse. "
-                           "\u201eChance\u201c = Qualit\u00e4t + Bewertungs-Upside. Kein Anlagerat "
-                           "\u2013 selbst pr\u00fcfen.")
+            if resolved:
+                st.caption("Erkannt: " + "  \u00b7  ".join(f"{esc(a0)} \u2192 {esc(b0)}"
+                                                           for a0, b0 in resolved))
+            if invalid:
+                st.warning("Nicht gefunden / keine Daten: " + ", ".join(invalid))
+
+            if not rows:
+                st.info("Mindestens eine g\u00fcltige Position (Ticker/Name + Wert > 0) eintragen.")
             else:
-                st.info("Aktuell keine \u00fcberzeugenden Erg\u00e4nzungen gefunden (verlangt Qualit\u00e4t "
-                        "Score \u2265 55, belastbarer Fair Value und glaubhaftes Upside +8 bis +80 %). "
-                        "Bewusst lieber nichts vorschlagen als \u00fcberteuerte Titel.")
+                a = pf.analyze(rows)
 
-    # (Der Editor "Portfolio bearbeiten" wird jetzt direkt unter dem Portfolio
-    #  bzw. beim Anlegen gerendert - siehe _render_pf_editor().)
+                vcol = {"buy": "var(--green)", "watch": "var(--amber)", "drop": "var(--red)"}[a["vkey"]]
+                st.markdown(
+                    f'<div style="border:1px solid {vcol};border-radius:10px;padding:16px;margin:8px 0 14px">'
+                    f'<div style="color:{vcol};font-size:26px;font-weight:800">Portfolio: {a["label"]} '
+                    f'\u00b7 {a["score"]:.2f}/100</div>'
+                    f'<div class="meta" style="margin-top:4px">Gesamtwert {sym_eur(a["total_eur"])} \u00b7 '
+                    f'{a["n"]} Positionen \u00b7 effektiv {a["eff_positions"]:.2f} \u00b7 '
+                    f'gr\u00f6\u00dfte Position {a["max_pos"]*100:.2f} % \u00b7 '
+                    f'Top-Sektor {esc(a["max_sector_name"])} {a["max_sector"]*100:.2f} %</div></div>',
+                    unsafe_allow_html=True)
+
+                ncards = 5 if a["have_pl"] else 4
+                mc = st.columns(ncards)
+                card(mc[0], "\u00d8 Composite (gew.)",
+                     f"{a['w_composite']:.2f}" if a["w_composite"] is not None else "\u2014",
+                     color=score_color(a["w_composite"] or 0))
+                cov_sub = (f"{a.get('pf_cov', 0)}/{a['n']} Pos. bewertet"
+                           if a.get("pf_cov") is not None else "")
+                card(mc[1], "Erwartetes Upside",
+                     f"{a['pf_upside']:+.2f} %" if a["pf_upside"] is not None else "\u2014",
+                     sub=cov_sub,
+                     color="var(--green)" if (a["pf_upside"] or 0) >= 0 else "var(--red)")
+                card(mc[2], "Portfolio-Fair-Value", sym_eur(a["pf_fair_eur"]), sub=cov_sub)
+                if a["have_pl"]:
+                    g = a["pl_gain"]
+                    gcol = "var(--green)" if g >= 0 else "var(--red)"
+                    gtxt = f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}'
+                    card(mc[3], "Gewinn/Verlust ges.", gtxt,
+                         sub=f"{a['pl_return']:+.2f} %" if a["pl_return"] is not None else "",
+                         color=gcol)
+                card(mc[ncards - 1], "\u00d8 Radar (gew.)",
+                     f"{a['w_radar']:.2f}" if a["w_radar"] is not None else "\u2013")
+
+                # Detailzeile Gewinn/Verlust seit Kauf
+                if a["have_pl"]:
+                    g = a["pl_gain"]
+                    gcol = "var(--green)" if g >= 0 else "var(--red)"
+                    st.markdown(
+                        f'<div style="padding:8px 0 2px">Seit Kauf ({a["pl_count"]} von {a["n"]} '
+                        f'Positionen mit Kauf-Info): '
+                        f'<b style="color:{gcol}">{a["pl_return"]:+.2f} %  \u00b7  '
+                        f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}</b>'
+                        f'  <span class="na">(Einsatz {sym_eur(a["pl_cost"])} \u2192 Wert '
+                        f'{sym_eur(a["pl_value"])})</span></div>', unsafe_allow_html=True)
+
+                # Positionsliste (orangenen Ticker anklicken -> Einzelanalyse)
+                prows = sorted(rows, key=lambda r: -r["weight"])
+                data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:18],
+                         "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
+                         "Comp.": round(r["composite"] or 0),
+                         "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
+                         **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
+                            if a["have_pl"] else {}),
+                         **({"G/V \u20ac": round(r["gain_eur"], 2) if r.get("gain_eur") is not None else None}
+                            if a["have_pl"] else {}),
+                         "Wert \u20ac": round(r["value_eur"], 2),
+                         "\u2013\u2013": r["ticker"]} for r in prows]     # Verkaufs-Button
+                vr_table(data, score_cols=("Comp.",),
+                         signed_cols=("Upside %", "Kauf %", "G/V \u20ac"),
+                         height=min(len(data) * 40 + 46, 460))
+                st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse \u00b7 "
+                           "\u2715 rechts = Position verkaufen (mit Best\u00e4tigung, wird ins "
+                           "Logbuch \u00fcbernommen).")
+
+                # --- Verkauf bestaetigen (ausgeloest vom X-Button in der Tabelle) ---
+                _sell = st.session_state.get("pf_confirm_sell")
+                if _sell:
+                    _pos = next((r for r in prows if r["ticker"] == _sell), None)
+                    if _pos:
+                        _amt = _pos.get("value_eur") or 0
+                        _gv = _pos.get("gain_eur")
+                        st.warning(
+                            f"\u26a0\ufe0f **{_sell}** verkaufen? "
+                            f"Position: {sym_eur(_amt)}"
+                            + (f" \u00b7 G/V {'+' if (_gv or 0) >= 0 else '\u2212'}"
+                               f"{sym_eur(abs(_gv))}" if _gv is not None else "")
+                            + ". Die Position wird aus dem Portfolio entfernt und im "
+                              "Logbuch eingetragen.")
+                        _sc = st.columns(2)
+                        if _sc[0].button("\u2714\ufe0f Ja, verkaufen & protokollieren",
+                                         use_container_width=True, key="pf_sell_yes"):
+                            _entry = {
+                                "ts": time.time(),
+                                "datum": _berlin_now().strftime("%d.%m.%Y %H:%M"),
+                                "portfolio": st.session_state.get("pf_cur_name", ""),
+                                "typ": "Verkauf", "ticker": _sell,
+                                "anzahl": next((rec.get("shares") for rec in records
+                                                if str(rec.get("ticker")).upper() == _sell), None),
+                                "kurs_eur": round(_pos.get("price_eur") or 0, 2),
+                                "betrag_eur": round(_amt, 2),
+                                "gv_eur": round(_gv, 2) if _gv is not None else None,
+                                "notiz": "\u00fcber Verkaufs-Button", "quelle": "auto"}
+                            try:
+                                store.pf_log_add(_entry)
+                            except Exception as e:
+                                st.error(f"Logbuch-Eintrag fehlgeschlagen: {e}")
+                            # Position aus dem Portfolio entfernen (und speichern)
+                            st.session_state["pf_records"] = [
+                                r for r in st.session_state.get("pf_records", [])
+                                if str(r.get("ticker", "")).upper() != _sell]
+                            _nm = st.session_state.get("pf_cur_name", "")
+                            if _nm:
+                                store.save(_nm, [
+                                    {"ticker": r["ticker"], "value": None, "date": None,
+                                     "shares": parse_eur(r.get("shares")),
+                                     "avg_buyin": parse_eur(r.get("avg_buyin"))}
+                                    for r in st.session_state["pf_records"] if r.get("ticker")])
+                            st.session_state.pop("pf_confirm_sell", None)
+                            st.rerun()
+                        if _sc[1].button("Abbrechen", use_container_width=True,
+                                         key="pf_sell_no"):
+                            st.session_state.pop("pf_confirm_sell", None)
+                            st.rerun()
+                    else:
+                        st.session_state.pop("pf_confirm_sell", None)
+
+                # Status je Position (wie frueher "Im Plus - halten" etc.) - inkl. konkreter
+                # Gewinnabsicherungs-Marke, wo sie zutrifft.
+                st.markdown('<div class="sec-title" style="margin-top:8px">STATUS JE POSITION</div>',
+                            unsafe_allow_html=True)
+                _scol = {"gr\u00fcn": "#3FB950", "gruen": "#3FB950", "gelb": "#FFB000",
+                         "rot": "#F85149", "neutral": "#6B7686"}
+                for r in prows:
+                    lab, col, note = r.get("status", ("\u2014", "neutral", ""))
+                    dot = _scol.get(col, "#6B7686")
+                    line = (f'<span style="color:{dot};font-size:15px">\u25cf</span> '
+                            f'<b class="tick">{esc(r["ticker"])}</b> '
+                            f'<span style="color:{dot};font-weight:700">{esc(lab)}</span>')
+                    if note:
+                        line += f'<div class="sum" style="margin:1px 0 0 20px">{esc(note)}</div>'
+                    st.markdown(f'<div class="rowline" style="padding:6px 0">{line}</div>',
+                                unsafe_allow_html=True)
+                st.caption("Absicherungs-Marken sind grobe Orientierung aus Kurs & Fair Value \u2013 "
+                           "kein Anlagerat.")
+
+                # Transparenter Rechenweg: jede Zahl gegen den Broker pruefbar machen.
+                pl_rows = [r for r in rows if r.get("shares") and r.get("ret_pct") is not None
+                           and r.get("cost_eur") is not None]
+                if pl_rows:
+                    with st.expander("\U0001f50d G/V-Rechenweg anzeigen (Zahlen pr\u00fcfen)"):
+                        st.caption("Formel je Position: Kosten = Anzahl \u00d7 \u00d8 Buy-in \u20ac \u00b7 "
+                                   "Wert = Anzahl \u00d7 aktueller Kurs \u20ac \u00b7 G/V = Wert \u2212 Kosten. "
+                                   "Weicht dein Broker ab, liegt es fast immer am KURS "
+                                   "(Verz\u00f6gerung der freien Daten / anderer Handelsplatz) \u2013 "
+                                   "dann \u201eKurse aktualisieren\u201c dr\u00fccken und vergleichen.")
+                        calc = []
+                        for r in pl_rows:
+                            sh = r["shares"]
+                            cost = r["cost_eur"]
+                            val = r["value_eur"]
+                            buyin = cost / sh if sh else None
+                            calc.append({
+                                "Ticker": r["ticker"], "Anzahl": sh,
+                                "\u00d8 Buy-in \u20ac": round(buyin, 2) if buyin else None,
+                                "Kurs \u20ac": round(r.get("price_eur") or 0, 4),
+                                "Kosten \u20ac": round(cost, 2), "Wert \u20ac": round(val, 2),
+                                "G/V \u20ac": round(val - cost, 2),
+                                "G/V %": round(r["ret_pct"], 2)})
+                        vr_table(calc, signed_cols=("G/V \u20ac", "G/V %"))
+
+                # Thesen-Check: konkrete Aktionen aus dem Kauf-Status
+                if a["have_pl"] and a["actions"]:
+                    st.markdown('<div class="sec-title">THESEN-CHECK \u00b7 Aktionen aus Gewinn/Verlust</div>',
+                                unsafe_allow_html=True)
+                    cmap = {"rot": "var(--red)", "gelb": "var(--amber)", "gr\u00fcn": "var(--green)",
+                            "neutral": "var(--muted)"}
+                    for x in a["actions"]:
+                        rp = f" ({x['ret_pct']:+.2f} %)" if x.get("ret_pct") is not None else ""
+                        st.markdown(
+                            f'<div class="news-box"><a>{esc(x["ticker"])} \u2014 {esc(x["name"] or "")}'
+                            f'</a> <b style="color:{cmap[x["color"]]}">{esc(x["label"])}{rp}</b>'
+                            f'<div class="meta">{esc(x["note"])}</div></div>', unsafe_allow_html=True)
+
+
+                # Sektor-Allokation
+                ac = st.columns(2)
+                with ac[0]:
+                    st.markdown('<div class="sec-title">SEKTOR-ALLOKATION</div>', unsafe_allow_html=True)
+                    sdf = [(k, round(v * 100, 1)) for k, v in a["sector_alloc"].items()]
+                    sdf.sort(key=lambda kv: -kv[1])
+                    st.markdown(svg_hbars(sdf), unsafe_allow_html=True)
+                with ac[1]:
+                    st.markdown('<div class="sec-title">KLUMPEN & \u00dcBERSCHNEIDUNGEN</div>',
+                                unsafe_allow_html=True)
+                    cmap = {"rot": "var(--red)", "gelb": "var(--amber)", "gr\u00fcn": "var(--green)"}
+                    for col, txt in a["flags"]:
+                        st.markdown(f'<div style="padding:6px 10px;border-bottom:1px solid #1F2733">'
+                                    f'<b style="color:{cmap[col]}">\u25cf</b>&nbsp; {esc(txt)}</div>',
+                                    unsafe_allow_html=True)
+
+                # Schwaechste Positionen
+                if a["weak"]:
+                    st.markdown('<div class="sec-title">SCHW\u00c4CHSTE POSITIONEN \u00b7 reduzieren/ersetzen pr\u00fcfen</div>',
+                                unsafe_allow_html=True)
+                    for w in a["weak"]:
+                        st.markdown(f'<div class="news-box"><a>{esc(w["ticker"])} \u2014 {esc(w["name"] or "")}</a>'
+                                    f'<div class="meta">{esc(" \u00b7 ".join(w["reasons"]))}</div></div>',
+                                    unsafe_allow_html=True)
+
+                # Portfolio bearbeiten: direkt unter dem Portfolio, VOR den Ideen.
+                _render_pf_editor()
+
+                # Vorschlaege zum Erg\u00e4nzen (aus Screener-Hot-Picks, Sektor-Luecken bevorzugt)
+                st.markdown('<div class="sec-title">IDEEN ZUM ERG\u00c4NZEN \u00b7 Qualit\u00e4t mit Bewertungsabstand</div>',
+                            unsafe_allow_html=True)
+                if a["gaps"]:
+                    st.caption("Unterrepr\u00e4sentierte Sektoren: " + ", ".join(a["gaps"][:6])
+                               + "  \u00b7  Kandidaten aus US, DE, FR, GB, NL, CH, CA, JP, HK.")
+                with st.spinner("Suche passende Kandidaten (mehrere L\u00e4nder) ..."):
+                    held_t = {r["ticker"] for r in rows}
+                    held_n = {(r["name"] or "").lower() for r in rows}
+                    gaps = set(a["gaps"])
+                    cands = portfolio_candidates(a, held_t, held_n)
+                if cands:
+                    cdf = pd.DataFrame([{"Ticker": c["ticker"], "Name": (c["name"] or "")[:22],
+                                         "Chance": round(c.get("opportunity") or 0),
+                                         "Score": c["score"],
+                                         "Upside %": round(c["upside"], 2) if c.get("upside") is not None else None,
+                                         "Sektor": (c["sector"] or "")[:16],
+                                         "Land": (c.get("country") or "")[:14],
+                                         "Preis \u20ac": c["price_eur"],
+                                         "F\u00fcllt L\u00fccke": "ja" if c.get("sector") in gaps else ""}
+                                        for c in cands])
+                    vr_table(cdf.to_dict("records"),
+                             score_cols=("Chance", "Score"), signed_cols=("Upside %",),
+                             height=min(len(cdf) * 40 + 46, 460))
+                    st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse. "
+                               "\u201eChance\u201c = Qualit\u00e4t + Bewertungs-Upside. Kein Anlagerat "
+                               "\u2013 selbst pr\u00fcfen.")
+                else:
+                    st.info("Aktuell keine \u00fcberzeugenden Erg\u00e4nzungen gefunden (verlangt Qualit\u00e4t "
+                            "Score \u2265 55, belastbarer Fair Value und glaubhaftes Upside +8 bis +80 %). "
+                            "Bewusst lieber nichts vorschlagen als \u00fcberteuerte Titel.")
+
+        # (Der Editor "Portfolio bearbeiten" wird jetzt direkt unter dem Portfolio
+        #  bzw. beim Anlegen gerendert - siehe _render_pf_editor().)

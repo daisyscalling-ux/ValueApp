@@ -216,3 +216,21 @@ def set_hf(d: dict) -> bool:
     a = _load_aux()
     a["hedgefund"] = d
     return _save_aux(a)
+
+
+def get_pf_log() -> list:
+    """Manuelles Portfolio-Logbuch (Verkaeufe, Kaeufe, eigene Eintraege)."""
+    lg = _load_aux().get("pf_log", [])
+    return lg if isinstance(lg, list) else []
+
+
+def set_pf_log(entries: list) -> bool:
+    d = _load_aux()
+    d["pf_log"] = (entries or [])[:500]
+    return _save_aux(d)
+
+
+def pf_log_add(entry: dict) -> bool:
+    lg = get_pf_log()
+    lg.insert(0, entry)
+    return set_pf_log(lg)

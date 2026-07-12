@@ -316,18 +316,23 @@ def _collapse_listings(tickers):
     Entdopplung auch dann greift, wenn market_screener.py aelter ist."""
     out, base_pos = [], {}
     for t in tickers:
-        if "." not in t:
-            out.append(t)
-            continue
-        base, suf = t.split(".", 1)
-        pri = _DE_SUFFIX_PRIORITY.get(suf.upper(), 50)
+        # Basissymbol + Prioritaet. Ticker OHNE Suffix = Heimatnotierung -> Prioritaet 0
+        # (gewinnt). Vorher wurden sie gar nicht registriert -> AMZ und AMZ.DE
+        # ueberlebten beide.
+        if "." in t:
+            base, suf = t.split(".", 1)
+            pri = _DE_SUFFIX_PRIORITY.get(suf.upper(), 50)
+        else:
+            base, pri = t, 0
         if base not in base_pos:
             base_pos[base] = len(out)
             out.append(t)
         else:
             i = base_pos[base]
-            prev_suf = out[i].split(".", 1)[1] if "." in out[i] else ""
-            if pri < _DE_SUFFIX_PRIORITY.get(prev_suf.upper(), 50):
+            prev = out[i]
+            prev_pri = (_DE_SUFFIX_PRIORITY.get(prev.split(".", 1)[1].upper(), 50)
+                        if "." in prev else 0)
+            if pri < prev_pri:
                 out[i] = t
     return out
 
@@ -548,6 +553,60 @@ def svg_area_chart(pcts, color, height=250):
         f'+{hi:.1f}%</text>'
         f'<text x="6" y="{H-6}" fill="#6B7686" font-size="11" font-family="monospace">'
         f'{lo:.1f}%</text></svg>')
+
+
+def render_trackrecord():
+    """Trefferbilanz: was ist aus unseren Signalen geworden - gegen den Index."""
+    st.markdown('<div class="sec-title">\U0001f4c8 TREFFERBILANZ \u00b7 Signal-Tagebuch'
+                '</div>', unsafe_allow_html=True)
+    st.caption("Kein Backtest, sondern ein **Vorw\u00e4rts-Test**: Jedes Screener-/"
+               "Radar-Signal wird beim Auftauchen festgehalten \u2013 auch die sp\u00e4teren "
+               "Fehlschl\u00e4ge \u2013 und danach gegen den S&P 500 gemessen. Erst so l\u00e4sst "
+               "sich sagen, ob das Modell etwas kann oder nur der Markt lief.")
+    try:
+        import trackrecord as tr
+        rows = tr.evaluate()
+        summ = tr.summary(rows)
+    except Exception as e:
+        st.error(f"Trefferbilanz nicht verf\u00fcgbar: {e}")
+        return
+
+    if not rows:
+        st.info("Noch keine Signale erfasst. Der automatische Lauf (2\u00d7 t\u00e4glich) "
+                "h\u00e4lt ab jetzt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig "
+                "wird das erst nach einigen Wochen und vielen F\u00e4llen.")
+        return
+
+    if summ.get("n"):
+        c = st.columns(4)
+        _ae = summ.get("avg_excess")
+        card(c[0], "Signale (\u2265 14 Tage)", str(summ["n"]),
+             f"{summ['n_all']} insgesamt erfasst")
+        card(c[1], "Win %", f"{summ['win_pct']} %", "Anteil im Plus",
+             "var(--green)" if summ["win_pct"] >= 50 else "var(--red)")
+        card(c[2], "\u00d8 Rendite", f"{summ['avg_ret']:+.1f} %", "seit Signal",
+             "var(--green)" if summ["avg_ret"] >= 0 else "var(--red)")
+        card(c[3], "\u00d8 vs. S&P 500",
+             f"{_ae:+.1f} %" if _ae is not None else "\u2014",
+             (f"{summ['beat_pct']} % schlagen den Index"
+              if summ.get("beat_pct") is not None else ""),
+             "var(--green)" if (_ae or 0) >= 0 else "var(--red)")
+        if _ae is not None and _ae < 0:
+            st.warning("\u26a0\ufe0f Die Signale liegen im Schnitt **hinter** dem Index. "
+                       "Ein Indexfonds w\u00e4re bislang die bessere Wahl gewesen \u2013 "
+                       "genau daf\u00fcr ist diese Messung da.")
+    else:
+        st.info(f"{summ.get('n_all', 0)} Signale erfasst, aber noch keines ist "
+                "14 Tage alt. Zu fr\u00fch f\u00fcr ein Urteil.")
+
+    data = [{"Ticker": r["ticker"], "Quelle": r.get("quelle", ""),
+             "Tage": r["days"], "Einstieg": round(r["entry_px"], 2),
+             "Rendite %": r["ret_pct"], "S&P %": r.get("bench_pct"),
+             "vs. Index %": r.get("excess_pct")} for r in rows]
+    vr_table(data, signed_cols=("Rendite %", "S&P %", "vs. Index %"),
+             height=min(len(data) * 40 + 46, 560))
+    st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
+               "z\u00e4hlt. Kein Anlagerat.")
 
 
 def render_pf_stats():
@@ -2126,6 +2185,8 @@ if nav == "Einzelanalyse":
             valu = valuation.fair_value(f, None, ep)
             m1t = mx.auto_m1_total(sig)
             m2t = mx.auto_m2_total(sig)
+            _m1c = mx.auto_m1_coverage(sig)
+            _m2c = mx.auto_m2_coverage(sig)
             extras = load_screen_extras(ticker)
             rkey = f"radar_one_{ticker}"
             res = sc.evaluate(f, valu, comp, m1t, m2t, extras,
@@ -2134,7 +2195,10 @@ if nav == "Einzelanalyse":
 
             st.markdown(f"### Kauf-Scorecard \u2014 {f.get('name','')} `{ticker}`")
             st.caption(f"Playbook: {ep}{' (automatisch)' if preset.startswith('Auto') else ''}  \u00b7  "
-                       "automatische Pr\u00fcfung aller Gates (Schwellen: KAUFAUSWAHL_ANLEITUNG.md)")
+                       f"Datenbasis: Matrix 1 {_m1c[0]}/{_m1c[1]} \u00b7 Matrix 2 "
+                       f"{_m2c[0]}/{_m2c[1]} Kriterien mit echten Daten. "
+                       "Fehlende Kriterien werden ausgeklammert (nicht als \u201eneutral\u201c "
+                       "mitgez\u00e4hlt) \u2013 bei zu d\u00fcnner Basis gibt es bewusst keinen Wert.")
 
             def mm(v):
                 return "\u2014" if v is None else f"{sym}{de(v*mlt)}"
@@ -2365,124 +2429,129 @@ if nav == "News":
 # TAB — RADAR (Das Micron von morgen)
 # ===========================================================================
 if nav == "Radar":
-    st.markdown('<div class="sec-title">RADAR \u00b7 DAS MICRON VON MORGEN</div>',
-                unsafe_allow_html=True)
-    st.caption("Scannt vier Frueh-Signal-Ebenen \u2014 Events (SEC-8-K + News), "
-               "Fundamental, Schaetzungs-Momentum, stille Akkumulation \u2014 und "
-               "vergibt einen Vor-der-Welle-Score. Leuchten mehrere Ebenen gleichzeitig, "
-               "gibt es einen Koinzidenz-Bonus.")
+    _rv = st.radio("Ansicht", ["\U0001f3af Radar", "\U0001f4c8 Trefferbilanz"],
+                   horizontal=True, label_visibility="collapsed", key="rv_view")
+    if _rv.endswith("Trefferbilanz"):
+        render_trackrecord()
+    if _rv.endswith("Radar"):
+        st.markdown('<div class="sec-title">RADAR \u00b7 DAS MICRON VON MORGEN</div>',
+                    unsafe_allow_html=True)
+        st.caption("Scannt vier Frueh-Signal-Ebenen \u2014 Events (SEC-8-K + News), "
+                   "Fundamental, Schaetzungs-Momentum, stille Akkumulation \u2014 und "
+                   "vergibt einen Vor-der-Welle-Score. Leuchten mehrere Ebenen gleichzeitig, "
+                   "gibt es einen Koinzidenz-Bonus.")
 
-    mode = st.radio("Suchradius", ["Themen-Universum (eng & schnell)",
-                                   "Branche marktweit",
-                                   "Marktweit (alle Branchen)"], horizontal=True)
-    theme, branch, rg, rmcap = None, None, None, None
-    if mode.startswith("Themen"):
-        theme = st.selectbox("Thema", list(radar.THEMES.keys()))
-    elif mode.startswith("Branche"):
-        bc = st.columns([1.4, 1])
-        branch = bc[0].selectbox("Branche", list(radar.BRANCHES.keys()))
-        rmcap = bc[1].number_input("Min. Market Cap (Mrd. \u20ac)", value=1.0, step=0.5)
-        rg = st.multiselect("L\u00e4nder/Regionen", ms.REGION_CHOICES,
-                            default=ms.DEFAULT_REGIONS,
-                            help="us, de, nl, fr, gb, ch, it, es, se, dk, fi, no, ca, jp, hk, au")
-    else:
-        rc = st.columns(2)
-        rg = rc[0].multiselect("L\u00e4nder/Regionen", ms.REGION_CHOICES,
-                               default=ms.DEFAULT_REGIONS)
-        rmcap = rc[1].number_input("Min. Market Cap (Mrd. \u20ac)", value=1.0, step=0.5)
-    rmax = st.number_input("Max. Titel scannen", value=40, min_value=10, max_value=150,
-                           step=10, help="Mehr = mehr Treffer, aber langsamer "
-                           "(Events werden je Titel geladen).")
-    if not config.FINNHUB_API_KEY:
-        st.caption("\u2139 Ohne Finnhub-Key: Insider via yfinance (l\u00fcckenhaft), "
-                   "Events via SEC-8-K (nur US) + News-Trigger.")
-    scan = st.button("\u25b6 RADAR SCANNEN", use_container_width=True)
-
-    if scan:
-        rmcap_bn = rmcap or 0.0
-        if theme:
-            tickers = radar.THEMES[theme]
-        elif branch:
-            # groesseres Roh-Universum holen, da nach Branche stark gefiltert wird
-            tickers, _src = load_universe(tuple(rg or ms.DEFAULT_REGIONS),
-                                          rmcap_bn, int(rmax) * 8)
+        mode = st.radio("Suchradius", ["Themen-Universum (eng & schnell)",
+                                       "Branche marktweit",
+                                       "Marktweit (alle Branchen)"], horizontal=True)
+        theme, branch, rg, rmcap = None, None, None, None
+        if mode.startswith("Themen"):
+            theme = st.selectbox("Thema", list(radar.THEMES.keys()))
+        elif mode.startswith("Branche"):
+            bc = st.columns([1.4, 1])
+            branch = bc[0].selectbox("Branche", list(radar.BRANCHES.keys()))
+            rmcap = bc[1].number_input("Min. Market Cap (Mrd. \u20ac)", value=1.0, step=0.5)
+            rg = st.multiselect("L\u00e4nder/Regionen", ms.REGION_CHOICES,
+                                default=ms.DEFAULT_REGIONS,
+                                help="us, de, nl, fr, gb, ch, it, es, se, dk, fi, no, ca, jp, hk, au")
         else:
-            tickers, _src = load_universe(tuple(rg or ms.DEFAULT_REGIONS),
-                                          rmcap_bn, int(rmax) * 2)
+            rc = st.columns(2)
+            rg = rc[0].multiselect("L\u00e4nder/Regionen", ms.REGION_CHOICES,
+                                   default=ms.DEFAULT_REGIONS)
+            rmcap = rc[1].number_input("Min. Market Cap (Mrd. \u20ac)", value=1.0, step=0.5)
+        rmax = st.number_input("Max. Titel scannen", value=40, min_value=10, max_value=150,
+                               step=10, help="Mehr = mehr Treffer, aber langsamer "
+                               "(Events werden je Titel geladen).")
+        if not config.FINNHUB_API_KEY:
+            st.caption("\u2139 Ohne Finnhub-Key: Insider via yfinance (l\u00fcckenhaft), "
+                       "Events via SEC-8-K (nur US) + News-Trigger.")
+        scan = st.button("\u25b6 RADAR SCANNEN", use_container_width=True)
 
-        # 1) Fundamentaldaten laden + Mindest-Marktkap. erzwingen (wie im Screener)
-        #    + Doppel-Listings (1YD.DE/.F/.XC ...) entfernen
-        loaded = []
-        prog = st.progress(0.0, text="Lade Universum ...")
-        for i, t in enumerate(tickers, 1):
-            f = load_fundamentals(t)
-            if f.get("price"):
-                f["_fx"] = fx_to_eur(f.get("currency", "USD")) or 1.0
-                if theme or mcap_eur_bn(f) >= rmcap_bn:   # Themen ohne Mcap-Filter
-                    loaded.append(f)
-            prog.progress(i / max(len(tickers), 1), text=f"Lade {t} ...")
-        if branch:                                  # nach Hauptbranche filtern
-            sec, kw = radar.BRANCHES[branch]
-            loaded = [f for f in loaded if radar.in_branch(f, sec, kw)]
-        deduped = radar.dedupe_by_name(loaded)[:int(rmax)]
+        if scan:
+            rmcap_bn = rmcap or 0.0
+            if theme:
+                tickers = radar.THEMES[theme]
+            elif branch:
+                # groesseres Roh-Universum holen, da nach Branche stark gefiltert wird
+                tickers, _src = load_universe(tuple(rg or ms.DEFAULT_REGIONS),
+                                              rmcap_bn, int(rmax) * 8)
+            else:
+                tickers, _src = load_universe(tuple(rg or ms.DEFAULT_REGIONS),
+                                              rmcap_bn, int(rmax) * 2)
 
-        # 2) Radar nur auf den bereinigten Titeln berechnen
-        results = []
-        for i, f in enumerate(deduped, 1):
-            t = f["ticker"]
-            r = radar.compute(f, load_history_full(t), load_eps_rev(t),
-                              load_insider(t), load_8k(t),
-                              load_event_news(t, f.get("name")))
-            r["_fx"] = f.get("_fx") or 1.0
-            r["_price"] = f.get("price")
-            results.append(r)
-            prog.progress(i / max(len(deduped), 1),
-                          text=f"Scanne {t} ... ({len(results)})")
-        prog.empty()
-        results.sort(key=lambda x: x["score"], reverse=True)
-        st.session_state["radar_results"] = results          # bleibt erhalten
-        st.session_state.pop("radar_last_pick", None)
+            # 1) Fundamentaldaten laden + Mindest-Marktkap. erzwingen (wie im Screener)
+            #    + Doppel-Listings (1YD.DE/.F/.XC ...) entfernen
+            loaded = []
+            prog = st.progress(0.0, text="Lade Universum ...")
+            for i, t in enumerate(tickers, 1):
+                f = load_fundamentals(t)
+                if f.get("price"):
+                    f["_fx"] = fx_to_eur(f.get("currency", "USD")) or 1.0
+                    if theme or mcap_eur_bn(f) >= rmcap_bn:   # Themen ohne Mcap-Filter
+                        loaded.append(f)
+                prog.progress(i / max(len(tickers), 1), text=f"Lade {t} ...")
+            if branch:                                  # nach Hauptbranche filtern
+                sec, kw = radar.BRANCHES[branch]
+                loaded = [f for f in loaded if radar.in_branch(f, sec, kw)]
+            deduped = radar.dedupe_by_name(loaded)[:int(rmax)]
 
-    # --- Anzeige aus dem Speicher (ueberlebt Tab-Wechsel) ---
-    results = st.session_state.get("radar_results")
-    if results:
-        rows = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
-                 "Radar-Score": r["score"], "Ereignisse": r["layers"]["events"],
-                 "Fundamental": r["layers"]["fundamental"],
-                 "Sch\u00e4tzungen": r["layers"]["estimates"],
-                 "Akkumulation": r["layers"]["accumulation"],
-                 "Aktive Ebenen": r["firing"],
-                 "Preis \u20ac": round((r["_price"] or 0) * r["_fx"], 2),
-                 "Sektor": (r["sector"] or "")[:14]} for r in results]
-        df = pd.DataFrame(rows)
-        vr_table(rows, score_cols=("Radar-Score", "Ereignisse", "Fundamental",
-                                   "Sch\u00e4tzungen", "Akkumulation"), height=460)
-        st.caption("Werte 0\u2013100. Ereignisse = 8-K/News (\u00dcbernahmen, Auftr\u00e4ge) \u00b7 "
-                   "Fundamental = Wachstum/Backlog \u00b7 Sch\u00e4tzungen = Analysten heben "
-                   "Gewinnsch\u00e4tzungen \u00b7 Akkumulation = Insiderk\u00e4ufe/Volumen/Chart \u00b7 "
-                   "Aktive Ebenen = Koinzidenz der 4 Ebenen.")
-        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
+            # 2) Radar nur auf den bereinigten Titeln berechnen
+            results = []
+            for i, f in enumerate(deduped, 1):
+                t = f["ticker"]
+                r = radar.compute(f, load_history_full(t), load_eps_rev(t),
+                                  load_insider(t), load_8k(t),
+                                  load_event_news(t, f.get("name")))
+                r["_fx"] = f.get("_fx") or 1.0
+                r["_price"] = f.get("price")
+                results.append(r)
+                prog.progress(i / max(len(deduped), 1),
+                              text=f"Scanne {t} ... ({len(results)})")
+            prog.empty()
+            results.sort(key=lambda x: x["score"], reverse=True)
+            st.session_state["radar_results"] = results          # bleibt erhalten
+            st.session_state.pop("radar_last_pick", None)
 
-        st.markdown('<div class="sec-title" style="margin-top:14px">'
-                    'TOP-TREFFER \u00b7 KONKRETE TRIGGER</div>', unsafe_allow_html=True)
-        shown = 0
-        for r in results:
-            if r["score"] <= 5 or shown >= 8:
-                continue
-            shown += 1
-            trg = "".join(f'<div class="meta">\u00b7 {esc(t)}</div>' for t in r["triggers"][:7]) \
-                or '<div class="meta">\u00b7 (keine starken Trigger)</div>'
-            st.markdown(
-                f'<div class="news-box"><a>{esc(r["ticker"])} \u2014 {esc(r["name"])}</a> '
-                f'<span style="color:{score_color(r["score"])};font-weight:700">'
-                f'&nbsp;Radar {r["score"]}</span>{trg}</div>', unsafe_allow_html=True)
-        if shown == 0:
-            st.info("Keine auff\u00e4lligen Frueh-Signale im gescannten Universum.")
-        st.caption("Hinweis: Radar liefert Kandidaten, keine Kaufsignale \u2013 "
-                   "jeden Treffer einzeln pr\u00fcfen (Matrix 1/2 & Bewertung).")
-    else:
-        st.info("Noch kein Scan \u2013 oben Parameter w\u00e4hlen und "
-                "\u201eRADAR SCANNEN\u201c klicken.")
+        # --- Anzeige aus dem Speicher (ueberlebt Tab-Wechsel) ---
+        results = st.session_state.get("radar_results")
+        if results:
+            rows = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
+                     "Radar-Score": r["score"], "Ereignisse": r["layers"]["events"],
+                     "Fundamental": r["layers"]["fundamental"],
+                     "Sch\u00e4tzungen": r["layers"]["estimates"],
+                     "Akkumulation": r["layers"]["accumulation"],
+                     "Aktive Ebenen": r["firing"],
+                     "Preis \u20ac": round((r["_price"] or 0) * r["_fx"], 2),
+                     "Sektor": (r["sector"] or "")[:14]} for r in results]
+            df = pd.DataFrame(rows)
+            vr_table(rows, score_cols=("Radar-Score", "Ereignisse", "Fundamental",
+                                       "Sch\u00e4tzungen", "Akkumulation"), height=460)
+            st.caption("Werte 0\u2013100. Ereignisse = 8-K/News (\u00dcbernahmen, Auftr\u00e4ge) \u00b7 "
+                       "Fundamental = Wachstum/Backlog \u00b7 Sch\u00e4tzungen = Analysten heben "
+                       "Gewinnsch\u00e4tzungen \u00b7 Akkumulation = Insiderk\u00e4ufe/Volumen/Chart \u00b7 "
+                       "Aktive Ebenen = Koinzidenz der 4 Ebenen.")
+            st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
+
+            st.markdown('<div class="sec-title" style="margin-top:14px">'
+                        'TOP-TREFFER \u00b7 KONKRETE TRIGGER</div>', unsafe_allow_html=True)
+            shown = 0
+            for r in results:
+                if r["score"] <= 5 or shown >= 8:
+                    continue
+                shown += 1
+                trg = "".join(f'<div class="meta">\u00b7 {esc(t)}</div>' for t in r["triggers"][:7]) \
+                    or '<div class="meta">\u00b7 (keine starken Trigger)</div>'
+                st.markdown(
+                    f'<div class="news-box"><a>{esc(r["ticker"])} \u2014 {esc(r["name"])}</a> '
+                    f'<span style="color:{score_color(r["score"])};font-weight:700">'
+                    f'&nbsp;Radar {r["score"]}</span>{trg}</div>', unsafe_allow_html=True)
+            if shown == 0:
+                st.info("Keine auff\u00e4lligen Frueh-Signale im gescannten Universum.")
+            st.caption("Hinweis: Radar liefert Kandidaten, keine Kaufsignale \u2013 "
+                       "jeden Treffer einzeln pr\u00fcfen (Matrix 1/2 & Bewertung).")
+        else:
+            st.info("Noch kein Scan \u2013 oben Parameter w\u00e4hlen und "
+                    "\u201eRADAR SCANNEN\u201c klicken.")
 
 
 # ===========================================================================

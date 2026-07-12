@@ -234,3 +234,15 @@ def pf_log_add(entry: dict) -> bool:
     lg = get_pf_log()
     lg.insert(0, entry)
     return set_pf_log(lg)
+
+
+def get_signals() -> list:
+    """Signal-Tagebuch (Vorwaerts-Test der Scorecard/Radar-Signale)."""
+    s = _load_aux().get("signals", [])
+    return s if isinstance(s, list) else []
+
+
+def set_signals(entries: list) -> bool:
+    d = _load_aux()
+    d["signals"] = (entries or [])[:400]
+    return _save_aux(d)

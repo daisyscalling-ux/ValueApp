@@ -191,15 +191,23 @@ def auto_m1(s):
         (0, f"Net Debt/EBITDA {nde:.1f} (> 3,5)") if nde > 3.5 else
         (2, f"Net Debt/EBITDA {nde:.1f} (< 2)") if nde < 2 else
         (1, f"Net Debt/EBITDA {nde:.1f} (2\u20133,5)"))
-    # ROIC vs WACC (ROE als Proxy)
+    # ROIC vs WACC (ROE als Proxy) - ACHTUNG: ROE wird durch Verschuldung aufgeblaeht.
+    # Ein hoch verschuldetes Unternehmen zeigt hohen ROE bei mieser Kapitalrendite.
+    # Daher: kein voller Punkt, wenn der Hebel hoch ist (Net Debt/EBITDA > 3).
     roe, w = s.get("roe"), s.get("wacc")
+    _lev = s.get("net_debt_ebitda")
     if roe is None or w is None:
         r["roic"] = na("ROE/WACC fehlt")
     else:
         sp = (roe - w) * 100
-        r["roic"] = (2, f"ROE {roe*100:.1f}% > WACC {w*100:.1f}%") if sp > 1 else \
-                    (0, f"ROE {roe*100:.1f}% < WACC {w*100:.1f}%") if sp < -1 else \
-                    (1, f"ROE \u2248 WACC ({sp:+.1f}pp)")
+        _high_lev = _lev is not None and _lev > 3.0
+        if sp > 1 and _high_lev:
+            r["roic"] = (1, f"ROE {roe*100:.1f}% > WACC, aber Hebel hoch "
+                            f"(Net Debt/EBITDA {_lev:.1f}) \u2013 ROE geschmeichelt")
+        else:
+            r["roic"] = (2, f"ROE {roe*100:.1f}% > WACC {w*100:.1f}%") if sp > 1 else \
+                        (0, f"ROE {roe*100:.1f}% < WACC {w*100:.1f}%") if sp < -1 else \
+                        (1, f"ROE \u2248 WACC ({sp:+.1f}pp)")
     # Umsatztrend
     g = s.get("rev_yoy")
     if g is None:
@@ -317,10 +325,34 @@ def classify_m1(total):
 # ---------------------------------------------------------------------------
 # MATRIX 2 — Spezifikation (Buckets idx 0..3 -> Repr.-Score)
 # ---------------------------------------------------------------------------
-def auto_m1_total(s) -> int:
-    """Matrix-1-Gesamtpunktzahl (max 45) rein aus der automatischen Erkennung."""
+def _has_data(reason) -> bool:
+    """Kriterien ohne Daten sind mit '(n/a)' markiert."""
+    return not str(reason).startswith("(n/a)")
+
+
+def auto_m1_coverage(s):
+    """(vorhanden, moeglich) - wie viele Kriterien echte Daten haben."""
     auto = auto_m1(s)
-    return sum(auto.get(key, (1, ""))[0] + 1 for key, _n, _l, _w in M1_SPEC)
+    keys = [k for k, _n, _l, _w in M1_SPEC]
+    have = [k for k in keys if k in auto and _has_data(auto[k][1])]
+    return len(have), len(keys)
+
+
+def auto_m1_total(s, min_coverage=0.6):
+    """Matrix-1-Punkte (Skala 0-45), NUR ueber Kriterien mit echten Daten.
+
+    FRUEHER: Fehlende Daten zaehlten als 'neutral' = 2 von 3 Punkten. Eine Aktie
+    ganz OHNE Kennzahlen bekam so 29/45 - knapp an der Pflichtschwelle 30 vorbei.
+    Das erzeugte Scheinsicherheit. JETZT: fehlende Kriterien werden ausgeklammert,
+    das Ergebnis auf die 45er-Skala hochgerechnet. Ist die Datenlage zu duenn
+    (< 60 % der Kriterien), gibt es KEINEN Score (None) statt eines erfundenen."""
+    auto = auto_m1(s)
+    keys = [k for k, _n, _l, _w in M1_SPEC]
+    have = [(k, auto[k]) for k in keys if k in auto and _has_data(auto[k][1])]
+    if not keys or len(have) / len(keys) < min_coverage:
+        return None
+    pts = sum(idx + 1 for _k, (idx, _r) in have)        # 1..3 je Kriterium
+    return round(pts / (3 * len(have)) * 45)
 
 
 M2_BUCKET_SCORE = [1, 4, 7, 10]   # 0-2 / 3-5 / 6-8 / 9-10
@@ -395,16 +427,23 @@ def auto_m2(s):
         (0, f"Miss schwach ({sur:.1f}%)"))
     # Guidance (manuell)
     r["guid"] = (1, "(n/a) Guidance manuell pr\u00fcfen \u2013 'unsicher' angenommen")
-    # ROIC vs WACC
+    # ROIC vs WACC (ROE als Proxy) - Hebel-Korrektur wie in Matrix 1:
+    # hohe Verschuldung blaeht den ROE auf -> kein Spitzenwert.
     roe, w = s.get("roe"), s.get("wacc")
+    _lev2 = s.get("net_debt_ebitda")
     if roe is None or w is None:
         r["roic"] = na("ROE/WACC fehlt")
     else:
         sp = (roe - w) * 100
-        r["roic"] = (3, f"ROE \u2212 WACC {sp:+.1f}pp (deutlich)") if sp > 3 else \
-                    (2, f"ROE \u2212 WACC {sp:+.1f}pp (leicht)") if sp > 0.5 else \
-                    (1, f"ROE \u2248 WACC ({sp:+.1f}pp)") if sp > -0.5 else \
-                    (0, f"ROE < WACC ({sp:+.1f}pp)")
+        _hl = _lev2 is not None and _lev2 > 3.0
+        if sp > 0.5 and _hl:
+            r["roic"] = (1, f"ROE \u2212 WACC {sp:+.1f}pp, aber Hebel hoch "
+                            f"(Net Debt/EBITDA {_lev2:.1f}) \u2013 ROE geschmeichelt")
+        else:
+            r["roic"] = (3, f"ROE \u2212 WACC {sp:+.1f}pp (deutlich)") if sp > 3 else \
+                        (2, f"ROE \u2212 WACC {sp:+.1f}pp (leicht)") if sp > 0.5 else \
+                        (1, f"ROE \u2248 WACC ({sp:+.1f}pp)") if sp > -0.5 else \
+                        (0, f"ROE < WACC ({sp:+.1f}pp)")
     # FCF Trend
     ft = s.get("fcf_trend")
     r["fcf_trend"] = na("keine FCF-Reihe") if ft is None else (
@@ -492,11 +531,30 @@ def valuation_summary(fund, preset="quality"):
     }
 
 
-def auto_m2_total(s) -> float:
-    """Matrix-2-Gesamtscore (0-100) rein aus der automatischen Erkennung."""
+def auto_m2_coverage(s):
     auto = auto_m2(s)
-    total = 0.0
-    for cat, weight, crits in M2_CATS:
-        raw = sum(M2_BUCKET_SCORE[auto.get(key, (1, ""))[0]] for key, _n, _b in crits)
-        total += raw / (len(crits) * 10) * weight * 100
-    return round(total, 1)
+    keys = [k for _c, _w, crits in M2_CATS for k, _n, _b in crits]
+    have = [k for k in keys if k in auto and _has_data(auto[k][1])]
+    return len(have), len(keys)
+
+
+def auto_m2_total(s, min_coverage=0.6):
+    """Matrix-2-Score (0-100), NUR ueber Kriterien mit echten Daten.
+    Kategorien ohne jedes Datum fallen raus, ihre Gewichte werden auf die
+    verbleibenden verteilt. Zu duenne Datenlage -> None statt Fantasiewert."""
+    auto = auto_m2(s)
+    n_have, n_all = auto_m2_coverage(s)
+    if not n_all or n_have / n_all < min_coverage:
+        return None
+    total, wsum = 0.0, 0.0
+    for _cat, weight, crits in M2_CATS:
+        avail = [k for k, _n, _b in crits
+                 if k in auto and _has_data(auto[k][1])]
+        if not avail:
+            continue                                   # Kategorie ohne Daten: raus
+        raw = sum(M2_BUCKET_SCORE[auto[k][0]] for k in avail)
+        total += raw / (len(avail) * 10) * weight * 100
+        wsum += weight
+    if wsum <= 0:
+        return None
+    return round(total / wsum, 1)                       # auf vorhandene Gewichte normiert

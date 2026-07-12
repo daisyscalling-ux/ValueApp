@@ -283,6 +283,23 @@ def run():
     except Exception as e:
         print(f"[precompute] Hedgefonds-Update uebersprungen: {e}")
 
+    # 5d) Signal-Tagebuch: heutige Screener-/Radar-Signale festhalten (Vorwaerts-Test).
+    #     Ehrlich: JEDES Signal wird erfasst, auch die spaeteren Fehlschlaege.
+    try:
+        import trackrecord
+        sig_new = []
+        for r in (scr or [])[:10]:
+            sig_new.append({"ticker": r.get("ticker"), "quelle": "Screener",
+                            "score": r.get("composite"), "upside": r.get("upside"),
+                            "price": r.get("price")})
+        for r in (rad or [])[:10]:
+            sig_new.append({"ticker": r.get("ticker"), "quelle": "Radar",
+                            "score": r.get("radar"), "upside": r.get("upside"),
+                            "price": r.get("price")})
+        trackrecord.record(sig_new)
+    except Exception as e:
+        print(f"[precompute] Signal-Tagebuch uebersprungen: {e}")
+
     # 6) E-Mail
     _send_email(changes, holdings, watch, scr, rad, started, briefing_text)
     print("=== precompute fertig ===")

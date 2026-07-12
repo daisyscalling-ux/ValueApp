@@ -1491,25 +1491,16 @@ if nav == "Start":
     if _newtr:
         st.markdown('<div class="sec-title">\u2696\ufe0f NEUE TRADES '
                     '(Long/Short \u00b7 letzte 48 h)</div>', unsafe_allow_html=True)
-        for _t in _newtr[:8]:
-            _open = _t.get("action") == "open"
-            _col = "#3FB950" if _open else "#F85149"
-            _pl = _t.get("pl_pct")
-            _pl_txt = ""
-            if _pl is not None:
-                _pc = "#3FB950" if _pl >= 0 else "#F85149"
-                _pl_txt = (f' \u00b7 <b style="color:{_pc}">{_pl:+.1f} %</b>'
-                           + (f' ({sym_eur(_t["gain_eur"])})'
-                              if _t.get("gain_eur") is not None else ""))
-            st.markdown(
-                f'<div class="news-box" style="border-color:{_col};padding:8px 12px">'
-                f'<b style="color:{_col}">{"\U0001f7e2 Kauf" if _open else "\U0001f534 Verkauf"}</b> '
-                f'<a href="?open={esc(_t.get("ticker",""))}" target="_self" class="tick" '
-                f'style="text-decoration:none">{esc(_t.get("ticker",""))}</a> '
-                f'<span class="na">({esc(str(_t.get("dir","")))})</span>{_pl_txt}'
-                f'<div class="meta">{esc(_t["_strat"])} \u00b7 {esc(_t.get("why",""))} '
-                f'\u00b7 {fmt_ts(_t.get("ts"))}</div></div>',
-                unsafe_allow_html=True)
+        _td = [{"Zeit": fmt_ts(_t.get("ts")),
+                "Aktion": ("\U0001f7e2 Kauf" if _t.get("action") == "open"
+                           else "\U0001f534 Verkauf"),
+                "Ticker": _t.get("ticker", ""),
+                "Richtung": str(_t.get("dir", "")),
+                "G/V %": _t.get("pl_pct"), "G/V \u20ac": _t.get("gain_eur"),
+                "Strategie": _t["_strat"], "Grund": _t.get("why", "")}
+               for _t in _newtr[:8]]
+        vr_table(_td, signed_cols=("G/V %", "G/V \u20ac"),
+                 height=min(len(_td) * 40 + 46, 380))
         if st.button("\u2696\ufe0f Zum Long/Short-Logbuch", use_container_width=True):
             st.session_state["pending_nav"] = "Long/Short"
             st.session_state["ls_view"] = "\U0001f4d3 Logbuch"

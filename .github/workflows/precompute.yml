@@ -1,0 +1,46 @@
+name: value-radar-update
+
+# 2x taeglich (Zeiten in UTC!). Deutschland Sommerzeit = UTC+2, Winterzeit = UTC+1.
+#   05:15 UTC -> 07:15 (Sommer) / 06:15 (Winter)  vor Europa-Eroeffnung
+#   14:15 UTC -> 16:15 / 15:15                     kurz nach US-Eroeffnung
+# Bewusst 2x: schont die Gratis-API-Limits (429er verfaelschen sonst die Scores)
+# und bleibt klar innerhalb der GitHub-Freiminuten.
+on:
+  schedule:
+    - cron: "15 5,14 * * *"
+  workflow_dispatch: {}          # erlaubt manuellen Start per Knopf
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Abhaengigkeiten installieren
+        working-directory: value_radar
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Neu berechnen (Scores, Radar, Quantum, Portfolio, Hedgefonds)
+        working-directory: value_radar
+        env:
+          # --- Pflicht: Speicher (sonst gehen die Ergebnisse verloren) ---
+          GSHEET_ID: ${{ secrets.GSHEET_ID }}
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          # --- Pflicht: Datenquellen ---
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          # --- Optional ---
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_BRIEFING_MODEL: ${{ secrets.AI_BRIEFING_MODEL }}
+          # --- Optional: E-Mail-Zusammenfassung ---
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python precompute.py

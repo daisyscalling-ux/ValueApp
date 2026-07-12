@@ -145,17 +145,32 @@ def scorecard_ok(ticker, f, s, v):
         except Exception:
             intel = {}
         try:
-            extras = providers.get_screen_extras(ticker)
+            extras = providers.get_signal_extras(ticker)     # Reihen/EPS-Rev/Short
         except Exception:
             extras = {}
+        f = dict(f)
+        f.setdefault("_catalyst_score", (intel or {}).get("catalyst_score", 50))
         sig = mx.build_signals(f, hist, intel.get("analyst"), extras)
         m1 = mx.auto_m1_total(sig)
         m2 = mx.auto_m2_total(sig)
         r = sc.evaluate(f, v, s.get("composite"), m1, m2, extras,
                         intel.get("insider"), intel.get("analyst"))
-        failed = [m["label"] for m in r.get("mandatory", []) if not m["ok"]]
-        ok = r.get("mand_pass") == r.get("mand_total")      # ALLE Pflichtkriterien
-        res = (ok, r.get("verdict", ""), "; ".join(failed), True)
+        mand = r.get("mandatory", [])
+        # HART (muessen sitzen): Qualitaet + belastbarer Bewertungsabstand.
+        # WEICH (eines darf fehlen): Setup/Matrix 1, Streuung, Trend.
+        # Das entspricht der Scorecard-Stufe "Knapp" - streng genug, um BP
+        # (mehrere Verfehlungen) auszuschliessen, aber nicht so streng, dass das
+        # Long-Buch leer bleibt.
+        HARD = ("Composite", "Upside")
+        hard_fail = [m["label"] for m in mand
+                     if not m["ok"] and any(h in m["label"] for h in HARD)]
+        soft_fail = [m["label"] for m in mand
+                     if not m["ok"] and not any(h in m["label"] for h in HARD)]
+        ok = (not hard_fail) and len(soft_fail) <= 1 and not s.get("value_trap")
+        detail = "; ".join(hard_fail + soft_fail)
+        if s.get("value_trap"):
+            detail = ("Value-Trap-Verdacht; " + detail).strip("; ")
+        res = (ok, r.get("verdict", ""), detail, True)
     except Exception as e:
         res = (False, "Scorecard-Fehler", str(e), False)
     _SC_CACHE[ticker] = res

@@ -48,9 +48,14 @@ def evaluate(fund, valu, composite, m1_total, m2_total,
       composite is not None and composite >= 55,
       f"{composite:.0f}/100" if composite is not None else "keine Daten")
 
-    g("Matrix 1 \u2265 30",
+    # Matrix 1 = Setup/Timing (Chart, Revisionen, Volumen), NICHT eine zweite
+    # Qualitaetspruefung - die steckt schon im Composite. Fehlt die Datenbasis,
+    # gibt es keinen Wert (frueher: fehlende Daten zaehlten als "neutral" und
+    # eine datenlose Aktie kam auf 29/45).
+    g("Matrix 1 (Setup) \u2265 30 \u2013 mit belastbarer Datenbasis",
       m1_total is not None and m1_total >= 30,
-      f"{m1_total}/45" if m1_total is not None else "keine Daten")
+      f"{m1_total}/45" if m1_total is not None
+      else "zu wenig Daten \u2013 kein Setup-Urteil m\u00f6glich")
 
     reliable = valu.get("reliable", True)
     up_detail = f"{upside:+.1f} %" if upside is not None else "kein Fair Value"
@@ -64,13 +69,11 @@ def evaluate(fund, valu, composite, m1_total, m2_total,
       spread is not None and spread <= 60,
       f"{spread:.0f} %" if spread is not None else "n/a")
 
-    # Insider: ohne Daten neutral (kein K.o.)
-    if buys is None and sells is None:
-        g("Keine massiven Insider-Verk\u00e4ufe", True, "keine Insider-Daten (neutral)")
-    else:
-        b, s = buys or 0, sells or 0
-        g("Keine massiven Insider-Verk\u00e4ufe", not (s >= 5 and s > b * 2),
-          f"{b} K\u00e4ufe / {s} Verk\u00e4ufe")
+    # Insider-VERKAEUFE sind KEIN Pflichtkriterium mehr (jetzt Bonus).
+    # Begruendung: Verkaeufe sind verrauscht - Insider verkaufen aus vielen Gruenden
+    # (Steuern, Diversifikation, Hauskauf). Aussagekraeftig sind vor allem KAEUFE.
+    # Zudem fehlen Insiderdaten bei den Gratis-Quellen meist, wodurch das Kriterium
+    # ohnehin fast immer "bestanden" war - es filterte also praktisch nichts.
 
     trend_bits = []
     if above_sma is not None:
@@ -88,6 +91,16 @@ def evaluate(fund, valu, composite, m1_total, m2_total,
     b_("Matrix 2 \u2265 70",
        m2_total is not None and m2_total >= 70,
        f"{m2_total:.0f}/100" if m2_total is not None else "n/a")
+
+    if buys is None and sells is None:
+        b_("Insider: keine massiven Verk\u00e4ufe", False, "keine Insider-Daten")
+    else:
+        _b, _s = buys or 0, sells or 0
+        b_("Insider: keine massiven Verk\u00e4ufe", not (_s >= 5 and _s > _b * 2),
+           f"{_b} K\u00e4ufe / {_s} Verk\u00e4ufe")
+    if buys:
+        b_("Insider kaufen", (buys or 0) > (sells or 0),
+           f"{buys} K\u00e4ufe / {sells or 0} Verk\u00e4ufe")
 
     b_("Radar-Score \u2265 60",
        radar_score is not None and radar_score >= 60,

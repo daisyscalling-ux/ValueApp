@@ -160,6 +160,16 @@ table.vr-table tbody tr:hover{background:rgba(255,176,0,.05);}
 table.vr-table td.num, table.vr-table th.num{text-align:right;
   font-variant-numeric:tabular-nums;}
 table.vr-table .tick{color:var(--amber);font-weight:800;}
+/* Ansicht-Umschalter (Strategien/Logbuch) soll wie Tabs aussehen */
+div[role="radiogroup"]:has(input[aria-label*="Logbuch"]){gap:0 !important;
+  border-bottom:1px solid var(--line);margin-bottom:10px;}
+div[role="radiogroup"]:has(input[aria-label*="Logbuch"]) label{
+  padding:6px 16px !important;margin:0 !important;border-bottom:2px solid transparent;
+  font-weight:700;letter-spacing:.04em;}
+div[role="radiogroup"]:has(input[aria-label*="Logbuch"]) label:has(input:checked){
+  color:var(--amber) !important;border-bottom:2px solid var(--amber);}
+div[role="radiogroup"]:has(input[aria-label*="Logbuch"]) label > div:first-child{
+  display:none !important;}
 table.vr-table .sellbtn{display:inline-block;width:20px;height:20px;line-height:18px;
   text-align:center;border:1px solid #F85149;border-radius:3px;color:#F85149;
   font-size:11px;font-weight:700;text-decoration:none;background:rgba(248,81,73,.08);}
@@ -538,6 +548,67 @@ def svg_area_chart(pcts, color, height=250):
         f'+{hi:.1f}%</text>'
         f'<text x="6" y="{H-6}" fill="#6B7686" font-size="11" font-family="monospace">'
         f'{lo:.1f}%</text></svg>')
+
+
+def render_pf_stats(rows, a):
+    """Statistik unter dem Portfolio: Gesamt-G/V (gruen/rot) und Win-Quote -
+    offen (laufende Positionen) und realisiert (aus dem Logbuch)."""
+    st.markdown('<div class="sec-title" style="margin-top:10px">STATISTIK</div>',
+                unsafe_allow_html=True)
+
+    # --- Offene Positionen ---
+    scored = [r for r in rows if r.get("ret_pct") is not None]
+    wins = [r for r in scored if (r.get("ret_pct") or 0) > 0]
+    win_pct = (len(wins) / len(scored) * 100) if scored else None
+    gain_open = a.get("pl_gain") if a.get("have_pl") else None
+    cost_open = a.get("pl_cost") or 0
+    gain_open_pct = (gain_open / cost_open * 100) if (gain_open is not None and cost_open) else None
+
+    # --- Realisiert (Logbuch) ---
+    try:
+        log = store.get_pf_log()
+    except Exception:
+        log = []
+    sells = [e for e in log if e.get("typ") == "Verkauf" and e.get("gv_eur") is not None]
+    gain_real = sum(e["gv_eur"] for e in sells) if sells else None
+    win_real = ((sum(1 for e in sells if e["gv_eur"] > 0) / len(sells) * 100)
+                if sells else None)
+
+    total = (gain_open or 0) + (gain_real or 0)
+
+    def _sig(v):
+        return "var(--green)" if (v or 0) >= 0 else "var(--red)"
+
+    def _eur(v):
+        return ("+" if (v or 0) >= 0 else "\u2212") + sym_eur(abs(v or 0))
+
+    c = st.columns(4)
+    card(c[0], "G/V offen",
+         _eur(gain_open) if gain_open is not None else "\u2014",
+         f"{gain_open_pct:+.1f} % auf Einsatz" if gain_open_pct is not None else "",
+         _sig(gain_open))
+    card(c[1], "Win % (offen)",
+         f"{win_pct:.0f} %" if win_pct is not None else "\u2014",
+         f"{len(wins)} von {len(scored)} im Plus" if scored else "kein Buy-in erfasst",
+         "var(--green)" if (win_pct or 0) >= 50 else "var(--red)")
+    card(c[2], "G/V realisiert",
+         _eur(gain_real) if gain_real is not None else "\u2014",
+         f"aus {len(sells)} Verk\u00e4ufen" if sells else "noch keine Verk\u00e4ufe",
+         _sig(gain_real))
+    card(c[3], "Win % (realisiert)",
+         f"{win_real:.0f} %" if win_real is not None else "\u2014",
+         f"{sum(1 for e in sells if e['gv_eur'] > 0)} von {len(sells)} Gewinner"
+         if sells else "\u2014",
+         "var(--green)" if (win_real or 0) >= 50 else "var(--red)")
+
+    if gain_open is not None or gain_real is not None:
+        st.markdown(
+            f'<div style="margin-top:6px;font-size:17px">Gesamt (offen + realisiert): '
+            f'<b style="color:{_sig(total)}">{_eur(total)}</b></div>',
+            unsafe_allow_html=True)
+    st.caption("Win % = Anteil der Positionen bzw. protokollierten Verk\u00e4ufe im Plus. "
+               "Realisierte Werte stammen aus dem Logbuch \u2013 sie sind nur so "
+               "vollst\u00e4ndig wie deine Eintr\u00e4ge. Kein Anlagerat.")
 
 
 def render_hf_logbook():
@@ -2591,13 +2662,15 @@ if nav == "Watchlist":
 # LONG / SHORT-RADAR (experimentell)
 # ===========================================================================
 if nav == "Long/Short":
-    _lst_a, _lst_b = st.tabs(["  \U0001f3db\ufe0f STRATEGIEN  ",
-                              "  \U0001f4d3 LOGBUCH  "])
-    with _lst_b:
+    # st.tabs verliert die Auswahl bei jedem Rerun (Filter/Buttons springen zurueck
+    # auf den ersten Tab). Deshalb eine zustandsfeste Auswahl per Radio.
+    _ls_view = st.radio("Ansicht", ["\U0001f3db\ufe0f Strategien", "\U0001f4d3 Logbuch"],
+                        horizontal=True, label_visibility="collapsed", key="ls_view")
+    if _ls_view.endswith("Logbuch"):
         st.markdown('<div class="sec-title">\U0001f4d3 TRADE-LOGBUCH \u00b7 alle '
                     'Strategien</div>', unsafe_allow_html=True)
         render_hf_logbook()
-    with _lst_a:
+    if _ls_view.endswith("Strategien"):
         st.markdown('<div class="sec-title">\U0001f3db\ufe0f LAUFENDE STRATEGIE-PORTFOLIOS '
                     '(Papier)</div>', unsafe_allow_html=True)
         try:
@@ -2810,14 +2883,16 @@ if nav == "Portfoliocheck":
                "Wert = Anzahl \u00d7 aktueller Intraday-Kurs. Gewinn/Verlust & Live-Kurse "
                "immer aktiv.")
 
-    _pt_a, _pt_b = st.tabs(["  \U0001f4ca ANALYSE  ", "  \U0001f4d3 LOGBUCH  "])
-    with _pt_b:
+    _pt_view = st.radio("Ansicht", ["\U0001f4ca Analyse", "\U0001f4d3 Logbuch"],
+                        horizontal=True, label_visibility="collapsed",
+                        key="pt_view")
+    if _pt_view.endswith("Logbuch"):
         st.markdown('<div class="sec-title">\U0001f4d3 PORTFOLIO-LOGBUCH</div>',
                     unsafe_allow_html=True)
         st.caption("Verk\u00e4ufe \u00fcber den \u2715-Button landen automatisch hier. "
                    "Zus\u00e4tzlich kannst du Transaktionen manuell eintragen.")
         render_pf_logbook()
-    with _pt_a:
+    if _pt_view.endswith("Analyse"):
 
         # --- Aktuelles Portfolio als Liste von dicts in session_state["pf_records"] ---
         def _pf_load(name):
@@ -3147,6 +3222,9 @@ if nav == "Portfoliocheck":
                             st.rerun()
                     else:
                         st.session_state.pop("pf_confirm_sell", None)
+
+                # Statistik: Gesamt-G/V + Win-Quote (offen und realisiert)
+                render_pf_stats(rows, a)
 
                 # Status je Position (wie frueher "Im Plus - halten" etc.) - inkl. konkreter
                 # Gewinnabsicherungs-Marke, wo sie zutrifft.

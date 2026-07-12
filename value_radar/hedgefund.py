@@ -90,15 +90,23 @@ def _quality_gate(f, s, v, direction, min_groups=5):
 
 
 def candidates(size=60):
-    """Long/Short-Kandidaten. Zweistufig: flacher Vorscan (API-schonend), dann
-    TIEFE Pruefung der Shortlist (volle Datenquellen) + harte Qualitaets-Gates.
-    So kommen keine datenarmen Titel mehr ins Depot."""
+    """Kandidaten. Zweistufig: flacher Vorscan (API-schonend), dann TIEFE Pruefung
+    der Shortlist + Qualitaets-Gates.
+
+    Rueckgabe: (longs, shorts, puts)
+      shorts = ECHTE Short-Positionen (unbegrenztes Risiko) -> strenge Regeln:
+               stark ueberbewertet, schwaechere Qualitaet, KEIN Aufwaertstrend.
+      puts   = Basiswerte fuer die KO-Put-BEIMISCHUNG (nur ~4 % Einsatz, Verlust
+               auf den Einsatz begrenzt) -> mildere Regeln: ueberbewertet und nicht
+               in einem starken Aufwaertstrend. So bleibt die Beimischung gemischt,
+               auch wenn es (wie im Bullenmarkt ueblich) keine echten Shorts gibt.
+    """
     try:
         import market_screener as ms
         usd = providers.get_fx_to_eur("USD") or 0.92
         tks, _ = ms.get_universe(["us", "de", "fr", "gb", "nl"], 5e9 / usd, size)
     except Exception:
-        return [], []
+        return [], [], []
 
     pre_l, pre_s = [], []
     for t in tks:                                   # Stufe 1: flacher Vorscan
@@ -116,12 +124,12 @@ def candidates(size=60):
             continue
         if comp >= 55 and up >= 8:
             pre_l.append(t)
-        elif up <= -18 and comp <= 55:
+        elif up <= -8:                              # weit gefasst: Puts brauchen weniger
             pre_s.append(t)
 
-    def _verify(tickers, direction, limit=30):
-        out = []
-        for t in tickers[:limit]:                   # Stufe 2: tiefe Pruefung
+    longs, shorts, puts = [], [], []
+    for direction, pre in (("long", pre_l), ("short", pre_s)):
+        for t in pre[:30]:                          # Stufe 2: tiefe Pruefung
             f = providers.get_fundamentals(t, deep=True)
             price = f.get("price")
             if not price:
@@ -146,22 +154,32 @@ def candidates(size=60):
                 if len(cl) > 61:
                     above = cl[-1] > sum(cl[-200:]) / min(len(cl), 200)
                     mom20, mom60 = cl[-1] / cl[-21] - 1, cl[-1] / cl[-61] - 1
+            strong_uptrend = bool(above and (mom60 or 0) > 0.15)
+
             if direction == "long":
                 if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
-                    out.append((comp * 0.6 + min(up, 60) * 0.5, t))
-            else:
-                if up <= -20 and comp <= 52:
-                    if not (above and (mom60 or 0) > 0.15) and \
-                       ((not above) or (mom20 or 0) < 0):
-                        out.append(((-up) * 0.5 + (60 - comp) * 0.4, t))
-        out.sort(reverse=True)
-        return [t for _, t in out]
+                    longs.append((comp * 0.6 + min(up, 60) * 0.5, t))
+                continue
+            # --- Short-Seite ---
+            score = (-up) * 0.5 + max(60 - comp, 0) * 0.4
+            # ECHTER Short: streng (unbegrenztes Verlustrisiko)
+            if up <= -20 and comp <= 52 and not strong_uptrend and \
+               ((not above) or (mom20 or 0) < 0):
+                shorts.append((score, t))
+            # KO-PUT-Beimischung: milder (Verlust auf den Einsatz begrenzt),
+            # aber nie gegen einen starken Aufwaertstrend.
+            if up <= -12 and not strong_uptrend:
+                puts.append((score, t))
 
-    return _verify(pre_l, "long"), _verify(pre_s, "short")
+    for lst in (longs, shorts, puts):
+        lst.sort(reverse=True)
+    return ([t for _, t in longs], [t for _, t in shorts],
+            [t for _, t in puts])
 
 
-def rebalance(state, longs_cand, shorts_cand):
-    """Eine Pruefung: TP/SL anwenden, dann freie Slots fuellen. Mutiert state."""
+def rebalance(state, longs_cand, shorts_cand, put_cand=None):
+    """Eine Pruefung: TP/SL anwenden, dann freie Slots fuellen. Mutiert state.
+    put_cand = mildere Liste fuer die KO-Put-Beimischung (siehe candidates())."""
     now = time.time()
     held = {p["ticker"] for p in state["positions"]}
     # 1) Exits
@@ -240,7 +258,9 @@ def rebalance(state, longs_cand, shorts_cand):
         # KO-Basiswerte muessen ANDERE Unternehmen sein als der Aktien-Kern - sonst
         # traegt man dasselbe Firmenrisiko doppelt (Aktie + gehebelter Schein).
         calls = [t for t in longs_cand if t not in core_t and t not in ko_t]
-        puts = [t for t in shorts_cand if t not in core_t and t not in ko_t]
+        _put_pool = list(shorts_cand) + [t for t in (put_cand or [])
+                                         if t not in shorts_cand]
+        puts = [t for t in _put_pool if t not in core_t and t not in ko_t]
         # Ausgewogene Mischung: immer die Richtung mit dem kleineren Bestand zuerst.
         # Bei 3 freien Slots ergibt das 2 Calls + 1 Put (statt "was uebrig bleibt").
         n_free = max(KO_N - len(kos), 0)
@@ -297,8 +317,8 @@ def reset(strategy, refill=True, scan_size=50):
     hf = store.get_hf() or {}
     st_ = fresh_state(strategy)
     if refill:
-        lc, sc = candidates(scan_size)
-        st_ = rebalance(st_, lc, sc)
+        lc, sc, pc = candidates(scan_size)
+        st_ = rebalance(st_, lc, sc, pc)
     hf[strategy] = st_
     store.set_hf(hf)
     return st_
@@ -307,11 +327,12 @@ def reset(strategy, refill=True, scan_size=50):
 def run_all(scan_size=60):
     """Alle Strategie-Portfolios pruefen/anpassen (Cron-Einstieg, 2x taeglich)."""
     hf = store.get_hf() or {}
-    lc, sc = candidates(scan_size)
+    lc, sc, pc = candidates(scan_size)
+    print(f"[hedgefund] Kandidaten: {len(lc)} Long, {len(sc)} Short, {len(pc)} KO-Put")
     for strat in STRATS:
         st_ = hf.get(strat) or fresh_state(strat)
         st_["strategy"] = strat
-        hf[strat] = rebalance(st_, lc, sc)
+        hf[strat] = rebalance(st_, lc, sc, pc)
         print(f"[hedgefund] {strat}: Wert {hf[strat]['value_eur']:.0f} EUR, "
               f"{len(hf[strat]['positions'])} Positionen")
     store.set_hf(hf)

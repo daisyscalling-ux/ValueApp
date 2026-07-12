@@ -21,7 +21,7 @@ import store
 TP_LONG, SL_LONG = 20.0, -10.0
 TP_SHORT, SL_SHORT = 15.0, -10.0
 STRATS = {"marktneutral": (8, 8), "130/30": (8, 3), "quality_long": (8, 0),
-          "core_ko": (8, 0)}       # Aktien-Kern + Knock-out-Beimischung (Hebel 3)
+          "core_ko": (6, 0)}       # Aktien-Kern (6) + KO-Beimischung auf ANDERE Titel
 KO_LEV, KO_N, KO_EACH = 3.0, 3, 0.04    # 3 KOs x 4 % = ~12 % (Ziel 8-15 %)
 TP_KO, SL_KO = 45.0, -30.0
 START_CAPITAL = 10000.0
@@ -134,7 +134,12 @@ def rebalance(state, longs_cand, shorts_cand):
             pe, _ = _price_eur(t)
             if not pe:
                 continue
-            budget = min(state["cash"] * 0.5, POS_CAP * state["start_capital"])
+            avail = state["cash"]
+            if state["strategy"] == "core_ko":     # Cash fuer die KO-Beimischung reservieren
+                n_open_ko = KO_N - len([p for p in state["positions"]
+                                        if p.get("type") == "ko"])
+                avail -= max(n_open_ko, 0) * KO_EACH * state["start_capital"]
+            budget = min(max(avail, 0) * 0.5, POS_CAP * state["start_capital"])
             qty = int(budget / pe)
             if qty < 1 or budget < 50:
                 break
@@ -146,13 +151,29 @@ def rebalance(state, longs_cand, shorts_cand):
             held.add(t)
             state["trades"].insert(0, {"ts": now, "action": "open", "ticker": t,
                                        "dir": direction, "pl_pct": None, "why": "Signal"})
-    if state["strategy"] == "core_ko":       # KO-Beimischung: Calls auf Top-Longs,
+    if state["strategy"] == "core_ko":
         kos = [p for p in state["positions"] if p.get("type") == "ko"]
-        ko_held = {p["ticker"] for p in kos}
-        pool = [("call", t) for t in longs_cand[:4]] + [("put", t) for t in shorts_cand[:2]]
-        for kd, t in pool:
-            if len(kos) >= KO_N or t in ko_held:   # KO auf Kern-Titel ist erlaubt (Overlay)
-                continue
+        core_t = {p["ticker"] for p in state["positions"] if not p.get("type")}
+        ko_t = {p["ticker"] for p in kos}
+        # KO-Basiswerte muessen ANDERE Unternehmen sein als der Aktien-Kern - sonst
+        # traegt man dasselbe Firmenrisiko doppelt (Aktie + gehebelter Schein).
+        calls = [t for t in longs_cand if t not in core_t and t not in ko_t]
+        puts = [t for t in shorts_cand if t not in core_t and t not in ko_t]
+        have_call = any(p["ko_dir"] == "call" for p in kos)
+        have_put = any(p["ko_dir"] == "put" for p in kos)
+        plan = []
+        # Immer BEIDE Richtungen: zuerst je einen Put und einen Call sichern ...
+        if not have_put and puts:
+            plan.append(("put", puts.pop(0)))
+        if not have_call and calls:
+            plan.append(("call", calls.pop(0)))
+        # ... dann restliche Slots abwechselnd auffuellen.
+        while len(kos) + len(plan) < KO_N and (calls or puts):
+            if calls and len(kos) + len(plan) < KO_N:
+                plan.append(("call", calls.pop(0)))
+            if puts and len(kos) + len(plan) < KO_N:
+                plan.append(("put", puts.pop(0)))
+        for kd, t in plan:
             pe, _ = _price_eur(t)
             budget = min(state["cash"], KO_EACH * state["start_capital"])
             if not pe or budget < 50:
@@ -164,7 +185,9 @@ def rebalance(state, longs_cand, shorts_cand):
                    "leverage": KO_LEV, "barrier_eur": round(barrier, 2),
                    "entry_eur": round(pe, 2), "qty": qty, "opened": now,
                    "last_eur": round(pe, 2), "pl_pct": 0.0}
-            state["positions"].append(pos); kos.append(pos); ko_held.add(t)
+            state["positions"].append(pos)
+            kos.append(pos)
+            ko_t.add(t)
             state["trades"].insert(0, {"ts": now, "action": "open", "ticker": t,
                                        "dir": f"KO-{kd}", "pl_pct": None, "why": "Signal"})
     state["trades"] = state["trades"][:40]
@@ -178,14 +201,33 @@ def rebalance(state, longs_cand, shorts_cand):
     return state
 
 
+def fresh_state(strategy):
+    """Leeres Startdepot fuer eine Strategie (Papiergeld, keine Positionen)."""
+    return {"strategy": strategy, "start_capital": START_CAPITAL,
+            "cash": START_CAPITAL, "positions": [], "trades": [],
+            "created": time.time(), "value_eur": START_CAPITAL,
+            "last_check": None}
+
+
+def reset(strategy, refill=True, scan_size=50):
+    """Ein Strategie-Depot komplett neu aufsetzen (alle Positionen verwerfen).
+    refill=True baut direkt nach den aktuellen Regeln neu auf."""
+    hf = store.get_hf() or {}
+    st_ = fresh_state(strategy)
+    if refill:
+        lc, sc = candidates(scan_size)
+        st_ = rebalance(st_, lc, sc)
+    hf[strategy] = st_
+    store.set_hf(hf)
+    return st_
+
+
 def run_all(scan_size=60):
     """Alle Strategie-Portfolios pruefen/anpassen (Cron-Einstieg, 2x taeglich)."""
     hf = store.get_hf() or {}
     lc, sc = candidates(scan_size)
     for strat in STRATS:
-        st_ = hf.get(strat) or {"strategy": strat, "start_capital": START_CAPITAL,
-                                "cash": START_CAPITAL, "positions": [], "trades": [],
-                                "created": time.time()}
+        st_ = hf.get(strat) or fresh_state(strat)
         st_["strategy"] = strat
         hf[strat] = rebalance(st_, lc, sc)
         print(f"[hedgefund] {strat}: Wert {hf[strat]['value_eur']:.0f} EUR, "

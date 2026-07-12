@@ -2453,15 +2453,47 @@ if nav == "Long/Short":
             if _rows:
                 vr_table(_rows, signed_cols=("G/V %",),
                          height=min(len(_rows) * 40 + 46, 420))
+            _rules = ("Regeln: Long TP +20/SL \u221210, Short TP +15/SL \u221210, "
+                      "danach Slots neu bef\u00fcllt.")
+            if _k == "core_ko":
+                _rules = ("Regeln: Aktien-Kern (6 Titel) TP +20/SL \u221210 \u00b7 "
+                          "KO-Scheine 3\u00d7 Hebel, ~12 % des Depots, TP +45/SL \u221230, "
+                          "Knock-out bei \u00b133 % \u00b7 KO-Basiswerte sind bewusst ANDERE "
+                          "Unternehmen als der Kern, immer Call UND Put beigemischt.")
             st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 letzte Pr\u00fcfung: "
-                       f"{fmt_ts(_s.get('last_check'))} \u00b7 Regeln: Long TP +20/SL \u221210, "
-                       "Short TP +15/SL \u221210, danach Slots neu bef\u00fcllt.")
+                       f"{fmt_ts(_s.get('last_check'))} \u00b7 {_rules}")
             _tr = _s.get("trades", [])[:5]
             if _tr:
                 st.caption("Letzte Trades: " + " \u00b7 ".join(
                     f"{t['action']} {t['ticker']} ({t['dir']}"
                     + (f", {t['pl_pct']:+.0f}%" if t.get("pl_pct") is not None else "")
                     + f", {t['why']})" for t in _tr))
+
+            # --- Zuruecksetzen (mit Bestaetigung) ---
+            if st.button("\u21ba Portfolio zur\u00fccksetzen", key=f"hf_reset_{_k}",
+                         use_container_width=True):
+                st.session_state["hf_confirm_reset"] = _k
+                st.rerun()
+            if st.session_state.get("hf_confirm_reset") == _k:
+                st.warning(f"\u26a0\ufe0f \u201e{_sn.get(_k, _k)}\u201c wirklich zur\u00fccksetzen? "
+                           "Alle Positionen und die Trade-Historie dieser Strategie "
+                           "werden verworfen und das Depot startet neu mit "
+                           f"{sym_eur(_s.get('start_capital', 10000))} Papiergeld.")
+                _rc = st.columns(2)
+                if _rc[0].button("\u21ba Ja, neu aufsetzen", key=f"hf_reset_yes_{_k}",
+                                 use_container_width=True):
+                    with st.spinner("Setze zur\u00fcck und baue nach aktuellen Regeln neu auf ..."):
+                        try:
+                            import hedgefund
+                            hedgefund.reset(_k, refill=True, scan_size=50)
+                            st.session_state.pop("hf_confirm_reset", None)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Zur\u00fccksetzen fehlgeschlagen: {e}")
+                if _rc[1].button("Abbrechen", key=f"hf_reset_no_{_k}",
+                                 use_container_width=True):
+                    st.session_state.pop("hf_confirm_reset", None)
+                    st.rerun()
     if st.button("\U0001f504 Jetzt pr\u00fcfen & anpassen (dauert etwas)",
                  use_container_width=True):
         with st.spinner("Pr\u00fcfe Positionen und f\u00fclle Slots ..."):

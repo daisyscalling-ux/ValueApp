@@ -655,7 +655,8 @@ def longshort_candidates(regions, min_mcap_eur_bn, size):
         # Datenqualitaets-Gate: fehlende Kennzahlen werden im Scoring mit 50
         # aufgefuellt -> ohne diese Pruefung rutschen datenarme Notierungen durch.
         if _gate is not None:
-            _ok, _why = _gate(f, s, v, "long" if up >= 0 else "short")
+            # Flache Daten -> mildere Schwelle (4/9). Das Depot pruft spaeter tief.
+            _ok, _why = _gate(f, s, v, "long" if up >= 0 else "short", min_groups=4)
             if not _ok:
                 continue
         hist = load_history_full(t)

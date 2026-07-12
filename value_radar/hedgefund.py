@@ -61,25 +61,29 @@ _CORE_FIELDS = (
 )
 
 
-def _data_ok(f, need=6):
+def _data_ok(f, need=5):
     """Wieviele Kennzahlen-Gruppen sind WIRKLICH vorhanden? Das Scoring fuellt
     fehlende Werte mit 50 (neutral) auf - ohne diese Pruefung koennen datenarme
-    Notierungen (z.B. BHPL.XC) einen scheinbar soliden Composite bekommen,
+    Notierungen (z.B. BHPL.XC mit 3/9) einen scheinbar soliden Composite bekommen,
     obwohl kaum eine Zahl echt ist."""
     have = sum(1 for grp in _CORE_FIELDS
                if any(f.get(k) not in (None, "") for k in grp))
     return have >= need, have
 
 
-def _quality_gate(f, s, v, direction):
-    """Harte Mindestanforderungen, damit ein Titel ins Depot darf."""
-    ok_data, n_have = _data_ok(f)
-    if not ok_data:
-        return False, f"nur {n_have}/9 Kennzahlen-Gruppen vorhanden"
-    if not v.get("reliable") or v.get("confidence") == "niedrig":
-        return False, "Fair Value nicht belastbar"
+def _quality_gate(f, s, v, direction, min_groups=5):
+    """Mindestanforderungen fuers Depot. Leitgedanke: Es geht um DATENLAGE, nicht
+    um Meinungs-Uebereinstimmung. Sind die Kennzahlen da, ist eine Uneinigkeit der
+    Bewertungsmethoden ein Informationsgehalt - kein Ausschlussgrund.
+    min_groups niedriger setzen, wenn nur flache Daten vorliegen (Screening-Anzeige)."""
+    ok_data, n = _data_ok(f, need=min_groups)
+    if not ok_data:                                  # Kernschutz gegen BHPL.XC & Co.
+        return False, f"nur {n}/9 Kennzahlen-Gruppen vorhanden"
     if (v.get("n_methods") or 0) < 2:
         return False, "Fair Value aus nur einer Methode"
+    # Unsicherer Fair Value nur dann ein K.o., wenn ZUSAETZLICH die Datenlage duenn ist.
+    if not v.get("reliable") and n < min_groups + 1:
+        return False, "Fair Value unsicher bei d\u00fcnner Datenlage"
     if direction == "long" and s.get("value_trap"):
         return False, "Value-Trap-Verdacht"
     return True, "ok"
@@ -115,7 +119,7 @@ def candidates(size=60):
         elif up <= -18 and comp <= 55:
             pre_s.append(t)
 
-    def _verify(tickers, direction, limit=12):
+    def _verify(tickers, direction, limit=30):
         out = []
         for t in tickers[:limit]:                   # Stufe 2: tiefe Pruefung
             f = providers.get_fundamentals(t, deep=True)

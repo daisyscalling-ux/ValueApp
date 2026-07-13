@@ -2921,8 +2921,12 @@ if nav == "Long/Short":
                             "je n\u00e4her der Kurs der Barriere kommt) und k\u00f6nnen "
                             "**intraday** ausknocken \u2013 die Simulation ist also g\u00fctiger "
                             "als die Realit\u00e4t.")
-                st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 letzte Pr\u00fcfung: "
-                           f"{fmt_ts(_s.get('last_check'))} \u00b7 {_rules}")
+                _px_ts = _s.get("last_price")
+                _px_txt = (f" \u00b7 Kurse: {fmt_ts(_px_ts)}"
+                           if _px_ts and _px_ts != _s.get("last_check") else "")
+                st.caption(f"Cash: {sym_eur(_s.get('cash', 0))} \u00b7 "
+                           f"letzte Regel-Pr\u00fcfung: "
+                           f"{fmt_ts(_s.get('last_check'))}{_px_txt} \u00b7 {_rules}")
                 _tr = _s.get("trades", [])[:5]
                 if _tr:
                     st.caption("Letzte Trades: " + " \u00b7 ".join(
@@ -2955,8 +2959,18 @@ if nav == "Long/Short":
                                      use_container_width=True):
                         st.session_state.pop("hf_confirm_reset", None)
                         st.rerun()
-        if st.button("\U0001f504 Jetzt pr\u00fcfen & anpassen (dauert etwas)",
-                     use_container_width=True):
+        _hb = st.columns(2)
+        if _hb[0].button("\U0001f4b6 Werte aktualisieren (nur Kurse)",
+                         use_container_width=True):
+            with st.spinner("Hole aktuelle Kurse ..."):
+                try:
+                    import hedgefund
+                    hedgefund.refresh_prices()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Kurs-Update fehlgeschlagen: {e}")
+        if _hb[1].button("\U0001f504 Jetzt pr\u00fcfen & anpassen (handelt!)",
+                         use_container_width=True):
             with st.spinner("Pr\u00fcfe Positionen und f\u00fclle Slots ..."):
                 try:
                     import hedgefund
@@ -2964,6 +2978,12 @@ if nav == "Long/Short":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Update fehlgeschlagen: {e}")
+        st.caption("\U0001f4b6 **Nur Kurse**: bewertet die Depots neu, handelt aber "
+                   "**nicht** \u2013 schnell und ohne Nebenwirkungen. \u00b7 "
+                   "\U0001f504 **Pr\u00fcfen & anpassen**: wendet die Regeln an "
+                   "(Take-Profit, Stop-Loss, Gewinn-Stop, Signal erloschen) und "
+                   "besetzt freie Slots neu \u2013 kann also Positionen \u00f6ffnen und "
+                   "schlie\u00dfen.")
         st.markdown("---")
 
         st.markdown('<div class="sec-title">\u2696\ufe0f LONG / SHORT-RADAR</div>',

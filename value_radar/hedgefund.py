@@ -451,6 +451,45 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
     return state
 
 
+def refresh_prices():
+    """NUR Kurse neu bewerten - es wird NICHTS gekauft oder verkauft.
+
+    Bewusst getrennt von rebalance(): Take-Profit, Stop-Loss, Gewinn-Stop und die
+    Slot-Nachbesetzung bleiben den offiziellen Pruefungen vorbehalten (2x taeglich
+    bzw. "Jetzt pruefen & anpassen"). Hier siehst du nur, wo die Depots gerade
+    stehen. Auch peak_pl/Gewinn-Stop werden NICHT veraendert - sonst wuerde ein
+    kurzfristig hoher Zwischenkurs den Stop nachziehen, ohne dass die Regel-Logik
+    ihn je gesehen haette."""
+    hf = store.get_hf() or {}
+    if not hf:
+        return hf
+    now = time.time()
+    px_cache = {}
+    for strat, s in hf.items():
+        val = s.get("cash", 0.0)
+        for p in s.get("positions", []):
+            t = p["ticker"]
+            if t not in px_cache:
+                px_cache[t] = _price_eur(t)[0]
+            pe = px_cache[t]
+            if pe:
+                pl = _pl_pct(p, pe)
+                p["last_eur"] = round(pe, 2)
+                p["pl_pct"] = round(pl, 1) if pl is not None else None
+                if p.get("type") == "ko" and p.get("barrier_eur"):
+                    hit = (pe <= p["barrier_eur"]) if p["ko_dir"] == "call" \
+                        else (pe >= p["barrier_eur"])
+                    p["barrier_hit"] = bool(hit)      # nur Anzeige - Schliessung
+                    if hit:                            # macht die naechste Pruefung
+                        p["pl_pct"] = -100.0
+            val += p["qty"] * p["entry_eur"] * (1 + (p.get("pl_pct") or 0) / 100)
+        s["value_eur"] = round(val, 2)
+        s["last_price"] = now                          # getrennt von last_check!
+        print(f"[hedgefund] {strat}: Wert {s['value_eur']:.0f} EUR (nur Kurse)")
+    store.set_hf(hf)
+    return hf
+
+
 def fresh_state(strategy):
     """Leeres Startdepot fuer eine Strategie (Papiergeld, keine Positionen)."""
     return {"strategy": strategy, "start_capital": START_CAPITAL,

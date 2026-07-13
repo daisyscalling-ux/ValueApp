@@ -2372,13 +2372,22 @@ if nav == "News":
     if not st.session_state.get("news_loaded"):
         st.info("Auf \u201eNews laden\u201c klicken, um die aktuellen Markt-News zu holen.")
     else:
-        sections = ["US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News"]
+        sections = ["US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News", "WSJ"]
         nsub = st.tabs([f"  {s}  " for s in sections])
         for tabobj, section in zip(nsub, sections):
             with tabobj:
+                # WSJ ist komplett hinter einer Paywall - der "nur frei lesbar"-Filter
+                # wuerde den Bereich leer machen. Hier greift stattdessen die
+                # Weiterleitung ueber removepaywalls.com (siehe read_url).
+                _fo = False if section == "WSJ" else free_only
+                if section == "WSJ":
+                    st.caption("\U0001f512 Alle WSJ-Artikel liegen hinter der Paywall. "
+                               "Jede Headline wird automatisch \u00fcber "
+                               "**removepaywalls.com** ge\u00f6ffnet. Klappt nur, wenn "
+                               "dort eine Archiv-Version des Artikels existiert.")
                 with st.spinner(f"Lade {section} ..."
                                 + (" + \u00fcbersetze ..." if (de_on and section != 'DAX') else "")):
-                    items = load_marketnews(section, free_only=free_only)
+                    items = load_marketnews(section, free_only=_fo)
                     translate_here = de_on and section != "DAX"
                 if not items:
                     st.markdown('<span class="na">Aktuell keine Meldungen abrufbar '

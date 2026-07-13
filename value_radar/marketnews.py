@@ -37,6 +37,12 @@ FEEDS = {
         "https://www.scmp.com/rss/92/feed",                        # SCMP Business
         "https://www.cnbc.com/id/19832390/device/rss/rss.html",   # CNBC Asia
     ],
+    "WSJ": [
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",       # WSJ Markets
+        "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",     # WSJ US Business
+        "https://feeds.a.dj.com/rss/RSSWSJD.xml",              # WSJ Technology
+        "https://feeds.a.dj.com/rss/RSSWorldNews.xml",         # WSJ World News
+    ],
     "Aktien-News": [
         "https://www.investing.com/rss/news_25.rss",              # Stock Market News
         "https://feeds.marketwatch.com/marketwatch/marketpulse/",

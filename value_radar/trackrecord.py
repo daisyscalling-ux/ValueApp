@@ -62,7 +62,7 @@ def record(signals):
         })
         known.add(key)
         added += 1
-    store.set_signals(log[:400])
+    store.set_signals(log[:250])
     print(f"[trackrecord] {added} neue Signale erfasst ({len(log)} gesamt).")
     return added
 

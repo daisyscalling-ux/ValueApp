@@ -128,8 +128,10 @@ def _save_aux(d: dict) -> bool:
         try:
             if g.save_aux(d):
                 return True
-        except Exception:
-            pass
+            print("[store] Google-Sheet-Speichern fehlgeschlagen -> lokale Datei "
+                  "(auf Streamlit Cloud NICHT dauerhaft!)")
+        except Exception as e:
+            print(f"[store] Google-Sheet-Fehler: {e}")
     try:
         with open(AUX_PATH, "w", encoding="utf-8") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=2)
@@ -226,7 +228,7 @@ def get_pf_log() -> list:
 
 def set_pf_log(entries: list) -> bool:
     d = _load_aux()
-    d["pf_log"] = (entries or [])[:500]
+    d["pf_log"] = (entries or [])[:250]
     return _save_aux(d)
 
 
@@ -244,5 +246,5 @@ def get_signals() -> list:
 
 def set_signals(entries: list) -> bool:
     d = _load_aux()
-    d["signals"] = (entries or [])[:400]
+    d["signals"] = (entries or [])[:250]
     return _save_aux(d)

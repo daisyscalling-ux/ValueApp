@@ -114,17 +114,27 @@ def save_all(d: dict) -> bool:
 
 # --- Zusatz-Ablage (Watchlist, Snapshot, Aenderungs-Feed) in Zelle A2 ---------
 # Portfolios bleiben unveraendert in A1; alles Weitere liegt als EIN JSON in A2.
+# Google Sheets erlaubt max. 50.000 Zeichen JE ZELLE. Die Zusatzdaten (Hedgefonds-
+# Historie, Snapshot, Logbuch, Signale) sprengen das schnell -> das Speichern schlug
+# lautlos fehl und ALLES war weg. Deshalb: JSON auf mehrere Zellen aufteilen.
+_AUX_CHUNK = 45000
+_AUX_ROWS = 30                      # A2..A31 -> bis ~1,35 Mio Zeichen
+
+
 def load_aux() -> dict:
     ws = _worksheet()
     if ws is None:
         return {}
     try:
-        raw = ws.acell("A2").value
+        cells = ws.get(f"A2:A{1 + _AUX_ROWS}") or []
+        parts = [(row[0] if row else "") for row in cells]
+        raw = "".join(p for p in parts if p)
         if not raw:
             return {}
         d = json.loads(raw)
         return d if isinstance(d, dict) else {}
-    except Exception:
+    except Exception as e:
+        print(f"[gsheet] load_aux fehlgeschlagen: {e}")
         return {}
 
 
@@ -133,9 +143,18 @@ def save_aux(d: dict) -> bool:
     if ws is None:
         return False
     try:
-        ws.update_acell("A2", json.dumps(d, ensure_ascii=False))
+        raw = json.dumps(d, ensure_ascii=False)
+        chunks = [raw[i:i + _AUX_CHUNK] for i in range(0, len(raw), _AUX_CHUNK)]
+        if len(chunks) > _AUX_ROWS:
+            print(f"[gsheet] AUX zu gross: {len(raw)} Zeichen "
+                  f"({len(chunks)} Bloecke, max {_AUX_ROWS}) - wird gekuerzt gespeichert!")
+            return False
+        # freie Zeilen mit leeren Werten ueberschreiben (sonst bleiben Reste stehen)
+        values = [[c] for c in chunks] + [[""]] * (_AUX_ROWS - len(chunks))
+        ws.update(range_name=f"A2:A{1 + _AUX_ROWS}", values=values)
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[gsheet] save_aux fehlgeschlagen: {e}")
         return False
 
 

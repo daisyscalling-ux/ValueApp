@@ -578,6 +578,38 @@ def render_trackrecord():
         st.info("Noch keine Signale erfasst. Der automatische Lauf (2\u00d7 t\u00e4glich) "
                 "h\u00e4lt ab jetzt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig "
                 "wird das erst nach einigen Wochen und vielen F\u00e4llen.")
+
+    # --- Sofort erfassen (ohne auf den Cron-Job zu warten) ---
+    _rr = st.session_state.get("radar_results") or []
+    _cap = st.columns([2, 1])
+    if _cap[0].button(f"\U0001f4cc Aktuelle Radar-Treffer erfassen ({len(_rr)})",
+                      use_container_width=True, disabled=not _rr):
+        try:
+            new = tr.record([{"ticker": r["ticker"], "quelle": "Radar",
+                              "score": r.get("score"),
+                              "price": (r.get("_price") or 0) * (r.get("_fx") or 1.0)}
+                             for r in _rr[:15]])
+            st.success(f"{new} neue Signale erfasst.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Erfassen fehlgeschlagen: {e}")
+    if not _rr:
+        _cap[0].caption("Erst im Radar scannen \u2013 dann lassen sich die Treffer "
+                        "hier mit einem Klick ins Tagebuch \u00fcbernehmen.")
+
+    # --- Diagnose: schreibt der Speicher ueberhaupt? ---
+    with _cap[1].popover("\u2699\ufe0f Diagnose"):
+        try:
+            st.write(f"Speicher: **{store.backend()}**")
+            st.write(f"Signale gespeichert: **{len(store.get_signals())}**")
+            if store.backend() != "gsheet":
+                st.warning("Ohne Google-Sheet-Speicher gehen die Signale beim "
+                           "Neustart verloren \u2013 und der Cron-Job schreibt in einen "
+                           "anderen Speicher als die App.")
+        except Exception as e:
+            st.error(f"Speicher nicht lesbar: {e}")
+
+    if not rows:
         return
 
     if summ.get("n"):

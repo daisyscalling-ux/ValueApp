@@ -440,7 +440,7 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
             ko_t.add(t)
             state["trades"].insert(0, {"ts": now, "action": "open", "ticker": t,
                                        "dir": f"KO-{kd}", "pl_pct": None, "why": "Signal"})
-    state["trades"] = state["trades"][:200]   # laengere Historie fuer das Logbuch
+    state["trades"] = state["trades"][:60]    # begrenzt: Aux-Speicher darf nicht platzen
     # 3) Gesamtwert
     val = state["cash"]
     for p in state["positions"]:

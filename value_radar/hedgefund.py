@@ -369,7 +369,11 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
         reserve = min(2, n_ko_calls_open) if longs_cand else 0
         nl = max(min(nl, len(longs_cand) - reserve), 2)
     for direction, n_max, cands in (("long", nl, longs_cand), ("short", ns, shorts_cand)):
-        cur = [p for p in state["positions"] if p["dir"] == direction]
+        # WICHTIG: KO-Scheine haben zwar dir="long", sind aber KEINE Kern-Aktien.
+        # Wurden sie mitgezaehlt, belegten sie die Aktien-Slots -> der Kern blieb
+        # leer, obwohl gueltige Titel (z.B. NVDA) vorlagen.
+        cur = [p for p in state["positions"]
+               if p["dir"] == direction and p.get("type") != "ko"]
         for t in cands:
             if len(cur) >= n_max or t in held:
                 continue

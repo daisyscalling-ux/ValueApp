@@ -1915,11 +1915,19 @@ if nav == "Einzelanalyse":
                              key="wl_toggle",
                              help="Watchlist-Titel werden im Nacht-Job t\u00e4glich "
                                   "vorberechnet und bei \u00c4nderungen gemeldet."):
-                    if _in_wl:
-                        store.watchlist_remove(ticker)
+                    try:
+                        _ok = (store.watchlist_remove(ticker) if _in_wl
+                               else store.watchlist_add(ticker))
+                    except Exception as _e:
+                        _ok = False
+                        st.error(f"Speichern fehlgeschlagen: {_e}")
+                    if _ok is False:
+                        st.error("\u26a0\ufe0f Konnte die Watchlist **nicht speichern** "
+                                 "(Google Sheet nicht erreichbar oder voll). Der Eintrag "
+                                 "w\u00e4re beim n\u00e4chsten Laden wieder weg \u2013 "
+                                 "siehe Diagnose im Watchlist-Tab.")
                     else:
-                        store.watchlist_add(ticker)
-                    st.rerun()
+                        st.rerun()
                 bsum = (f.get("business_summary") or "").strip()
                 if bsum:
                     short = bsum[:380].rsplit(" ", 1)[0] + (" \u2026" if len(bsum) > 380 else "")
@@ -2920,9 +2928,39 @@ if nav == "Watchlist":
                 mm = search_symbols(raw)
                 if mm:
                     tk = mm[0]["symbol"].upper()
-            store.watchlist_add(tk)
-            st.session_state.pop("wl_add_input", None)
-            st.rerun()
+            try:
+                _ok = store.watchlist_add(tk)
+            except Exception as _e:
+                _ok = False
+                st.error(f"Speichern fehlgeschlagen: {_e}")
+            if _ok is False:
+                st.error("\u26a0\ufe0f Konnte nicht speichern \u2013 siehe Diagnose unten.")
+            else:
+                st.session_state.pop("wl_add_input", None)
+                st.rerun()
+
+    # --- Speicher-Diagnose: haeufigste Ursache, wenn Eintraege "verschwinden" ---
+    with st.expander("\u2699\ufe0f Speicher-Diagnose (wenn Eintr\u00e4ge nicht erscheinen)"):
+        try:
+            _be = store.backend()
+            st.write(f"Speicher: **{_be}** \u00b7 Eintr\u00e4ge: **{len(store.get_watchlist())}**")
+            if _be != "gsheet":
+                st.warning("Es wird **nicht** ins Google Sheet geschrieben. Auf Streamlit "
+                           "Cloud ist der lokale Speicher fl\u00fcchtig \u2013 Eintr\u00e4ge sind "
+                           "nach einem Neustart weg, und der Nacht-Job sieht sie nie.")
+            if st.button("\U0001f9ea Schreibtest durchf\u00fchren", key="wl_wtest"):
+                _probe = store.get_watchlist()
+                _res = store.set_watchlist(_probe)      # unveraendert zurueckschreiben
+                if _res:
+                    st.success("Schreiben ins Google Sheet funktioniert.")
+                else:
+                    st.error("Schreiben FEHLGESCHLAGEN. H\u00e4ufigste Ursache: die "
+                             "Zusatzdaten sprengen das Zellen-Limit von 50.000 Zeichen "
+                             "(Hedgefonds-Historie, Snapshot, Logbuch). Die neue "
+                             "gsheet.py verteilt die Daten auf mehrere Zellen \u2013 "
+                             "bitte hochladen.")
+        except Exception as e:
+            st.error(f"Diagnose fehlgeschlagen: {e}")
 
     if not wl:
         st.info("Noch keine Titel auf der Watchlist. Oben hinzuf\u00fcgen \u2013 oder in der "

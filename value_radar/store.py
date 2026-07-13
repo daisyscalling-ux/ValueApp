@@ -123,15 +123,27 @@ def _load_aux() -> dict:
 
 
 def _save_aux(d: dict) -> bool:
+    """WICHTIG: Ist das Google Sheet der aktive Speicher, wird auch von dort GELESEN.
+    Schlaegt das Schreiben dorthin fehl, hilft die lokale Datei nicht - der Eintrag
+    waere beim naechsten Laden weg. Deshalb wird in diesem Fall FALSE zurueckgegeben
+    (frueher: True, weil die lokale Kopie 'geklappt' hat -> stiller Datenverlust)."""
     g = _sheet()
     if g is not None:
+        ok = False
         try:
-            if g.save_aux(d):
-                return True
-            print("[store] Google-Sheet-Speichern fehlgeschlagen -> lokale Datei "
-                  "(auf Streamlit Cloud NICHT dauerhaft!)")
+            ok = bool(g.save_aux(d))
         except Exception as e:
             print(f"[store] Google-Sheet-Fehler: {e}")
+        if ok:
+            return True
+        print("[store] Google-Sheet-Speichern FEHLGESCHLAGEN. Daten wurden nur lokal "
+              "gesichert und sind beim naechsten Laden nicht sichtbar!")
+        try:                                  # trotzdem lokal sichern (Notkopie)
+            with open(AUX_PATH, "w", encoding="utf-8") as fh:
+                json.dump(d, fh, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+        return False
     try:
         with open(AUX_PATH, "w", encoding="utf-8") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=2)

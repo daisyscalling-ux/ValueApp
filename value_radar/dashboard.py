@@ -602,7 +602,7 @@ def render_trackrecord():
         try:
             st.write(f"Speicher: **{store.backend()}**")
             st.write(f"Signale gespeichert: **{len(store.get_signals())}**")
-            if store.backend() != "gsheet":
+            if store.backend() != "sheet":
                 st.warning("Ohne Google-Sheet-Speicher gehen die Signale beim "
                            "Neustart verloren \u2013 und der Cron-Job schreibt in einen "
                            "anderen Speicher als die App.")
@@ -1292,10 +1292,15 @@ def home_screener_picks(n=10, regions=("us", "de", "fr", "gb", "nl", "ch", "ca",
     return out[:n]
 
 
-def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
+def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
+                         require_size=True):
     """records: Liste von {ticker, value, date}. Baut die angereicherten Zeilen
     fuer portfolio.analyze (Composite, Upside, Fair Value, Sektor, Land, optional
     Radar und Gewinn/Verlust seit Kauf). Loest Firmennamen automatisch zu Tickern auf.
+
+    require_size=False -> auch Zeilen OHNE Anzahl/Wert (Watchlist!). Vorher wurden
+    diese kommentarlos verworfen, weshalb die Watchlist immer leer blieb, obwohl
+    die Titel gespeichert waren.
     Rueckgabe: (rows, invalid, resolved-mapping)."""
     import pandas as _pd
     rows, invalid, resolved = [], [], []
@@ -1305,7 +1310,9 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
         shares = parse_eur(rec.get("shares"))
         has_val = val is not None and val > 0
         has_shares = shares is not None and shares > 0
-        if not raw or (not has_val and not has_shares):
+        if not raw:
+            continue
+        if require_size and not has_val and not has_shares:
             continue
         tk = raw.upper()
         f = load_fundamentals_deep(tk)          # dieselbe Datentiefe wie Einzelanalyse
@@ -1336,6 +1343,8 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False):
             value_eur = shares * p_now * fx
         elif has_val:
             value_eur = val
+        elif not require_size:
+            value_eur = 0.0          # Watchlist: kein Bestand, aber gueltige Zeile
         else:
             invalid.append(raw)
             continue
@@ -2944,7 +2953,7 @@ if nav == "Watchlist":
         try:
             _be = store.backend()
             st.write(f"Speicher: **{_be}** \u00b7 Eintr\u00e4ge: **{len(store.get_watchlist())}**")
-            if _be != "gsheet":
+            if _be != "sheet":
                 st.warning("Es wird **nicht** ins Google Sheet geschrieben. Auf Streamlit "
                            "Cloud ist der lokale Speicher fl\u00fcchtig \u2013 Eintr\u00e4ge sind "
                            "nach einem Neustart weg, und der Nacht-Job sieht sie nie.")
@@ -2968,7 +2977,8 @@ if nav == "Watchlist":
     else:
         with st.spinner("Watchlist wird berechnet (Mehrquellen-Abgleich) ..."):
             wrows, _winv, _wres = build_portfolio_rows(
-                [{"ticker": t} for t in wl], inc_radar=False, inc_pl=False, live=True)
+                [{"ticker": t} for t in wl], inc_radar=False, inc_pl=False, live=True,
+                require_size=False)
         buyzone = [r for r in wrows
                    if r.get("entry_eur") and r.get("price_eur")
                    and r["price_eur"] <= r["entry_eur"]]

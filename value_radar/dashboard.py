@@ -338,14 +338,17 @@ def _collapse_listings(tickers):
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def load_universe(regions, min_mcap_eur_bn, size):
+def load_universe(regions, min_mcap_eur_bn, size, max_mcap_eur_bn=None,
+                  ascending=False):
     """Gecachtes Universum mit STABILEM Schluessel (EUR-Schwelle, kein Live-FX).
 
-    Gleiche Eingaben -> garantiert dieselbe Titelmenge bei jedem Lauf
-    (innerhalb der Cache-Dauer). Die EUR->USD-Umrechnung passiert intern und
-    wird im Cache eingefroren, statt den Schluessel zu verwackeln."""
+    max_mcap_eur_bn + ascending = Suche nach KLEINEREN, wenig beachteten Titeln.
+    Ohne sie sortiert der Screener nach Marktkapitalisierung absteigend - dann
+    kommen immer nur die Schwergewichte (AVGO & Co.)."""
     usd = providers.get_fx_to_eur("USD") or 0.92
-    tickers, src = ms.get_universe(list(regions), (min_mcap_eur_bn * 1e9) / usd, int(size))
+    _max = (max_mcap_eur_bn * 1e9) / usd if max_mcap_eur_bn else None
+    tickers, src = ms.get_universe(list(regions), (min_mcap_eur_bn * 1e9) / usd,
+                                   int(size), _max, bool(ascending))
     return _collapse_listings(tickers), src
 
 
@@ -2485,10 +2488,50 @@ if nav == "Radar":
                                 default=ms.DEFAULT_REGIONS,
                                 help="us, de, nl, fr, gb, ch, it, es, se, dk, fi, no, ca, jp, hk, au")
         else:
-            rc = st.columns(2)
-            rg = rc[0].multiselect("L\u00e4nder/Regionen", ms.REGION_CHOICES,
-                                   default=ms.DEFAULT_REGIONS)
+            rc = st.columns([1.2, 1])
+            _REGION_SETS = {
+                "Nordamerika": ["us", "ca"],
+                "Europa": ["de", "nl", "fr", "gb", "ch", "it", "es", "se", "dk", "fi", "no"],
+                "Asien": ["jp", "hk", "sg", "kr", "tw", "in", "au"],
+                "Weltweit": ["us", "ca", "de", "nl", "fr", "gb", "ch", "it", "es",
+                             "se", "jp", "hk", "au"],
+                "Eigene Auswahl": None,
+            }
+            _rset = rc[0].selectbox("Region", list(_REGION_SETS.keys()), index=0,
+                                    key="rad_region")
             rmcap = rc[1].number_input("Min. Market Cap (Mrd. \u20ac)", value=1.0, step=0.5)
+            if _REGION_SETS[_rset] is None:
+                rg = st.multiselect("L\u00e4nder/Regionen", ms.REGION_CHOICES,
+                                    default=ms.DEFAULT_REGIONS)
+            else:
+                rg = _REGION_SETS[_rset]
+                st.caption("Abgedeckt: " + ", ".join(rg))
+
+        # --- Groessenklasse: gegen die "immer nur Schwergewichte"-Schlagseite ---
+        _SIZE_CLASSES = {
+            "Alle Gr\u00f6\u00dfen (gr\u00f6\u00dfte zuerst)": (None, False),
+            "\U0001f50e Wenig beachtet: Small Caps 0,3\u20135 Mrd": (5.0, True),
+            "\U0001f50e Nebenwerte 0,1\u20131 Mrd (sehr klein)": (1.0, True),
+            "Mid Caps 5\u201350 Mrd": (50.0, True),
+            "Schwergewichte > 50 Mrd": (None, False),
+        }
+        _sc_label = st.selectbox("Gr\u00f6\u00dfenklasse", list(_SIZE_CLASSES.keys()),
+                                 index=0, key="rad_size",
+                                 help="Der Screener sortiert normalerweise nach "
+                                      "Marktkapitalisierung ABSTEIGEND - deshalb "
+                                      "tauchen immer dieselben Konzerne auf. Die "
+                                      "\u201ewenig beachtet\u201c-Klassen kehren das um "
+                                      "und deckeln die Gr\u00f6\u00dfe nach oben.")
+        _rmax_cap, _asc = _SIZE_CLASSES[_sc_label]
+        if _sc_label.startswith("Schwergewichte"):
+            rmcap = max(rmcap or 0.0, 50.0)
+        elif _sc_label.startswith("Mid"):
+            rmcap = max(rmcap or 0.0, 5.0)
+        elif "0,3" in _sc_label:
+            rmcap = max(rmcap or 0.0, 0.3)
+        elif "0,1" in _sc_label:
+            rmcap = max(rmcap or 0.0, 0.1)
+
         rmax = st.number_input("Max. Titel scannen", value=40, min_value=10, max_value=150,
                                step=10, help="Mehr = mehr Treffer, aber langsamer "
                                "(Events werden je Titel geladen).")
@@ -2507,7 +2550,8 @@ if nav == "Radar":
                                               rmcap_bn, int(rmax) * 8)
             else:
                 tickers, _src = load_universe(tuple(rg or ms.DEFAULT_REGIONS),
-                                              rmcap_bn, int(rmax) * 2)
+                                              rmcap_bn, int(rmax) * 2,
+                                              _rmax_cap, _asc)
 
             # 1) Fundamentaldaten laden + Mindest-Marktkap. erzwingen (wie im Screener)
             #    + Doppel-Listings (1YD.DE/.F/.XC ...) entfernen
@@ -2534,6 +2578,8 @@ if nav == "Radar":
                                   load_event_news(t, f.get("name")))
                 r["_fx"] = f.get("_fx") or 1.0
                 r["_price"] = f.get("price")
+                r["_mcap"] = f.get("market_cap")
+                r["_analysts"] = f.get("analyst_count")
                 results.append(r)
                 prog.progress(i / max(len(deduped), 1),
                               text=f"Scanne {t} ... ({len(results)})")
@@ -2545,14 +2591,34 @@ if nav == "Radar":
         # --- Anzeige aus dem Speicher (ueberlebt Tab-Wechsel) ---
         results = st.session_state.get("radar_results")
         if results:
+            # Optionaler Filter: nur wenig beachtete Titel (kaum Analysten-Abdeckung)
+            _only_hidden = st.checkbox(
+                "\U0001f50e Nur wenig beachtete Titel (h\u00f6chstens 8 Analysten)",
+                value=False, key="rad_hidden",
+                help="Titel mit vielen Analysten sind durchleuchtet. Wenige oder gar "
+                     "keine Analysten = eher unentdeckt. Ohne Analysten-Daten wird der "
+                     "Titel als 'unbeobachtet' behandelt und bleibt drin.")
+            _shown = [r for r in results
+                      if (not _only_hidden) or ((r.get("_analysts") or 0) <= 8)]
+            if _only_hidden and not _shown:
+                st.info("Keiner der Treffer ist gering abgedeckt \u2013 Filter zeigt nichts. "
+                        "Tipp: Gr\u00f6\u00dfenklasse \u201eSmall Caps\u201c w\u00e4hlen.")
+
+            def _mc(v):
+                if not v:
+                    return None
+                return round(v / 1e9, 1)
+
             rows = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
                      "Radar-Score": r["score"], "Ereignisse": r["layers"]["events"],
                      "Fundamental": r["layers"]["fundamental"],
                      "Sch\u00e4tzungen": r["layers"]["estimates"],
                      "Akkumulation": r["layers"]["accumulation"],
                      "Aktive Ebenen": r["firing"],
+                     "Gr\u00f6\u00dfe Mrd": _mc(r.get("_mcap")),
+                     "Analysten": r.get("_analysts"),
                      "Preis \u20ac": round((r["_price"] or 0) * r["_fx"], 2),
-                     "Sektor": (r["sector"] or "")[:14]} for r in results]
+                     "Sektor": (r["sector"] or "")[:14]} for r in _shown]
             df = pd.DataFrame(rows)
             vr_table(rows, score_cols=("Radar-Score", "Ereignisse", "Fundamental",
                                        "Sch\u00e4tzungen", "Akkumulation"), height=460)

@@ -84,7 +84,11 @@ def screen_fmp(min_mcap_usd: float, size: int = 300) -> list[str]:
 
 
 def screen_yahoo(regions: list[str], min_mcap_usd: float,
-                 size: int = 200) -> list[str]:
+                 size: int = 200, max_mcap_usd: float | None = None,
+                 ascending: bool = False) -> list[str]:
+    """max_mcap_usd deckelt die Groesse nach oben (fuer Small/Mid Caps).
+    ascending=True sortiert von KLEIN nach gross - sonst kommen immer nur die
+    Schwergewichte zuerst (Standard-Sortierung ist Marktkapitalisierung absteigend)."""
     if yf is None or EquityQuery is None:
         return []
     try:
@@ -93,14 +97,15 @@ def screen_yahoo(regions: list[str], min_mcap_usd: float,
                                           for r in regions])
         else:
             region_q = EquityQuery("eq", ["region", regions[0]])
-        q = EquityQuery("and", [
-            region_q,
-            EquityQuery("gt", ["intradaymarketcap", float(min_mcap_usd)]),
-        ])
+        conds = [region_q,
+                 EquityQuery("gt", ["intradaymarketcap", float(min_mcap_usd)])]
+        if max_mcap_usd:
+            conds.append(EquityQuery("lt", ["intradaymarketcap", float(max_mcap_usd)]))
+        q = EquityQuery("and", conds)
         out, offset = [], 0
         while offset < size:
             batch = yf.screen(q, size=min(250, size - offset), offset=offset,
-                              sortField="intradaymarketcap", sortAsc=False)
+                              sortField="intradaymarketcap", sortAsc=bool(ascending))
             quotes = (batch or {}).get("quotes", []) if isinstance(batch, dict) else []
             if not quotes:
                 break
@@ -114,12 +119,16 @@ def screen_yahoo(regions: list[str], min_mcap_usd: float,
 
 
 def get_universe(regions: list[str], min_mcap_usd: float,
-                 size: int = 200) -> tuple[list[str], str]:
+                 size: int = 200, max_mcap_usd: float | None = None,
+                 ascending: bool = False) -> tuple[list[str], str]:
     """Gibt (tickers, quelle) zurueck. quelle in {Yahoo, FMP, eingebaut}.
     Yahoo zuerst, weil es echte Laenderabdeckung bietet; der FMP-Gratis-Tarif
-    liefert v.a. US/EOD-Daten und wuerde das Universum US-lastig machen."""
+    liefert v.a. US/EOD-Daten und wuerde das Universum US-lastig machen.
+
+    max_mcap_usd + ascending erlauben die Suche nach KLEINEREN, wenig beachteten
+    Titeln - ohne sie liefert der Screener immer nur die groessten Konzerne."""
     tickers, src = [], ""
-    tickers = screen_yahoo(regions, min_mcap_usd, size)
+    tickers = screen_yahoo(regions, min_mcap_usd, size, max_mcap_usd, ascending)
     src = "Yahoo" if tickers else ""
     if not tickers and config.FMP_API_KEY:
         tickers = screen_fmp(min_mcap_usd, size)

@@ -870,6 +870,18 @@ def render_pf_logbook():
             st.rerun()
 
 
+def read_url(url, access=""):
+    """Leitet Artikel hinter einer Paywall ueber removepaywalls.com um.
+    Format: https://removepaywalls.com/<vollstaendige Original-URL>.
+    Frei lesbare Artikel bleiben unveraendert (kein Umweg noetig)."""
+    u = (url or "").strip()
+    if not u or not u.startswith("http"):
+        return u or "#"
+    if str(access).lower() in ("paywall", "metered"):
+        return "https://removepaywalls.com/" + u
+    return u
+
+
 def display_upside(v, price):
     """EINE Upside-Logik fuer alle Oberflaechen (Einzelanalyse, Portfolio,
     Watchlist): Modell-Upside, wenn der Fair Value nicht gekappt wurde; sonst
@@ -1724,6 +1736,25 @@ if nav == "Start":
 
     st.markdown("---")
     saved_all = store.load_all()
+    st.markdown("---")
+    st.markdown('<div class="sec-title">HOT NEWS \u00b7 SCHNELL-BRIEFING</div>',
+                unsafe_allow_html=True)
+    for nitem in (load_marketnews("US-Markt") or [])[:5]:
+        head_raw = nitem.get("headline") or ""
+        summ_raw = nitem.get("summary") or ""
+        chips = bfg.tags_for(head_raw, summ_raw)
+        points = bfg.key_points(head_raw, summ_raw, max_points=1)
+        chip_html = "".join(f'<span class="pill">{e} {esc(l)}</span>' for e, l in chips)
+        pt_html = (f'<div class="sum">\u2022 {esc(points[0])}</div>' if points else "")
+        url = esc(read_url(nitem.get("url"), nitem.get("access", "")))
+        src = esc(nitem.get("source") or "")
+        date = fmt_ts(nitem.get("ts"))
+        st.markdown(f'<div class="news-box">{chip_html}'
+                    f'<a href="{url}" target="_blank">{esc(head_raw)}</a>{pt_html}'
+                    f'<div class="meta">{src}{" \u00b7 " + date if date else ""}</div></div>',
+                    unsafe_allow_html=True)
+    st.caption("Chips = Thema, Punkt = Kernaussage. Mehr (auf Deutsch, mit Briefing-Modus) "
+               "im Men\u00fcpunkt \u201eNews\u201c.")
     if saved_all:
         st.markdown('<div class="sec-title">MEINE PORTFOLIOS</div>', unsafe_allow_html=True)
         st.caption("Beim Start neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
@@ -1780,34 +1811,17 @@ if nav == "Start":
                     with cols[j]:
                         render_saved_portfolio(pname, precs)
 
-    st.markdown("---")
-    st.markdown('<div class="sec-title">HOT NEWS \u00b7 SCHNELL-BRIEFING</div>',
-                unsafe_allow_html=True)
-    for nitem in (load_marketnews("US-Markt") or [])[:5]:
-        head_raw = nitem.get("headline") or ""
-        summ_raw = nitem.get("summary") or ""
-        chips = bfg.tags_for(head_raw, summ_raw)
-        points = bfg.key_points(head_raw, summ_raw, max_points=1)
-        chip_html = "".join(f'<span class="pill">{e} {esc(l)}</span>' for e, l in chips)
-        pt_html = (f'<div class="sum">\u2022 {esc(points[0])}</div>' if points else "")
-        url = esc(nitem.get("url") or "#")
-        src = esc(nitem.get("source") or "")
-        date = fmt_ts(nitem.get("ts"))
-        st.markdown(f'<div class="news-box">{chip_html}'
-                    f'<a href="{url}" target="_blank">{esc(head_raw)}</a>{pt_html}'
-                    f'<div class="meta">{src}{" \u00b7 " + date if date else ""}</div></div>',
-                    unsafe_allow_html=True)
-    st.caption("Chips = Thema, Punkt = Kernaussage. Mehr (auf Deutsch, mit Briefing-Modus) "
-               "im Men\u00fcpunkt \u201eNews\u201c.")
 
 
 # ===========================================================================
 # EINZELANALYSE (Tabs: Analyse, Scorecard, Matrix 1, Matrix 2)
 # ===========================================================================
 if nav == "Einzelanalyse":
-    # Eingabefeld direkt im Tab (Name ODER Ticker) - Playbook laeuft im Hintergrund
+    # Beim ERSTEN Betreten wird bewusst nichts geladen (frueher startete hier MU).
+    # Sobald eine Aktie analysiert wurde, bleibt sie fuer die Sitzung stehen -
+    # ein Tab-Wechsel laedt sie also wieder, ohne neu zu suchen.
     if "ea_search" not in st.session_state:
-        st.session_state["ea_search"] = "MU"
+        st.session_state["ea_search"] = ""
     if "pending_search" in st.session_state:
         st.session_state["ea_search"] = st.session_state.pop("pending_search")
     qtext = st.text_input("Aktie analysieren \u2013 Name oder Ticker eingeben",
@@ -1821,6 +1835,11 @@ if nav == "Einzelanalyse":
             ticker = (exact or mm[0])["symbol"].upper()
         else:
             ticker = qv.upper()
+    if not qv:
+        st.info("Aktie eingeben (Name oder Ticker) \u2013 oder in Radar, Screener, "
+                "Watchlist bzw. Portfolio auf einen orangenen Ticker tippen. "
+                "Die zuletzt analysierte Aktie bleibt bis zum n\u00e4chsten Start "
+                "der App stehen.")
     run = False
 
     ea_tabs = st.tabs(["  ANALYSE  ", "  SCORECARD  ", "  MATRIX 1  ", "  MATRIX 2  "])
@@ -2369,14 +2388,16 @@ if nav == "News":
                 for n in items[:10]:
                     head_raw = n.get("headline") or ""
                     summ_raw = n.get("summary") or ""
-                    url = esc(n.get("url") or "#")
+                    url = esc(read_url(n.get("url"), n.get("access", "frei")))
                     src = esc(n.get("source") or "")
                     date = fmt_ts(n.get("ts"))
                     flag = " \U0001f1e9\U0001f1ea" if translate_here else ""
                     _acc = n.get("access", "frei")
                     acc_badge = ({"frei": '<span style="color:#3FB950">\U0001f513 frei</span>',
-                                  "metered": '<span style="color:#FFB000">\U0001f513\u26a0 metered</span>',
-                                  "paywall": '<span style="color:#F85149">\U0001f512 Paywall</span>'}
+                                  "metered": '<span style="color:#FFB000">\U0001f513\u26a0 metered '
+                                             '\u2192 removepaywalls</span>',
+                                  "paywall": '<span style="color:#F85149">\U0001f512 Paywall '
+                                             '\u2192 removepaywalls</span>'}
                                  .get(_acc, "")) + " \u00b7 "
                     if brief_on:
                         # Chips + 1-2 Kernpunkte (erst extrahieren, dann uebersetzen:

@@ -2990,6 +2990,26 @@ if nav == "Watchlist":
         except Exception as e:
             st.error(f"Diagnose fehlgeschlagen: {e}")
 
+        # Wiederherstellungs-Status: zeigt, ob Daten geladen werden konnten
+        try:
+            import gsheet as _gs
+            _le = getattr(_gs, "_LOAD_ERROR", {})
+            if _le.get("blocked") or _le.get("blocked_main"):
+                st.error("\u26a0\ufe0f **Laden der gespeicherten Daten ist fehlgeschlagen.** "
+                         "Das Schreiben wurde automatisch **gesperrt**, damit nichts "
+                         "\u00fcberschrieben wird. Die Rohdaten wurden im Google Sheet "
+                         "in Zelle **A33** (Zusatzdaten) bzw. **A34** (Portfolios) "
+                         "gesichert \u2013 dort kannst du pr\u00fcfen, ob die Inhalte noch da "
+                         "sind. Schick mir den Inhalt, dann stelle ich das Format wieder her.")
+            _pf = store.names()
+            _hf = (store.get_hf() or {})
+            st.write(f"Gefundene Portfolios: **{len(_pf)}** \u00b7 "
+                     f"Hedgefonds-Depots: **{len(_hf)}**")
+            if _pf:
+                st.caption("Portfolios: " + ", ".join(_pf))
+        except Exception as e:
+            st.caption(f"Wiederherstellungs-Status nicht lesbar: {e}")
+
     if not wl:
         st.info("Noch keine Titel auf der Watchlist. Oben hinzuf\u00fcgen \u2013 oder in der "
                 "Einzelanalyse den Button \u201e\u2606 Zur Watchlist\u201c nutzen.")

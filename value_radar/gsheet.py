@@ -97,14 +97,37 @@ def load_all():
             return {}
         d = json.loads(raw)
         return d if isinstance(d, dict) else {}
-    except Exception:
-        return {}
+    except Exception as e:
+        # NICHT {} liefern und damit ein Ueberschreiben provozieren - stattdessen
+        # Schreiben sperren und den Rohtext sichern.
+        print(f"[gsheet] load_all (Portfolios) fehlgeschlagen: {e}")
+        _LOAD_ERROR["blocked_main"] = True
+        try:
+            if raw:
+                ws.update_acell("A34", str(raw)[:45000])
+        except Exception:
+            pass
+        return None
 
 
 def save_all(d: dict) -> bool:
     ws = _worksheet()
     if ws is None:
         return False
+    if _LOAD_ERROR.get("blocked_main"):
+        print("[gsheet] Portfolio-Schreiben gesperrt: Laden war fehlerhaft.")
+        return False
+    if not d:
+        # Leeres dict NICHT ueber vorhandene Portfolios schreiben (Schutz gegen
+        # versehentliches Loeschen, wenn irgendwo mit {} gespeichert wird).
+        try:
+            cur = ws.acell("A1").value
+            if cur and cur.strip() not in ("", "{}"):
+                print("[gsheet] Leeres Portfolio-Set NICHT gespeichert "
+                      "(vorhandene Daten geschuetzt).")
+                return False
+        except Exception:
+            pass
     try:
         ws.update_acell("A1", json.dumps(d, ensure_ascii=False))
         return True
@@ -119,6 +142,7 @@ def save_all(d: dict) -> bool:
 # lautlos fehl und ALLES war weg. Deshalb: JSON auf mehrere Zellen aufteilen.
 _AUX_CHUNK = 45000
 _AUX_ROWS = 30                      # A2..A31 -> bis ~1,35 Mio Zeichen
+_LOAD_ERROR = {"blocked": False}   # True, wenn Laden fehlschlug -> Schreiben sperren
 
 
 def load_aux() -> dict:
@@ -131,16 +155,61 @@ def load_aux() -> dict:
         raw = "".join(p for p in parts if p)
         if not raw:
             return {}
-        d = json.loads(raw)
+        try:
+            d = json.loads(raw)
+        except Exception:
+            # Alt-Format oder abgeschnittenes JSON: NICHT einfach {} liefern -
+            # sonst wuerde der naechste Speichervorgang die (noch vorhandenen)
+            # Daten ueberschreiben. Rette so viel wie moeglich und markiere das.
+            d = _repair_aux(raw)
+            if d:
+                print(f"[gsheet] AUX repariert: {list(d.keys())}")
+            else:
+                # Rohtext sichern, damit nichts verloren geht, und Schreiben sperren.
+                _LOAD_ERROR["blocked"] = True
+                print("[gsheet] AUX NICHT lesbar - Schreiben gesperrt, Rohdaten "
+                      "in A33 gesichert.")
+                try:
+                    ws.update_acell("A33", raw[:45000])
+                except Exception:
+                    pass
+                return {}
         return d if isinstance(d, dict) else {}
     except Exception as e:
         print(f"[gsheet] load_aux fehlgeschlagen: {e}")
+        _LOAD_ERROR["blocked"] = True     # im Zweifel NICHT ueberschreiben
         return {}
+
+
+def _repair_aux(raw: str) -> dict:
+    """Versucht, aus abgeschnittenem/aeltererem JSON die Top-Level-Schluessel zu
+    retten (watchlist, hedgefund, snapshot, pf_log ...). Besser Teildaten als {}."""
+    out = {}
+    import re
+    # Schluessel-Kandidaten am Top-Level einzeln als JSON-Wert nachparsen
+    for key in ("watchlist", "hedgefund", "snapshot", "changes", "pf_log",
+                "signals", "briefing", "portfolios"):
+        m = re.search(rf'"{key}"\s*:\s*', raw)
+        if not m:
+            continue
+        start = m.end()
+        try:
+            val, _end = json.JSONDecoder().raw_decode(raw, start)
+            out[key] = val
+        except Exception:
+            continue          # dieser Wert war abgeschnitten - Rest trotzdem retten
+    return out
 
 
 def save_aux(d: dict) -> bool:
     ws = _worksheet()
     if ws is None:
+        return False
+    if _LOAD_ERROR.get("blocked"):
+        # Das Laden schlug zuvor fehl - jetzt zu schreiben wuerde noch vorhandene
+        # (nur nicht lesbare) Daten endgueltig ueberschreiben. Deshalb: Stopp.
+        print("[gsheet] Schreiben gesperrt: Laden war fehlerhaft, Daten koennten "
+              "sonst ueberschrieben werden. Erst Sheet pruefen/reparieren.")
         return False
     try:
         raw = json.dumps(d, ensure_ascii=False)

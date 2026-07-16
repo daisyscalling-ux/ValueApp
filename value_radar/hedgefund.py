@@ -374,21 +374,42 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
         # leer, obwohl gueltige Titel (z.B. NVDA) vorlagen.
         cur = [p for p in state["positions"]
                if p["dir"] == direction and p.get("type") != "ko"]
+        if n_max <= 0:
+            continue
+        # Ziel: rund 80 % des Kapitals investieren, 20 % Cash-Reserve fuer neu
+        # erkannte Chancen (dein Wunsch). Das Investitions-Budget wird auf die noch
+        # FREIEN Slots verteilt - so werden auch bei wenigen Kandidaten (3 statt 8)
+        # ~80 % angelegt, statt dass 70 % Bargeld liegen bleiben. Deckel bleibt
+        # POS_CAP je Titel (Klumpenrisiko), Reserve bei core_ko fuer die KO-Scheine.
+        INVEST_TARGET = 0.80
+        ko_reserve = 0.0
+        if state["strategy"] == "core_ko":
+            n_open_ko = KO_N - len([p for p in state["positions"]
+                                    if p.get("type") == "ko"])
+            ko_reserve = max(n_open_ko, 0) * KO_EACH * state["start_capital"]
+        free_slots = max(n_max - len(cur), 1)
+        invest_budget = INVEST_TARGET * state["start_capital"] - ko_reserve
+        # Budget je Titel = Investitionsziel / Anzahl tatsaechlich fuellbarer Titel
+        # (nicht / freie Slots!). So werden auch bei wenigen Kandidaten ~80 % angelegt,
+        # statt dass durch 8 geteilt wird und 70 % Cash liegen bleiben.
+        # Deckel je Titel: normal POS_CAP (15 %); bei Knappheit bis max. 30 %
+        # (darueber waere das Klumpenrisiko zu gross - dann bleibt bewusst Cash).
+        n_fillable = min(len([t for t in cands if t not in held]), free_slots)
+        per_slot = invest_budget / max(n_fillable, 1)
+        per_slot = min(per_slot, 0.30 * state["start_capital"])
         for t in cands:
             if len(cur) >= n_max or t in held:
                 continue
             pe, _ = _price_eur(t)
             if not pe:
-                continue
-            avail = state["cash"]
-            if state["strategy"] == "core_ko":     # Cash fuer die KO-Beimischung reservieren
-                n_open_ko = KO_N - len([p for p in state["positions"]
-                                        if p.get("type") == "ko"])
-                avail -= max(n_open_ko, 0) * KO_EACH * state["start_capital"]
-            budget = min(max(avail, 0) * 0.5, POS_CAP * state["start_capital"])
+                continue                       # naechsten Kandidaten versuchen
+            # nie unter die 20 %-Reserve gehen
+            reserve_floor = (1 - INVEST_TARGET) * state["start_capital"] + ko_reserve
+            avail = state["cash"] - reserve_floor
+            budget = min(per_slot, max(avail, 0))
             qty = int(budget / pe)
             if qty < 1 or budget < 50:
-                break
+                continue                       # zu teuer/zu wenig Cash -> naechster Titel
             state["cash"] -= qty * pe
             pos = {"ticker": t, "dir": direction, "entry_eur": round(pe, 2),
                    "qty": qty, "opened": now, "last_eur": round(pe, 2), "pl_pct": 0.0,

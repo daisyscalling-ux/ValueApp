@@ -106,3 +106,59 @@ def summary(rows=None):
         "avg_excess": round(sum(exc) / len(exc), 1) if exc else None,
         "beat_pct": round(len(beat) / len(exc) * 100) if exc else None,
     }
+
+
+def _bucket_stats(rows):
+    """Kennzahlen einer Gruppe: n, Win %, Durchschnittsrendite, Ø Ueberrendite."""
+    if not rows:
+        return None
+    exc = [r["excess_pct"] for r in rows if r.get("excess_pct") is not None]
+    return {
+        "n": len(rows),
+        "win_pct": round(sum(1 for r in rows if r["ret_pct"] > 0) / len(rows) * 100),
+        "avg_ret": round(sum(r["ret_pct"] for r in rows) / len(rows), 1),
+        "avg_excess": round(sum(exc) / len(exc), 1) if exc else None,
+    }
+
+
+# Reihenfolge der Scorecard-Urteile von stark nach schwach
+VERDICT_ORDER = ["Kaufkandidat", "Solide \u2013 Watchlist", "Knapp \u2013 Watchlist",
+                 "Verwerfen"]
+
+
+def by_verdict(rows=None):
+    """DIE Kernfrage: Schlagen 'Kaufkandidat'-Titel die 'Verwerfen'-Titel?
+    Gruppiert die reifen Signale nach dem Scorecard-Urteil beim Signalzeitpunkt
+    und vergleicht ihre spaetere Wertentwicklung. Erst wenn die besseren Urteile
+    ueber viele Faelle auch besser abschneiden, hat die Scorecard bewiesen, dass
+    sie etwas kann - vorher ist sie nur plausibel."""
+    rows = rows if rows is not None else evaluate()
+    ready = [r for r in rows if r["days"] >= 14 and r.get("verdict")]
+    out = []
+    for v in VERDICT_ORDER:
+        grp = [r for r in ready if r.get("verdict") == v]
+        st = _bucket_stats(grp)
+        if st:
+            out.append({"verdict": v, **st})
+    # monotonie-Check: faellt die Ueberrendite von stark nach schwach?
+    ranked = [g for g in out if g.get("avg_excess") is not None]
+    monotonic = all(ranked[i]["avg_excess"] >= ranked[i + 1]["avg_excess"]
+                    for i in range(len(ranked) - 1)) if len(ranked) >= 2 else None
+    return {"groups": out, "monotonic": monotonic, "n_ready": len(ready)}
+
+
+def calibration(rows=None):
+    """Kalibrierung: Trifft ein HOHER Score haeufiger als ein niedriger?
+    Teilt die Signale in Score-Baender und zeigt Win % + Ø Ueberrendite je Band.
+    Ein gut kalibriertes System zeigt steigende Werte mit steigendem Score."""
+    rows = rows if rows is not None else evaluate()
+    ready = [r for r in rows if r["days"] >= 14 and r.get("score") is not None]
+    bands = [("\u2265 80", 80, 201), ("70\u201379", 70, 80),
+             ("60\u201369", 60, 70), ("< 60", -1, 60)]
+    out = []
+    for label, lo, hi in bands:
+        grp = [r for r in ready if lo <= r["score"] < hi]
+        st = _bucket_stats(grp)
+        if st:
+            out.append({"band": label, **st})
+    return {"bands": out, "n_ready": len(ready)}

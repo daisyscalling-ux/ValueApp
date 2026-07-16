@@ -666,6 +666,56 @@ def render_trackrecord():
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
                "z\u00e4hlt. Kein Anlagerat.")
 
+    # === Funktioniert die SCORECARD? (die eigentliche Kernfrage) ===
+    st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f9ea '
+                'FUNKTIONIERT DIE SCORECARD?</div>', unsafe_allow_html=True)
+    st.caption("Schlagen \u201eKaufkandidat\u201c-Titel wirklich die \u201eVerwerfen\u201c-Titel? "
+               "Nur wenn die besseren Urteile \u00fcber viele F\u00e4lle auch besser "
+               "abschneiden, hat die Scorecard bewiesen, dass sie etwas kann. "
+               "Braucht Zeit und viele Signale \u2013 vorher ist die Aussage d\u00fcnn.")
+    try:
+        bv = tr.by_verdict(rows)
+    except Exception as e:
+        bv = {"groups": []}
+        st.caption(f"(Scorecard-Auswertung nicht verf\u00fcgbar: {e})")
+    if bv.get("groups"):
+        _vcol = {"Kaufkandidat": "var(--green)", "Solide \u2013 Watchlist": "#9DCE57",
+                 "Knapp \u2013 Watchlist": "var(--amber)", "Verwerfen": "var(--red)"}
+        vdata = [{"Urteil": g["verdict"], "Signale": g["n"], "Win %": g["win_pct"],
+                  "\u00d8 Rendite %": g["avg_ret"],
+                  "\u00d8 vs. Index %": g["avg_excess"]} for g in bv["groups"]]
+        vr_table(vdata, signed_cols=("\u00d8 Rendite %", "\u00d8 vs. Index %"),
+                 height=min(len(vdata) * 40 + 46, 260))
+        if bv.get("monotonic") is True:
+            st.success("\u2705 Die Rangfolge stimmt: bessere Urteile \u2192 h\u00f6here "
+                       "\u00dcberrendite. Das ist genau das erhoffte Muster (noch "
+                       "vorl\u00e4ufig, aber ermutigend).")
+        elif bv.get("monotonic") is False:
+            st.warning("\u26a0\ufe0f Die Rangfolge stimmt (noch) nicht \u2013 bessere Urteile "
+                       "schneiden nicht durchweg besser ab. Entweder ist die Stichprobe "
+                       "zu klein, oder die Scorecard trennt nicht so gut wie gedacht. "
+                       "Beides ist wertvoll zu wissen.")
+    else:
+        st.info("Noch keine reifen Signale mit Scorecard-Urteil. Der Nacht-Job "
+                "schreibt ab jetzt zu jedem Signal das Urteil mit \u2013 nach einigen "
+                "Wochen wird diese Tabelle aussagekr\u00e4ftig.")
+
+    # === Kalibrierung: trifft ein hoher Score haeufiger? ===
+    try:
+        cal = tr.calibration(rows)
+    except Exception:
+        cal = {"bands": []}
+    if cal.get("bands"):
+        with st.expander("\U0001f4d0 Kalibrierung \u2013 trifft ein hoher Score h\u00e4ufiger?"):
+            st.caption("Ein gut kalibriertes System zeigt: je h\u00f6her das Score-Band, "
+                       "desto h\u00f6her Win % und \u00dcberrendite. Wenn nicht, sagt der "
+                       "genaue Score-Wert weniger aus als gedacht.")
+            cdata = [{"Score-Band": b["band"], "Signale": b["n"], "Win %": b["win_pct"],
+                      "\u00d8 Rendite %": b["avg_ret"],
+                      "\u00d8 vs. Index %": b["avg_excess"]} for b in cal["bands"]]
+            vr_table(cdata, signed_cols=("\u00d8 Rendite %", "\u00d8 vs. Index %"),
+                     height=min(len(cdata) * 40 + 46, 240))
+
 
 def render_pf_stats():
     """Statistik im Logbuch: Gesamt-G/V (gruen/rot) und Win-Quote - offen (laufende
@@ -2047,6 +2097,45 @@ if nav == "Einzelanalyse":
                                + f": Analysten sehen {dv:+.0f}% ggü. Modell \u2013 unser Fair Value "
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
+
+                # --- Relative Bewertung: historisches Band + Sektor-Vergleich ---
+                try:
+                    import relval
+                    _rv = relval.summarize(f)
+                    _hist, _peer = _rv["hist"], _rv["peer"]
+                    if _hist.get("text") or _peer.get("verdict"):
+                        st.markdown('<div class="sec-title" style="margin-top:12px">'
+                                    'RELATIVE BEWERTUNG</div>', unsafe_allow_html=True)
+                        _rc = st.columns(2)
+                        _vc = {"guenstig": "var(--green)", "teuer": "var(--red)",
+                               "neutral": "var(--muted)", "fair": "var(--muted)"}
+                        with _rc[0]:
+                            if _hist.get("pe_now") and _hist.get("pe_hist_median"):
+                                _pct = _hist.get("pe_pctile")
+                                _pct_txt = str(_pct) if _pct is not None else "\u2014"
+                                card(st, "KGV vs. eigene Historie",
+                                     f"{_hist['pe_now']:.1f}",
+                                     f"Schnitt {_hist['pe_hist_median']:.1f} \u00b7 "
+                                     f"Perzentil {_pct_txt}",
+                                     _vc.get(_hist.get("verdict"), "var(--fg)"))
+                            else:
+                                st.caption("Historisches KGV-Band: keine ausreichende "
+                                           "Historie (FMP-Ratios n\u00f6tig).")
+                        with _rc[1]:
+                            if _peer.get("avg_disc") is not None:
+                                card(st, f"vs. Sektor ({esc(_peer['sector'])})",
+                                     f"{_peer['avg_disc']:+.0f}%",
+                                     "\u00d8 Ab-/Aufschlag auf KGV & EV/EBITDA",
+                                     _vc.get(_peer.get("verdict"), "var(--fg)"))
+                            else:
+                                st.caption("Sektor-Vergleich: keine Multiples verf\u00fcgbar.")
+                        if _hist.get("text"):
+                            st.caption("\U0001f4ca " + _hist["text"])
+                        st.caption("Sektor-Vergleich nutzt typische Sektor-Multiples "
+                                   "(kein echter Einzel-Peer-Vergleich) \u2013 Orientierung, "
+                                   "kein exakter Wert. Kein Anlagerat.")
+                except Exception as _e:
+                    pass
 
                 # Frischer Katalysator / "Kurs vorausgeeilt"-Warnung (aus Kurshistorie).
                 # Defensiv: faellt eine aeltere radar.py ohne catalyst_flag auf, wird der

@@ -82,6 +82,15 @@ SECTOR_EV_EBITDA = {
     "Real Estate": 16, "_default": 11,
 }
 
+# Typische KGV-Referenz je Sektor (grobe Median-Werte fuer den Peer-Vergleich).
+# Bewusst konservativ; dienen als Orientierung, nicht als exakte Wahrheit.
+SECTOR_PE = {
+    "Technology": 26, "Communication Services": 18, "Consumer Cyclical": 20,
+    "Consumer Defensive": 21, "Healthcare": 19, "Financial Services": 12,
+    "Industrials": 19, "Energy": 11, "Basic Materials": 13, "Utilities": 17,
+    "Real Estate": 30, "_default": 18,
+}
+
 # Sicherheits-Deckel: Fair Value darf max. dieses Vielfache / Bruchteil des
 # aktuellen Kurses sein (faengt entgleiste Einzelmethoden ab).
 FAIR_VALUE_MAX_MULT = 3.0

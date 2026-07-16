@@ -285,17 +285,40 @@ def run():
 
     # 5d) Signal-Tagebuch: heutige Screener-/Radar-Signale festhalten (Vorwaerts-Test).
     #     Ehrlich: JEDES Signal wird erfasst, auch die spaeteren Fehlschlaege.
+    #     Zusaetzlich das SCORECARD-URTEIL mitschreiben - so laesst sich spaeter
+    #     messen, ob 'Kaufkandidat' die 'Verwerfen'-Titel wirklich schlaegt.
     try:
         import trackrecord
+        import scorecard as _sc
+        import matrices as _mx
+
+        def _verdict(t):
+            try:
+                f = providers.get_fundamentals(t, deep=True)
+                ep = valuation.classify_playbook(f)
+                s = scoring.score_stock(f, None, preset=ep)
+                v = valuation.fair_value(f, None, ep)
+                hist = providers.get_price_history(t, period="1y", interval="1d")
+                extras = providers.get_signal_extras(t)
+                sig = _mx.build_signals(f, hist, None, extras)
+                res = _sc.evaluate(f, v, s.get("composite"),
+                                   _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
+                                   extras, None, None)
+                return res.get("verdict", "")
+            except Exception:
+                return ""
+
         sig_new = []
         for r in (scr or [])[:10]:
-            sig_new.append({"ticker": r.get("ticker"), "quelle": "Screener",
+            tk = r.get("ticker")
+            sig_new.append({"ticker": tk, "quelle": "Screener",
                             "score": r.get("composite"), "upside": r.get("upside"),
-                            "price": r.get("price")})
+                            "verdict": _verdict(tk), "price": r.get("price")})
         for r in (rad or [])[:10]:
-            sig_new.append({"ticker": r.get("ticker"), "quelle": "Radar",
+            tk = r.get("ticker")
+            sig_new.append({"ticker": tk, "quelle": "Radar",
                             "score": r.get("radar"), "upside": r.get("upside"),
-                            "price": r.get("price")})
+                            "verdict": _verdict(tk), "price": r.get("price")})
         trackrecord.record(sig_new)
     except Exception as e:
         print(f"[precompute] Signal-Tagebuch uebersprungen: {e}")

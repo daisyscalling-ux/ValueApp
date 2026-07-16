@@ -1292,6 +1292,11 @@ def home_screener_picks(n=10, regions=("us", "de", "fr", "gb", "nl", "ch", "ca",
     return out[:n]
 
 
+_GOLD_TICKERS = {"GLD", "IAU", "SGOL", "GLDM", "PHAU.L", "4GLD.DE", "EGLN.L",
+                 "GC=F", "XAUUSD=X", "SLV", "PSLV", "SIVR", "GDX", "GDXJ",
+                 "PHYS", "GOLD", "0GLD.DE", "WGLD.L"}
+
+
 def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
                          require_size=True):
     """records: Liste von {ticker, value, date}. Baut die angereicherten Zeilen
@@ -1389,11 +1394,25 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
                     denom = 1 + ret_pct / 100
                     cost_eur = value_eur / denom if denom else None
                 gain_eur = value_eur - cost_eur if cost_eur is not None else None
+        # Instrumententyp: ETFs/Fonds/Rohstoffe (Gold) sind KEINE Einzelaktien und
+        # sollen den Aktien-Gesamtscore nicht verwaessern (ein FTSE All-World hat
+        # keinen sinnvollen "Composite" oder "Fair Value"). Erkennung ueber Yahoos
+        # quoteType plus ein paar bekannte Gold-/Rohstoff-Ticker.
+        _qt = str(f.get("type") or "").upper()
+        _nm = (f.get("name") or "").upper()
+        is_fund = _qt in ("ETF", "MUTUALFUND", "MONEYMARKET", "INDEX")
+        is_commodity = (_qt in ("COMMODITY", "FUTURE")
+                        or tk.upper() in _GOLD_TICKERS
+                        or "GOLD" in _nm or "SILBER" in _nm or "SILVER" in _nm)
+        is_single_stock = not (is_fund or is_commodity)
         rows.append({
             "ticker": tk, "name": f.get("name"), "value_eur": float(value_eur),
             "shares": shares if has_shares else None,
             "sector": f.get("sector"), "country": f.get("country"),
             "composite": comp, "upside": up_reliable,
+            "instrument": ("ETF/Fonds" if is_fund else
+                           "Rohstoff" if is_commodity else "Aktie"),
+            "is_single_stock": is_single_stock,
             "price_eur": (p_now or 0) * fx, "live": live_used,
             "fair_value_eur": fv_reliable * fx if fv_reliable else None,
             "entry_eur": (v.get("entry_price") * fx) if v.get("entry_price") else None,
@@ -3485,6 +3504,10 @@ if nav == "Portfoliocheck":
                 a = pf.analyze(rows)
 
                 vcol = {"buy": "var(--green)", "watch": "var(--amber)", "drop": "var(--red)"}[a["vkey"]]
+                _n_non_stock = a["n"] - a.get("n_stocks", a["n"])
+                _score_note = (f' \u00b7 <span style="color:var(--muted)">Score \u00fcber '
+                               f'{a.get("n_stocks", a["n"])} Einzelaktien '
+                               f'(ETFs/Gold ausgeklammert)</span>' if _n_non_stock else "")
                 st.markdown(
                     f'<div style="border:1px solid {vcol};border-radius:10px;padding:16px;margin:8px 0 14px">'
                     f'<div style="color:{vcol};font-size:26px;font-weight:800">Portfolio: {a["label"]} '
@@ -3492,7 +3515,8 @@ if nav == "Portfoliocheck":
                     f'<div class="meta" style="margin-top:4px">Gesamtwert {sym_eur(a["total_eur"])} \u00b7 '
                     f'{a["n"]} Positionen \u00b7 effektiv {a["eff_positions"]:.2f} \u00b7 '
                     f'gr\u00f6\u00dfte Position {a["max_pos"]*100:.2f} % \u00b7 '
-                    f'Top-Sektor {esc(a["max_sector_name"])} {a["max_sector"]*100:.2f} %</div></div>',
+                    f'Top-Sektor {esc(a["max_sector_name"])} {a["max_sector"]*100:.2f} %'
+                    f'{_score_note}</div></div>',
                     unsafe_allow_html=True)
 
                 ncards = 5 if a["have_pl"] else 4

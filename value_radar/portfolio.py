@@ -26,9 +26,15 @@ def _alloc(rows, key):
     return dict(sorted(d.items(), key=lambda x: -x[1]))
 
 
-def _wavg(rows, field):
-    num = sum(r["weight"] * r[field] for r in rows if r.get(field) is not None)
-    wt = sum(r["weight"] for r in rows if r.get(field) is not None)
+def _wavg(rows, field, stock_only=False):
+    """Gewichteter Durchschnitt. stock_only=True mittelt NUR ueber Einzelaktien und
+    verteilt deren Gewichte untereinander neu - ETFs (FTSE All-World) und Rohstoffe
+    (Gold) haben keinen sinnvollen Composite/Fair Value und wuerden den Score sonst
+    verwaessern. Beispiel: 50 % ETF + 50 % Aktie mit Score 70 -> Ergebnis 70 (nicht 35),
+    weil der ETF-Anteil ausgeklammert und die Aktie auf 100 % hochgewichtet wird."""
+    src = [r for r in rows if (not stock_only) or r.get("is_single_stock", True)]
+    num = sum(r["weight"] * r[field] for r in src if r.get(field) is not None)
+    wt = sum(r["weight"] for r in src if r.get(field) is not None)
     return (num / wt) if wt > 0 else None
 
 
@@ -111,6 +117,16 @@ def analyze(rows: list) -> dict:
     hhi = sum(w * w for w in weights)
     eff_positions = (1 / hhi) if hhi > 0 else 0.0
 
+    # Klumpen-Kennzahlen fuer den SCORE nur ueber Einzelaktien: ein breiter ETF
+    # (FTSE All-World) ist Diversifikation, kein Klumpen, und soll nicht als
+    # 30-%-Einzelposition bestraft werden. Die Aktien werden dafuer untereinander
+    # neu gewichtet.
+    _stocks = [r for r in rows if r.get("is_single_stock", True)]
+    _sv = sum(r["value_eur"] for r in _stocks) or 1.0
+    _sw = sorted((r["value_eur"] / _sv for r in _stocks), reverse=True)
+    n_stocks = len(_stocks)
+    max_pos_stock = _sw[0] if _sw else 0.0
+
     sector_alloc = _alloc(rows, "sector")
     country_alloc = _alloc(rows, "country")
     max_sector_name, max_sector = (next(iter(sector_alloc.items())) if sector_alloc else ("", 0.0))
@@ -122,9 +138,11 @@ def analyze(rows: list) -> dict:
         namemap.setdefault(nm, []).append(r["ticker"])
     duplicates = [v for v in namemap.values() if len(v) > 1]
 
-    w_comp = _wavg(rows, "composite")
-    w_ups = _wavg(rows, "upside")
-    w_radar = _wavg(rows, "radar")
+    # Gesamtscore, Upside und Radar NUR ueber Einzelaktien - ETFs und Gold bleiben
+    # im Depot sichtbar, verwaessern aber die Aktien-Bewertung nicht.
+    w_comp = _wavg(rows, "composite", stock_only=True)
+    w_ups = _wavg(rows, "upside", stock_only=True)
+    w_radar = _wavg(rows, "radar", stock_only=True)
 
     # Gewinn/Verlust seit Kauf (nur Positionen mit Kaufdatum)
     pl_rows = [r for r in rows if r.get("ret_pct") is not None]
@@ -134,21 +152,21 @@ def analyze(rows: list) -> dict:
     pl_gain = pl_value - pl_cost
     pl_return = (pl_gain / pl_cost * 100) if pl_cost > 0 else None
 
-    # Portfolio-Fair-Value: NUR ueber Positionen mit belastbarem Upside rechnen
-    # (fehlt der Upside, wurde er frueher als 0 gewertet -> Summe sprang je nach
-    # Datenlage stark). Jetzt: bewertete Positionen bilden die Basis, und die
-    # Abdeckung wird ausgewiesen -> stabile, vergleichbare Zahl.
-    valued = [r for r in rows if r.get("upside") is not None]
+    # Portfolio-Fair-Value: NUR ueber EINZELAKTIEN mit belastbarem Upside rechnen
+    # (ETFs/Gold haben keinen Fair Value und wuerden die Zahl verzerren).
+    valued = [r for r in rows
+              if r.get("upside") is not None and r.get("is_single_stock", True)]
+    stock_val = sum(r["value_eur"] for r in rows if r.get("is_single_stock", True))
     valued_val = sum(r["value_eur"] for r in valued)
     if valued_val > 0:
         pf_fair_valued = sum(r["value_eur"] * (1 + r["upside"] / 100.0) for r in valued)
         pf_upside = (pf_fair_valued / valued_val - 1) * 100
-        pf_fair = pf_fair_valued + (total - valued_val)    # Rest neutral hochgerechnet
+        pf_fair = pf_fair_valued + (stock_val - valued_val)   # Rest-Aktien neutral
     else:
         pf_upside = None
-        pf_fair = total
+        pf_fair = stock_val
     pf_cov = len(valued)
-    pf_cov_pct = (valued_val / total * 100) if total else 0
+    pf_cov_pct = (valued_val / stock_val * 100) if stock_val else 0
 
     # Gesamtscore
     score = w_comp if w_comp is not None else 50.0
@@ -158,12 +176,12 @@ def analyze(rows: list) -> dict:
         working = sum(r["weight"] for r in rows if r["status"][0] == "Im Plus \u2013 halten")
         broken = sum(r["weight"] for r in rows if r["status"][0] == "Verlust \u2013 schwach")
         score += working * 4 - broken * 10
-    if max_pos > 0.25:
-        score -= (max_pos - 0.25) * 60                 # Einzelklumpen
+    if max_pos_stock > 0.25:
+        score -= (max_pos_stock - 0.25) * 60           # Einzelklumpen (nur Aktien)
     if max_sector > 0.40:
         score -= (max_sector - 0.40) * 50              # Sektorklumpen
-    if n < 5:
-        score -= (5 - n) * 3                           # zu wenige Positionen
+    if n_stocks < 5:
+        score -= (5 - n_stocks) * 3                    # zu wenige EINZELAKTIEN
     if duplicates:
         score -= 4 * len(duplicates)
     score = max(0.0, min(100.0, score))
@@ -219,6 +237,7 @@ def analyze(rows: list) -> dict:
     return {
         "n": n, "total_eur": total,
         "max_pos": max_pos, "top3": top3, "hhi": hhi, "eff_positions": eff_positions,
+        "max_pos_stock": max_pos_stock, "n_stocks": n_stocks,
         "sector_alloc": sector_alloc, "country_alloc": country_alloc,
         "max_sector_name": max_sector_name, "max_sector": max_sector,
         "duplicates": duplicates,

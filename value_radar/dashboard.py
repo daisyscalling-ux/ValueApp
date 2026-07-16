@@ -46,6 +46,8 @@ CSS = """
 html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 .vr-head{border:1px solid var(--line);border-left:3px solid var(--amber);
   background:var(--panel);padding:14px 18px;margin-bottom:18px;}
+.vr-head .logorow{display:flex;align-items:center;gap:12px;}
+.vr-head .logorow img{height:38px;width:auto;display:block;}
 .vr-head .brand{color:var(--amber);font-weight:800;letter-spacing:3px;font-size:20px;}
 .vr-head .brand .caret{animation:blink 1.1s steps(1) infinite;}
 @keyframes blink{50%{opacity:0;}}
@@ -389,6 +391,7 @@ def load_eps_rev(t): return providers.get_eps_revision_light(t)
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_insider(t): return providers.get_insider_light(t)
 @st.cache_data(ttl=1200, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def load_marketnews(section, free_only=False): return mn.get_section(section, free_only=free_only)
 @st.cache_data(ttl=86400, show_spinner=False)
 def tr_de(text): return tr.translate_text(text, "de")
@@ -421,6 +424,26 @@ def fmt_ts(ts):
 
 def esc(s):
     return html.escape(s or "")
+
+
+def news_sort_key(n):
+    """Datum einer News als sortierbarer Zeitstempel (neueste zuerst).
+    RSS liefert RFC-2822 (z.B. 'Wed, 16 Jul 2026 08:00:00 +0000'); manche Quellen
+    ISO. Fehlt/verrutscht das Datum, wandert die Meldung ans Ende statt die
+    Sortierung zu sprengen."""
+    s = n.get("datetime") or n.get("published") or n.get("date") or ""
+    if not s:
+        return 0.0
+    try:
+        from email.utils import parsedate_to_datetime
+        return parsedate_to_datetime(s).timestamp()
+    except Exception:
+        pass
+    try:
+        from datetime import datetime
+        return datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
 
 
 def fmt_news_date(s):
@@ -1561,8 +1584,16 @@ with _mnav:
                 st.session_state["nav"] = _pg
                 st.rerun()
 
+try:
+    from assets_logo import LGI_LOGO_B64
+    _logo_html = (f'<img src="data:image/png;base64,{LGI_LOGO_B64}" '
+                  f'alt="Lohrer Global Investment">')
+except Exception:
+    _logo_html = ""
+
 st.markdown(
-    '<div class="vr-head"><div class="brand">VALUE RADAR <span class="caret">\u25ae</span></div>'
+    '<div class="vr-head"><div class="logorow">' + _logo_html +
+    '<div class="brand">VALUE RADAR <span class="caret">\u25ae</span></div></div>'
     '<div class="status">// vor die welle kommen &nbsp;\u00b7&nbsp; lokales terminal '
     '&nbsp;\u00b7&nbsp; anzeige in EUR &nbsp;\u00b7&nbsp; daten: yfinance'
     + ('  +finnhub' if config.FINNHUB_API_KEY else '')
@@ -2223,10 +2254,13 @@ if nav == "Einzelanalyse":
                 with ec2:
                     st.markdown("**News \u00b7 Yahoo Finance / Investing.com / onvista / MarketScreener**")
                     news = intel.get("news") or []
+                    # Nach Datum sortieren (neueste zuerst) - kam vorher ungeordnet
+                    # aus verschiedenen Quellen.
+                    news = sorted(news, key=news_sort_key, reverse=True)
                     if news:
                         for n in news[:10]:
                             head = clean_headline(n.get("headline"))
-                            url = n.get("url") or "#"
+                            url = read_url(n.get("url"), n.get("access", ""))
                             src = n.get("source") or ""
                             dt = fmt_news_date(n.get("datetime"))
                             meta = src + (f" \u00b7 {dt}" if dt else "")
@@ -2444,9 +2478,13 @@ if nav == "News":
         st.info("Auf \u201eNews laden\u201c klicken, um die aktuellen Markt-News zu holen.")
     else:
         sections = ["US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News", "WSJ"]
-        nsub = st.tabs([f"  {s}  " for s in sections])
-        for tabobj, section in zip(nsub, sections):
-            with tabobj:
+        # NUR die gewaehlte Sektion laden (st.radio) - st.tabs rendert ALLE sechs
+        # gleichzeitig, wodurch beim Laden alle Feeds ALLER Sektionen abgerufen
+        # wurden. Das war die Hauptbremse ("alles laedt nacheinander").
+        _sec = st.radio("Bereich", sections, horizontal=True,
+                        label_visibility="collapsed", key="news_section")
+        for section in [_sec]:
+            if True:
                 # WSJ ist komplett hinter einer Paywall - der "nur frei lesbar"-Filter
                 # wuerde den Bereich leer machen. Hier greift stattdessen die
                 # Weiterleitung ueber removepaywalls.com (siehe read_url).
@@ -2465,7 +2503,28 @@ if nav == "News":
                                 '(Feeds evtl. kurz nicht erreichbar \u2013 erneut '
                                 'aktualisieren).</span>', unsafe_allow_html=True)
                 total_secs = 0
-                for n in items[:10]:
+                _shown = items[:10]
+                # Alle zu uebersetzenden Texte EINMAL sammeln und als Batch
+                # uebersetzen (statt je Headline/Punkt eine eigene Netzanfrage).
+                _trmap = {}
+                if translate_here and _shown:
+                    _bucket = []
+                    for n in _shown:
+                        _bucket.append(n.get("headline") or "")
+                        if brief_on:
+                            for p in bfg.key_points(n.get("headline") or "",
+                                                    n.get("summary") or "", max_points=2):
+                                _bucket.append(p)
+                        else:
+                            _bucket.append(n.get("summary") or "")
+                    _uniq = list(dict.fromkeys(t for t in _bucket if t))
+                    _tr = tr.translate_batch(_uniq, "de")
+                    _trmap = dict(zip(_uniq, _tr))
+
+                def _T(s):
+                    return _trmap.get(s, s) if translate_here else s
+
+                for n in _shown:
                     head_raw = n.get("headline") or ""
                     summ_raw = n.get("summary") or ""
                     url = esc(read_url(n.get("url"), n.get("access", "frei")))
@@ -2480,14 +2539,12 @@ if nav == "News":
                                              '\u2192 removepaywalls</span>'}
                                  .get(_acc, "")) + " \u00b7 "
                     if brief_on:
-                        # Chips + 1-2 Kernpunkte (erst extrahieren, dann uebersetzen:
-                        # spart Uebersetzungsaufrufe und haelt es schnell)
                         chips = bfg.tags_for(head_raw, summ_raw)
                         points = bfg.key_points(head_raw, summ_raw, max_points=2)
                         total_secs += bfg.reading_secs(head_raw, summ_raw)
-                        head = tr_de(head_raw) if translate_here else head_raw
+                        head = _T(head_raw)
                         if translate_here:
-                            points = [tr_de(p) for p in points]
+                            points = [_T(p) for p in points]
                         chip_html = "".join(
                             f'<span class="pill">{e} {esc(l)}</span>' for e, l in chips)
                         pts_html = "".join(
@@ -2513,8 +2570,8 @@ if nav == "News":
                             f'{pts_html}{impl_html}<div class="meta">{meta}</div></div>',
                             unsafe_allow_html=True)
                     else:
-                        head = tr_de(head_raw) if translate_here else head_raw
-                        summ = tr_de(summ_raw) if translate_here else summ_raw
+                        head = _T(head_raw)
+                        summ = _T(summ_raw)
                         sum_html = f'<div class="sum">{esc(summ)}</div>' if summ else ""
                         meta = acc_badge + src + (f" \u00b7 {date}" if date else "") + flag
                         st.markdown(

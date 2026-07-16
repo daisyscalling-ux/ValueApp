@@ -132,7 +132,7 @@ def fetch_feed(url, limit=12):
         return []
     try:
         import xml.etree.ElementTree as ET
-        r = requests.get(url, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
+        r = requests.get(url, timeout=6, headers={"User-Agent": "Mozilla/5.0"})
         root = ET.fromstring(r.content)
     except Exception:
         return []
@@ -173,16 +173,32 @@ def fetch_feed(url, limit=12):
 
 def get_section(section, limit=12, free_only=False):
     """Meldungen einer Sektion: gemerged, dedupliziert, neueste zuerst.
-    free_only=True blendet Artikel mit 'paywall'-Status aus."""
+    free_only=True blendet Artikel mit 'paywall'-Status aus.
+
+    Die Feeds werden PARALLEL geladen (ThreadPool) - vorher lief jeder Feed
+    nacheinander, und ein einziger langsamer Feed (z.B. WSJ mit 5 Quellen)
+    blockierte die ganze Sektion bis zu 5x12 Sekunden."""
+    urls = FEEDS.get(section, [])
+    if not urls:
+        return []
+    results = []
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(len(urls), 8)) as ex:
+            for feed_items in ex.map(fetch_feed, urls):
+                results.extend(feed_items or [])
+    except Exception:
+        for url in urls:                       # Fallback: sequenziell
+            results.extend(fetch_feed(url) or [])
+
     items, seen = [], set()
-    for url in FEEDS.get(section, []):
-        for it in fetch_feed(url):
-            key = it["headline"][:80].lower()
-            if key in seen:
-                continue
-            if free_only and it.get("access") == "paywall":
-                continue
-            seen.add(key)
-            items.append(it)
+    for it in results:
+        key = it["headline"][:80].lower()
+        if key in seen:
+            continue
+        if free_only and it.get("access") == "paywall":
+            continue
+        seen.add(key)
+        items.append(it)
     items.sort(key=lambda x: x["ts"], reverse=True)
     return items[:limit]

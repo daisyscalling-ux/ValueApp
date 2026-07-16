@@ -38,10 +38,14 @@ FEEDS = {
         "https://www.cnbc.com/id/19832390/device/rss/rss.html",   # CNBC Asia
     ],
     "WSJ": [
-        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",       # WSJ Markets
-        "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",     # WSJ US Business
-        "https://feeds.a.dj.com/rss/RSSWSJD.xml",              # WSJ Technology
-        "https://feeds.a.dj.com/rss/RSSWorldNews.xml",         # WSJ World News
+        # Die alten feeds.a.dj.com-Feeds liefern veraltete Artikel (Stand Anfang 2025).
+        # Aktuelle Quellen (Juli 2026): neue Domain feeds.content.dowjones.io + die
+        # direkten wsj.com/xml/rss-Feeds fuer Markets/Technology.
+        "https://www.wsj.com/xml/rss/3_7031.xml",                       # Markets & Finance
+        "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness",  # US Business
+        "https://www.wsj.com/xml/rss/3_7455.xml",                       # Technology
+        "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed",  # Economy
+        "https://www.wsj.com/xml/rss/3_7085.xml",                       # World News
     ],
     "Aktien-News": [
         "https://www.investing.com/rss/news_25.rss",              # Stock Market News

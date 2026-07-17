@@ -210,7 +210,27 @@ def run():
     print(f"=== precompute Start {started:%d.%m.%Y %H:%M} (dt. Zeit) ===")
     if store.backend() != "sheet":
         print("WARNUNG: Google Sheets nicht aktiv - Ergebnisse landen nur lokal "
-              "und werden von der Cloud-App nicht gelesen. (GSHEET_ID/Creds pruefen.)")
+              "und werden von der Cloud-App nicht gelesen.")
+        # Praezise Ursache benennen, damit die richtigen Secrets gesetzt werden.
+        import os as _os
+        _id = _os.getenv("GSHEET_ID")
+        _raw = _os.getenv("GCP_SERVICE_ACCOUNT")
+        print(f"  - GSHEET_ID gesetzt: {'JA' if _id else 'NEIN (Secret fehlt!)'}")
+        if not _raw:
+            print("  - GCP_SERVICE_ACCOUNT gesetzt: NEIN (Secret fehlt!)")
+        else:
+            print(f"  - GCP_SERVICE_ACCOUNT gesetzt: JA ({len(_raw)} Zeichen)")
+            try:
+                import json as _j
+                _d = _j.loads(_raw)
+                _mail = _d.get("client_email", "?")
+                print(f"    -> gueltiges JSON, Service-Account: {_mail}")
+                print(f"    -> Dieses Konto MUSS als Editor fuers Sheet freigegeben sein.")
+            except Exception as _e:
+                print(f"    -> JSON NICHT lesbar: {_e}")
+                print("    -> Das Secret muss der KOMPLETTE JSON-Inhalt sein "
+                      "(inkl. geschweifter Klammern), nicht der Dateipfad.")
+        print("  Anleitung: GOOGLE_SHEETS_SETUP.md")
 
     old = store.get_snapshot() or {}
     old_snaps = old if isinstance(old, dict) else {}

@@ -287,6 +287,8 @@ def run():
     #     Ehrlich: JEDES Signal wird erfasst, auch die spaeteren Fehlschlaege.
     #     Zusaetzlich das SCORECARD-URTEIL mitschreiben - so laesst sich spaeter
     #     messen, ob 'Kaufkandidat' die 'Verwerfen'-Titel wirklich schlaegt.
+    print(f"[trackrecord] Signal-Erfassung startet: {len(scr or [])} Screener-, "
+          f"{len(rad or [])} Radar-Treffer vorhanden.")
     try:
         import trackrecord
         import scorecard as _sc
@@ -311,17 +313,36 @@ def run():
         sig_new = []
         for r in (scr or [])[:10]:
             tk = r.get("ticker")
+            if not tk:
+                continue
             sig_new.append({"ticker": tk, "quelle": "Screener",
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "verdict": _verdict(tk), "price": r.get("price")})
         for r in (rad or [])[:10]:
             tk = r.get("ticker")
+            if not tk:
+                continue
             sig_new.append({"ticker": tk, "quelle": "Radar",
                             "score": r.get("radar"), "upside": r.get("upside"),
                             "verdict": _verdict(tk), "price": r.get("price")})
-        trackrecord.record(sig_new)
+        if not sig_new:
+            print("[trackrecord] WARNUNG: keine Kandidaten aus Screener/Radar - "
+                  "es gibt nichts zu erfassen. Laufen die Scans durch?")
+        added = trackrecord.record(sig_new)
+        # Kontrolle: hat der Speicher die Signale wirklich aufgenommen?
+        try:
+            total = len(store.get_signals() or [])
+            print(f"[trackrecord] {added} neu, {total} im Speicher. "
+                  f"Backend={store.backend()}.")
+            if store.backend() != "sheet":
+                print("[trackrecord] WARNUNG: Backend ist NICHT 'sheet' - die Cloud-App "
+                      "liest aus dem Sheet und sieht diese Signale daher nicht!")
+        except Exception as _e:
+            print(f"[trackrecord] Kontrolle fehlgeschlagen: {_e}")
     except Exception as e:
-        print(f"[precompute] Signal-Tagebuch uebersprungen: {e}")
+        import traceback
+        print(f"[precompute] Signal-Tagebuch FEHLER: {e}")
+        traceback.print_exc()
 
     # 6) E-Mail
     _send_email(changes, holdings, watch, scr, rad, started, briefing_text)

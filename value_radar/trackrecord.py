@@ -21,9 +21,31 @@ HORIZONS = (30, 90, 180)     # Tage, nach denen bewertet wird
 
 
 def _price(t):
+    """Aktueller Kurs - moeglichst leichtgewichtig und robust. Erst der schnelle
+    Intraday-Quote (falls vorhanden), dann die Kurshistorie (zuverlaessiger als ein
+    voller Fundamentaldaten-Abruf), zuletzt Fundamentaldaten. So scheitert der Kurs
+    nicht schon an einem einzelnen ausgelasteten Endpoint."""
+    # 1) schneller Quote, falls der Provider ihn hat
+    for fn in ("get_quote", "get_intraday_quote"):
+        f = getattr(providers, fn, None)
+        if f:
+            try:
+                q = f(t)
+                px = (q.get("price") if isinstance(q, dict) else q)
+                if px:
+                    return float(px)
+            except Exception:
+                pass
+    # 2) letzter Schlusskurs aus der Historie
     try:
-        f = providers.get_fundamentals(t)
-        return f.get("price")
+        h = providers.get_price_history(t, period="5d", interval="1d")
+        if h is not None and not h.empty:
+            return float(h["Close"].dropna().iloc[-1])
+    except Exception:
+        pass
+    # 3) Fundamentaldaten als letzte Option
+    try:
+        return providers.get_fundamentals(t).get("price")
     except Exception:
         return None
 

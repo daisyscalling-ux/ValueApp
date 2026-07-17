@@ -130,6 +130,46 @@ def summary(rows=None):
     }
 
 
+def source_stats(quelle=None, invest_eur=None, rows=None):
+    """Statistik gefiltert nach Quelle ('Screener', 'Radar' oder None = alle).
+
+    Liefert gewonnene/verlorene Signale, Win %, Ø-Rendite %, Ø-Ueberrendite vs. Index.
+    invest_eur (optional): MODELLRECHNUNG - haette man bei JEDEM Signal diesen festen
+    Betrag investiert, was waere daraus geworden? Ausdruecklich KEIN echtes Geld -
+    ein Screener-Signal ist kein Trade (kein Einsatz, keine Stueckzahl). Nur eine
+    Was-waere-wenn-Zahl, damit sich die Trefferquote in Euro einordnen laesst."""
+    rows = rows if rows is not None else evaluate()
+    ready = [r for r in rows if r["days"] >= 14
+             and (quelle is None or r.get("quelle") == quelle)]
+    if not ready:
+        return {"n": 0}
+    wins = [r for r in ready if r["ret_pct"] > 0]
+    losses = [r for r in ready if r["ret_pct"] <= 0]
+    exc = [r["excess_pct"] for r in ready if r.get("excess_pct") is not None]
+    out = {
+        "n": len(ready),
+        "wins": len(wins), "losses": len(losses),
+        "win_pct": round(len(wins) / len(ready) * 100),
+        "avg_ret": round(sum(r["ret_pct"] for r in ready) / len(ready), 1),
+        "best": round(max(r["ret_pct"] for r in ready), 1),
+        "worst": round(min(r["ret_pct"] for r in ready), 1),
+        "avg_excess": round(sum(exc) / len(exc), 1) if exc else None,
+    }
+    if invest_eur and invest_eur > 0:
+        # Modell: fester Betrag je Signal, Ergebnis = Summe der Einzelergebnisse.
+        invested = invest_eur * len(ready)
+        final = sum(invest_eur * (1 + r["ret_pct"] / 100) for r in ready)
+        gain = final - invested
+        out["model"] = {
+            "per_signal": invest_eur,
+            "invested": round(invested, 2),
+            "final": round(final, 2),
+            "gain_eur": round(gain, 2),
+            "gain_pct": round(gain / invested * 100, 1) if invested else None,
+        }
+    return out
+
+
 def _bucket_stats(rows):
     """Kennzahlen einer Gruppe: n, Win %, Durchschnittsrendite, Ø Ueberrendite."""
     if not rows:

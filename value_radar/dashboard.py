@@ -737,6 +737,60 @@ def render_trackrecord():
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
                "z\u00e4hlt. Kein Anlagerat.")
 
+    # === Statistik nach Quelle (Screener / Radar) + Euro-Modellrechnung ===
+    st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f4ca '
+                'STATISTIK NACH QUELLE</div>', unsafe_allow_html=True)
+    _sc1, _sc2 = st.columns([1, 1])
+    _quelle = _sc1.selectbox("Quelle", ["Screener", "Radar", "Alle"], index=0,
+                             key="tr_src")
+    _q = None if _quelle == "Alle" else _quelle
+    _invest = _sc2.number_input("Modell-Einsatz je Signal (\u20ac)", min_value=0,
+                                value=1000, step=250, key="tr_invest",
+                                help="Nur eine Was-w\u00e4re-wenn-Rechnung: h\u00e4ttest du "
+                                     "bei JEDEM Signal diesen Betrag investiert. Kein "
+                                     "echtes Geld \u2013 ein Signal ist kein Trade.")
+    try:
+        sst = tr.source_stats(_q, invest_eur=_invest or None, rows=rows)
+    except Exception as e:
+        sst = {"n": 0}
+        st.caption(f"(Statistik nicht verf\u00fcgbar: {e})")
+
+    if sst.get("n"):
+        _c = st.columns(4)
+        card(_c[0], "Gewonnen / Verloren", f"{sst['wins']} / {sst['losses']}",
+             f"{sst['n']} reife Signale",
+             "var(--green)" if sst["wins"] >= sst["losses"] else "var(--red)")
+        card(_c[1], "Win %", f"{sst['win_pct']} %", "im Plus",
+             "var(--green)" if sst["win_pct"] >= 50 else "var(--red)")
+        card(_c[2], "\u00d8 Rendite", f"{sst['avg_ret']:+.1f} %",
+             f"best {sst['best']:+.0f} / worst {sst['worst']:+.0f}",
+             "var(--green)" if sst["avg_ret"] >= 0 else "var(--red)")
+        _ae = sst.get("avg_excess")
+        card(_c[3], "\u00d8 vs. S&P 500",
+             f"{_ae:+.1f} %" if _ae is not None else "\u2014", "Ueberrendite",
+             "var(--green)" if (_ae or 0) >= 0 else "var(--red)")
+
+        _m = sst.get("model")
+        if _m:
+            st.markdown('<div class="sec-title" style="margin-top:10px;'
+                        'font-size:13px;opacity:.85">\U0001f4b6 MODELLRECHNUNG '
+                        '(kein echtes Geld)</div>', unsafe_allow_html=True)
+            _mc = st.columns(3)
+            card(_mc[0], "Fiktiv investiert", sym_eur(_m["invested"]),
+                 f"{sym_eur(_m['per_signal'])} je Signal")
+            card(_mc[1], "Modell-Ergebnis", sym_eur(_m["final"]), "Summe aller Signale")
+            _g = _m["gain_eur"]
+            card(_mc[2], "Modell-G/V", f"{'+' if _g >= 0 else ''}{sym_eur(_g)}",
+                 f"{_m['gain_pct']:+.1f} %",
+                 "var(--green)" if _g >= 0 else "var(--red)")
+            st.caption("\u26a0\ufe0f Reine Was-w\u00e4re-wenn-Rechnung: gleicher Betrag auf "
+                       "jedes Signal, ohne Geb\u00fchren, Spread oder Steuern. Ein Screener-"
+                       "Signal ist kein Trade \u2013 echtes Euro-G/V steht nur im "
+                       "Portfolio- und Hedgefonds-Logbuch. Kein Anlagerat.")
+    else:
+        st.info(f"Noch keine reifen {_quelle}-Signale (\u2265 14 Tage). Die Statistik "
+                "f\u00fcllt sich, sobald die ersten Signale alt genug sind.")
+
     # === Funktioniert die SCORECARD? (die eigentliche Kernfrage) ===
     st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f9ea '
                 'FUNKTIONIERT DIE SCORECARD?</div>', unsafe_allow_html=True)

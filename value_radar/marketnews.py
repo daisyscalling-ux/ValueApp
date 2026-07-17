@@ -127,12 +127,12 @@ def access_of(url, source_url=""):
     return "frei"                      # bekannt frei ODER unbekannt -> als frei behandeln
 
 
-def fetch_feed(url, limit=12):
+def fetch_feed(url, limit=25):
     if requests is None:
         return []
     try:
         import xml.etree.ElementTree as ET
-        r = requests.get(url, timeout=6, headers={"User-Agent": "Mozilla/5.0"})
+        r = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         root = ET.fromstring(r.content)
     except Exception:
         return []
@@ -171,7 +171,7 @@ def fetch_feed(url, limit=12):
     return [x for x in out if x["headline"]]
 
 
-def get_section(section, limit=12, free_only=False):
+def get_section(section, limit=40, free_only=False):
     """Meldungen einer Sektion: gemerged, dedupliziert, neueste zuerst.
     free_only=True blendet Artikel mit 'paywall'-Status aus.
 
@@ -183,12 +183,21 @@ def get_section(section, limit=12, free_only=False):
         return []
     results = []
     try:
-        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         with ThreadPoolExecutor(max_workers=min(len(urls), 8)) as ex:
-            for feed_items in ex.map(fetch_feed, urls):
-                results.extend(feed_items or [])
+            futs = {ex.submit(fetch_feed, u): u for u in urls}
+            try:
+                # Harte Gesamt-Frist: schnelle Feeds kommen sofort, ein einzelner
+                # haengender Feed kann die Sektion NICHT mehr blockieren.
+                for fut in as_completed(futs, timeout=8):
+                    try:
+                        results.extend(fut.result() or [])
+                    except Exception:
+                        pass
+            except Exception:
+                pass                               # Frist erreicht - mit dem, was da ist
     except Exception:
-        for url in urls:                       # Fallback: sequenziell
+        for url in urls:                           # Fallback: sequenziell
             results.extend(fetch_feed(url) or [])
 
     items, seen = [], set()

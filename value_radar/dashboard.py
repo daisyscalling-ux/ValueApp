@@ -2613,9 +2613,12 @@ if nav == "News":
                "(\u2197/\u2198 Bereich + Beispiel-Ticker) \u2013 als Denkanstoss zum "
                "Weiterrecherchieren, ausdr\u00fccklich KEIN Anlagerat.")
     nc = st.columns([1.3, 1, 1, 1.2])
-    if nc[0].button("\U0001f4e1 News laden / aktualisieren", use_container_width=True):
-        st.session_state["news_loaded"] = True
-        load_marketnews.clear()
+    if nc[0].button("\U0001f504 News aktualisieren", use_container_width=True):
+        load_marketnews.clear()                    # Cache leeren = frische Daten
+        if hasattr(tr, "_CACHE"):
+            tr._CACHE.clear()                      # auch Uebersetzungen neu holen
+        for _k in [k for k in st.session_state if str(k).startswith("news_count_")]:
+            st.session_state[_k] = 10              # Anzeigezaehler zuruecksetzen
     de_on = nc[1].checkbox("\U0001f1e9\U0001f1ea Deutsch", value=tr.available(),
                            disabled=not tr.available(),
                            help="\u00dcbersetzt englische Quellen ins Deutsche. "
@@ -2628,19 +2631,18 @@ if nav == "News":
                                help="Blendet Artikel bekannter Paywall-Quellen "
                                     "(Bloomberg, WSJ, FT \u2026) aus. Reuters ist "
                                     "\u201emetered\u201c (erste Artikel frei).")
-    st.caption("Quellen: CNBC, Reuters, Bloomberg, MarketWatch, Tagesschau u.a. \u00b7 "
+    st.caption("Quellen: WSJ, CNBC, Reuters, Bloomberg, MarketWatch, Tagesschau u.a. \u00b7 "
                "\U0001f513 frei lesbar \u00b7 \U0001f513\u26a0 Reuters metered \u00b7 "
                "\U0001f512 Paywall m\u00f6glich. Headline \u00f6ffnet den Artikel.")
     if not tr.available():
         st.caption("F\u00fcr die \u00dcbersetzung: `pip install deep-translator`")
 
-    if not st.session_state.get("news_loaded"):
-        st.info("Auf \u201eNews laden\u201c klicken, um die aktuellen Markt-News zu holen.")
-    else:
-        sections = ["US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News", "WSJ"]
-        # NUR die gewaehlte Sektion laden (st.radio) - st.tabs rendert ALLE sechs
-        # gleichzeitig, wodurch beim Laden alle Feeds ALLER Sektionen abgerufen
-        # wurden. Das war die Hauptbremse ("alles laedt nacheinander").
+    if True:
+        # WSJ zuerst (Wunsch). Es wird IMMER nur die gewaehlte Sektion geladen
+        # (st.radio), und das automatisch beim ersten Betreten - kein Knopfdruck
+        # mehr noetig. Der 10-Minuten-Cache sorgt dafuer, dass ein erneuter Besuch
+        # sofort da ist.
+        sections = ["WSJ", "US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News"]
         _sec = st.radio("Bereich", sections, horizontal=True,
                         label_visibility="collapsed", key="news_section")
         for section in [_sec]:
@@ -2663,7 +2665,11 @@ if nav == "News":
                                 '(Feeds evtl. kurz nicht erreichbar \u2013 erneut '
                                 'aktualisieren).</span>', unsafe_allow_html=True)
                 total_secs = 0
-                _shown = items[:10]
+                # Sichtbare Artikelzahl je Sektion merken (WSJ zaehlt unabhaengig
+                # von DAX etc.). Start: 10, der Button unten erhoeht in 10er-Schritten.
+                _cnt_key = f"news_count_{section}"
+                _show_n = st.session_state.get(_cnt_key, 10)
+                _shown = items[:_show_n]
                 # Alle zu uebersetzenden Texte EINMAL sammeln und als Batch
                 # uebersetzen (statt je Headline/Punkt eine eigene Netzanfrage).
                 _trmap = {}
@@ -2740,7 +2746,26 @@ if nav == "News":
                             unsafe_allow_html=True)
                 if brief_on and items:
                     st.caption(f"\u23f1 Briefing-Lesezeit gesamt: ~{max(total_secs // 60, 1)} Min. "
-                               f"f\u00fcr {min(len(items), 10)} Meldungen.")
+                               f"f\u00fcr {len(_shown)} Meldungen.")
+
+                # Button unter den Artikeln: weitere Nachrichten laden.
+                _remaining = len(items) - len(_shown)
+                if _remaining > 0:
+                    _more = min(10, _remaining)
+                    if st.button(f"\u2b07\ufe0f {_more} weitere Nachrichten laden "
+                                 f"({_remaining} verf\u00fcgbar)",
+                                 key=f"news_more_{section}", use_container_width=True):
+                        st.session_state[_cnt_key] = len(_shown) + _more
+                        st.rerun()
+                elif len(_shown) > 10:
+                    # alle gezeigt - Moeglichkeit, wieder einzuklappen
+                    if st.button("\u2b06\ufe0f Weniger anzeigen",
+                                 key=f"news_less_{section}", use_container_width=True):
+                        st.session_state[_cnt_key] = 10
+                        st.rerun()
+                elif items:
+                    st.caption("Das sind alle aktuell verf\u00fcgbaren Meldungen dieser "
+                               "Quelle. Mit \u201eNews aktualisieren\u201c neu laden.")
 
 
 # ===========================================================================

@@ -593,14 +593,26 @@ def render_trackrecord():
         import trackrecord as tr
         rows = tr.evaluate()
         summ = tr.summary(rows)
+        _stored = tr.store.get_signals() or []
     except Exception as e:
         st.error(f"Trefferbilanz nicht verf\u00fcgbar: {e}")
         return
 
-    if not rows:
+    # Ehrliche Diagnose: unterscheidet "gar nichts gespeichert" von "gespeichert,
+    # aber noch nicht auswertbar" (Kurs fehlt / zu frisch). Vorher stand pauschal
+    # "keine Signale erfasst" - auch wenn welche da waren.
+    if not rows and _stored:
+        _n_reif = sum(1 for e in _stored
+                      if (time.time() - (e.get("ts") or time.time())) / 86400 >= 14)
+        st.warning(
+            f"\u26a0\ufe0f **{len(_stored)} Signale gespeichert**, aber keines l\u00e4sst sich "
+            "gerade auswerten. H\u00e4ufigste Ursachen: aktuelle Kurse nicht abrufbar "
+            "(API-Limit/Ticker), oder die Signale sind noch keine 14 Tage alt "
+            f"({_n_reif} bereits reif). Details unten in der Diagnose.")
+    elif not rows:
         st.info("Noch keine Signale erfasst. Der automatische Lauf (2\u00d7 t\u00e4glich) "
-                "h\u00e4lt ab jetzt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig "
-                "wird das erst nach einigen Wochen und vielen F\u00e4llen.")
+                "h\u00e4lt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig wird das "
+                "erst nach einigen Wochen und vielen F\u00e4llen.")
 
     # --- Sofort erfassen (ohne auf den Cron-Job zu warten) ---
     _rr = st.session_state.get("radar_results") or []
@@ -620,15 +632,74 @@ def render_trackrecord():
         _cap[0].caption("Erst im Radar scannen \u2013 dann lassen sich die Treffer "
                         "hier mit einem Klick ins Tagebuch \u00fcbernehmen.")
 
+    # --- Selbsttest: erfasst JETZT ein Signal und zeigt jeden Schritt ---
+    with st.expander("\U0001f527 Selbsttest \u2013 warum erscheinen keine Signale?"):
+        st.caption("Pr\u00fcft die ganze Kette an einem Testticker (AAPL): Kurs abrufbar? "
+                   "Benchmark? Speicher schreibbar? So l\u00e4sst sich eingrenzen, ob das "
+                   "Problem beim Cron-Job, den Kursen oder dem Speicher liegt.")
+        if st.button("Selbsttest starten", key="tr_selftest"):
+            steps = []
+            try:
+                _p = tr._price("AAPL")
+                steps.append(("Kurs AAPL abrufbar", bool(_p), str(_p)))
+            except Exception as e:
+                steps.append(("Kurs AAPL abrufbar", False, str(e)))
+            try:
+                _b = tr._bench_price()
+                steps.append(("Benchmark (S&P) abrufbar", bool(_b), str(_b)))
+            except Exception as e:
+                steps.append(("Benchmark abrufbar", False, str(e)))
+            _before = len(store.get_signals() or [])
+            try:
+                _n = tr.record([{"ticker": "AAPL", "quelle": "Selbsttest",
+                                 "score": 60, "verdict": "Test"}])
+                _after = len(store.get_signals() or [])
+                steps.append(("Testsignal geschrieben",
+                              _after > _before or _n == 0,
+                              f"vorher {_before}, nachher {_after}, neu {_n}"))
+            except Exception as e:
+                steps.append(("Testsignal geschrieben", False, str(e)))
+            for label, ok, detail in steps:
+                st.write(("\u2705" if ok else "\u274c") + f" {label} \u2013 {detail}")
+
     # --- Diagnose: schreibt der Speicher ueberhaupt? ---
     with _cap[1].popover("\u2699\ufe0f Diagnose"):
         try:
+            _sig = store.get_signals() or []
             st.write(f"Speicher: **{store.backend()}**")
-            st.write(f"Signale gespeichert: **{len(store.get_signals())}**")
+            st.write(f"Signale gespeichert: **{len(_sig)}**")
             if store.backend() != "sheet":
                 st.warning("Ohne Google-Sheet-Speicher gehen die Signale beim "
                            "Neustart verloren \u2013 und der Cron-Job schreibt in einen "
                            "anderen Speicher als die App.")
+            if _sig:
+                import time as _t
+                _n_bench = sum(1 for e in _sig if e.get("bench_entry"))
+                _n_verd = sum(1 for e in _sig if e.get("verdict"))
+                _reif = sum(1 for e in _sig
+                            if (_t.time() - (e.get("ts") or _t.time())) / 86400 >= 14)
+                _auswert = len(rows)
+                st.markdown(
+                    f"- mit Einstiegskurs: **{sum(1 for e in _sig if e.get('entry_px'))}**\n"
+                    f"- mit Benchmark-Kurs: **{_n_bench}**\n"
+                    f"- mit Scorecard-Urteil: **{_n_verd}**\n"
+                    f"- aktuell auswertbar (Kurs abrufbar): **{_auswert}**\n"
+                    f"- davon reif (\u2265 14 Tage): **{_reif}**")
+                if _auswert < len(_sig):
+                    st.caption("Nicht auswertbare Signale = aktueller Kurs gerade nicht "
+                               "abrufbar (API-Limit oder Ticker). Das ist meist "
+                               "vor\u00fcbergehend \u2013 beim n\u00e4chsten Laden erneut pr\u00fcfen.")
+                if _n_verd == 0:
+                    st.caption("Kein Signal hat ein Scorecard-Urteil: L\u00e4uft der "
+                               "Cron-Job schon mit der NEUEN precompute.py (die das "
+                               "Urteil mitschreibt)? \u00c4ltere Signale bleiben ohne Urteil.")
+                # Aelteste/juengste Signale zeigen
+                _ts = [e.get("ts") for e in _sig if e.get("ts")]
+                if _ts:
+                    import datetime as _dt
+                    _old = _dt.datetime.fromtimestamp(min(_ts)).strftime("%d.%m.%Y")
+                    _new = _dt.datetime.fromtimestamp(max(_ts)).strftime("%d.%m.%Y")
+                    st.caption(f"Signale von {_old} bis {_new}.")
         except Exception as e:
             st.error(f"Speicher nicht lesbar: {e}")
 

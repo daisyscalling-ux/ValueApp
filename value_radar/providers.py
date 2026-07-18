@@ -540,6 +540,32 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             if merged.get("pe_trailing") is None and merged.get("eps_trailing"):
                 e = merged["eps_trailing"]
                 merged["pe_trailing"] = sp / e if e and e > 0 else None
+
+    # --- Pence-Normalisierung (GBp/GBX -> GBP) --------------------------------
+    # Londoner Titel liefern bei yfinance den KURS in Pence (BP.L: 517.1 GBp),
+    # die je-Aktie-Kennzahlen (EPS, Buchwert) und Summen (Marktkap., Schulden)
+    # aber in PFUND. Dadurch rechneten alle EPS-/Buchwert-basierten Methoden
+    # Werte um den Faktor 100 zu niedrig -> der Plausibilitaetsfilter warf sie
+    # als "unplausibel" raus, uebrig blieben Ausreisser. Ergebnis: BP.L mit
+    # Fair Value 1043 bei Kurs 517 (+102 % Upside) und die Meldung
+    # "Fair Value aus nur einer Methode" bei praktisch allen .L-/.XC-Tickern.
+    # Fix: die KURSSEITE auf Pfund bringen, dann sind alle Groessen konsistent.
+    # Die EUR-Umrechnung liefert unveraendert dasselbe Ergebnis, weil fx_to_eur
+    # fuer GBp bisher den Faktor 0.01 anwendete.
+    # WICHTIG: "GBP" (Pfund) darf NICHT umgerechnet werden - nur GBp/GBX (Pence).
+    _cur = (merged.get("currency") or "").strip()
+    if _cur in ("GBp", "GBX", "gbx"):
+        for _k in ("price", "target_mean", "52w_high", "52w_low",
+                   "entry_price", "prev_close", "day_high", "day_low"):
+            _v = merged.get(_k)
+            if isinstance(_v, (int, float)) and _v:
+                merged[_k] = _v / 100.0
+        merged["currency"] = "GBP"
+        merged["_pence_normalised"] = True
+        # KGV neu bilden, falls es aus dem Pence-Kurs stammte
+        _e = merged.get("eps_trailing")
+        if _e and _e > 0 and merged.get("price"):
+            merged["pe_trailing"] = merged["price"] / _e
     return merged
 
 

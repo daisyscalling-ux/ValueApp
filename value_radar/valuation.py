@@ -253,12 +253,26 @@ def reverse_dcf_implied_growth(fund, years=None) -> Optional[float]:
 
 # --- Neue Methoden (Nutzer-Formelsammlung, geprueft & korrigiert) -------------
 def _ebit_estimate(fund) -> Optional[float]:
-    """EBIT-Schaetzung: operative Marge x Umsatz (Umsatz = MarketCap/KUV),
-    Fallback 0.8 x EBITDA. Unser 'ebit'-Feld ist nur ein EBITDA-Alias, daher
-    hier bewusst konservativ herleiten."""
-    om, mc, ps = fund.get("operating_margin"), fund.get("market_cap"), fund.get("ps")
-    if om and om > 0 and mc and ps and ps > 0:
-        return om * (mc / ps)
+    """EBIT-Schaetzung: operative Marge x Umsatz.
+
+    FRUEHER wurde der Umsatz IMMER aus MarketCap/KUV hergeleitet. Ist das
+    KUV verzerrt (z.B. weil die Quelle es mit einem Pence-Kurs gegen
+    Pfund-Umsaetze rechnet), wird der Umsatz um Groessenordnungen falsch -
+    und der EPV-Wert entgleist (BP.L: 1792 statt ~5 je Aktie).
+    Jetzt: echtes Umsatzfeld bevorzugen, KUV nur als Rueckfall, und das
+    Ergebnis gegen den Umsatz auf Plausibilitaet pruefen."""
+    om = fund.get("operating_margin")
+    rev = fund.get("revenue")
+    mc, ps = fund.get("market_cap"), fund.get("ps")
+
+    if not (rev and rev > 0) and (mc and ps and ps > 0):
+        derived = mc / ps                      # Rueckfall: Umsatz aus KUV
+        # Grober Realitaetscheck: Umsatz zwischen 1 % und 100x der Marktkap.
+        if 0.01 * mc <= derived <= 100 * mc:
+            rev = derived
+
+    if om and om > 0 and rev and rev > 0:
+        return om * rev
     ebitda = fund.get("ebitda")
     return 0.8 * ebitda if ebitda and ebitda > 0 else None
 

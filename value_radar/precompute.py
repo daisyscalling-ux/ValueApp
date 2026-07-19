@@ -347,7 +347,12 @@ def run():
         import scorecard as _sc
         import matrices as _mx
 
-        def _verdict(t):
+        def _analyse(t):
+            """Urteil UND passende Screener-Strategie in EINEM Datenabruf.
+            Die Strategien lagen bisher ungenutzt in screener_presets.py -
+            der Nachtlauf filterte nur generisch nach Score und Upside.
+            Jetzt wird festgehalten, WELCHE Vorlage ein Titel erfuellt."""
+            out = {"verdict": "", "strategie": ""}
             try:
                 f = providers.get_fundamentals(t, deep=True)
                 ep = valuation.classify_playbook(f)
@@ -359,25 +364,49 @@ def run():
                 res = _sc.evaluate(f, v, s.get("composite"),
                                    _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
                                    extras, None, None)
-                return res.get("verdict", "")
+                out["verdict"] = res.get("verdict", "")
+                # Welche Screener-Vorlage passt? Bei mehreren: die mit der
+                # besseren Soft-Quote. Keine Treffer -> "keine".
+                try:
+                    import screener_presets as _sp
+                    best, best_q = "", -1.0
+                    for key in _sp.PRESETS:
+                        ev = _sp.evaluate(key, f, extras, v)
+                        if ev.get("passed"):
+                            tot = ev.get("soft_total") or 1
+                            q = (ev.get("soft_pass") or 0) / tot
+                            if q > best_q:
+                                best, best_q = key, q
+                    out["strategie"] = best or "keine"
+                except Exception:
+                    pass
             except Exception:
-                return ""
+                pass
+            return out
 
         sig_new = []
         for r in (scr or [])[:10]:
             tk = r.get("ticker")
             if not tk:
                 continue
+            _a = _analyse(tk)
             sig_new.append({"ticker": tk, "quelle": "Screener",
                             "score": r.get("composite"), "upside": r.get("upside"),
-                            "verdict": _verdict(tk), "price": r.get("price")})
+                            "strategie": _a.get("strategie", ""),
+                            "verdict": _a.get("verdict", ""), "price": r.get("price")})
         for r in (rad or [])[:10]:
             tk = r.get("ticker")
             if not tk:
                 continue
+            # BUG: r.get("radar") gibt es in score_ticker nicht -> Score war immer
+            # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
+            _a = _analyse(tk)
             sig_new.append({"ticker": tk, "quelle": "Radar",
-                            "score": r.get("radar"), "upside": r.get("upside"),
-                            "verdict": _verdict(tk), "price": r.get("price")})
+                            "score": r.get("quantum") if r.get("quantum") is not None
+                                     else r.get("composite"),
+                            "upside": r.get("upside"),
+                            "strategie": _a.get("strategie", ""),
+                            "verdict": _a.get("verdict", ""), "price": r.get("price")})
 
         # KONTROLLGRUPPE: die schwaechsten Titel aus denselben Scans.
         # Ohne sie kann man nicht unterscheiden, ob die Scorecard trennt
@@ -388,10 +417,26 @@ def run():
                 tk = r.get("ticker")
                 if not tk:
                     continue
+                # Merkmal festhalten: WARUM gilt der Titel als schwach?
+                # Ohne diese Angabe weiss man spaeter nicht, ob die Kontroll-
+                # gruppe wegen schlechter Qualitaet oder wegen Ueberbewertung
+                # verloren hat - zwei voellig verschiedene Aussagen.
+                _c, _u = r.get("composite"), r.get("upside")
+                if _c is not None and _c < 45 and _u is not None and _u < -10:
+                    _merkmal = "Score niedrig + \u00fcberbewertet"
+                elif _c is not None and _c < 45:
+                    _merkmal = f"Score niedrig ({_c})"
+                elif _u is not None and _u < -10:
+                    _merkmal = f"\u00fcberbewertet ({_u:+.0f} %)"
+                else:
+                    _merkmal = "schwaches Setup"
+                _a = _analyse(tk)
                 sig_new.append({"ticker": tk, "quelle": "Negativ",
                                 "score": r.get("composite"),
                                 "upside": r.get("upside"),
-                                "verdict": _verdict(tk), "price": r.get("price")})
+                                "merkmal": _merkmal,
+                                "strategie": _a.get("strategie", ""),
+                                "verdict": _a.get("verdict", ""), "price": r.get("price")})
             print(f"[trackrecord] Kontrollgruppe: {len(weak)} schwache Setups "
                   f"zur Gegenprobe erfasst.")
         except Exception as e:

@@ -734,7 +734,7 @@ def render_trackrecord():
     _bad = [r for r in rows if r.get("suspekt")]
     _ok = [r for r in rows if not r.get("suspekt")]
 
-    def _tab(titel, quelle, hinweis):
+    def _tab(titel, quelle, hinweis, extra=None):
         sub = [r for r in _ok if r.get("quelle") == quelle]
         st.markdown(f'<div class="sec-title" style="margin-top:16px">{titel} '
                     f'<span style="opacity:.6;font-size:12px">({len(sub)})</span>'
@@ -742,20 +742,35 @@ def render_trackrecord():
         if not sub:
             st.caption(hinweis)
             return
-        d = [{"Ticker": r["ticker"], "Tage": r["days"],
-              "Einstieg": round(r["entry_px"], 2),
-              "Rendite %": r["ret_pct"], "S&P %": r.get("bench_pct"),
-              "vs. Index %": r.get("excess_pct")} for r in sub]
-        vr_table(d, signed_cols=("Rendite %", "S&P %", "vs. Index %"),
+        d = []
+        for r in sub:
+            row = {"Ticker": r["ticker"], "Tage": r["days"],
+                   "Einstieg": round(r["entry_px"], 2)}
+            # quellenspezifische Spalten VOR den Renditespalten
+            for lbl, key, fmt in (extra or []):
+                v = r.get(key)
+                row[lbl] = fmt(v) if (v is not None and v != "") else "\u2014"
+            row.update({"Rendite %": r["ret_pct"], "S&P %": r.get("bench_pct"),
+                        "vs. Index %": r.get("excess_pct")})
+            d.append(row)
+        vr_table(d, signed_cols=("Rendite %", "S&P %", "vs. Index %", "Upside %"),
                  height=min(len(d) * 40 + 46, 420))
 
     _tab("\U0001f50e SCREENER", "Screener",
-         "Noch keine Screener-Signale erfasst.")
+         "Noch keine Screener-Signale erfasst.",
+         extra=[("Score", "score", lambda v: round(v)),
+                ("Upside %", "upside", lambda v: round(v, 1)),
+                ("Strategie", "strategie", lambda v: str(v))])
     _tab("\U0001f4e1 RADAR", "Radar",
-         "Noch keine Radar-Signale erfasst.")
+         "Noch keine Radar-Signale erfasst.",
+         extra=[("Radar-Score", "score", lambda v: round(v)),
+                ("Upside %", "upside", lambda v: round(v, 1))])
     _tab("\u26a0\ufe0f KONTROLLGRUPPE (schwache Setups)", "Negativ",
          "Noch keine schwachen Setups erfasst \u2013 der n\u00e4chtliche Lauf "
-         "sammelt sie ab jetzt automatisch.")
+         "sammelt sie ab jetzt automatisch.",
+         extra=[("Score", "score", lambda v: round(v)),
+                ("Upside %", "upside", lambda v: round(v, 1)),
+                ("Merkmal", "merkmal", lambda v: str(v))])
 
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
                "z\u00e4hlt. Kein Anlagerat.")

@@ -82,11 +82,26 @@ def record(signals):
         px = s.get("price") or _price(s["ticker"])
         if not px:
             continue
+        # Einstiegskurs auf dieselbe Einheit bringen wie spaeter der Vergleichskurs.
+        # s["price"] stammt aus den Scan-Daten und kann bei Londoner Titeln in
+        # PENCE vorliegen - ohne diese Zeile entstehen Renditen von -99 %.
+        _n = getattr(providers, "normalise_price", None)
+        if _n:
+            try:
+                px = _n(s["ticker"], px) or px
+            except Exception:
+                pass
+        try:
+            _ccy = "GBP" if providers.is_pence(s["ticker"]) else ""
+        except Exception:
+            _ccy = ""
         log.insert(0, {
             "ts": now, "ticker": s["ticker"], "quelle": s.get("quelle", ""),
             "score": s.get("score"), "upside": s.get("upside"),
             "verdict": s.get("verdict", ""),
             "entry_px": round(float(px), 4),
+            "entry_norm": True,          # Kennzeichen: bereits normalisiert
+            "entry_ccy": _ccy,
             "bench_entry": round(bp, 2) if bp else None,
         })
         known.add(key)
@@ -103,22 +118,42 @@ def evaluate(limit=120):
     out = []
     for e in log[:limit]:
         px_now = _price(e["ticker"])
-        if not px_now or not e.get("entry_px"):
+        entry = e.get("entry_px")
+        if not px_now or not entry:
             continue
-        ret = (px_now / e["entry_px"] - 1) * 100
-        # SICHERHEITSNETZ gegen Einheiten-Mischmasch (Pence vs. Pfund = Faktor 100).
+
+        # ALT-DATENSAETZE reparieren: Signale, die VOR der Pence-Korrektur
+        # erfasst wurden, haben ihren Einstiegskurs noch in Pence gespeichert.
+        # Der Vergleichskurs ist jetzt in Pfund -> Verhaeltnis ~100 -> -99 %.
+        # Erkennung ueber das Verhaeltnis, nicht ueber die Datumsgrenze, weil
+        # nur so auch gemischte Bestaende sauber werden.
+        repariert = False
+        if not e.get("entry_norm"):
+            try:
+                if providers.is_pence(e["ticker"]) and px_now > 0:
+                    verhaeltnis = entry / px_now
+                    if 20 < verhaeltnis < 500:        # ~Faktor 100 = Pence-Einstieg
+                        entry = entry / 100.0
+                        repariert = True
+            except Exception:
+                pass
+
+        ret = (px_now / entry - 1) * 100
+        # SICHERHEITSNETZ gegen verbleibenden Einheiten-Mischmasch. Greift in
+        # BEIDE Richtungen: +9900 % (Pence/Pfund) genauso wie -99 % (Pfund/Pence).
         # Solche Werte sind keine Rendite, sondern ein Datenfehler - sie werden
         # markiert und aus allen Statistiken herausgehalten, statt sie still zu
         # "korrigieren" (eine stille Korrektur wuerde echte Ausreisser verschleiern).
-        suspekt = abs(ret) > 500
+        suspekt = abs(ret) > 500 or ret < -85
         bret = None
         if bp_now and e.get("bench_entry"):
             bret = (bp_now / e["bench_entry"] - 1) * 100
         days = int((time.time() - (e.get("ts") or time.time())) / 86400)
-        out.append({**e, "ret_pct": round(ret, 1),
+        out.append({**e, "entry_px": round(entry, 4),
+                    "ret_pct": round(ret, 1),
                     "bench_pct": round(bret, 1) if bret is not None else None,
                     "excess_pct": round(ret - bret, 1) if bret is not None else None,
-                    "days": days, "suspekt": suspekt})
+                    "days": days, "suspekt": suspekt, "repariert": repariert})
     return out
 
 

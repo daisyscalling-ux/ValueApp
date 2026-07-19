@@ -760,6 +760,13 @@ def render_trackrecord():
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
                "z\u00e4hlt. Kein Anlagerat.")
 
+    _rep = [r for r in _ok if r.get("repariert")]
+    if _rep:
+        st.caption(f"\u2139\ufe0f Bei {len(_rep)} Signalen wurde der Einstiegskurs von "
+                   "Pence auf Pfund umgerechnet \u2013 sie stammen aus der Zeit vor "
+                   "der Einheiten-Korrektur. Betroffen sind Londoner Titel "
+                   "(.L / .XC). Die Rendite stimmt jetzt.")
+
     if _bad:
         with st.expander(f"\u26a0\ufe0f {len(_bad)} Signale mit fehlerhaften Kursdaten "
                          "(aus der Auswertung ausgeschlossen)"):

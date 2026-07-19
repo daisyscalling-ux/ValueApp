@@ -794,6 +794,16 @@ def render_trackrecord():
                    "der Einheiten-Korrektur. Betroffen sind Londoner Titel "
                    "(.L / .XC). Die Rendite stimmt jetzt.")
 
+    # Code-Version der Erfassung - haeufigste Fehlerquelle ist eine veraltete
+    # precompute.py auf GitHub. Fehlt die Angabe, stammt das Signal aus einem
+    # Lauf VOR der Versionskennung.
+    _vers = sorted({(r.get("codever") or "unbekannt") for r in rows})
+    if _vers:
+        st.caption("Erfasst mit Code-Version: " + ", ".join(_vers)
+                   + ("  \u2013 \u201eunbekannt\u201c bedeutet: der Lauf nutzte eine "
+                      "\u00e4ltere precompute.py. Neue Spalten bleiben dann leer."
+                      if "unbekannt" in _vers else ""))
+
     if _bad:
         with st.expander(f"\u26a0\ufe0f {len(_bad)} Signale mit fehlerhaften Kursdaten "
                          "(aus der Auswertung ausgeschlossen)"):

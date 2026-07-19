@@ -10,6 +10,10 @@ Aufgabe:
      Snapshot aktualisieren, und eine E-Mail-Zusammenfassung senden.
 
 Start:  python precompute.py
+
+VERSION-Kennung: wird bei jedem Lauf ausgegeben und mit jedem Signal
+gespeichert. Damit laesst sich sofort sehen, ob auf GitHub wirklich die
+aktuelle Datei liegt - der haeufigste Grund fuer "die neue Spalte bleibt leer".
 Benoetigt Umgebungsvariablen (siehe AUTO_UPDATE_SETUP.md):
   GSHEET_ID, GCP_SERVICE_ACCOUNT, FINNHUB_API_KEY, FMP_API_KEY,
   SMTP_HOST/PORT/USER/PASS, EMAIL_TO.
@@ -17,6 +21,12 @@ Benoetigt Umgebungsvariablen (siehe AUTO_UPDATE_SETUP.md):
 Robust: Jede Sektion ist gekapselt - faellt eine aus, laufen die anderen weiter.
 """
 from __future__ import annotations
+
+# Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
+# und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
+# erzeugt hat.
+CODE_VERSION = "2026-07-19-a"
+
 import time
 import datetime as dt
 
@@ -485,6 +495,7 @@ def run():
             return out
 
         sig_new = []
+        print(f"[trackrecord] Erfassung mit Code-Version {CODE_VERSION}")
         for r in (scr or [])[:10]:
             tk = r.get("ticker")
             if not tk:
@@ -545,6 +556,9 @@ def run():
                   f"zur Gegenprobe erfasst.")
         except Exception as e:
             print(f"[trackrecord] Kontrollgruppe uebersprungen: {e}")
+
+        for _s in sig_new:                    # Herkunft des Signals festhalten
+            _s["codever"] = CODE_VERSION
 
         if not sig_new:
             print("[trackrecord] WARNUNG: keine Kandidaten aus Screener/Radar - "

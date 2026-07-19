@@ -99,6 +99,14 @@ def record(signals):
             "ts": now, "ticker": s["ticker"], "quelle": s.get("quelle", ""),
             "score": s.get("score"), "upside": s.get("upside"),
             "verdict": s.get("verdict", ""),
+            # Zusatzfelder MUESSEN durchgereicht werden. Vorher war hier eine
+            # feste Feldliste - dadurch gingen strategie, merkmal, firing und
+            # codever verloren, obwohl precompute sie mitgeliefert hat. In der
+            # Tabelle stand deshalb ueberall nur ein Strich.
+            "strategie": s.get("strategie", ""),
+            "merkmal": s.get("merkmal", ""),
+            "firing": s.get("firing"),
+            "codever": s.get("codever", ""),
             "entry_px": round(float(px), 4),
             "entry_norm": True,          # Kennzeichen: bereits normalisiert
             "entry_ccy": _ccy,

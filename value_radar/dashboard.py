@@ -745,7 +745,7 @@ def render_trackrecord():
     _bad = [r for r in rows if r.get("suspekt")]
     _ok = [r for r in rows if not r.get("suspekt")]
 
-    def _tab(titel, quelle, hinweis, extra=None):
+    def _tab(titel, quelle, hinweis, extra=None, short=False):
         sub = [r for r in _ok if r.get("quelle") == quelle]
         st.markdown(f'<div class="sec-title" style="margin-top:16px">{titel} '
                     f'<span style="opacity:.6;font-size:12px">({len(sub)})</span>'
@@ -761,10 +761,21 @@ def render_trackrecord():
             for lbl, key, fmt in (extra or []):
                 v = r.get(key)
                 row[lbl] = fmt(v) if (v is not None and v != "") else "\u2014"
-            row.update({"Rendite %": r["ret_pct"], "S&P %": r.get("bench_pct"),
-                        "vs. Index %": r.get("excess_pct")})
+            row["Kurs %"] = r["ret_pct"]
+            if short:
+                # Diese Titel wurden als SCHWACH eingestuft - die passende
+                # Position waere short. Faellt der Kurs, ist die Short-Rendite
+                # positiv. Reine Modellrechnung: ohne Leihgebuehr, Spread und
+                # Dividendenausgleich, die bei echten Shorts anfallen.
+                row["Short %"] = round(-r["ret_pct"], 1)
+                row["vs. Index %"] = (round(-r["ret_pct"] - (r.get("bench_pct") or 0), 1)
+                                      if r.get("bench_pct") is not None else None)
+            else:
+                row["S&P %"] = r.get("bench_pct")
+                row["vs. Index %"] = r.get("excess_pct")
             d.append(row)
-        vr_table(d, signed_cols=("Rendite %", "S&P %", "vs. Index %", "Upside %"),
+        vr_table(d, signed_cols=("Kurs %", "Short %", "S&P %", "vs. Index %",
+                                 "Upside %"),
                  height=min(len(d) * 40 + 46, 420))
 
     _tab("\U0001f50e SCREENER", "Screener",
@@ -777,12 +788,19 @@ def render_trackrecord():
          extra=[("Radar-Score", "score", lambda v: round(v)),
                 ("Ebenen", "firing", lambda v: f"{int(v)}/4"),
                 ("Upside %", "upside", lambda v: round(v, 1))])
-    _tab("\u26a0\ufe0f KONTROLLGRUPPE (schwache Setups)", "Negativ",
+    _tab("\u26a0\ufe0f KONTROLLGRUPPE (schwache Setups \u00b7 als Short gerechnet)", "Negativ",
          "Noch keine schwachen Setups erfasst \u2013 der n\u00e4chtliche Lauf "
          "sammelt sie ab jetzt automatisch.",
          extra=[("Score", "score", lambda v: round(v)),
                 ("Upside %", "upside", lambda v: round(v, 1)),
-                ("Merkmal", "merkmal", lambda v: str(v))])
+                ("Merkmal", "merkmal", lambda v: str(v))],
+         short=True)
+    st.caption("Bei der Kontrollgruppe erwartet das Modell **fallende** Kurse. "
+               "Deshalb steht neben der Kursentwicklung die **Short-Rendite** "
+               "(umgekehrtes Vorzeichen): F\u00e4llt der Kurs, w\u00e4re die Position "
+               "im Plus. Reine Modellrechnung \u2013 echte Leerverk\u00e4ufe kosten "
+               "Leihgeb\u00fchr und Spread, erfordern Dividendenausgleich und haben "
+               "theoretisch unbegrenztes Verlustrisiko. Kein Anlagerat.")
 
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
                "z\u00e4hlt. Kein Anlagerat.")
@@ -920,7 +938,7 @@ def render_trackrecord():
              f"{_g['n']} Signale \u00b7 {_g['win_pct']} % im Plus",
              "var(--green)" if _g["avg_ret"] >= 0 else "var(--red)")
         card(_dc[1], "Kontrollgruppe (schwach)", f"{_s['avg_ret']:+.1f} %",
-             f"{_s['n']} Signale \u00b7 {_s['win_pct']} % im Plus",
+             f"{_s['n']} Signale \u00b7 als Short: {-_s['avg_ret']:+.1f} %",
              "var(--red)" if _s["avg_ret"] >= 0 else "var(--green)")
         card(_dc[2], "Abstand", f"{_sp:+.1f} Pp.", disc["urteil"],
              "var(--green)" if _sp > 5 else

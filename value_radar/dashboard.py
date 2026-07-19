@@ -728,14 +728,51 @@ def render_trackrecord():
         st.info(f"{summ.get('n_all', 0)} Signale erfasst, aber noch keines ist "
                 "14 Tage alt. Zu fr\u00fch f\u00fcr ein Urteil.")
 
-    data = [{"Ticker": r["ticker"], "Quelle": r.get("quelle", ""),
-             "Tage": r["days"], "Einstieg": round(r["entry_px"], 2),
-             "Rendite %": r["ret_pct"], "S&P %": r.get("bench_pct"),
-             "vs. Index %": r.get("excess_pct")} for r in rows]
-    vr_table(data, signed_cols=("Rendite %", "S&P %", "vs. Index %"),
-             height=min(len(data) * 40 + 46, 560))
+    # Drei getrennte Tabellen untereinander: Screener, Radar, Kontrollgruppe.
+    # Verdaechtige Zeilen (Einheiten-Mischmasch) werden getrennt ausgewiesen,
+    # damit sie sichtbar bleiben, aber die Auswertung nicht verfaelschen.
+    _bad = [r for r in rows if r.get("suspekt")]
+    _ok = [r for r in rows if not r.get("suspekt")]
+
+    def _tab(titel, quelle, hinweis):
+        sub = [r for r in _ok if r.get("quelle") == quelle]
+        st.markdown(f'<div class="sec-title" style="margin-top:16px">{titel} '
+                    f'<span style="opacity:.6;font-size:12px">({len(sub)})</span>'
+                    '</div>', unsafe_allow_html=True)
+        if not sub:
+            st.caption(hinweis)
+            return
+        d = [{"Ticker": r["ticker"], "Tage": r["days"],
+              "Einstieg": round(r["entry_px"], 2),
+              "Rendite %": r["ret_pct"], "S&P %": r.get("bench_pct"),
+              "vs. Index %": r.get("excess_pct")} for r in sub]
+        vr_table(d, signed_cols=("Rendite %", "S&P %", "vs. Index %"),
+                 height=min(len(d) * 40 + 46, 420))
+
+    _tab("\U0001f50e SCREENER", "Screener",
+         "Noch keine Screener-Signale erfasst.")
+    _tab("\U0001f4e1 RADAR", "Radar",
+         "Noch keine Radar-Signale erfasst.")
+    _tab("\u26a0\ufe0f KONTROLLGRUPPE (schwache Setups)", "Negativ",
+         "Noch keine schwachen Setups erfasst \u2013 der n\u00e4chtliche Lauf "
+         "sammelt sie ab jetzt automatisch.")
+
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
                "z\u00e4hlt. Kein Anlagerat.")
+
+    if _bad:
+        with st.expander(f"\u26a0\ufe0f {len(_bad)} Signale mit fehlerhaften Kursdaten "
+                         "(aus der Auswertung ausgeschlossen)"):
+            st.caption("Diese Zeilen zeigen unrealistische Renditen \u2013 fast immer "
+                       "ein Einheitenproblem (z. B. Pence gegen Pfund, Faktor 100). "
+                       "Sie flie\u00dfen in KEINE Statistik ein. Nach dem n\u00e4chsten "
+                       "n\u00e4chtlichen Lauf sollten sie verschwinden; bleiben sie, "
+                       "l\u00f6sche die betroffenen Signale im Speicher.")
+            vr_table([{"Ticker": r["ticker"], "Quelle": r.get("quelle", ""),
+                       "Tage": r["days"], "Einstieg": round(r["entry_px"], 2),
+                       "Rendite %": r["ret_pct"]} for r in _bad],
+                     signed_cols=("Rendite %",),
+                     height=min(len(_bad) * 40 + 46, 300))
 
     # === Statistik nach Quelle (Screener / Radar) + Euro-Modellrechnung ===
     st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f4ca '

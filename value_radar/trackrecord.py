@@ -31,9 +31,16 @@ def _price(t):
         if f:
             try:
                 q = f(t)
-                px = (q.get("price") if isinstance(q, dict) else q)
+                if isinstance(q, dict):
+                    px = q.get("price")
+                elif isinstance(q, (tuple, list)) and q:
+                    px = q[0]                      # (preis, waehrung)
+                else:
+                    px = q
                 if px:
-                    return float(px)
+                    # auf dieselbe Einheit bringen wie der Einstiegskurs
+                    n = getattr(providers, "normalise_price", None)
+                    return float(n(t, px)) if n else float(px)
             except Exception:
                 pass
     # 2) letzter Schlusskurs aus der Historie
@@ -99,6 +106,11 @@ def evaluate(limit=120):
         if not px_now or not e.get("entry_px"):
             continue
         ret = (px_now / e["entry_px"] - 1) * 100
+        # SICHERHEITSNETZ gegen Einheiten-Mischmasch (Pence vs. Pfund = Faktor 100).
+        # Solche Werte sind keine Rendite, sondern ein Datenfehler - sie werden
+        # markiert und aus allen Statistiken herausgehalten, statt sie still zu
+        # "korrigieren" (eine stille Korrektur wuerde echte Ausreisser verschleiern).
+        suspekt = abs(ret) > 500
         bret = None
         if bp_now and e.get("bench_entry"):
             bret = (bp_now / e["bench_entry"] - 1) * 100
@@ -106,8 +118,13 @@ def evaluate(limit=120):
         out.append({**e, "ret_pct": round(ret, 1),
                     "bench_pct": round(bret, 1) if bret is not None else None,
                     "excess_pct": round(ret - bret, 1) if bret is not None else None,
-                    "days": days})
+                    "days": days, "suspekt": suspekt})
     return out
+
+
+def _clean(rows):
+    """Nur auswertbare Zeilen - ohne offensichtliche Datenfehler."""
+    return [r for r in rows if not r.get("suspekt")]
 
 
 def summary(rows=None):
@@ -115,6 +132,7 @@ def summary(rows=None):
     Index geschlagen haben. Ohne diesen Vergleich haelt man einen Bullenmarkt fuer
     eigenes Koennen."""
     rows = rows if rows is not None else evaluate()
+    rows = _clean(rows)
     ready = [r for r in rows if r["days"] >= 14]      # frische Signale sagen nichts
     if not ready:
         return {"n": 0, "n_all": len(rows)}
@@ -138,7 +156,7 @@ def source_stats(quelle=None, invest_eur=None, rows=None):
     Betrag investiert, was waere daraus geworden? Ausdruecklich KEIN echtes Geld -
     ein Screener-Signal ist kein Trade (kein Einsatz, keine Stueckzahl). Nur eine
     Was-waere-wenn-Zahl, damit sich die Trefferquote in Euro einordnen laesst."""
-    rows = rows if rows is not None else evaluate()
+    rows = _clean(rows if rows is not None else evaluate())
     ready = [r for r in rows if r["days"] >= 14
              and (quelle is None or r.get("quelle") == quelle)]
     if not ready:
@@ -178,7 +196,7 @@ def discrimination(rows=None, min_days=14):
     ist nur der ABSTAND zwischen den als gut und den als schlecht
     bewerteten Titeln. Ist er nahe null oder negativ, trennt das Modell
     nicht, egal wie gut die absolute Rendite aussieht."""
-    rows = rows if rows is not None else evaluate()
+    rows = _clean(rows if rows is not None else evaluate())
     ready = [r for r in rows if r["days"] >= min_days]
     gut = [r for r in ready if r.get("quelle") in ("Screener", "Radar")]
     schlecht = [r for r in ready if r.get("quelle") == "Negativ"]

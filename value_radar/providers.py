@@ -554,6 +554,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     # fuer GBp bisher den Faktor 0.01 anwendete.
     # WICHTIG: "GBP" (Pfund) darf NICHT umgerechnet werden - nur GBp/GBX (Pence).
     _cur = (merged.get("currency") or "").strip()
+    _CCY_CACHE[ticker] = _cur          # Cache fuer is_pence() - spart Extra-Abrufe
     if _cur in ("GBp", "GBX", "gbx"):
         for _k in ("price", "target_mean", "52w_high", "52w_low",
                    "entry_price", "prev_close", "day_high", "day_low"):
@@ -751,6 +752,42 @@ def get_intraday_price(ticker: str) -> Optional[float]:
     return get_intraday_quote(ticker)[0]
 
 
+_CCY_CACHE = {}            # Ticker -> Originalwaehrung (z.B. "GBp", "USD")
+
+
+def is_pence(ticker: str) -> bool:
+    """Notiert dieser Ticker in Pence (GBp/GBX)?
+
+    Wird gebraucht, weil get_fundamentals die Kursseite auf Pfund normalisiert,
+    die Kurshistorie und Quotes aber ROH aus yfinance kommen. Ohne diese
+    Vereinheitlichung mischt man Pfund- und Pence-Kurse - genau daraus
+    entstanden Renditen von +9900 % in der Trefferbilanz (Faktor 100).
+    """
+    if not ticker:
+        return False
+    cur = _CCY_CACHE.get(ticker)
+    if cur is None:
+        cur = ""
+        if yf is not None:
+            try:                                   # leichtgewichtig, kein voller info-Abruf
+                fi = yf.Ticker(ticker).fast_info
+                cur = (getattr(fi, "currency", None)
+                       or (fi.get("currency") if hasattr(fi, "get") else "") or "")
+            except Exception:
+                cur = ""
+        _CCY_CACHE[ticker] = cur
+    return str(cur).strip() in ("GBp", "GBX", "gbx")
+
+
+def normalise_price(ticker: str, px):
+    """Einzelkurs auf dieselbe Einheit bringen wie get_fundamentals (Pfund)."""
+    try:
+        px = float(px)
+    except (TypeError, ValueError):
+        return None
+    return px / 100.0 if is_pence(ticker) else px
+
+
 def get_price_history(ticker: str, period: str = "1y", interval: str = "1d"):
     h = None
     if yf is not None:
@@ -760,6 +797,14 @@ def get_price_history(ticker: str, period: str = "1y", interval: str = "1d"):
             h = None
     if h is None or getattr(h, "empty", True):
         h = _stooq_history(ticker, interval)      # zweite Quelle als Fallback
+    # Pence -> Pfund, damit Historie und Fundamentaldaten dieselbe Einheit haben
+    if h is not None and not getattr(h, "empty", True) and is_pence(ticker):
+        try:
+            for col in ("Open", "High", "Low", "Close", "Adj Close"):
+                if col in h.columns:
+                    h[col] = h[col] / 100.0
+        except Exception:
+            pass
     return h
 
 

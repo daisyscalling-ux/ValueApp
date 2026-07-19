@@ -309,31 +309,42 @@ def fx_to_eur(c): return providers.get_fx_to_eur(c)
 _DE_SUFFIX_PRIORITY = {
     "DE": 1, "F": 2, "MU": 3, "SG": 4, "BE": 5, "HM": 6, "HA": 7, "DU": 8,
     "VI": 9, "L": 10, "PA": 11, "AS": 12, "MI": 13, "SW": 14, "MC": 15,
+    # Cross-Listings (.XC) sind Zweitnotierungen - sie verlieren immer gegen
+    # die echte Boersennotierung desselben Unternehmens.
+    "XC": 60, "IL": 61,
 }
 
 
+def _canon_base(t):
+    """Basissymbol UND Prioritaet - erkennt auch .XC-Zweitnotierungen.
+
+    Ohne Sonderbehandlung ueberleben BHPL.XC und BHP.L beide, weil ihre
+    Basissymbole ("BHPL" vs "BHP") verschieden aussehen. Bei .XC haengt
+    aber ein L (fuer London) am Symbol: BHPL.XC = BHP + L, SHELL.XC =
+    SHEL + L, BPL.XC = BP + L. Das wird hier abgeschnitten, damit beide
+    Schreibweisen auf dieselbe Basis fallen."""
+    if "." not in t:
+        return t, 0
+    base, suf = t.split(".", 1)
+    suf = suf.upper()
+    pri = _DE_SUFFIX_PRIORITY.get(suf, 50)
+    if suf in ("XC", "IL") and len(base) > 2 and base.endswith("L"):
+        base = base[:-1]                      # BHPL -> BHP (= BHP.L)
+    return base, pri
+
+
 def _collapse_listings(tickers):
-    """Doppel-Notierungen DERSELBEN Aktie (z.B. AMZ.DE + AMZ.F) auf eine reduzieren -
-    heimatnaehere Notierung gewinnt. Selbst-enthalten in dashboard.py, damit die
-    Entdopplung auch dann greift, wenn market_screener.py aelter ist."""
+    """Doppel-Notierungen DERSELBEN Aktie (z.B. AMZ.DE + AMZ.F, BHP.L +
+    BHPL.XC) auf eine reduzieren - heimatnaehere Notierung gewinnt."""
     out, base_pos = [], {}
     for t in tickers:
-        # Basissymbol + Prioritaet. Ticker OHNE Suffix = Heimatnotierung -> Prioritaet 0
-        # (gewinnt). Vorher wurden sie gar nicht registriert -> AMZ und AMZ.DE
-        # ueberlebten beide.
-        if "." in t:
-            base, suf = t.split(".", 1)
-            pri = _DE_SUFFIX_PRIORITY.get(suf.upper(), 50)
-        else:
-            base, pri = t, 0
+        base, pri = _canon_base(t)
         if base not in base_pos:
             base_pos[base] = len(out)
             out.append(t)
         else:
             i = base_pos[base]
-            prev = out[i]
-            prev_pri = (_DE_SUFFIX_PRIORITY.get(prev.split(".", 1)[1].upper(), 50)
-                        if "." in prev else 0)
+            _pb, prev_pri = _canon_base(out[i])
             if pri < prev_pri:
                 out[i] = t
     return out

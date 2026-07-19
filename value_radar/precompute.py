@@ -116,6 +116,64 @@ def scan_list(tickers, deep=True, label=""):
     return res
 
 
+_SUFFIX_PRIORITY = {
+    "DE": 1, "F": 2, "MU": 3, "SG": 4, "BE": 5, "HM": 6, "HA": 7, "DU": 8,
+    "VI": 9, "L": 10, "PA": 11, "AS": 12, "MI": 13, "SW": 14, "MC": 15,
+    "XC": 60, "IL": 61,          # Zweitnotierungen verlieren immer
+}
+
+
+def _canon_base(t):
+    """Basissymbol + Prioritaet, inkl. .XC-Zweitnotierungen (BHPL.XC = BHP.L)."""
+    if "." not in t:
+        return t, 0
+    base, suf = t.split(".", 1)
+    suf = suf.upper()
+    pri = _SUFFIX_PRIORITY.get(suf, 50)
+    if suf in ("XC", "IL") and len(base) > 2 and base.endswith("L"):
+        base = base[:-1]
+    return base, pri
+
+
+def collapse_listings(tickers):
+    """Doppelnotierungen auf eine reduzieren. Fehlte im Nachtlauf komplett -
+    deshalb tauchten BHP.L und BHPL.XC beide im Screener auf."""
+    out, pos = [], {}
+    for t in tickers:
+        base, pri = _canon_base(t)
+        if base not in pos:
+            pos[base] = len(out)
+            out.append(t)
+        else:
+            _b, prev_pri = _canon_base(out[pos[base]])
+            if pri < prev_pri:
+                out[pos[base]] = t
+    return out
+
+
+def _rescore_deep(ranked, label=""):
+    """Top-Kandidaten TIEF nachrechnen.
+
+    Der Scan laeuft flach (deep=False), um Datenlimits zu schonen - das ist
+    fuer die Rangfolge in Ordnung. Die GESPEICHERTEN Zahlen sollen aber
+    dieselben sein, die die Einzelanalyse zeigt (die tief rechnet). Sonst
+    steht im Screener +30 % und beim Aufruf der Aktie -19 %.
+    Nur die Top-Treffer werden nachgerechnet - das sind wenige Abrufe."""
+    out = []
+    for r in ranked:
+        t = r.get("ticker")
+        if not t:
+            continue
+        try:
+            d = score_ticker(t, deep=True)
+        except Exception:
+            d = None
+        out.append(d or r)
+    if out:
+        print(f"  [{label}] {len(out)} Top-Treffer tief nachgerechnet.")
+    return out
+
+
 # Vollstaendige Scan-Ergebnisse (auch die aussortierten schwachen Titel).
 # Noetig fuer die Kontrollgruppe der Trefferbilanz: ohne schlechte Setups
 # laesst sich nicht pruefen, ob die Scorecard ueberhaupt TRENNT - oder ob
@@ -131,6 +189,7 @@ def screener_scan() -> list:
         usd = providers.get_fx_to_eur("USD") or 0.92
         tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
                                         (5e9) / usd, UNIVERSE_SIZE)
+        tickers = collapse_listings(tickers)     # BHP.L + BHPL.XC -> nur eine
     except Exception:
         return []
     scored = scan_list(tickers, deep=False, label="Screener")
@@ -140,7 +199,11 @@ def screener_scan() -> list:
          and (r.get("upside") or -999) >= 5],
         key=lambda r: (r.get("composite") or 0) + min((r.get("upside") or 0) * 0.3, 15),
         reverse=True)
-    return ranked[:SCREENER_TOP]
+    # Top-Treffer tief nachrechnen -> gespeicherte Upside = Einzelanalyse-Upside
+    top = _rescore_deep(ranked[:SCREENER_TOP], "Screener")
+    # nach dem Nachrechnen neu sortieren, die Zahlen koennen sich geaendert haben
+    return sorted(top, key=lambda r: (r.get("composite") or 0)
+                  + min((r.get("upside") or 0) * 0.3, 15), reverse=True)
 
 
 def worst_candidates(n=10):
@@ -177,13 +240,16 @@ def radar_scan() -> list:
             if t not in seen:
                 seen.add(t)
                 tickers.append(t)
+    tickers = collapse_listings(tickers)
     scored = scan_list(tickers, deep=False, label="Radar")
     _LAST_SCAN["Radar"] = scored
     ranked = sorted(
         [r for r in scored.values() if (r.get("composite") or 0) >= 55],
         key=lambda r: (r.get("composite") or 0) + min((r.get("upside") or 0) * 0.3, 15),
         reverse=True)
-    return ranked[:RADAR_TOP]
+    top = _rescore_deep(ranked[:RADAR_TOP], "Radar")
+    return sorted(top, key=lambda r: (r.get("composite") or 0)
+                  + min((r.get("upside") or 0) * 0.3, 15), reverse=True)
 
 
 def _eur(x):

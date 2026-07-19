@@ -1995,6 +1995,46 @@ if nav == "Start":
             st.rerun()
         st.markdown("---")
 
+    # --- Neue Screener-/Radar-Signale (letzte 48 h) ---
+    # Bisher zeigte die Startseite NUR Hedgefonds-Trades. Die Signale aus
+    # Screener und Radar - die eigentliche Ideenquelle - tauchten hier gar
+    # nicht auf, obwohl sie naechtlich erfasst werden.
+    try:
+        _sig = store.get_signals() or []
+    except Exception:
+        _sig = []
+    _scut = time.time() - 48 * 3600
+    _neu = [s for s in _sig
+            if (s.get("ts") or 0) >= _scut and s.get("quelle") in ("Screener", "Radar")]
+    _neu.sort(key=lambda e: -(e.get("ts") or 0))
+    if _neu:
+        st.markdown('<div class="sec-title">\U0001f195 NEUE SIGNALE '
+                    '(Screener &amp; Radar \u00b7 letzte 48 h)</div>',
+                    unsafe_allow_html=True)
+        _sd = []
+        for _s in _neu[:10]:
+            _sd.append({
+                "Zeit": fmt_ts(_s.get("ts")),
+                "Quelle": ("\U0001f50e Screener" if _s.get("quelle") == "Screener"
+                           else "\U0001f4e1 Radar"),
+                "Ticker": _s.get("ticker", ""),
+                "Score": _s.get("score"),
+                "Upside %": _s.get("upside"),
+                "Urteil": _s.get("verdict", "") or "\u2014",
+                "Strategie": _s.get("strategie", "") or "\u2014",
+            })
+        vr_table(_sd, signed_cols=("Upside %",),
+                 height=min(len(_sd) * 40 + 46, 420))
+        st.caption("Frisch erfasste Signale des n\u00e4chtlichen Laufs. Sie werden "
+                   "in der Trefferbilanz weiterverfolgt \u2013 belastbar erst ab "
+                   "14 Tagen. Kein Anlagerat.")
+        if st.button("\U0001f4c8 Zur Trefferbilanz", use_container_width=True,
+                     key="start_to_tr"):
+            st.session_state["pending_nav"] = "Radar"
+            st.session_state["rv_view"] = "\U0001f4c8 Trefferbilanz"
+            st.rerun()
+        st.markdown("---")
+
     # --- KI-Nacht-Briefing (Claude), falls vorhanden ---
     try:
         _brief = store.get_briefing()

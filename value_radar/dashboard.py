@@ -808,6 +808,39 @@ def render_trackrecord():
                      signed_cols=("Rendite %",),
                      height=min(len(_bad) * 40 + 46, 300))
 
+    # === Signale verwalten (loeschen + neu aufbauen) ===
+    with st.expander("\U0001f5d1\ufe0f Signale zur\u00fccksetzen"):
+        st.caption("Bereits erfasste Signale werden vom n\u00e4chtlichen Lauf "
+                   "**\u00fcbersprungen** \u2013 er f\u00fcgt nur neue Ticker hinzu. Nach "
+                   "\u00c4nderungen an der Bewertung bleiben Alt-Eintr\u00e4ge daher mit "
+                   "ihren veralteten Zahlen stehen. Hier kannst du eine Gruppe "
+                   "l\u00f6schen, damit sie beim n\u00e4chsten Lauf frisch erfasst wird.")
+        _zc1, _zc2 = st.columns([1, 1])
+        _welche = _zc1.selectbox("Welche Gruppe?",
+                                 ["Screener", "Radar", "Negativ", "ALLE"],
+                                 key="tr_clear_pick")
+        _anz = len([r for r in rows
+                    if _welche == "ALLE" or r.get("quelle") == _welche])
+        _zc2.metric("betroffen", _anz)
+        _sicher = st.checkbox(
+            f"Ja, **{_welche}** wirklich l\u00f6schen \u2013 das l\u00e4sst sich nicht "
+            "r\u00fcckg\u00e4ngig machen.", key="tr_clear_ok")
+        if st.button("\U0001f5d1\ufe0f Jetzt l\u00f6schen", disabled=not _sicher,
+                     use_container_width=True, key="tr_clear_go"):
+            try:
+                weg, rest = tr.clear(None if _welche == "ALLE" else _welche)
+                if weg:
+                    st.success(f"{weg} Signale gel\u00f6scht, {rest} verbleiben. "
+                               "Der n\u00e4chste n\u00e4chtliche Lauf erfasst sie neu \u2013 "
+                               "oder starte den Workflow in GitHub manuell.")
+                    st.cache_data.clear()
+                else:
+                    st.error("Nichts gel\u00f6scht. M\u00f6glich, wenn der Speicher gerade "
+                             "nicht schreibbar ist \u2013 siehe Speicher-Diagnose "
+                             "in der Watchlist.")
+            except Exception as e:
+                st.error(f"L\u00f6schen fehlgeschlagen: {e}")
+
     # === Statistik nach Quelle (Screener / Radar) + Euro-Modellrechnung ===
     st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f4ca '
                 'STATISTIK NACH QUELLE</div>', unsafe_allow_html=True)

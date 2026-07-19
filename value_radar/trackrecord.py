@@ -270,6 +270,25 @@ def discrimination(rows=None, min_days=14):
     return out
 
 
+def clear(quelle=None):
+    """Signale loeschen - wahlweise nur einer Quelle oder alle.
+
+    Noetig, weil record() bereits erfasste (ticker, quelle)-Paare ueberspringt.
+    Nach einer Aenderung an Bewertung oder Erfassung bleiben Alt-Eintraege
+    sonst mit ihren VERALTETEN Zahlen liegen - ein neuer Lauf aendert nichts.
+    Rueckgabe: (geloescht, verbleibend)."""
+    log = store.get_signals() or []
+    vorher = len(log)
+    if quelle is None:
+        rest = []
+    else:
+        rest = [e for e in log if e.get("quelle") != quelle]
+    ok = store.set_signals(rest)
+    if not ok:
+        return 0, vorher                      # Speichern fehlgeschlagen
+    return vorher - len(rest), len(rest)
+
+
 def _bucket_stats(rows):
     """Kennzahlen einer Gruppe: n, Win %, Durchschnittsrendite, Ø Ueberrendite."""
     if not rows:

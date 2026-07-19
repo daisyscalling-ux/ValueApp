@@ -2,15 +2,24 @@
 scorecard.py — Kauf-Scorecard.
 
 Wendet die Entscheidungskette aus der Anleitung automatisch auf eine Aktie an:
-6 Pflicht-Gates (alle muessen erfuellt sein) + 5 Bonuspunkte (Ziel >= 3).
+6 Pflicht-Gates (alle muessen erfuellt sein) + 5 Bonuspunkte.
 
 Urteil:
-  Kaufkandidat        : alle Pflicht-Gates erfuellt UND >= 3 Bonuspunkte
-  Solide - Watchlist  : alle Pflicht-Gates erfuellt, aber < 3 Bonus
+  Kaufkandidat        : alle Pflicht-Gates erfuellt UND >= BONUS_REQUIRED
+  Solide - Watchlist  : alle Pflicht-Gates erfuellt, aber weniger Bonus
   Knapp - Watchlist   : genau 1 Pflicht-Gate verfehlt
   Verwerfen           : >= 2 Pflicht-Gates verfehlt
+
+Die PFLICHT-Gates bleiben unangetastet - sie sind das eigentliche Sieb.
+Gelockert wurde nur die Bonus-Schwelle, damit ueberhaupt genug Faelle fuer
+eine Auswertung zusammenkommen: Bei >= 3 Bonuspunkten entstanden pro Lauf
+oft null Kandidaten, und ohne Faelle laesst sich nichts messen.
 """
 from __future__ import annotations
+
+# Wie viele der 5 Bonuspunkte noetig sind, damit aus "alle Pflicht-Gates
+# erfuellt" ein Kaufkandidat wird. Hoeher = strenger, aber weniger Faelle.
+BONUS_REQUIRED = 1
 
 
 def _analyst_positive(analyst, fund):
@@ -127,7 +136,7 @@ def evaluate(fund, valu, composite, m1_total, m2_total,
     bonus_count = sum(1 for x in bonus if x["ok"])
     failed = len(mand) - mand_pass
 
-    if all_pass and bonus_count >= 3:
+    if all_pass and bonus_count >= BONUS_REQUIRED:
         verdict, vkey = "Kaufkandidat", "buy"
     elif all_pass:
         verdict, vkey = "Solide \u2013 Watchlist", "watch"

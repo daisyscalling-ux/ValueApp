@@ -745,8 +745,12 @@ def render_trackrecord():
     _bad = [r for r in rows if r.get("suspekt")]
     _ok = [r for r in rows if not r.get("suspekt")]
 
-    def _tab(titel, quelle, hinweis, extra=None, short=False):
-        sub = [r for r in _ok if r.get("quelle") == quelle]
+    def _tab(titel, quelle, hinweis, extra=None, short=False, filt=None):
+        # quelle=None + filt=<Funktion> erlaubt Tabellen, die nicht nach der
+        # Quelle, sondern nach einem anderen Merkmal gruppieren (z.B. das
+        # Scorecard-Urteil).
+        sub = ([r for r in _ok if filt(r)] if filt
+               else [r for r in _ok if r.get("quelle") == quelle])
         st.markdown(f'<div class="sec-title" style="margin-top:16px">{titel} '
                     f'<span style="opacity:.6;font-size:12px">({len(sub)})</span>'
                     '</div>', unsafe_allow_html=True)
@@ -777,6 +781,29 @@ def render_trackrecord():
         vr_table(d, signed_cols=("Kurs %", "Short %", "S&P %", "vs. Index %",
                                  "Upside %"),
                  height=min(len(d) * 40 + 46, 420))
+
+    # Kaufkandidaten zuerst - das ist die Auswahl, die einer echten
+    # Kaufentscheidung entspricht. Die Kontrollgruppe bleibt aussen vor,
+    # sie ist bewusst schwach ausgewaehlt.
+    _BUY = getattr(tr, "BUY_VERDICTS", ("Kaufkandidat",))
+
+    def _ist_kauf(r):
+        return (r.get("quelle") in ("Screener", "Radar")
+                and (r.get("vkey") == "buy"
+                     or str(r.get("verdict", "")).strip() in _BUY))
+
+    _tab("\u2705 KAUFKANDIDATEN (Scorecard erf\u00fcllt)", None,
+         "Noch keine Kaufkandidaten erfasst. Die Scorecard vergibt dieses "
+         "Urteil, wenn **alle** Pflichtkriterien erf\u00fcllt sind und "
+         "mindestens ein Bonuspunkt dazukommt.",
+         extra=[("Quelle", "quelle", lambda v: str(v)),
+                ("Score", "score", lambda v: round(v)),
+                ("Upside %", "upside", lambda v: round(v, 1)),
+                ("Strategie", "strategie", lambda v: str(v))],
+         filt=_ist_kauf)
+    st.caption("Diese Titel h\u00e4tte die Regel \u201enur Kaufkandidaten kaufen\u201c "
+               "tats\u00e4chlich gekauft. Sie erscheinen zus\u00e4tzlich unten in "
+               "ihrer jeweiligen Quelle. Kein Anlagerat.")
 
     _tab("\U0001f50e SCREENER", "Screener",
          "Noch keine Screener-Signale erfasst.",
@@ -954,7 +981,7 @@ def render_trackrecord():
         st.info(f"**Urteil:** {_strat['urteil']}")
         st.caption("Simuliert die Regel \u201eich kaufe nur, was die Scorecard als "
                    "**Kaufkandidat** einstuft\u201c \u2013 also alle Pflichtkriterien "
-                   "erf\u00fcllt plus mindestens drei Bonuspunkte. Verglichen wird "
+                   "erf\u00fcllt plus mindestens ein Bonuspunkt. Verglichen wird "
                    "gegen den Index UND gegen alle Signale ohne diesen Filter. "
                    "Nur wenn beide Vergleiche positiv sind, tr\u00e4gt die Scorecard "
                    "etwas bei. Ohne Geb\u00fchren, Spread und Steuern \u2013 "

@@ -170,6 +170,53 @@ def source_stats(quelle=None, invest_eur=None, rows=None):
     return out
 
 
+def discrimination(rows=None, min_days=14):
+    """TRENNT die Scorecard? Vergleicht Treffer gegen Kontrollgruppe.
+
+    Der wichtigste Test des ganzen Systems. Eine hohe Trefferquote allein
+    sagt NICHTS - im steigenden Markt gewinnt fast alles. Aussagekraeftig
+    ist nur der ABSTAND zwischen den als gut und den als schlecht
+    bewerteten Titeln. Ist er nahe null oder negativ, trennt das Modell
+    nicht, egal wie gut die absolute Rendite aussieht."""
+    rows = rows if rows is not None else evaluate()
+    ready = [r for r in rows if r["days"] >= min_days]
+    gut = [r for r in ready if r.get("quelle") in ("Screener", "Radar")]
+    schlecht = [r for r in ready if r.get("quelle") == "Negativ"]
+
+    def _agg(rs):
+        if not rs:
+            return None
+        exc = [r["excess_pct"] for r in rs if r.get("excess_pct") is not None]
+        return {
+            "n": len(rs),
+            "avg_ret": round(sum(r["ret_pct"] for r in rs) / len(rs), 1),
+            "avg_excess": round(sum(exc) / len(exc), 1) if exc else None,
+            "win_pct": round(sum(1 for r in rs if r["ret_pct"] > 0) / len(rs) * 100),
+        }
+
+    g, s = _agg(gut), _agg(schlecht)
+    out = {"gut": g, "schlecht": s, "spread": None, "urteil": None}
+    if not g or not s:
+        out["urteil"] = "noch keine Gegenprobe moeglich"
+        return out
+
+    out["spread"] = round(g["avg_ret"] - s["avg_ret"], 1)
+    # Ehrliche Einordnung - bewusst zurueckhaltend formuliert
+    n_min = min(g["n"], s["n"])
+    if n_min < 10:
+        out["urteil"] = ("zu wenige Faelle fuer eine Aussage "
+                         f"(kleinste Gruppe: {n_min})")
+    elif out["spread"] > 5:
+        out["urteil"] = "Treffer laufen besser als die Kontrollgruppe"
+    elif out["spread"] < -5:
+        out["urteil"] = ("Kontrollgruppe laeuft BESSER - das Modell trennt "
+                         "nicht wie gedacht")
+    else:
+        out["urteil"] = ("kein erkennbarer Unterschied - die Auswahl bringt "
+                         "bisher keinen Mehrwert")
+    return out
+
+
 def _bucket_stats(rows):
     """Kennzahlen einer Gruppe: n, Win %, Durchschnittsrendite, Ø Ueberrendite."""
     if not rows:

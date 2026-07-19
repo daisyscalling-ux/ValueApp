@@ -116,6 +116,13 @@ def scan_list(tickers, deep=True, label=""):
     return res
 
 
+# Vollstaendige Scan-Ergebnisse (auch die aussortierten schwachen Titel).
+# Noetig fuer die Kontrollgruppe der Trefferbilanz: ohne schlechte Setups
+# laesst sich nicht pruefen, ob die Scorecard ueberhaupt TRENNT - oder ob
+# einfach der ganze Markt gestiegen ist.
+_LAST_SCAN = {}
+
+
 def screener_scan() -> list:
     """Bounded Screener-Scan (shallow, um FMP-Limit zu schonen)."""
     if ms is None:
@@ -127,12 +134,37 @@ def screener_scan() -> list:
     except Exception:
         return []
     scored = scan_list(tickers, deep=False, label="Screener")
+    _LAST_SCAN["Screener"] = scored
     ranked = sorted(
         [r for r in scored.values() if (r.get("composite") or 0) >= 55
          and (r.get("upside") or -999) >= 5],
         key=lambda r: (r.get("composite") or 0) + min((r.get("upside") or 0) * 0.3, 15),
         reverse=True)
     return ranked[:SCREENER_TOP]
+
+
+def worst_candidates(n=10):
+    """Die SCHWAECHSTEN Titel aus den letzten Scans - Kontrollgruppe.
+
+    Erfasst werden Titel mit niedrigem Score ODER negativem Upside
+    (also teuer bewertet). Wenn die Scorecard etwas taugt, muessen diese
+    im Schnitt SCHLECHTER laufen als die Treffer. Tun sie das nicht,
+    trennt das Modell nicht - eine Erkenntnis, die man nur mit
+    Gegenprobe gewinnen kann."""
+    pool = {}
+    for label, scored in _LAST_SCAN.items():
+        for tk, r in (scored or {}).items():
+            comp, up = r.get("composite"), r.get("upside")
+            if comp is None:
+                continue
+            # schwaches Setup: niedriger Score oder deutlich ueberbewertet
+            if comp < 45 or (up is not None and up < -10):
+                cur = pool.get(tk)
+                rank = comp + min((up or 0) * 0.3, 15)
+                if cur is None or rank < cur[0]:
+                    pool[tk] = (rank, r)
+    worst = sorted(pool.items(), key=lambda kv: kv[1][0])[:n]
+    return [dict(r, ticker=tk) for tk, (_rank, r) in worst]
 
 
 def radar_scan() -> list:
@@ -146,6 +178,7 @@ def radar_scan() -> list:
                 seen.add(t)
                 tickers.append(t)
     scored = scan_list(tickers, deep=False, label="Radar")
+    _LAST_SCAN["Radar"] = scored
     ranked = sorted(
         [r for r in scored.values() if (r.get("composite") or 0) >= 55],
         key=lambda r: (r.get("composite") or 0) + min((r.get("upside") or 0) * 0.3, 15),
@@ -345,6 +378,25 @@ def run():
             sig_new.append({"ticker": tk, "quelle": "Radar",
                             "score": r.get("radar"), "upside": r.get("upside"),
                             "verdict": _verdict(tk), "price": r.get("price")})
+
+        # KONTROLLGRUPPE: die schwaechsten Titel aus denselben Scans.
+        # Ohne sie kann man nicht unterscheiden, ob die Scorecard trennt
+        # oder ob einfach der gesamte Markt gestiegen ist.
+        try:
+            weak = worst_candidates(10)
+            for r in weak:
+                tk = r.get("ticker")
+                if not tk:
+                    continue
+                sig_new.append({"ticker": tk, "quelle": "Negativ",
+                                "score": r.get("composite"),
+                                "upside": r.get("upside"),
+                                "verdict": _verdict(tk), "price": r.get("price")})
+            print(f"[trackrecord] Kontrollgruppe: {len(weak)} schwache Setups "
+                  f"zur Gegenprobe erfasst.")
+        except Exception as e:
+            print(f"[trackrecord] Kontrollgruppe uebersprungen: {e}")
+
         if not sig_new:
             print("[trackrecord] WARNUNG: keine Kandidaten aus Screener/Radar - "
                   "es gibt nichts zu erfassen. Laufen die Scans durch?")

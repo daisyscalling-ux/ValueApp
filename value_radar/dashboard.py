@@ -741,8 +741,8 @@ def render_trackrecord():
     st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f4ca '
                 'STATISTIK NACH QUELLE</div>', unsafe_allow_html=True)
     _sc1, _sc2 = st.columns([1, 1])
-    _quelle = _sc1.selectbox("Quelle", ["Screener", "Radar", "Alle"], index=0,
-                             key="tr_src")
+    _quelle = _sc1.selectbox("Quelle", ["Screener", "Radar", "Negativ", "Alle"],
+                             index=0, key="tr_src")
     _q = None if _quelle == "Alle" else _quelle
     _invest = _sc2.number_input("Modell-Einsatz je Signal (\u20ac)", min_value=0,
                                 value=1000, step=250, key="tr_invest",
@@ -790,6 +790,35 @@ def render_trackrecord():
     else:
         st.info(f"Noch keine reifen {_quelle}-Signale (\u2265 14 Tage). Die Statistik "
                 "f\u00fcllt sich, sobald die ersten Signale alt genug sind.")
+
+    # === TRENNT DIE SCORECARD? (Treffer vs. Kontrollgruppe) ===
+    st.markdown('<div class="sec-title" style="margin-top:18px">\u2696\ufe0f '
+                'TRENNT DIE AUSWAHL? (Gegenprobe)</div>', unsafe_allow_html=True)
+    try:
+        disc = tr.discrimination(rows)
+    except Exception as e:
+        disc = None
+        st.caption(f"(Gegenprobe nicht verf\u00fcgbar: {e})")
+    if disc and disc.get("gut") and disc.get("schlecht"):
+        _g, _s, _sp = disc["gut"], disc["schlecht"], disc["spread"]
+        _dc = st.columns(3)
+        card(_dc[0], "Treffer (Screener/Radar)", f"{_g['avg_ret']:+.1f} %",
+             f"{_g['n']} Signale \u00b7 {_g['win_pct']} % im Plus",
+             "var(--green)" if _g["avg_ret"] >= 0 else "var(--red)")
+        card(_dc[1], "Kontrollgruppe (schwach)", f"{_s['avg_ret']:+.1f} %",
+             f"{_s['n']} Signale \u00b7 {_s['win_pct']} % im Plus",
+             "var(--red)" if _s["avg_ret"] >= 0 else "var(--green)")
+        card(_dc[2], "Abstand", f"{_sp:+.1f} Pp.", disc["urteil"],
+             "var(--green)" if _sp > 5 else
+             ("var(--red)" if _sp < -5 else "var(--amber)"))
+        st.caption("Die Kontrollgruppe sind bewusst erfasste **schwache** Setups "
+                   "(niedriger Score oder negatives Potenzial). Nur der ABSTAND "
+                   "z\u00e4hlt: Im steigenden Markt gewinnt fast alles \u2013 eine hohe "
+                   "Trefferquote allein beweist nichts. Kein Anlagerat.")
+    else:
+        st.info("Die Gegenprobe braucht schwache Setups mit \u2265 14 Tagen Historie. "
+                "Der n\u00e4chtliche Lauf erfasst sie ab jetzt automatisch \u2013 die "
+                "Auswertung erscheint in etwa zwei Wochen.")
 
     # === Funktioniert die SCORECARD? (die eigentliche Kernfrage) ===
     st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f9ea '

@@ -352,7 +352,8 @@ def run():
             Die Strategien lagen bisher ungenutzt in screener_presets.py -
             der Nachtlauf filterte nur generisch nach Score und Upside.
             Jetzt wird festgehalten, WELCHE Vorlage ein Titel erfuellt."""
-            out = {"verdict": "", "strategie": ""}
+            out = {"verdict": "", "strategie": "", "radar_score": None,
+                   "radar_firing": None}
             try:
                 f = providers.get_fundamentals(t, deep=True)
                 ep = valuation.classify_playbook(f)
@@ -380,6 +381,39 @@ def run():
                     out["strategie"] = best or "keine"
                 except Exception:
                     pass
+                # ECHTER Radar-Score (radar.compute) - dieselbe Zahl, die der
+                # Radar-Tab zeigt. Bisher wurde r.get("radar") gelesen, ein Feld
+                # das score_ticker nie liefert -> der Score war immer leer.
+                # Fundamentaldaten und Historie sind hier schon geladen, es
+                # kommen nur die Event-Abrufe dazu.
+                try:
+                    import radar as _rd
+                    try:
+                        _ev8 = providers.get_recent_8k(t) or []
+                    except Exception:
+                        _ev8 = []
+                    try:
+                        _news = providers.get_event_news(f.get("name") or t) or []
+                    except Exception:
+                        _news = []
+                    _heads = [h.get("headline", "") if isinstance(h, dict) else str(h)
+                              for h in _news]
+                    # EPS-Revisionen und Insider mitgeben, sonst bleiben zwei der
+                    # vier Ebenen leer und der Score faellt systematisch zu
+                    # niedrig aus (im Test 6 statt realistisch 40-60).
+                    try:
+                        _eps_rev = providers.get_eps_revision_light(t)
+                    except Exception:
+                        _eps_rev = None
+                    try:
+                        _ins = providers.get_insider_light(t)
+                    except Exception:
+                        _ins = None
+                    _rr = _rd.compute(f, hist, _eps_rev, _ins, _ev8, _heads)
+                    out["radar_score"] = _rr.get("score")
+                    out["radar_firing"] = _rr.get("firing")
+                except Exception:
+                    pass
             except Exception:
                 pass
             return out
@@ -402,8 +436,12 @@ def run():
             # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
             _a = _analyse(tk)
             sig_new.append({"ticker": tk, "quelle": "Radar",
-                            "score": r.get("quantum") if r.get("quantum") is not None
-                                     else r.get("composite"),
+                            "score": (_a.get("radar_score")
+                                      if _a.get("radar_score") is not None
+                                      else (r.get("quantum")
+                                            if r.get("quantum") is not None
+                                            else r.get("composite"))),
+                            "firing": _a.get("radar_firing"),
                             "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "verdict": _a.get("verdict", ""), "price": r.get("price")})

@@ -764,6 +764,7 @@ def render_trackrecord():
     _tab("\U0001f4e1 RADAR", "Radar",
          "Noch keine Radar-Signale erfasst.",
          extra=[("Radar-Score", "score", lambda v: round(v)),
+                ("Ebenen", "firing", lambda v: f"{int(v)}/4"),
                 ("Upside %", "upside", lambda v: round(v, 1))])
     _tab("\u26a0\ufe0f KONTROLLGRUPPE (schwache Setups)", "Negativ",
          "Noch keine schwachen Setups erfasst \u2013 der n\u00e4chtliche Lauf "

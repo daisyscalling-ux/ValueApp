@@ -923,6 +923,47 @@ def render_trackrecord():
         st.info(f"Noch keine reifen {_quelle}-Signale (\u2265 14 Tage). Die Statistik "
                 "f\u00fcllt sich, sobald die ersten Signale alt genug sind.")
 
+    # === DIE KERNFRAGE: schlaegt die Scorecard-Regel den Index? ===
+    st.markdown('<div class="sec-title" style="margin-top:18px">\U0001f3af '
+                'REGEL: \u201eNUR KAUFKANDIDATEN KAUFEN\u201c</div>',
+                unsafe_allow_html=True)
+    try:
+        _strat = tr.strategy_stats(rows)
+    except Exception as e:
+        _strat = None
+        st.caption(f"(nicht verf\u00fcgbar: {e})")
+    if _strat and _strat.get("gefiltert"):
+        _g, _a = _strat["gefiltert"], _strat.get("alle")
+        _k = st.columns(3)
+        card(_k[0], "Nur Kaufkandidaten",
+             f"{_g['avg_ret']:+.1f} %",
+             f"{_g['n']} Signale \u00b7 {_g['win_pct']} % im Plus",
+             "var(--green)" if _g["avg_ret"] >= 0 else "var(--red)")
+        card(_k[1], "vs. S&P 500",
+             (f"{_g['avg_excess']:+.1f} Pp." if _g.get("avg_excess") is not None
+              else "\u2014"),
+             (f"Index selbst: {_g['avg_bench']:+.1f} %"
+              if _g.get("avg_bench") is not None else ""),
+             "var(--green)" if (_g.get("avg_excess") or 0) > 0 else "var(--red)")
+        card(_k[2], "Vorteil durch den Filter",
+             (f"{_strat['vorteil']:+.1f} Pp." if _strat.get("vorteil") is not None
+              else "\u2014"),
+             (f"ungefiltert: {_a['avg_excess']:+.1f} Pp. vs. Index"
+              if _a and _a.get("avg_excess") is not None else ""),
+             "var(--green)" if (_strat.get("vorteil") or 0) > 0 else "var(--amber)")
+        st.info(f"**Urteil:** {_strat['urteil']}")
+        st.caption("Simuliert die Regel \u201eich kaufe nur, was die Scorecard als "
+                   "**Kaufkandidat** einstuft\u201c \u2013 also alle Pflichtkriterien "
+                   "erf\u00fcllt plus mindestens drei Bonuspunkte. Verglichen wird "
+                   "gegen den Index UND gegen alle Signale ohne diesen Filter. "
+                   "Nur wenn beide Vergleiche positiv sind, tr\u00e4gt die Scorecard "
+                   "etwas bei. Ohne Geb\u00fchren, Spread und Steuern \u2013 "
+                   "kein Anlagerat.")
+    else:
+        st.info("Noch keine Kaufkandidaten mit 14 Tagen Historie. Die Scorecard "
+                "vergibt \u201eKaufkandidat\u201c bewusst selten \u2013 es kann einige "
+                "Wochen dauern, bis genug F\u00e4lle zusammenkommen.")
+
     # === TRENNT DIE SCORECARD? (Treffer vs. Kontrollgruppe) ===
     st.markdown('<div class="sec-title" style="margin-top:18px">\u2696\ufe0f '
                 'TRENNT DIE AUSWAHL? (Gegenprobe)</div>', unsafe_allow_html=True)

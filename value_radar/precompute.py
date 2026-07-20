@@ -184,6 +184,110 @@ def _rescore_deep(ranked, label=""):
     return out
 
 
+def _pessimismus(f, analyst):
+    """Ist die Erwartungshaltung niedrig? (Stufe 1)
+
+    Gesucht sind Titel, bei denen Analysten UND Gewinnerwartung negativ sind.
+    Genau dort ist die Positionierung einseitig - eine positive Ueberraschung
+    trifft auf niemanden, der schon investiert ist."""
+    gruende = []
+    a = analyst or {}
+    buy, sell = a.get("buy"), a.get("sell")
+    if buy is not None and sell is not None and (buy + sell) > 0 and sell >= buy:
+        gruende.append("Analysten mehrheitlich negativ")
+    px, tgt = f.get("price"), f.get("target_mean")
+    if px and tgt and tgt < px * 0.98:
+        gruende.append("Kursziel unter Kurs")
+    epsf = f.get("eps_forward")
+    if epsf is not None and epsf <= 0:
+        gruende.append("Verlust erwartet")
+    ni = f.get("net_income")
+    if ni is not None and ni <= 0:
+        gruende.append("zuletzt Verlust")
+    return gruende
+
+
+def _widerspruch(f, eps_rev, insider):
+    """Spricht etwas GEGEN den Pessimismus? (Stufe 2)
+
+    Der entscheidende Teil. Bei AMC waere hier aufgefallen: Nettoverlust,
+    aber 190 Mio. freier Cashflow, steigender Umsatz und sich weitende
+    Margen. Solche Widersprueche zwischen Buchgewinn und Zahlungsstrom
+    sind das, was ein Screener finden kann."""
+    treffer = []
+    fcf, ni = f.get("free_cashflow"), f.get("net_income")
+    if fcf and fcf > 0 and ni is not None and ni <= 0:
+        treffer.append("Cashflow positiv trotz Verlust")
+    rg = f.get("revenue_growth")
+    if rg is not None and rg >= 0.05:
+        treffer.append(f"Umsatz +{rg*100:.0f} %")
+    om = f.get("operating_margin")
+    if om is not None and om > 0:
+        treffer.append("operativ profitabel")
+    r = eps_rev or {}
+    up, down = r.get("up"), r.get("down")
+    if up is not None and down is not None and up > down:
+        treffer.append("Schätzungen werden angehoben")
+    ins = insider or {}
+    if (ins.get("buys") or 0) > (ins.get("sells") or 0):
+        treffer.append("Insider kaufen")
+    return treffer
+
+
+def contrarian_scan(max_treffer=10):
+    """EXPERIMENTELL: niedrige Erwartungen + Hinweise, dass sie zu tief sind.
+
+    Zweistufig: erst Titel mit negativer Erwartungshaltung finden, dann
+    pruefen, ob harte Zahlen dem widersprechen. Es wird NICHT versucht,
+    die Ueberraschung vorherzusagen - nur die Stellen zu finden, an denen
+    eine Ueberraschung ueberhaupt Wirkung haette.
+
+    Die Gruppe wird in der Trefferbilanz mitgemessen wie jede andere. Ob
+    sie taugt, entscheidet die Auswertung nach Monaten - nicht die Idee."""
+    pool = {}
+    for _label, scored in _LAST_SCAN.items():
+        for tk in (scored or {}):
+            pool.setdefault(tk, None)
+    if not pool:
+        return []
+    kandidaten = []
+    for t in list(pool)[:120]:                 # Deckel gegen Abruf-Explosion
+        try:
+            f = providers.get_fundamentals(t, deep=False)
+            if not f or not f.get("price"):
+                continue
+            try:
+                analyst = providers.get_analyst_ratings(t)
+            except Exception:
+                analyst = None
+            pess = _pessimismus(f, analyst)
+            if len(pess) < 2:                  # Erwartung muss klar niedrig sein
+                continue
+            try:
+                eps_rev = providers.get_eps_revision_light(t)
+            except Exception:
+                eps_rev = None
+            try:
+                ins = providers.get_insider_light(t)
+            except Exception:
+                ins = None
+            wid = _widerspruch(f, eps_rev, ins)
+            if len(wid) < 2:                   # mind. zwei Gegenbelege
+                continue
+            kandidaten.append({
+                "ticker": t,
+                "price": round(f["price"], 2),
+                "pessimismus": "; ".join(pess[:2]),
+                "widerspruch": "; ".join(wid[:3]),
+                "n_wid": len(wid),
+            })
+        except Exception:
+            continue
+    kandidaten.sort(key=lambda r: -r["n_wid"])
+    print(f"  [Contrarian] {len(kandidaten)} Kandidaten (experimentell).")
+    return kandidaten[:max_treffer]
+
+
 # Vollstaendige Scan-Ergebnisse (auch die aussortierten schwachen Titel).
 # Noetig fuer die Kontrollgruppe der Trefferbilanz: ohne schlechte Setups
 # laesst sich nicht pruefen, ob die Scorecard ueberhaupt TRENNT - oder ob
@@ -557,9 +661,26 @@ def run():
         except Exception as e:
             print(f"[trackrecord] Kontrollgruppe uebersprungen: {e}")
 
+        # EXPERIMENTELL: Gegen-den-Strom-Gruppe. Niedrige Erwartungen plus
+        # harte Zahlen, die dagegen sprechen. Wird nur GEMESSEN - ob die
+        # Idee taugt, zeigt die Trefferbilanz nach Monaten.
+        try:
+            for r in contrarian_scan(10):
+                tk = r.get("ticker")
+                if not tk:
+                    continue
+                _a = _analyse(tk)
+                sig_new.append({"ticker": tk, "quelle": "Contrarian",
+                                "score": None, "upside": None,
+                                "merkmal": r.get("pessimismus", ""),
+                                "strategie": r.get("widerspruch", ""),
+                                "verdict": _a.get("verdict", ""),
+                                "price": r.get("price")})
+        except Exception as e:
+            print(f"[trackrecord] Contrarian uebersprungen: {e}")
+
         for _s in sig_new:                    # Herkunft des Signals festhalten
             _s["codever"] = CODE_VERSION
-
         if not sig_new:
             print("[trackrecord] WARNUNG: keine Kandidaten aus Screener/Radar - "
                   "es gibt nichts zu erfassen. Laufen die Scans durch?")

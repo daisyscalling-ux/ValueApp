@@ -521,6 +521,12 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "n_methods": n_methods,
         "fair_value": round(fv, 2) if fv else None,
         "fair_value_capped": capped,
+        # Notbehelf-Kennzeichen: TRUE heisst, dass KEINE Bewertungsmethode
+        # ein plausibles Ergebnis lieferte. Der angezeigte Wert ist dann nur
+        # der gegen den Kurs geklammerte Median der Rohwerte - also faktisch
+        # der halbe oder doppelte Kurs. Das MUSS sichtbar sein, sonst haelt
+        # man eine Notbremse fuer eine Bewertung.
+        "used_fallback": used_fallback,
         "model_fair_value": round(model_fv, 2) if model_fv else None,
         "analyst_target": round(anl, 2) if anl else None,
         "analyst_count": fund.get("analyst_count"),
@@ -538,3 +544,74 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "reverse_dcf_implied_growth": reverse_dcf_implied_growth(fund),
         "wacc": round(wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt")), 4),
     }
+
+
+def analyst_spread(fund) -> Optional[dict]:
+    """Wie uneinig sind die Analysten? Eigenes Feld, kein Eingriff in die Rechnung.
+
+    Der Mittelwert allein taeuscht Praezision vor. Bei GM lagen im Juli 2026
+    Kursziele von 60 USD (Wells Fargo, Underweight) bis 131 USD (Citigroup,
+    Buy) vor - Faktor 2,2 bei derselben Firma und identischer Faktenlage.
+    Der Mittelwert von ~95 USD ist dann kein Konsens, sondern ein Kompromiss
+    zwischen zwei unvereinbaren Lagern.
+
+    Rueckgabe: mean/low/high/n, Spannweite in Prozent des Mittelwerts,
+    eine Einstufung und ein Vertrauensfaktor 0.4-1.0, den der Aufrufer
+    verwenden KANN - die Kernrechnung bleibt unangetastet."""
+    mean = fund.get("target_mean")
+    low, high = fund.get("target_low"), fund.get("target_high")
+    n = fund.get("analyst_count")
+    if not mean or mean <= 0:
+        return None
+    out = {"mean": round(float(mean), 2),
+           "low": round(float(low), 2) if low else None,
+           "high": round(float(high), 2) if high else None,
+           "n": int(n) if n else None}
+    if not low or not high or high <= low:
+        out.update({"spanne_pct": None, "einstufung": "keine Spannweite verfügbar",
+                    "vertrauen": 1.0})
+        return out
+    spanne = (high - low) / mean * 100
+    out["spanne_pct"] = round(spanne, 1)
+    out["faktor"] = round(high / low, 2) if low > 0 else None
+    if spanne < 30:
+        out["einstufung"] = "Analysten weitgehend einig"
+        out["vertrauen"] = 1.0
+    elif spanne < 50:
+        out["einstufung"] = "normale Streuung"
+        out["vertrauen"] = 0.85
+    elif spanne < 80:
+        out["einstufung"] = "deutlich uneinig – Mittelwert wenig aussagekräftig"
+        out["vertrauen"] = 0.6
+    else:
+        out["einstufung"] = ("stark gespalten – der Mittelwert ist ein Kompromiss "
+                             "zwischen unvereinbaren Lagern")
+        out["vertrauen"] = 0.4
+    return out
+
+
+def datenaktualitaet(fund, naechster_termin_tage=None) -> dict:
+    """Wie frisch sind die Zahlen, auf denen die Bewertung beruht?
+
+    Eigenes Feld, keine Korrektur. Ein Fair Value auf zwei Nachkommastellen
+    suggeriert Genauigkeit - wenn das Unternehmen aber HEUTE meldet, rechnet
+    er mit ueberholten Zahlen. Das gehoert sichtbar gemacht, nicht
+    stillschweigend weggerechnet."""
+    out = {"stufe": "normal", "hinweis": "", "termin_tage": naechster_termin_tage}
+    t = naechster_termin_tage
+    if t is None:
+        out["hinweis"] = "kein Quartalstermin bekannt"
+        return out
+    if t <= 1:
+        out["stufe"] = "kritisch"
+        out["hinweis"] = ("meldet heute oder morgen – die Bewertung beruht auf "
+                          "Zahlen, die gleich überholt sind")
+    elif t <= 7:
+        out["stufe"] = "achtung"
+        out["hinweis"] = f"meldet in {t} Tagen – Zahlen ändern sich bald"
+    elif t <= 21:
+        out["stufe"] = "hinweis"
+        out["hinweis"] = f"meldet in {t} Tagen"
+    else:
+        out["hinweis"] = f"nächster Termin in {t} Tagen"
+    return out

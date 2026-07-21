@@ -4187,7 +4187,48 @@ if nav == "Portfoliocheck":
                 st.caption("Erkannt: " + "  \u00b7  ".join(f"{esc(a0)} \u2192 {esc(b0)}"
                                                            for a0, b0 in resolved))
             if invalid:
-                st.warning("Nicht gefunden / keine Daten: " + ", ".join(invalid))
+                _ges = len(invalid) + len(rows)
+                _anteil = len(invalid) / _ges * 100 if _ges else 0
+                # Haeufige Ursache: Firmenname statt Boersensymbol, oder
+                # Symbol ohne Boersenkuerzel. Vorschlaege helfen mehr als
+                # eine blosse Fehlliste.
+                _TIPPS = {
+                    "NETEASE (ADR)": "NTES", "NETEASE": "NTES",
+                    "SUZUKI MOTOR": "7269.T", "GILEAD SCIENCES": "GILD",
+                    "GILEAD": "GILD", "BOOKING HOLDINGS": "BKNG",
+                    "BOOKING": "BKNG", "ALLIANZ": "ALV.DE",
+                    "SHA0": "SHA.DE", "VWRL": "VWRL.AS", "4GLD": "4GLD.DE",
+                    "SIEMENS": "SIE.DE", "BASF": "BAS.DE", "BAYER": "BAYN.DE",
+                    "VOLKSWAGEN": "VOW3.DE", "MERCEDES": "MBG.DE",
+                    "NESTLE": "NESN.SW", "NOVARTIS": "NOVN.SW",
+                    "LVMH": "MC.PA", "SHELL": "SHEL.L",
+                }
+                _mit_tipp, _ohne = [], []
+                for _iv in invalid:
+                    _t = _TIPPS.get(str(_iv).strip().upper())
+                    if not _t and "." not in str(_iv) and str(_iv).isalnum():
+                        _t = f"{_iv}.DE"          # haeufigster Fall: DE-Boerse
+                    (_mit_tipp if _t else _ohne).append((_iv, _t))
+                if _anteil >= 30:
+                    st.error(
+                        f"\u26a0\ufe0f **{len(invalid)} von {_ges} Positionen "
+                        f"({_anteil:.0f} %) liefern keine Kursdaten.** Alle "
+                        "Auswertungen unten \u2013 Depotwert, Klumpenrisiko, Scores "
+                        "und der Indexvergleich \u2013 beruhen deshalb nur auf den "
+                        f"{len(rows)} auffindbaren Positionen und bilden dein "
+                        "Depot **nicht vollst\u00e4ndig** ab.")
+                else:
+                    st.warning(f"{len(invalid)} Position(en) ohne Kursdaten \u2013 "
+                               "sie fehlen in allen Auswertungen unten.")
+                if _mit_tipp:
+                    st.caption("Meist steht dort ein **Firmenname statt eines "
+                               "B\u00f6rsensymbols**, oder das B\u00f6rsenk\u00fcrzel fehlt. "
+                               "Vorschl\u00e4ge: "
+                               + "  \u00b7  ".join(f"{esc(a0)} \u2192 **{esc(b0)}**"
+                                                  for a0, b0 in _mit_tipp[:10]))
+                if _ohne:
+                    st.caption("Ohne Vorschlag: "
+                               + ", ".join(esc(str(a0)) for a0, _b in _ohne[:10]))
 
             if not rows:
                 st.info("Mindestens eine g\u00fcltige Position (Ticker/Name + Wert > 0) eintragen.")

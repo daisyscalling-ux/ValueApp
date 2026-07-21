@@ -122,6 +122,9 @@ def _yf_bundle(info):
         "operating_margin": _num(info.get("operatingMargins")),
         "profit_margin": _num(info.get("profitMargins")),
         "revenue_growth": _num(info.get("revenueGrowth")),
+        # Umsatz: wurde bisher NIE gesetzt, obwohl valuation.py danach fragt.
+        # Folge: die EPV-Methode fiel immer auf den KUV-Umweg zurueck.
+        "revenue": _num(info.get("totalRevenue")),
         "earnings_growth": _num(info.get("earningsGrowth")),
         "debt_to_equity": _num(info.get("debtToEquity")),
         "current_ratio": _num(info.get("currentRatio")),
@@ -132,6 +135,11 @@ def _yf_bundle(info):
         "book_value_ps": _num(info.get("bookValue")),
         "total_debt": _num(info.get("totalDebt")), "cash": _num(info.get("totalCash")),
         "target_mean": _num(info.get("targetMeanPrice")),
+        # Spannweite der Kursziele: Ein Mittelwert aus 60 und 131 USD sieht
+        # praezise aus, ist aber ein Kompromiss zwischen zwei Lagern. Ohne
+        # Hoch/Tief laesst sich nicht erkennen, wie belastbar er ist.
+        "target_high": _num(info.get("targetHighPrice")),
+        "target_low": _num(info.get("targetLowPrice")),
         "analyst_count": _num(info.get("numberOfAnalystOpinions")),
         "business_summary": info.get("longBusinessSummary") or None,
         "recommendation": info.get("recommendationKey"),
@@ -483,6 +491,8 @@ def _merge_sources(ticker, A, B, C=None, use_tiingo=False):
         "total_debt": total_debt,
         "cash": cash,
         "target_mean": A.get("target_mean"),
+        "target_high": A.get("target_high"),
+        "target_low": A.get("target_low"),
         "analyst_count": A.get("analyst_count"),
         "business_summary": _pick(A.get("business_summary"), C.get("business_summary")),
         "hist_pe_median": C.get("hist_pe_median"),
@@ -556,7 +566,8 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     _cur = (merged.get("currency") or "").strip()
     _CCY_CACHE[ticker] = _cur          # Cache fuer is_pence() - spart Extra-Abrufe
     if _cur in ("GBp", "GBX", "gbx"):
-        for _k in ("price", "target_mean", "52w_high", "52w_low",
+        for _k in ("price", "target_mean", "target_high", "target_low",
+                   "52w_high", "52w_low",
                    "entry_price", "prev_close", "day_high", "day_low"):
             _v = merged.get(_k)
             if isinstance(_v, (int, float)) and _v:

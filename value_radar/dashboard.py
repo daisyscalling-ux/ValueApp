@@ -759,8 +759,18 @@ def render_trackrecord():
             return
         d = []
         for r in sub:
-            row = {"Ticker": r["ticker"], "Tage": r["days"],
-                   "Einstieg": round(r["entry_px"], 2)}
+            _dt_ein = ""
+            try:
+                _dt_ein = datetime.fromtimestamp(r.get("ts") or 0).strftime("%d.%m.%y")
+            except Exception:
+                _dt_ein = "\u2014"
+            row = {"Ticker": r["ticker"], "Einstieg am": _dt_ein,
+                   "Tage": r["days"],
+                   "Einstieg": round(r["entry_px"], 2),
+                   "Whg": (r.get("entry_ccy") or "").strip() or "\u2014",
+                   "Einstieg \u20ac": (r.get("entry_eur")
+                                       if r.get("entry_eur") is not None
+                                       else "\u2014")}
             # quellenspezifische Spalten VOR den Renditespalten
             for lbl, key, fmt in (extra or []):
                 v = r.get(key)
@@ -861,7 +871,10 @@ def render_trackrecord():
                "theoretisch unbegrenztes Verlustrisiko. Kein Anlagerat.")
 
     st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
-               "z\u00e4hlt. Kein Anlagerat.")
+               "z\u00e4hlt. \u201eEinstieg \u20ac\u201c ist mit dem Wechselkurs des "
+               "**Einstiegstages** umgerechnet \u2013 nicht mit dem heutigen. Die "
+               "Renditespalten stehen in der Handelsw\u00e4hrung, zeigen also die "
+               "Entwicklung der Aktie ohne W\u00e4hrungseffekt. Kein Anlagerat.")
 
     _rep = [r for r in _ok if r.get("repariert")]
     if _rep:
@@ -1964,7 +1977,7 @@ PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist",
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
          "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0",
-         "Trefferbilanz": "\U0001f4c8", "Umfeld": "\U0001f30d"}
+         "Trefferbilanz": "\U0001f3c6", "Umfeld": "\U0001f30d"}
 _scroll_top_now = False
 # Klick auf einen orangenen Ticker-Link (?open=TICKER) in einer vr_table:
 # in die Einzelanalyse springen. Der Parameter wird sofort wieder entfernt.
@@ -2012,7 +2025,7 @@ MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
               "Screener": "\U0001f50d", "Watchlist": "\u2b50",
               "Long/Short": "\u2696\ufe0f", "Portfoliocheck": "\U0001f4bc",
-              "Trefferbilanz": "\U0001f4c8", "Umfeld": "\U0001f30d"}
+              "Trefferbilanz": "\U0001f3c6", "Umfeld": "\U0001f30d"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
     for _pg, _icon in MOBILE_NAV.items():

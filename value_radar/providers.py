@@ -1509,3 +1509,51 @@ def get_price_on(ticker: str, date) -> Optional[float]:
         return float(after[0]) if after else None
     except Exception:
         return None
+
+
+_FX_HIST_CACHE = {}
+
+
+def get_fx_to_eur_at(currency: str, ts):
+    """Umrechnungsfaktor nach EUR zum DAMALIGEN Zeitpunkt.
+
+    Noetig, weil ein Einstiegskurs mit dem Kurs von HEUTE umgerechnet
+    einen Wert ergibt, den es so nie gab. Fuer die Trefferbilanz muss der
+    Kurs des Einstiegstages gelten.
+
+    ts = Unix-Zeitstempel. Rueckgabe None, wenn nicht ermittelbar - dann
+    soll der Aufrufer ehrlich "unbekannt" anzeigen statt zu schaetzen."""
+    if not currency:
+        return 1.0
+    cur = str(currency).strip()
+    if cur.upper() == "EUR":
+        return 1.0
+    pence = 0.01 if cur in ("GBp", "GBX", "gbx") else 1.0
+    basis = "GBP" if pence != 1.0 else cur.upper()
+    try:
+        import datetime as _dt
+        tag = _dt.datetime.utcfromtimestamp(float(ts)).date()
+    except Exception:
+        return None
+    key = (basis, tag.isoformat())
+    if key in _FX_HIST_CACHE:
+        v = _FX_HIST_CACHE[key]
+        return v * pence if v is not None else None
+    kurs = None
+    if yf is not None:
+        try:
+            import datetime as _dt
+            paar = f"{basis}EUR=X"
+            h = yf.Ticker(paar).history(
+                start=(tag - _dt.timedelta(days=7)).isoformat(),
+                end=(tag + _dt.timedelta(days=2)).isoformat(),
+                interval="1d")
+            if h is not None and not getattr(h, "empty", True) and "Close" in h.columns:
+                werte = [float(x) for x in h["Close"].tolist()
+                         if x is not None and x == x]
+                if werte:
+                    kurs = werte[-1]          # letzter Kurs bis einschl. Stichtag
+        except Exception:
+            kurs = None
+    _FX_HIST_CACHE[key] = kurs
+    return kurs * pence if kurs is not None else None

@@ -95,6 +95,18 @@ def record(signals):
             _ccy = "GBP" if providers.is_pence(s["ticker"]) else ""
         except Exception:
             _ccy = ""
+        if not _ccy:
+            # Handelswaehrung aus dem Cache (get_fundamentals fuellt ihn)
+            try:
+                _ccy = (providers._CCY_CACHE.get(s["ticker"]) or "").strip() or "USD"
+            except Exception:
+                _ccy = "USD"
+        # Wechselkurs JETZT festhalten. Spaeter mit dem heutigen Kurs
+        # umzurechnen ergaebe einen Einstiegswert, den es nie gab.
+        try:
+            _fx = providers.get_fx_to_eur(_ccy)
+        except Exception:
+            _fx = None
         log.insert(0, {
             "ts": now, "ticker": s["ticker"], "quelle": s.get("quelle", ""),
             "score": s.get("score"), "upside": s.get("upside"),
@@ -110,6 +122,7 @@ def record(signals):
             "entry_px": round(float(px), 4),
             "entry_norm": True,          # Kennzeichen: bereits normalisiert
             "entry_ccy": _ccy,
+            "entry_fx": (round(_fx, 6) if _fx else None),
             "bench_entry": round(bp, 2) if bp else None,
         })
         known.add(key)
@@ -157,7 +170,24 @@ def evaluate(limit=120):
         if bp_now and e.get("bench_entry"):
             bret = (bp_now / e["bench_entry"] - 1) * 100
         days = int((time.time() - (e.get("ts") or time.time())) / 86400)
+
+        # --- Einstieg in EUR. Reihenfolge bewusst:
+        #   1) beim Erfassen gespeicherter Kurs (exakt)
+        #   2) historischer Kurs zum Einstiegstag (nachgeschlagen)
+        #   3) nichts - lieber "unbekannt" als ein erfundener Wert
+        _ccy = (e.get("entry_ccy") or "").strip()
+        _fx = e.get("entry_fx")
+        _fx_quelle = "gespeichert" if _fx else None
+        if not _fx and _ccy:
+            try:
+                _fx = providers.get_fx_to_eur_at(_ccy, e.get("ts") or time.time())
+                _fx_quelle = "historisch" if _fx else None
+            except Exception:
+                _fx = None
+        entry_eur = round(entry * _fx, 2) if _fx else None
+
         out.append({**e, "entry_px": round(entry, 4),
+                    "entry_eur": entry_eur, "fx_quelle": _fx_quelle,
                     "ret_pct": round(ret, 1),
                     "bench_pct": round(bret, 1) if bret is not None else None,
                     "excess_pct": round(ret - bret, 1) if bret is not None else None,

@@ -679,6 +679,39 @@ def run():
         except Exception as e:
             print(f"[trackrecord] Contrarian uebersprungen: {e}")
 
+        # EARNINGS-SCAN ueber den S&P 500. Zweistufig, damit die Abrufzahl
+        # beherrschbar bleibt. Ergebnis wird gespeichert (Dashboard liest nur)
+        # und die klaren Faelle werden als Signal protokolliert - damit sich
+        # messen laesst, ob die Logik trifft.
+        try:
+            import regime as _rg
+            _tk = _rg.sp500_tickers()
+            print(f"[earnings] Universum: {len(_tk)} Titel")
+            _erg = _rg.earnings_scan_universe(_tk, max_wochen=4, deep_limit=60)
+            store.set_earnings(_erg)
+            print(f"[earnings] {len(_erg)} Termine mit Einordnung gespeichert.")
+            for _e in _erg:
+                # Nur die eindeutigen Faelle protokollieren. Gelb und Grau
+                # sind ausdruecklich KEINE Aussage - sie zu loggen wuerde die
+                # Auswertung mit Rauschen fuellen.
+                if _e.get("ampel") not in ("gruen", "rot"):
+                    continue
+                sig_new.append({
+                    "ticker": _e["ticker"],
+                    "quelle": ("Earnings+" if _e["ampel"] == "gruen"
+                               else "Earnings-"),
+                    "score": _e.get("beat_quote"),
+                    "upside": None,
+                    "merkmal": (f"meldet in {_e['tage']} T · Beat "
+                                f"{_e.get('beat_quote')}% · belohnt "
+                                f"{_e.get('belohnt_pct')}%"),
+                    "strategie": "; ".join((_e.get("pro") or [])[:2]),
+                    "verdict": "",
+                    "price": None,
+                })
+        except Exception as e:
+            print(f"[earnings] uebersprungen: {e}")
+
         for _s in sig_new:                    # Herkunft des Signals festhalten
             _s["codever"] = CODE_VERSION
         if not sig_new:

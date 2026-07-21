@@ -260,3 +260,19 @@ def set_signals(entries: list) -> bool:
     d = _load_aux()
     d["signals"] = (entries or [])[:250]
     return _save_aux(d)
+
+
+def get_earnings() -> list:
+    """Anstehende Quartalstermine samt Einordnung (vom Nacht-Job erzeugt).
+
+    Bewusst vorberechnet: Ein Scan ueber den S&P 500 kostet mehrere hundert
+    Abrufe - das ist im Browser nicht zumutbar und wuerde in Rate-Limits
+    laufen."""
+    e = _load_aux().get("earnings", [])
+    return e if isinstance(e, list) else []
+
+
+def set_earnings(items: list) -> bool:
+    d = _load_aux()
+    d["earnings"] = items[:80]
+    return _save_aux(d)

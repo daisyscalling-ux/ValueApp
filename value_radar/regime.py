@@ -390,3 +390,261 @@ def anomalien(ticker):
     return [r for r in rows
             if (r["beat"] and r["reaktion_pct"] < -2)
             or (not r["beat"] and r["reaktion_pct"] > 2)]
+
+
+# ============================================================================
+# TERMINKALENDER — wer meldet demnaechst, und was ist zu erwarten?
+# ============================================================================
+def next_earnings(ticker, max_wochen=4):
+    """Naechster Quartalstermin innerhalb des Zeitfensters.
+
+    yfinance liefert kuenftige Termine als Zeilen OHNE gemeldeten Gewinn.
+    Rueckgabe: {datum, tage, eps_estimate} oder None."""
+    try:
+        import yfinance as yf
+        import datetime as _dt
+    except Exception:
+        return None
+    try:
+        df = yf.Ticker(ticker).get_earnings_dates(limit=16)
+    except Exception:
+        return None
+    if df is None or getattr(df, "empty", True):
+        return None
+    if "Reported EPS" not in df.columns:
+        return None
+    try:
+        jetzt = _dt.datetime.now(_dt.timezone.utc)
+    except Exception:
+        return None
+    kandidaten = []
+    try:
+        for termin, r in df.iterrows():
+            ist = r.get("Reported EPS")
+            if ist is not None and ist == ist:      # bereits gemeldet
+                continue
+            try:
+                t = termin.to_pydatetime()
+                if t.tzinfo is None:
+                    t = t.replace(tzinfo=_dt.timezone.utc)
+            except Exception:
+                continue
+            tage = (t - jetzt).days
+            if 0 <= tage <= max_wochen * 7:
+                est = r.get("EPS Estimate")
+                kandidaten.append({
+                    "datum": str(termin)[:10],
+                    "tage": tage,
+                    "eps_estimate": (round(float(est), 3)
+                                     if est is not None and est == est else None),
+                })
+    except Exception:
+        return None
+    if not kandidaten:
+        return None
+    kandidaten.sort(key=lambda r: r["tage"])
+    return kandidaten[0]
+
+
+def _erwartung_spannung(f, eps_rev, profil):
+    """Steht die Analystenschaetzung im Widerspruch zu beobachtbaren Trends?
+
+    WICHTIG: Das prueft NICHT, ob eine Schaetzung "richtig" ist - das kann
+    niemand vorab wissen. Es sammelt nur Spannungen zwischen der Erwartung
+    und dem, was die Zahlen zeigen. Jede Spannung ist eine FRAGE, keine
+    Antwort."""
+    pro, contra = [], []
+
+    # 1) Historie: wird die Schaetzung gewohnheitsmaessig uebertroffen?
+    if profil and profil.get("n", 0) >= 4:
+        bq = profil.get("beat_quote")
+        if bq is not None and bq >= 75:
+            pro.append(f"übertrifft die Schätzung in {bq} % der Fälle")
+        elif bq is not None and bq <= 40:
+            contra.append(f"verfehlt die Schätzung häufig (Beat-Quote {bq} %)")
+
+    # 2) Richtung der Revisionen
+    r = eps_rev or {}
+    up, down = r.get("up"), r.get("down")
+    if up is not None and down is not None:
+        if up > down:
+            pro.append(f"Schätzungen zuletzt angehoben ({up} hoch / {down} runter)")
+        elif down > up:
+            contra.append(f"Schätzungen zuletzt gesenkt ({down} runter / {up} hoch)")
+
+    # 3) Erwarteter Gewinnrueckgang trotz wachsendem Umsatz
+    epsf, epst = f.get("eps_forward"), f.get("eps_trailing")
+    rg = f.get("revenue_growth")
+    if epsf is not None and epst is not None and epst > 0 and epsf < epst * 0.95:
+        if rg is not None and rg >= 0.05:
+            pro.append(f"Gewinnrückgang erwartet, obwohl Umsatz +{rg*100:.0f} % wächst")
+        else:
+            contra.append("Gewinnrückgang erwartet")
+
+    # 4) Cashflow gegen Buchgewinn
+    fcf, ni = f.get("free_cashflow"), f.get("net_income")
+    if fcf and ni is not None and ni <= 0 < fcf:
+        pro.append("positiver Cashflow trotz Buchverlust")
+
+    return pro, contra
+
+
+def earnings_preview(ticker, max_wochen=4):
+    """Volles Bild vor einem Quartalstermin.
+
+    Verbindet vier Dinge:
+      * wann gemeldet wird
+      * wie die Aktie historisch auf Beats/Misses reagiert hat
+      * was die Analysten erwarten
+      * welche beobachtbaren Trends dieser Erwartung widersprechen
+
+    Das Urteil sagt bewusst NICHT "kaufen" - es sagt, ob die Konstellation
+    ueberhaupt interessant ist und worauf zu achten waere."""
+    if providers is None:
+        return None
+    termin = next_earnings(ticker, max_wochen)
+    if not termin:
+        return None
+    try:
+        f = providers.get_fundamentals(ticker, deep=False) or {}
+    except Exception:
+        f = {}
+    if not f.get("price"):
+        return None
+    try:
+        eps_rev = providers.get_eps_revision_light(ticker)
+    except Exception:
+        eps_rev = None
+    profil = reaction_profile(ticker)
+    pro, contra = _erwartung_spannung(f, eps_rev, profil)
+
+    out = {
+        "ticker": ticker,
+        "name": (f.get("name") or "")[:32],
+        "sektor": f.get("sector"),
+        "datum": termin["datum"],
+        "tage": termin["tage"],
+        "eps_estimate": termin["eps_estimate"],
+        "eps_forward": f.get("eps_forward"),
+        "revenue_growth": (round(f["revenue_growth"] * 100, 1)
+                           if f.get("revenue_growth") is not None else None),
+        "beat_quote": (profil or {}).get("beat_quote"),
+        "belohnt_pct": (profil or {}).get("beat_belohnt_pct"),
+        "n_termine": (profil or {}).get("n"),
+        "avg_reaktion_beat": (profil or {}).get("avg_reaktion_beat"),
+        "pro": pro, "contra": contra,
+        "profil_urteil": (profil or {}).get("urteil"),
+    }
+
+    # --- Einordnung. Bewusst zurueckhaltend und immer mit Fallzahl im Blick.
+    bq, bel, n = out["beat_quote"], out["belohnt_pct"], out["n_termine"] or 0
+    if n < 4:
+        out["urteil"] = "zu wenig Historie – Termin nur als Risiko vormerken"
+        out["ampel"] = "grau"
+    elif bq is not None and bq >= 75 and bel is not None and bel >= 70:
+        out["urteil"] = ("übertrifft meist UND wird dafür belohnt – die "
+                         "interessanteste Konstellation, aber auf dünner Basis")
+        out["ampel"] = "gruen"
+    elif bq is not None and bq >= 75 and bel is not None and bel <= 40:
+        out["urteil"] = ("übertrifft meist, aber der Markt zahlt nichts dafür – "
+                         "gute Zahlen sind hier bereits eingepreist")
+        out["ampel"] = "gelb"
+    elif bq is not None and bq <= 40:
+        out["urteil"] = "verfehlt die Schätzung häufig – erhöhtes Rückschlagrisiko"
+        out["ampel"] = "rot"
+    else:
+        out["urteil"] = "kein klares Muster – Termin als Schwankungsrisiko sehen"
+        out["ampel"] = "grau"
+    if len(pro) >= 2:
+        out["urteil"] += f" · {len(pro)} Punkte sprechen gegen die Erwartung"
+    return out
+
+
+def earnings_scan(tickers, max_wochen=4, limit=40):
+    """Welche Titel melden in den naechsten Wochen? Mit voller Einordnung.
+
+    Bewusst gedeckelt: je Titel fallen mehrere Abrufe an. Fuer Portfolio
+    und Watchlist ist das unproblematisch, fuer ein Universum von hunderten
+    Tickern nicht."""
+    out = []
+    for t in list(dict.fromkeys(tickers))[:limit]:
+        try:
+            p = earnings_preview(t, max_wochen)
+        except Exception:
+            p = None
+        if p:
+            out.append(p)
+    out.sort(key=lambda r: r["tage"])
+    return out
+
+
+# ============================================================================
+# S&P-500-UNIVERSUM
+# ============================================================================
+_SP500_CACHE = {}
+
+
+def sp500_tickers():
+    """Aktuelle S&P-500-Mitglieder. Wikipedia zuerst, sonst Rueckfall auf
+    die groessten US-Titel aus dem vorhandenen Screener."""
+    if "list" in _SP500_CACHE:
+        return _SP500_CACHE["list"]
+    out = []
+    try:
+        import pandas as _pd
+        tabs = _pd.read_html(
+            "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
+        for t in tabs:
+            if "Symbol" in t.columns:
+                out = [str(s).strip().upper().replace(".", "-")
+                       for s in t["Symbol"].tolist()]
+                break
+    except Exception:
+        out = []
+    if not out:                                   # Rueckfall
+        try:
+            import market_screener as _ms
+            out, _src = _ms.get_universe(["us"], 5e9, 500)
+        except Exception:
+            out = []
+    out = [t for t in dict.fromkeys(out) if t]
+    _SP500_CACHE["list"] = out
+    return out
+
+
+def earnings_scan_universe(tickers=None, max_wochen=4, deep_limit=60,
+                           fortschritt=None):
+    """ZWEISTUFIG ueber ein grosses Universum.
+
+    Stufe 1 (billig): nur der Termin je Titel - ein Abruf. Bei 500 Titeln
+                      sind das 500 Abrufe.
+    Stufe 2 (teuer):  volle Einordnung NUR fuer die, die im Fenster melden.
+                      Ausserhalb der Berichtssaison sind das wenige, mitten
+                      drin einige Dutzend.
+
+    Ohne diese Trennung waeren es ueber 3.000 Abrufe je Lauf."""
+    tickers = tickers or sp500_tickers()
+    faellig = []
+    for i, t in enumerate(tickers):
+        try:
+            n = next_earnings(t, max_wochen)
+            if n:
+                faellig.append((t, n["tage"]))
+        except Exception:
+            pass
+        if fortschritt and (i + 1) % 50 == 0:
+            fortschritt(i + 1, len(tickers), len(faellig))
+    faellig.sort(key=lambda x: x[1])
+    print(f"  [Earnings] {len(faellig)} von {len(tickers)} melden in "
+          f"{max_wochen} Wochen -> {min(len(faellig), deep_limit)} werden "
+          f"tief analysiert.")
+    out = []
+    for t, _tage in faellig[:deep_limit]:
+        try:
+            p = earnings_preview(t, max_wochen)
+        except Exception:
+            p = None
+        if p:
+            out.append(p)
+    out.sort(key=lambda r: r["tage"])
+    return out

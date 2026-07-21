@@ -815,6 +815,23 @@ def render_trackrecord():
          extra=[("Radar-Score", "score", lambda v: round(v)),
                 ("Ebenen", "firing", lambda v: f"{int(v)}/4"),
                 ("Upside %", "upside", lambda v: round(v, 1))])
+    _tab("\U0001f4c5 EARNINGS \u00b7 POSITIV ERWARTET", "Earnings+",
+         "Noch keine Termine mit klarem Positiv-Muster erfasst.",
+         extra=[("Beat-Quote", "score", lambda v: f"{round(v)} %"),
+                ("Lage", "merkmal", lambda v: str(v)),
+                ("Spricht daf\u00fcr", "strategie", lambda v: str(v))])
+    _tab("\U0001f4c5 EARNINGS \u00b7 NEGATIV ERWARTET (als Short gerechnet)",
+         "Earnings-",
+         "Noch keine Termine mit klarem Negativ-Muster erfasst.",
+         extra=[("Beat-Quote", "score", lambda v: f"{round(v)} %"),
+                ("Lage", "merkmal", lambda v: str(v))],
+         short=True)
+    st.caption("Diese beiden Gruppen protokollieren die **Earnings-Logik**: "
+               "Gr\u00fcn hie\u00df \u201e\u00fcbertrifft meist und wird belohnt\u201c, Rot hie\u00df "
+               "\u201everfehlt h\u00e4ufig\u201c. Hier zeigt sich, ob die Einsch\u00e4tzung "
+               "getragen hat \u2013 gemessen ab dem Tag der Aufnahme, also VOR "
+               "dem Termin. Kein Anlagerat.")
+
     _tab("\U0001f9ea GEGEN DEN STROM (experimentell)", "Contrarian",
          "Noch keine Kandidaten erfasst. Gesucht werden Titel mit niedrigen "
          "Erwartungen, bei denen harte Zahlen dagegen sprechen.",
@@ -886,7 +903,8 @@ def render_trackrecord():
                    "l\u00f6schen, damit sie beim n\u00e4chsten Lauf frisch erfasst wird.")
         _zc1, _zc2 = st.columns([1, 1])
         _welche = _zc1.selectbox("Welche Gruppe?",
-                                 ["Screener", "Radar", "Negativ", "ALLE"],
+                                 ["Screener", "Radar", "Negativ", "Contrarian",
+                                  "Earnings+", "Earnings-", "ALLE"],
                                  key="tr_clear_pick")
         _anz = len([r for r in rows
                     if _welche == "ALLE" or r.get("quelle") == _welche])
@@ -1942,11 +1960,11 @@ def portfolio_candidates(analysis, held_tickers, held_names):
 
 
 PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist",
-         "Long/Short", "Portfoliocheck", "Umfeld"]
+         "Long/Short", "Portfoliocheck", "Trefferbilanz", "Umfeld"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
          "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0",
-         "Umfeld": "\U0001f30d"}
+         "Trefferbilanz": "\U0001f4c8", "Umfeld": "\U0001f30d"}
 _scroll_top_now = False
 # Klick auf einen orangenen Ticker-Link (?open=TICKER) in einer vr_table:
 # in die Einzelanalyse springen. Der Parameter wird sofort wieder entfernt.
@@ -1994,7 +2012,7 @@ MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
               "Screener": "\U0001f50d", "Watchlist": "\u2b50",
               "Long/Short": "\u2696\ufe0f", "Portfoliocheck": "\U0001f4bc",
-              "Umfeld": "\U0001f30d"}
+              "Trefferbilanz": "\U0001f4c8", "Umfeld": "\U0001f30d"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
@@ -2142,8 +2160,7 @@ if nav == "Start":
                    "14 Tagen. Kein Anlagerat.")
         if st.button("\U0001f4c8 Zur Trefferbilanz", use_container_width=True,
                      key="start_to_tr"):
-            st.session_state["pending_nav"] = "Radar"
-            st.session_state["rv_view"] = "\U0001f4c8 Trefferbilanz"
+            st.session_state["pending_nav"] = "Trefferbilanz"
             st.rerun()
         st.markdown("---")
 
@@ -3110,12 +3127,11 @@ if nav == "News":
 # ===========================================================================
 # TAB — RADAR (Das Micron von morgen)
 # ===========================================================================
+if nav == "Trefferbilanz":
+    render_trackrecord()
+
 if nav == "Radar":
-    _rv = st.radio("Ansicht", ["\U0001f3af Radar", "\U0001f4c8 Trefferbilanz"],
-                   horizontal=True, label_visibility="collapsed", key="rv_view")
-    if _rv.endswith("Trefferbilanz"):
-        render_trackrecord()
-    if _rv.endswith("Radar"):
+    if True:
         st.markdown('<div class="sec-title">RADAR \u00b7 DAS MICRON VON MORGEN</div>',
                     unsafe_allow_html=True)
         st.caption("Scannt vier Frueh-Signal-Ebenen \u2014 Events (SEC-8-K + News), "
@@ -4383,8 +4399,8 @@ if nav == "Umfeld":
                "Auswertungen nennen ihre Fallzahl. Kein Anlagerat.")
 
     _uv = st.radio("Ansicht",
-                   ["\U0001f4ca Sektorf\u00fchrung", "\U0001f5d3\ufe0f Saisonalit\u00e4t",
-                    "\U0001f4e2 Reaktion auf Zahlen"],
+                   ["\U0001f4c5 Anstehende Zahlen", "\U0001f4ca Sektorf\u00fchrung",
+                    "\U0001f5d3\ufe0f Saisonalit\u00e4t", "\U0001f4e2 Reaktion auf Zahlen"],
                    horizontal=True, label_visibility="collapsed", key="uv_view")
 
     # ---------------------------------------------------------- Sektorfuehrung
@@ -4499,3 +4515,308 @@ if nav == "Umfeld":
                            "kann eine \u201eQuote von 75 %\u201c auch reiner Zufall sein. "
                            "Verwende es als Frage an dich selbst, nicht als "
                            "Antwort. Kein Anlagerat.")
+
+    # ------------------------------------------------- Anstehende Quartalszahlen
+    if _uv.endswith("Anstehende Zahlen"):
+        st.caption("Welche S&P-500-Titel melden demn\u00e4chst \u2013 und was sagt die "
+                   "Historie \u00fcber ihre Reaktion auf gute und schlechte Zahlen?")
+        _res = []
+        try:
+            _res = store.get_earnings() or []
+        except Exception as _e:
+            st.caption(f"(nicht ladbar: {_e})")
+        if not _res:
+            st.info("Noch keine Termine gespeichert. Der Scan l\u00e4uft im "
+                    "n\u00e4chtlichen Job \u00fcber den **S&P 500** \u2013 rund 500 Abrufe "
+                    "allein f\u00fcr die Termine, danach die tiefe Analyse nur f\u00fcr "
+                    "die tats\u00e4chlich meldenden Titel. Im Browser w\u00e4re das "
+                    "nicht zumutbar. Starte den Workflow in GitHub oder warte "
+                    "den n\u00e4chsten Lauf ab.")
+        else:
+            _amp = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
+                    "rot": "\U0001f534", "grau": "\u26aa"}
+            _f1, _f2 = st.columns([1, 1])
+            _nur = _f1.selectbox("Anzeigen",
+                                 ["alle", "nur \U0001f7e2 gr\u00fcn",
+                                  "nur \U0001f534 rot", "gr\u00fcn + rot"],
+                                 key="uv_filter")
+            _maxt = _f2.selectbox("bis in", [7, 14, 28, 56], index=2,
+                                  format_func=lambda d: f"{d} Tagen",
+                                  key="uv_maxt")
+            _sicht = [r for r in _res if (r.get("tage") or 0) <= _maxt]
+            if _nur.endswith("gr\u00fcn"):
+                _sicht = [r for r in _sicht if r.get("ampel") == "gruen"]
+            elif _nur.endswith("rot"):
+                _sicht = [r for r in _sicht if r.get("ampel") == "rot"]
+            elif "+" in _nur:
+                _sicht = [r for r in _sicht if r.get("ampel") in ("gruen", "rot")]
+            st.caption(f"{len(_sicht)} von {len(_res)} gespeicherten Terminen")
+            if not _sicht:
+                st.info("Keine Termine im gew\u00e4hlten Filter.")
+            else:
+                vr_table([{
+                    "": _amp.get(r.get("ampel"), "\u26aa"),
+                    "Ticker": r["ticker"], "in Tagen": r["tage"],
+                    "Datum": r["datum"], "Beat-Quote %": r.get("beat_quote"),
+                    "belohnt %": r.get("belohnt_pct"), "n": r.get("n_termine"),
+                    "Umsatz +%": r.get("revenue_growth"),
+                } for r in _sicht],
+                    signed_cols=("Umsatz +%",),
+                    height=min(len(_sicht) * 40 + 46, 460))
+                st.markdown('<div class="sec-title" style="margin-top:14px">'
+                            'EINORDNUNG JE TITEL</div>', unsafe_allow_html=True)
+                for r in _sicht[:25]:
+                    with st.expander(
+                            f"{_amp.get(r.get('ampel'), '')} **{r['ticker']}** "
+                            f"\u00b7 in {r['tage']} Tagen \u00b7 {r.get('name', '')}"):
+                        st.write(f"**Einordnung:** {r.get('urteil', '')}")
+                        _e1, _e2 = st.columns(2)
+                        with _e1:
+                            st.caption("**Historie**")
+                            st.write(f"\u2022 Termine erfasst: {r.get('n_termine') or 0}")
+                            if r.get("beat_quote") is not None:
+                                st.write(f"\u2022 Sch\u00e4tzung \u00fcbertroffen: {r['beat_quote']} %")
+                            if r.get("belohnt_pct") is not None:
+                                st.write(f"\u2022 davon belohnt: {r['belohnt_pct']} %")
+                            if r.get("avg_reaktion_beat") is not None:
+                                st.write(f"\u2022 \u00d8 Reaktion auf Beat: "
+                                         f"{r['avg_reaktion_beat']:+.1f} %")
+                        with _e2:
+                            st.caption("**Erwartung**")
+                            if r.get("eps_estimate") is not None:
+                                st.write(f"\u2022 erwarteter Gewinn/Aktie: {r['eps_estimate']}")
+                            if r.get("revenue_growth") is not None:
+                                st.write(f"\u2022 Umsatzwachstum: {r['revenue_growth']:+.1f} %")
+                        if r.get("pro"):
+                            st.success("**Spricht gegen die Erwartung:**\n"
+                                       + "\n".join(f"\u2022 {x}" for x in r["pro"]))
+                        if r.get("contra"):
+                            st.warning("**St\u00fctzt die Erwartung:**\n"
+                                       + "\n".join(f"\u2022 {x}" for x in r["contra"]))
+            st.caption("**Wichtig:** Der Scanner sagt NICHT, ob eine Sch\u00e4tzung "
+                       "falsch ist \u2013 das kann vorab niemand wissen. Er sammelt "
+                       "Spannungen zwischen Erwartung und beobachtbaren Trends. "
+                       "Gr\u00fcne und rote F\u00e4lle werden in der **Trefferbilanz** "
+                       "mitprotokolliert \u2013 dort siehst du in einigen Wochen, ob "
+                       "die Logik trug. Vor Quartalszahlen einzusteigen bleibt "
+                       "eine Wette auf eine einzelne Nachricht. Kein Anlagerat.")
+
+    # ---------------------------------------------------------- Sektorfuehrung
+    if _uv.endswith("Sektorf\u00fchrung"):
+        _ms = _rg_state()
+        if _ms:
+            _c = st.columns(2)
+            card(_c[0], "Marktlage (S&P 500)", _ms["lage"],
+                 f"{_ms['drawdown']:+.1f} % unter dem 12-Monats-Hoch",
+                 "var(--green)" if _ms["drawdown"] > -5 else
+                 ("var(--amber)" if _ms["drawdown"] > -20 else "var(--red)"))
+            card(_c[1], "Historischer Hinweis", "\u2014", _ms["hinweis"],
+                 "var(--amber)")
+        _ld = _rg_lead()
+        if not _ld:
+            st.info("Sektordaten aktuell nicht abrufbar \u2013 sp\u00e4ter erneut versuchen.")
+        else:
+            st.markdown('<div class="sec-title" style="margin-top:14px">'
+                        'RELATIVE ST\u00c4RKE (gegen S&P 500, Prozentpunkte)</div>',
+                        unsafe_allow_html=True)
+            vr_table([{"Sektor": r["sektor"], "ETF": r["etf"],
+                       "3M": r["rel_3m"], "6M": r["rel_6m"], "12M": r["rel_12m"],
+                       "Schnitt": r["schnitt"],
+                       "Anhaltend": "\u2713" if r["anhaltend"] else ""}
+                      for r in _ld],
+                     signed_cols=("3M", "6M", "12M", "Schnitt"),
+                     height=min(len(_ld) * 40 + 46, 520))
+            _an = [r["sektor"] for r in _ld if r["anhaltend"]]
+            if _an:
+                st.success("**Anhaltend vorn** (\u00fcber 3, 6 **und** 12 Monate): "
+                           + ", ".join(_an))
+            st.caption("Ein Boom braucht hier keinen Namen: Er zeigt sich als "
+                       "Sektor, der \u00fcber alle drei Zeitr\u00e4ume vor dem Index liegt. "
+                       "Das findet auch den n\u00e4chsten Boom \u2013 eine Stichwortliste "
+                       "m\u00fcsste man st\u00e4ndig pflegen. **Aber:** Relative St\u00e4rke sagt, "
+                       "was gelaufen IST. Sie kann kurz vor dem Wendepunkt am "
+                       "st\u00e4rksten aussehen.")
+
+    # ---------------------------------------------------------- Saisonalitaet
+    if _uv.endswith("Saisonalit\u00e4t"):
+        _sc1, _sc2 = st.columns([2, 1])
+        _sek = _sc1.selectbox("Sektor", list(rg.SECTOR_ETFS),
+                              format_func=lambda k: rg.SECTOR_ETFS[k][1],
+                              key="uv_sek")
+        _jahre = _sc2.selectbox("Zeitraum", [10, 15, 20], index=2, key="uv_jahre")
+        _se = _rg_season(_sek, _jahre)
+        if not _se:
+            st.info("Keine ausreichende Historie abrufbar.")
+        else:
+            st.markdown(f'<div class="sec-title" style="margin-top:8px">'
+                        f'{_se["sektor"]} \u00b7 {_se["etf"]}</div>',
+                        unsafe_allow_html=True)
+            vr_table([{"Monat": m["monat"], "n": m["n"],
+                       "\u00d8 %": m["avg"], "Median %": m["median"],
+                       "Positiv %": m["trefferquote"]} for m in _se["monate"]],
+                     signed_cols=("\u00d8 %", "Median %"), height=560)
+            _nmin = min(m["n"] for m in _se["monate"])
+            st.warning(f"**Vorsicht bei der Auslegung.** Je Monat liegen nur "
+                       f"etwa {_nmin} Werte vor. Bei so kleinen Stichproben "
+                       "sehen auch reine Zufallsmuster \u00fcberzeugend aus \u2013 ein "
+                       "Unterschied von ein bis zwei Prozentpunkten zwischen "
+                       "Monaten ist meist Rauschen. Bekannte Muster wie "
+                       "\u201eSell in May\u201c sind zudem seit Jahrzehnten publiziert "
+                       "und damit weitgehend eingepreist.")
+
+    # -------------------------------------------- Reaktion auf Quartalszahlen
+    if _uv.endswith("Reaktion auf Zahlen"):
+        st.caption("Wie hat eine Aktie auf vergangene Quartalszahlen reagiert? "
+                   "Zwei getrennte Fragen: Liegen die **Analysten** daneben, "
+                   "und **belohnt der Markt** das \u00fcberhaupt?")
+        _t = st.text_input("Ticker", value="", placeholder="z. B. NVDA, SAP.DE",
+                           key="uv_tick").strip().upper()
+        if _t:
+            _p = _rg_profile(_t)
+            if not _p:
+                st.info(f"Keine Quartalshistorie f\u00fcr **{_t}** abrufbar. "
+                        "yfinance liefert diese Daten nicht f\u00fcr alle Titel, "
+                        "besonders selten f\u00fcr europ\u00e4ische Notierungen.")
+            else:
+                _k = st.columns(3)
+                card(_k[0], "Beat-Quote", f"{_p['beat_quote']} %",
+                     f"Analysten {_p['analysten']}",
+                     "var(--green)" if _p["beat_quote"] >= 75 else "var(--amber)")
+                card(_k[1], "davon belohnt",
+                     (f"{_p['beat_belohnt_pct']} %"
+                      if _p["beat_belohnt_pct"] is not None else "\u2014"),
+                     f"Markt {_p['markt']}",
+                     "var(--green)" if (_p["beat_belohnt_pct"] or 0) >= 70
+                     else "var(--red)")
+                card(_k[2], "\u00d8 Kursreaktion", f"{_p['avg_reaktion']:+.1f} %",
+                     f"{_p['n']} Termine erfasst",
+                     "var(--green)" if _p["avg_reaktion"] >= 0 else "var(--red)")
+                st.info(f"**Einordnung:** {_p['urteil']}")
+
+                st.markdown('<div class="sec-title" style="margin-top:14px">'
+                            'DIE VIER F\u00c4LLE</div>', unsafe_allow_html=True)
+                vr_table([{"Fall": k, "Anzahl": v,
+                           "Anteil %": round(v / _p["n"] * 100)}
+                          for k, v in _p["faelle"].items()], height=220)
+
+                st.markdown('<div class="sec-title" style="margin-top:14px">'
+                            'EINZELNE TERMINE</div>', unsafe_allow_html=True)
+                vr_table([{"Datum": r["datum"], "Erwartet": r["erwartet"],
+                           "Gemeldet": r["gemeldet"],
+                           "\u00dcberraschung %": r.get("ueberraschung_pct"),
+                           "Kursreaktion %": r["reaktion_pct"],
+                           "Fall": r["fall"]} for r in _p["zeilen"]],
+                         signed_cols=("\u00dcberraschung %", "Kursreaktion %"),
+                         height=min(len(_p["zeilen"]) * 40 + 46, 400))
+                st.caption("**Nur bis zu 8 Quartale verf\u00fcgbar** \u2013 das ist ein "
+                           "Stimmungsbild, keine Statistik. Bei acht Terminen "
+                           "kann eine \u201eQuote von 75 %\u201c auch reiner Zufall sein. "
+                           "Verwende es als Frage an dich selbst, nicht als "
+                           "Antwort. Kein Anlagerat.")
+
+    # ------------------------------------------------- Anstehende Quartalszahlen
+    if _uv.endswith("Anstehende Zahlen"):
+        st.caption("Welche deiner Titel melden demn\u00e4chst \u2013 und was sagt die "
+                   "Historie \u00fcber ihre Reaktion auf gute und schlechte Zahlen?")
+
+        @st.cache_data(ttl=7200, show_spinner=False)
+        def _rg_scan(tickers, wochen):
+            return rg.earnings_scan(list(tickers), max_wochen=wochen, limit=40)
+
+        _q1, _q2 = st.columns([1, 1])
+        _quelle_t = _q1.selectbox(
+            "Welche Titel?",
+            ["Portfolio + Watchlist", "nur Portfolio", "nur Watchlist"],
+            key="uv_quelle")
+        _wochen = _q2.selectbox("Zeitfenster", [2, 4, 6, 8], index=1,
+                                key="uv_wochen")
+
+        _tk = []
+        try:
+            if _quelle_t != "nur Watchlist":
+                for _n, _rows in (store.load_all() or {}).items():
+                    for _r in _rows or []:
+                        _x = str(_r.get("ticker") or "").strip().upper()
+                        if _x:
+                            _tk.append(_x)
+            if _quelle_t != "nur Portfolio":
+                for _r in (store.get_watchlist() or []):
+                    _x = str(_r.get("ticker") if isinstance(_r, dict) else _r
+                             or "").strip().upper()
+                    if _x:
+                        _tk.append(_x)
+        except Exception as _e:
+            st.caption(f"(Titel nicht ladbar: {_e})")
+
+        _tk = list(dict.fromkeys(_tk))
+        if not _tk:
+            st.info("Keine Titel gefunden. Lege ein Portfolio an oder f\u00fclle die "
+                    "Watchlist \u2013 dann pr\u00fcft der Scanner deren Termine.")
+        else:
+            st.caption(f"{len(_tk)} Titel werden gepr\u00fcft \u2013 das dauert einen "
+                       "Moment (mehrere Abrufe je Titel, danach 2 h zwischen"
+                       "gespeichert).")
+            with st.spinner("Termine und Reaktionshistorie werden geladen \u2026"):
+                _res = _rg_scan(tuple(_tk), _wochen)
+            if not _res:
+                st.info(f"Kein Titel meldet in den n\u00e4chsten {_wochen} Wochen \u2013 "
+                        "oder yfinance liefert f\u00fcr diese Titel keine Termine. "
+                        "F\u00fcr europ\u00e4ische Notierungen fehlen sie h\u00e4ufig.")
+            else:
+                _amp = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
+                        "rot": "\U0001f534", "grau": "\u26aa"}
+                vr_table([{
+                    "": _amp.get(r["ampel"], "\u26aa"),
+                    "Ticker": r["ticker"],
+                    "in Tagen": r["tage"],
+                    "Datum": r["datum"],
+                    "Beat-Quote %": r["beat_quote"],
+                    "belohnt %": r["belohnt_pct"],
+                    "n": r["n_termine"],
+                    "Umsatz +%": r["revenue_growth"],
+                } for r in _res],
+                    signed_cols=("Umsatz +%",),
+                    height=min(len(_res) * 40 + 46, 460))
+
+                st.markdown('<div class="sec-title" style="margin-top:14px">'
+                            'EINORDNUNG JE TITEL</div>', unsafe_allow_html=True)
+                for r in _res:
+                    with st.expander(
+                            f"{_amp.get(r['ampel'], '')} **{r['ticker']}** "
+                            f"\u00b7 in {r['tage']} Tagen \u00b7 {r['name']}"):
+                        st.write(f"**Einordnung:** {r['urteil']}")
+                        _e1, _e2 = st.columns(2)
+                        with _e1:
+                            st.caption("**Historie**")
+                            st.write(f"\u2022 Termine erfasst: {r['n_termine'] or 0}")
+                            if r["beat_quote"] is not None:
+                                st.write(f"\u2022 Schätzung übertroffen: "
+                                         f"{r['beat_quote']} %")
+                            if r["belohnt_pct"] is not None:
+                                st.write(f"\u2022 davon belohnt: {r['belohnt_pct']} %")
+                            if r["avg_reaktion_beat"] is not None:
+                                st.write(f"\u2022 \u00d8 Reaktion auf Beat: "
+                                         f"{r['avg_reaktion_beat']:+.1f} %")
+                        with _e2:
+                            st.caption("**Erwartung**")
+                            if r["eps_estimate"] is not None:
+                                st.write(f"\u2022 erwarteter Gewinn/Aktie: "
+                                         f"{r['eps_estimate']}")
+                            if r["revenue_growth"] is not None:
+                                st.write(f"\u2022 Umsatzwachstum: "
+                                         f"{r['revenue_growth']:+.1f} %")
+                        if r["pro"]:
+                            st.success("**Spricht gegen die Erwartung:**\n"
+                                       + "\n".join(f"\u2022 {x}" for x in r["pro"]))
+                        if r["contra"]:
+                            st.warning("**St\u00fctzt die Erwartung:**\n"
+                                       + "\n".join(f"\u2022 {x}" for x in r["contra"]))
+
+                st.caption("**Wichtig:** Der Scanner sagt NICHT, ob eine "
+                           "Sch\u00e4tzung falsch ist \u2013 das kann vorab niemand "
+                           "wissen. Er sammelt Spannungen zwischen Erwartung "
+                           "und beobachtbaren Trends. Jede Zeile ist eine Frage "
+                           "an dich, keine Antwort. Und: Vor Quartalszahlen "
+                           "einzusteigen ist immer eine Wette auf eine einzelne "
+                           "Nachricht \u2013 unabh\u00e4ngig davon, wie gut das Muster "
+                           "aussieht. Kein Anlagerat.")

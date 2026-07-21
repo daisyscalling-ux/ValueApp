@@ -250,3 +250,113 @@ def analyze(rows: list) -> dict:
         "score": round(score, 1), "label": label, "vkey": vkey,
         "flags": flags, "weak": weak, "gaps": gaps,
     }
+
+
+# ============================================================================
+# PERFORMANCE-VERGLEICH gegen die grossen Indizes
+# ============================================================================
+INDIZES = [
+    ("^GSPC",  "S&P 500"),
+    ("^IXIC",  "NASDAQ"),
+    ("^DJI",   "Dow Jones"),
+    ("^GDAXI", "DAX"),
+]
+
+
+def _reihe(ticker):
+    """Schlusskurse der letzten Monate als Liste."""
+    try:
+        import providers
+        h = providers.get_price_history(ticker, period="3mo", interval="1d")
+    except Exception:
+        return []
+    if h is None or getattr(h, "empty", True):
+        return []
+    try:
+        col = "Close" if "Close" in h.columns else h.columns[0]
+        return [float(v) for v in h[col].tolist() if v is not None and v == v]
+    except Exception:
+        return []
+
+
+def _veraenderung(ticker):
+    """(heute_pct, monat_pct) - None, wenn nicht ermittelbar.
+
+    'Heute' = letzter Schluss gegen den vorherigen. Waehrend des Handels
+    ist das der Stand des letzten verfuegbaren Kurses, nicht zwingend
+    tagesaktuell in Echtzeit."""
+    r = _reihe(ticker)
+    if len(r) < 2:
+        return None, None
+    heute = (r[-1] / r[-2] - 1) * 100 if r[-2] else None
+    monat = None
+    if len(r) >= 22 and r[-22]:
+        monat = (r[-1] / r[-22] - 1) * 100
+    elif len(r) >= 2 and r[0]:
+        monat = (r[-1] / r[0] - 1) * 100        # weniger Historie: was da ist
+    return heute, monat
+
+
+def performance(rows, max_titel=40):
+    """Wertentwicklung des Portfolios gegen die grossen Indizes.
+
+    WICHTIG - was das ist und was nicht:
+    Gerechnet wird die Entwicklung der HEUTE GEHALTENEN Positionen,
+    gewichtet nach ihrem Wert. Das ist KEINE echte Portfoliorendite:
+    Kaeufe und Verkaeufe im Zeitraum bleiben unberuecksichtigt. Wer vor
+    einer Woche gekauft hat, dessen Position zeigt hier trotzdem die
+    Monatsveraenderung des Papiers - nicht den eigenen Gewinn.
+
+    Fuer den Vergleich mit einem Index ist das trotzdem die richtige
+    Groesse: Sie beantwortet 'wie liefen meine Titel', nicht 'wie gut war
+    mein Timing'."""
+    if not rows:
+        return None
+    gesamt = sum(r.get("value_eur") or 0 for r in rows)
+    if gesamt <= 0:
+        return None
+
+    pf_heute = pf_monat = 0.0
+    gew_heute = gew_monat = 0.0
+    fehlend = []
+    for r in rows[:max_titel]:
+        t = r.get("ticker")
+        w = (r.get("value_eur") or 0) / gesamt
+        if not t or w <= 0:
+            continue
+        h, m = _veraenderung(t)
+        if h is not None:
+            pf_heute += h * w
+            gew_heute += w
+        if m is not None:
+            pf_monat += m * w
+            gew_monat += w
+        if h is None and m is None:
+            fehlend.append(t)
+
+    # Auf die tatsaechlich erfassten Gewichte normieren, sonst verwaessert
+    # ein Titel ohne Kursdaten das Ergebnis stillschweigend Richtung null.
+    pf_heute = pf_heute / gew_heute if gew_heute > 0 else None
+    pf_monat = pf_monat / gew_monat if gew_monat > 0 else None
+
+    idx = []
+    for tk, name in INDIZES:
+        h, m = _veraenderung(tk)
+        idx.append({
+            "name": name, "ticker": tk,
+            "heute": round(h, 2) if h is not None else None,
+            "monat": round(m, 2) if m is not None else None,
+            "diff_heute": (round(pf_heute - h, 2)
+                           if (pf_heute is not None and h is not None) else None),
+            "diff_monat": (round(pf_monat - m, 2)
+                           if (pf_monat is not None and m is not None) else None),
+        })
+
+    return {
+        "pf_heute": round(pf_heute, 2) if pf_heute is not None else None,
+        "pf_monat": round(pf_monat, 2) if pf_monat is not None else None,
+        "abdeckung": round(gew_heute * 100),
+        "fehlend": fehlend,
+        "indizes": idx,
+        "n": len(rows),
+    }

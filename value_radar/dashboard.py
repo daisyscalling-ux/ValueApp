@@ -2538,6 +2538,67 @@ if nav == "Einzelanalyse":
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
 
+                # --- NOTBEHELF-WARNUNG: keine Methode lieferte ein Ergebnis
+                if v.get("used_fallback"):
+                    st.error(
+                        "\u26a0\ufe0f **Der Fair Value ist hier KEINE Bewertung.** "
+                        "Keine einzige Methode (KGV, KBV, DCF, EV/EBITDA, "
+                        "Analystenziel) lieferte ein plausibles Ergebnis \u2013 "
+                        "meist wegen fehlender oder widerspr\u00fcchlicher "
+                        "Fundamentaldaten. Angezeigt wird deshalb nur ein "
+                        "Notbehelf: der gegen den Kurs geklammerte Median, "
+                        "also faktisch **der halbe oder doppelte Kurs**. "
+                        "Eine Upside von genau \u221250 % oder +100 % ist das "
+                        "Erkennungszeichen. **Diese Zahl bitte ignorieren.**")
+                    _fehlend = [k for k in ("eps_trailing", "eps_forward",
+                                            "book_value_ps", "revenue", "ebitda",
+                                            "target_mean", "free_cashflow",
+                                            "total_debt", "sector")
+                                if not f.get(k)]
+                    if _fehlend:
+                        st.caption("Fehlende Felder: " + ", ".join(_fehlend))
+
+                # --- Analysten-Streuung (eigenes Feld, kein Eingriff in die Rechnung)
+                try:
+                    _sp = valuation.analyst_spread(f)
+                except Exception:
+                    _sp = None
+                if _sp and _sp.get("spanne_pct") is not None:
+                    _spc = st.columns(3)
+                    card(_spc[0], "Kursziel niedrigstes", m(_sp["low"]),
+                         "pessimistischster Analyst", "var(--red)")
+                    card(_spc[1], "Kursziel h\u00f6chstes", m(_sp["high"]),
+                         "optimistischster Analyst", "var(--green)")
+                    card(_spc[2], "Uneinigkeit",
+                         f"{_sp['spanne_pct']:.0f} %",
+                         (f"Faktor {_sp['faktor']} \u00b7 {_sp['n']} Analysten"
+                          if _sp.get("faktor") and _sp.get("n")
+                          else _sp["einstufung"]),
+                         "var(--green)" if _sp["vertrauen"] >= 0.85 else
+                         ("var(--amber)" if _sp["vertrauen"] >= 0.6 else "var(--red)"))
+                    if _sp["vertrauen"] < 0.85:
+                        st.warning(f"**Analysten {_sp['einstufung']}.** Das "
+                                   f"12M-Target von {m(_sp['mean'])} ist der "
+                                   f"Mittelwert aus {m(_sp['low'])} und "
+                                   f"{m(_sp['high'])}. Es tr\u00e4gt je nach Preset "
+                                   "25 bis 40 % unseres Fair Value \u2013 bei dieser "
+                                   "Streuung sollte man ihm entsprechend wenig "
+                                   "Gewicht beimessen.")
+
+                # --- Aktualit\u00e4t: meldet der Titel demn\u00e4chst?
+                try:
+                    import regime as _rgv
+                    _ne = _rgv.next_earnings(ticker, max_wochen=8)
+                    _fr = valuation.datenaktualitaet(f, _ne["tage"] if _ne else None)
+                    if _fr["stufe"] in ("kritisch", "achtung"):
+                        st.warning(f"\u23f0 **{_fr['hinweis']}.** Fair Value und "
+                                   "Scores beruhen auf den zuletzt gemeldeten "
+                                   "Zahlen.")
+                    elif _fr["stufe"] == "hinweis":
+                        st.caption(f"\u23f0 {_fr['hinweis']}")
+                except Exception:
+                    pass
+
                 # --- Relative Bewertung: historisches Band + Sektor-Vergleich ---
                 try:
                     import relval
@@ -4344,6 +4405,64 @@ if nav == "Portfoliocheck":
                         st.markdown(f'<div class="news-box"><a>{esc(w["ticker"])} \u2014 {esc(w["name"] or "")}</a>'
                                     f'<div class="meta">{esc(" \u00b7 ".join(w["reasons"]))}</div></div>',
                                     unsafe_allow_html=True)
+
+                # --- Wertentwicklung gegen die grossen Indizes
+                st.markdown('<div class="sec-title">WERTENTWICKLUNG \u00b7 '
+                            'PORTFOLIO GEGEN DIE INDIZES</div>',
+                            unsafe_allow_html=True)
+
+                @st.cache_data(ttl=900, show_spinner=False)
+                def _pf_perf(_key, _rows):
+                    return pf.performance(_rows)
+
+                try:
+                    _perf = _pf_perf(tuple(sorted(r["ticker"] for r in rows)),
+                                     [{"ticker": r["ticker"],
+                                       "value_eur": r["value_eur"]} for r in rows])
+                except Exception as _e:
+                    _perf = None
+                    st.caption(f"(nicht berechenbar: {_e})")
+
+                if not _perf:
+                    st.caption("Wertentwicklung derzeit nicht berechenbar.")
+                else:
+                    _pc = st.columns(2)
+                    card(_pc[0], "Portfolio heute",
+                         (f"{de(_perf['pf_heute'], 2)} %"
+                          if _perf["pf_heute"] is not None else "\u2014"),
+                         f"{_perf['n']} Positionen",
+                         "var(--green)" if (_perf["pf_heute"] or 0) >= 0
+                         else "var(--red)")
+                    card(_pc[1], "Portfolio 1 Monat",
+                         (f"{de(_perf['pf_monat'], 2)} %"
+                          if _perf["pf_monat"] is not None else "\u2014"),
+                         "gewichtet nach Positionswert",
+                         "var(--green)" if (_perf["pf_monat"] or 0) >= 0
+                         else "var(--red)")
+
+                    vr_table([{
+                        "Portfolio vs.": i["name"],
+                        "Heute": i["diff_heute"],
+                        "1 Monat": i["diff_monat"],
+                    } for i in _perf["indizes"]],
+                        signed_cols=("Heute", "1 Monat"),
+                        height=226)
+                    st.caption(
+                        "Angegeben ist der **Vorsprung deines Portfolios in "
+                        "Prozentpunkten**: positiv heißt, du lagst vor dem "
+                        "Index, negativ dahinter. **Wichtig:** Gerechnet wird "
+                        "die Entwicklung der **heute gehaltenen** Positionen, "
+                        "gewichtet nach Wert \u2013 K\u00e4ufe und Verk\u00e4ufe im Zeitraum "
+                        "bleiben unber\u00fccksichtigt. Die Zahl beantwortet also "
+                        "\u201ewie liefen meine Titel\u201c, nicht \u201ewie gut war mein "
+                        "Timing\u201c. Indexwerte in eigener W\u00e4hrung, ohne "
+                        "W\u00e4hrungseffekt f\u00fcr dich als Euro-Anleger.")
+                    if _perf["abdeckung"] < 95:
+                        st.caption(f"\u26a0\ufe0f Nur {_perf['abdeckung']} % des "
+                                   "Portfoliowerts konnten einbezogen werden"
+                                   + (f" \u2013 ohne Kursdaten: "
+                                      f"{', '.join(_perf['fehlend'][:6])}"
+                                      if _perf["fehlend"] else "") + ".")
 
                 # Portfolio bearbeiten: direkt unter dem Portfolio, VOR den Ideen.
                 _render_pf_editor()

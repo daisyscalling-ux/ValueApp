@@ -15,6 +15,11 @@ import time
 import config
 
 try:
+    import roic as _roic
+except Exception:                                   # pragma: no cover
+    _roic = None
+
+try:
     import yfinance as yf
 except Exception:  # pragma: no cover
     yf = None
@@ -538,8 +543,43 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         except Exception:
             pass
     B = _finnhub_bundle(ticker)
-    C = _fmp_bundle(ticker) if deep else None
+    # roic.ai ersetzt FMP als Tiefen-Quelle, wo es den Ticker abdeckt
+    # (US immer, Europa erst nach v3-Freigabe - Fehler vom Support bestaetigt).
+    # 300 Abrufe/min statt 250/Tag: deep kann jetzt auch im Scan laufen.
+    R = None
+    if _roic is not None and _roic.covers(ticker):
+        try:
+            R = _roic.bundle(ticker)
+        except Exception:
+            R = None
+    C = None
+    if deep and not R:
+        C = _fmp_bundle(ticker)          # Rueckfall nur noch ohne roic
     merged = _merge_sources(ticker, A, B, C, use_tiingo=deep)
+    # roic-Werte gewinnen feldweise, wo vorhanden - ausser Kurs/Waehrung:
+    # die bleiben bei yfinance, weil dort die Pence-Normalisierung haengt.
+    if R:
+        for k, v in R.items():
+            if k in ("price", "currency", "_src"):
+                continue
+            if v is not None:
+                merged[k] = v
+        merged["_roic"] = True
+        # Historisches KGV-Band: bisher bei ALLEN Titeln leer (FMP-Quote),
+        # dadurch lief relval.py ins Leere. roic liefert es aus Jahres-EPS
+        # plus Jahresschlusskursen - nur bei deep, kostet 2 Extra-Abrufe.
+        if deep and not merged.get("hist_pe_median"):
+            try:
+                h = _roic.pe_history(ticker)      # fertiges Band, 1 Abruf
+                if h and h.get("median"):
+                    merged["hist_pe_median"] = h["median"]
+                    merged["hist_pe_values"] = h.get("werte")
+                    merged["hist_pe_jahre"] = h.get("jahre")
+                    merged["hist_pe_hoch"] = h.get("spanne_hoch")
+                    merged["hist_pe_tief"] = h.get("spanne_tief")
+                    merged["hist_pe_n"] = h.get("n")
+            except Exception:
+                pass
     if merged.get("price") is None:                 # Quelle: Stooq als letzte Absicherung
         sp = _stooq_last(ticker)
         if sp:

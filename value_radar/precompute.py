@@ -98,6 +98,19 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "entry": round(v["entry_price"], 2) if v.get("entry_price") else None,
         "price": round(f["price"], 2) if f.get("price") else None,
         "sector": f.get("sector"),
+        # --- Zusatzfelder fuer Strategie-Filter (kosten keine Extra-Abrufe,
+        #     stehen alle schon in f bzw. s)
+        "vs_52w_high": (round((f["price"] / f["52w_high"] - 1) * 100, 1)
+                        if f.get("52w_high") and f.get("price") else None),
+        "vs_52w_low": (round((f["price"] / f["52w_low"] - 1) * 100, 1)
+                       if f.get("52w_low") and f.get("price") else None),
+        "momentum": (s.get("category_scores") or {}).get("momentum"),
+        "quality": (s.get("category_scores") or {}).get("quality"),
+        "value": (s.get("category_scores") or {}).get("value"),
+        "analyst_count": f.get("analyst_count"),
+        "value_trap": s.get("value_trap"),
+        "revenue_growth": (round(f["revenue_growth"] * 100, 1)
+                           if f.get("revenue_growth") is not None else None),
     }
 
 
@@ -800,3 +813,186 @@ def _send_email(changes, holdings, watch, scr, rad, started, briefing_text=None)
 
 if __name__ == "__main__":
     run()
+
+
+def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
+              strategie="Standard (wie Nachtlauf)"):
+    """Derselbe Scan wie im Nachtlauf - aber auf Knopfdruck.
+
+    Ablauf identisch zu screener_scan()/radar_scan(), damit die Zahlen zu
+    denen des Cron passen:
+      1) Universum holen und Zweitnotierungen zusammenfassen
+      2) alle Titel flach bewerten (Composite, Quantum, Upside)
+      3) die besten tief nachrechnen - inkl. Radar-Score
+
+    Schritt 3 ist teuer (mehrere Abrufe je Titel), deshalb nur fuer top_n.
+    'fortschritt' ist ein Rueckruf fortschritt(fertig, gesamt, phase).
+
+    HINWEIS: Das ist eine Momentaufnahme, keine Empfehlung. Ein hoher Score
+    heisst 'passt zu den Kriterien', nicht 'wird steigen'."""
+    if ms is None:
+        return []
+    try:
+        usd = providers.get_fx_to_eur("USD") or 0.92
+        tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
+                                        (5e9) / usd, universum)
+        tickers = collapse_listings(tickers)
+    except Exception as e:
+        print(f"[live_scan] Universum nicht ladbar: {e}")
+        return []
+
+    # --- Phase 1: flach ueber das ganze Universum
+    scored = {}
+    for i, t in enumerate(tickers):
+        try:
+            r = score_ticker(t, deep=False)
+            if r:
+                scored[t] = r
+        except Exception:
+            pass
+        if fortschritt:
+            fortschritt(i + 1, len(tickers), "breit")
+    _LAST_SCAN["Live"] = scored
+
+    # --- Strategie anwenden: erst filtern, dann nach ihrem Kriterium sortieren
+    strat = STRATEGIEN.get(strategie) or STRATEGIEN["Standard (wie Nachtlauf)"]
+    passend = [r for r in scored.values() if strat["filter"](r)]
+    ranked = sorted(passend, key=strat["sort"], reverse=True)
+    auswahl = ranked[:top_n]
+    print(f"  [live_scan] {strategie}: {len(passend)} von {len(scored)} "
+          f"Titeln erfuellen die Kriterien.")
+
+    if not tief:
+        return auswahl
+
+    # --- Phase 2: die Besten tief nachrechnen, inklusive Radar
+    out = []
+    for i, r in enumerate(auswahl):
+        t = r["ticker"]
+        try:
+            tiefer = score_ticker(t, deep=True) or r
+        except Exception:
+            tiefer = r
+        # Radar-Score separat: braucht Zusatzabrufe, lohnt nur fuer die Top-Titel
+        radar_score = radar_ebenen = None
+        try:
+            a = _analyse(t)
+            radar_score = a.get("radar_score")
+            radar_ebenen = a.get("radar_firing")
+            tiefer["verdict"] = a.get("verdict")
+            tiefer["strategie"] = a.get("strategie")
+        except Exception:
+            pass
+        tiefer["radar_score"] = radar_score
+        tiefer["radar_ebenen"] = radar_ebenen
+        out.append(tiefer)
+        if fortschritt:
+            fortschritt(i + 1, len(auswahl), "tief")
+
+    return sorted(out, key=strat["sort"], reverse=True)
+
+
+# ============================================================================
+# STRATEGIEN fuer den Live-Scan
+# ----------------------------------------------------------------------------
+# Jede Strategie ist ein Filter plus eine Sortierung. Bewusst KEINE
+# "besten" Strategie - jede sucht etwas anderes und hat ihre eigene Schwaeche,
+# die im Feld 'risiko' benannt wird. Wer sie vergleichen will, laesst sie in
+# der Trefferbilanz gegeneinander laufen.
+# ============================================================================
+
+def _s_standard(r):
+    return True
+
+
+def _s_gefallen(r):
+    """Deutlich unter dem Jahreshoch, aber fundamental in Ordnung."""
+    v = r.get("vs_52w_high")
+    return (v is not None and v <= -25
+            and (r.get("composite") or 0) >= 50
+            and (r.get("upside") or -999) >= 10
+            and not r.get("value_trap"))
+
+
+def _s_ausbruch(r):
+    """Nahe am Jahreshoch mit Rueckenwind."""
+    v = r.get("vs_52w_high")
+    return (v is not None and v >= -8
+            and (r.get("momentum") or 0) >= 55
+            and (r.get("composite") or 0) >= 45)
+
+
+def _s_qualitaet(r):
+    """Gute Substanz zu vertretbarem Preis - kein Schnaeppchen, kein Drama."""
+    return ((r.get("quality") or 0) >= 60
+            and (r.get("composite") or 0) >= 58
+            and 5 <= (r.get("upside") or -999) <= 45
+            and not r.get("value_trap"))
+
+
+def _s_uebersehen(r):
+    """Wenig beobachtete Titel mit ordentlichen Kennzahlen."""
+    n = r.get("analyst_count")
+    return (n is not None and n <= 8
+            and (r.get("composite") or 0) >= 55
+            and (r.get("upside") or -999) >= 10)
+
+
+STRATEGIEN = {
+    "Standard (wie Nachtlauf)": {
+        "filter": _s_standard,
+        "sort": lambda r: (r.get("composite") or 0)
+                          + min((r.get("upside") or 0) * 0.3, 15),
+        "was": "Alle Titel nach Composite plus gedeckelter Upside – "
+               "identisch zum nächtlichen Job.",
+        "risiko": "Keine Auswahl nach Marktlage; findet, was insgesamt am "
+                  "besten abschneidet.",
+        "spalten": [],
+    },
+    "Gefallen, aber gut bewertet": {
+        "filter": _s_gefallen,
+        "sort": lambda r: (r.get("upside") or 0) + (r.get("composite") or 0) * 0.5,
+        "was": "Mindestens 25 % unter dem 52-Wochen-Hoch, Composite ab 50, "
+               "Upside ab 10 %, keine erkannte Wertfalle. Die Wette: Der "
+               "Markt hat überreagiert.",
+        "risiko": "**Das ist die riskanteste Annahme im ganzen Werkzeug.** "
+                  "Ein Kurs fällt meist aus einem Grund, und die Mehrheit der "
+                  "gefallenen Titel fällt weiter. Der Filter unterscheidet "
+                  "nicht zwischen Überreaktion und berechtigtem Absturz.",
+        "spalten": [("vs. 52W-Hoch %", "vs_52w_high")],
+    },
+    "Möglicher Ausbruch (erhöhtes Risiko)": {
+        "filter": _s_ausbruch,
+        "sort": lambda r: (r.get("momentum") or 0) + (r.get("composite") or 0) * 0.4,
+        "was": "Höchstens 8 % unter dem 52-Wochen-Hoch, Momentum ab 55, "
+               "Composite ab 45. Die Wette: Stärke setzt sich fort.",
+        "risiko": "Trendfolge funktioniert, bis sie es nicht mehr tut – und "
+                  "der Wendepunkt sieht vorher aus wie die stärkste Phase. "
+                  "Titel am Jahreshoch sind zudem selten günstig; hier wird "
+                  "bewusst Bewertung gegen Schwung getauscht.",
+        "spalten": [("vs. 52W-Hoch %", "vs_52w_high"), ("Momentum", "momentum")],
+    },
+    "Qualität zum fairen Preis": {
+        "filter": _s_qualitaet,
+        "sort": lambda r: (r.get("quality") or 0) * 0.6 + (r.get("composite") or 0) * 0.4,
+        "was": "Qualitätsscore ab 60, Composite ab 58, Upside zwischen 5 und "
+               "45 %. Die Obergrenze ist Absicht: Eine Upside von 200 % "
+               "bedeutet meist fehlerhafte Daten, nicht ein Schnäppchen.",
+        "risiko": "Gute Firmen sind selten billig. Diese Auswahl findet "
+                  "wenige Titel und verpasst Erholungen nach Abstürzen – "
+                  "dafür sind die Datenlagen meist solider.",
+        "spalten": [("Qualität", "quality")],
+    },
+    "Übersehen (wenig Analysten)": {
+        "filter": _s_uebersehen,
+        "sort": lambda r: (r.get("composite") or 0)
+                          + min((r.get("upside") or 0) * 0.3, 15),
+        "was": "Höchstens 8 Analysten, Composite ab 55, Upside ab 10 %. Die "
+               "Wette: Wo weniger hinschauen, ist mehr übersehen.",
+        "risiko": "Geringe Abdeckung heißt auch dünnere Datenlage – Kursziele "
+                  "und Schätzungen beruhen auf wenigen Meinungen und sind "
+                  "entsprechend unzuverlässig. Zudem oft geringere "
+                  "Handelbarkeit.",
+        "spalten": [("Analysten", "analyst_count")],
+    },
+}

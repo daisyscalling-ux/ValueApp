@@ -3394,6 +3394,112 @@ if nav == "Radar":
 # ===========================================================================
 if nav == "Screener":
     st.markdown('<div class="sec-title">MARKTWEITER SCREENER</div>', unsafe_allow_html=True)
+
+    # ---------------------------------------------------------------------
+    # "Wenn ich heute kaufen m\u00fcsste" - derselbe Scan wie im Nachtlauf,
+    # aber sofort. Bewusst ganz oben: das ist der schnellste Weg zu einer
+    # Gesamtsicht, ohne auf den n\u00e4chsten Cron zu warten.
+    # ---------------------------------------------------------------------
+    with st.expander("\u26a1 WENN ICH HEUTE KAUFEN M\u00dcSSTE \u00b7 Scan auf Knopfdruck",
+                     expanded=False):
+        st.caption("F\u00fchrt denselben Scan aus wie der n\u00e4chtliche Job \u2013 gleiche "
+                   "Kriterien, gleiche Kennzahlen \u2013 nur eben jetzt. Ergebnis: "
+                   "Composite, Quantum (Meta), Radar-Score und Upside je Titel.")
+        import precompute as _pcs
+        _strat = st.selectbox("Strategie", list(_pcs.STRATEGIEN),
+                              key="live_strat")
+        _sinfo = _pcs.STRATEGIEN[_strat]
+        st.caption(f"**Sucht:** {_sinfo['was']}")
+        st.warning(f"**Schwäche dieser Strategie:** {_sinfo['risiko']}")
+
+        _lc1, _lc2 = st.columns(2)
+        _uni = _lc1.selectbox("Universumsgr\u00f6\u00dfe",
+                              [40, 90, 150],
+                              index=1,
+                              format_func=lambda n: f"{n} Titel",
+                              key="live_uni",
+                              help="Gro\u00dfe Titel aus US, DE, FR, GB, NL ab 5 Mrd. "
+                                   "Marktkapitalisierung. Mehr Titel = gr\u00fc"
+                                   "ndlicher, aber deutlich l\u00e4nger.")
+        _topn = _lc2.selectbox("Davon tief nachrechnen", [5, 10, 15, 20],
+                               index=2, format_func=lambda n: f"Top {n}",
+                               key="live_top",
+                               help="Nur f\u00fcr diese wird der Radar-Score "
+                                    "berechnet \u2013 das kostet mehrere Zusatz"
+                                    "abrufe je Titel.")
+        _dauer = int(_uni * 1.2 + _topn * 6)
+        st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {_dauer//60} bis "
+                   f"{_dauer//60 + 2} Minuten** (etwa {_uni * 2 + _topn * 5} "
+                   "Abrufe). Bitte den Tab offen lassen.")
+
+        if st.button("\u25b6 Scan jetzt starten", key="live_go",
+                     use_container_width=True):
+            import precompute as _pcx
+            _bar = st.progress(0.0, text="Universum wird geladen \u2026")
+
+            def _fortschritt(fertig, gesamt, phase):
+                if phase == "breit":
+                    anteil = 0.8 * fertig / max(gesamt, 1)
+                    _bar.progress(anteil,
+                                  text=f"Breite Bewertung \u2026 {fertig}/{gesamt}")
+                else:
+                    anteil = 0.8 + 0.2 * fertig / max(gesamt, 1)
+                    _bar.progress(min(anteil, 1.0),
+                                  text=f"Top-Titel tief nachrechnen \u2026 "
+                                       f"{fertig}/{gesamt}")
+
+            try:
+                _erg = _pcx.live_scan(universum=_uni, top_n=_topn, tief=True,
+                                      fortschritt=_fortschritt,
+                                      strategie=_strat)
+                _bar.progress(1.0, text="fertig")
+                st.session_state["live_ergebnis"] = _erg
+                st.session_state["live_zeit"] = datetime.now().strftime(
+                    "%d.%m.%Y %H:%M")
+                st.session_state["live_strat_used"] = _strat
+                st.session_state["live_spalten"] = _sinfo.get("spalten", [])
+            except Exception as _e:
+                _bar.empty()
+                st.error(f"Scan fehlgeschlagen: {_e}")
+
+        _erg = st.session_state.get("live_ergebnis")
+        if _erg:
+            st.caption(f"Stand: {st.session_state.get('live_zeit', '\u2014')} \u00b7 "
+                       f"Strategie: **{st.session_state.get('live_strat_used', '\u2014')}** "
+                       f"\u00b7 {len(_erg)} Titel")
+            # Strategiespezifische Spalten hinter den Standardspalten
+            _extra = st.session_state.get("live_spalten", [])
+            _zeilen = []
+            for r in _erg:
+                _z = {"Ticker": r.get("ticker"),
+                      "Name": (r.get("name") or "")[:22],
+                      "Comp": r.get("composite"),
+                      "Quantum": r.get("quantum"),
+                      "Radar": r.get("radar_score"),
+                      "Ebenen": (f"{r.get('radar_ebenen')}/4"
+                                 if r.get("radar_ebenen") is not None else "\u2014")}
+                for _lbl, _key in _extra:
+                    _z[_lbl] = r.get(_key)
+                _z.update({"Upside %": r.get("upside"), "Kurs": r.get("price"),
+                           "Fair Value": r.get("fair_value"),
+                           "Einstieg": r.get("entry"),
+                           "Sektor": (r.get("sector") or "\u2014")[:16]})
+                _zeilen.append(_z)
+            _signed = ["Upside %"] + [l for l, _k in _extra
+                                      if "%" in l or "52W" in l]
+            vr_table(_zeilen, signed_cols=tuple(_signed),
+                     height=min(len(_erg) * 40 + 46, 520))
+            st.caption(
+                "**Comp** = Composite Score (Fundamentaldaten), **Quantum** = "
+                "Meta-Score aus Composite, Bewertung, Analysten und Momentum, "
+                "**Radar** = Fr\u00fchsignal-Score mit der Zahl feuernder Ebenen. "
+                "Sortiert nach Composite plus gedeckelter Upside \u2013 dieselbe "
+                "Reihenfolge wie im Nachtlauf. **Eine Momentaufnahme, kein "
+                "Kaufsignal:** ein hoher Score hei\u00dft \u201epasst zu den Kriterien\u201c, "
+                "nicht \u201ewird steigen\u201c. Diese Titel landen NICHT automatisch in "
+                "der Trefferbilanz \u2013 dort wird nur der Nachtlauf protokolliert, "
+                "damit die Messung sauber bleibt. Kein Anlagerat.")
+
     st.caption("Screent gegen den breiten Markt (keine Tickerliste). W\u00e4hle eine "
                "fertige Vorlage oder eigene Filter. Geld in EUR.")
 
@@ -4187,48 +4293,9 @@ if nav == "Portfoliocheck":
                 st.caption("Erkannt: " + "  \u00b7  ".join(f"{esc(a0)} \u2192 {esc(b0)}"
                                                            for a0, b0 in resolved))
             if invalid:
-                _ges = len(invalid) + len(rows)
-                _anteil = len(invalid) / _ges * 100 if _ges else 0
-                # Haeufige Ursache: Firmenname statt Boersensymbol, oder
-                # Symbol ohne Boersenkuerzel. Vorschlaege helfen mehr als
-                # eine blosse Fehlliste.
-                _TIPPS = {
-                    "NETEASE (ADR)": "NTES", "NETEASE": "NTES",
-                    "SUZUKI MOTOR": "7269.T", "GILEAD SCIENCES": "GILD",
-                    "GILEAD": "GILD", "BOOKING HOLDINGS": "BKNG",
-                    "BOOKING": "BKNG", "ALLIANZ": "ALV.DE",
-                    "SHA0": "SHA.DE", "VWRL": "VWRL.AS", "4GLD": "4GLD.DE",
-                    "SIEMENS": "SIE.DE", "BASF": "BAS.DE", "BAYER": "BAYN.DE",
-                    "VOLKSWAGEN": "VOW3.DE", "MERCEDES": "MBG.DE",
-                    "NESTLE": "NESN.SW", "NOVARTIS": "NOVN.SW",
-                    "LVMH": "MC.PA", "SHELL": "SHEL.L",
-                }
-                _mit_tipp, _ohne = [], []
-                for _iv in invalid:
-                    _t = _TIPPS.get(str(_iv).strip().upper())
-                    if not _t and "." not in str(_iv) and str(_iv).isalnum():
-                        _t = f"{_iv}.DE"          # haeufigster Fall: DE-Boerse
-                    (_mit_tipp if _t else _ohne).append((_iv, _t))
-                if _anteil >= 30:
-                    st.error(
-                        f"\u26a0\ufe0f **{len(invalid)} von {_ges} Positionen "
-                        f"({_anteil:.0f} %) liefern keine Kursdaten.** Alle "
-                        "Auswertungen unten \u2013 Depotwert, Klumpenrisiko, Scores "
-                        "und der Indexvergleich \u2013 beruhen deshalb nur auf den "
-                        f"{len(rows)} auffindbaren Positionen und bilden dein "
-                        "Depot **nicht vollst\u00e4ndig** ab.")
-                else:
-                    st.warning(f"{len(invalid)} Position(en) ohne Kursdaten \u2013 "
-                               "sie fehlen in allen Auswertungen unten.")
-                if _mit_tipp:
-                    st.caption("Meist steht dort ein **Firmenname statt eines "
-                               "B\u00f6rsensymbols**, oder das B\u00f6rsenk\u00fcrzel fehlt. "
-                               "Vorschl\u00e4ge: "
-                               + "  \u00b7  ".join(f"{esc(a0)} \u2192 **{esc(b0)}**"
-                                                  for a0, b0 in _mit_tipp[:10]))
-                if _ohne:
-                    st.caption("Ohne Vorschlag: "
-                               + ", ".join(esc(str(a0)) for a0, _b in _ohne[:10]))
+                # Diese Eintraege blieben auch nach der Symbolsuche ohne Kurs.
+                st.warning("Keine Kursdaten (fehlen in allen Auswertungen "
+                           "unten): " + ", ".join(esc(str(x)) for x in invalid))
 
             if not rows:
                 st.info("Mindestens eine g\u00fcltige Position (Ticker/Name + Wert > 0) eintragen.")

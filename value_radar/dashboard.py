@@ -3677,6 +3677,31 @@ if nav == "Screener":
         st.caption(f"{len(passed)} Titel bestehen die Filter.")
 
         rows = []
+        # Doppelnotierungen ueber den Firmennamen entfernen. Die symbol-
+        # basierte Variante greift hier nicht: NVIDIA laeuft als NVDA,
+        # NVD.DE, NVDG.F und NVDD.XC - kein gemeinsames Basissymbol.
+        try:
+            import precompute as _pcd
+            _vorher = len(passed)
+            _grp, _ohne = {}, []
+            for _fd in passed:
+                _k = _pcd._norm_name(_fd.get("name"))
+                if not _k:
+                    _ohne.append(_fd)
+                else:
+                    _grp.setdefault(_k, []).append(_fd)
+
+            def _rang(fd):
+                _t = fd.get("ticker") or ""
+                _b, _p = _pcd._canon_base(_t)
+                return (_p, len(_b), _t)
+            passed = [sorted(g, key=_rang)[0] for g in _grp.values()] + _ohne
+            if len(passed) < _vorher:
+                st.caption(f"{_vorher - len(passed)} Doppelnotierung(en) "
+                           "zusammengefasst (gleiche Firma, andere B\u00f6rse).")
+        except Exception:
+            pass
+
         for fd in passed:
             t = fd["ticker"]
             fx = fd["_fx"]

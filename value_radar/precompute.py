@@ -320,6 +320,7 @@ def screener_scan() -> list:
     except Exception:
         return []
     scored = scan_list(tickers, deep=False, label="Screener")
+    scored = collapse_scored(scored, "Screener")   # Dubletten ueber den Namen
     _LAST_SCAN["Screener"] = scored
     ranked = sorted(
         [r for r in scored.values() if (r.get("composite") or 0) >= 55
@@ -369,6 +370,7 @@ def radar_scan() -> list:
                 tickers.append(t)
     tickers = collapse_listings(tickers)
     scored = scan_list(tickers, deep=False, label="Radar")
+    scored = collapse_scored(scored, "Radar")      # Dubletten ueber den Namen
     _LAST_SCAN["Radar"] = scored
     ranked = sorted(
         [r for r in scored.values() if (r.get("composite") or 0) >= 55],
@@ -852,6 +854,7 @@ def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
             pass
         if fortschritt:
             fortschritt(i + 1, len(tickers), "breit")
+    scored = collapse_scored(scored, "Live")       # Dubletten ueber den Namen
     _LAST_SCAN["Live"] = scored
 
     # --- Strategie anwenden: erst filtern, dann nach ihrem Kriterium sortieren
@@ -996,3 +999,95 @@ STRATEGIEN = {
         "spalten": [("Analysten", "analyst_count")],
     },
 }
+
+
+# ============================================================================
+# DOPPELNOTIERUNGEN ueber den FIRMENNAMEN zusammenfassen
+# ----------------------------------------------------------------------------
+# Die symbolbasierte Variante (_canon_base) greift nur, wenn die Symbole
+# verwandt sind (BHP.L / BHPL.XC). Sie versagt bei den haeufigsten Faellen:
+#   NVIDIA   -> NVDA, NVD.DE, NVDG.F, NVDD.XC
+#   Alphabet -> GOOGL, GOOG, ABEA.DE, ABEC.DE, ABE0.F, ABEAD.XC
+# Kein gemeinsames Basissymbol. Der Firmenname dagegen ist identisch.
+# ============================================================================
+
+_RECHTSFORMEN = (
+    "incorporated", "corporation", "aktiengesellschaft", "limited",
+    "holdings", "holding", "company", "group", "inc", "corp", "plc",
+    "ag", "nv", "n v", "sa", "s a", "se", "ltd", "co", "kgaa", "asa",
+    "ab", "oyj", "spa", "s p a", "bv", "b v", "class a", "class b",
+    "class c", "adr", "ads", "sponsored", "the",
+)
+
+
+def _norm_name(name):
+    """Firmennamen auf einen vergleichbaren Kern reduzieren.
+
+    'NVIDIA Corporation' und 'NVIDIA Corp' -> 'nvidia'
+    'Alphabet Inc.' und 'Alphabet Inc. Class C' -> 'alphabet'
+    """
+    if not name:
+        return ""
+    s = str(name).lower()
+    # Punkte OHNE Leerzeichen entfernen, sonst zerfaellt "p.l.c." in drei
+    # Buchstaben und passt nicht mehr auf "plc".
+    s = s.replace(".", "")
+    for z in ",()&'\"-/":
+        s = s.replace(z, " ")
+    teile = [w for w in s.split() if w]
+    # Gattungszusatz am Ende abschneiden: "... class c", "... series a"
+    if len(teile) >= 2 and teile[-2] in ("class", "serie", "series") \
+            and len(teile[-1]) <= 2:
+        teile = teile[:-2]
+    # Rechtsformen und Gattungszusaetze hinten abschneiden
+    while teile and teile[-1] in _RECHTSFORMEN:
+        teile.pop()
+    # auch einzelne Vorkommen entfernen (z.B. "sponsored adr" in der Mitte)
+    teile = [w for w in teile if w not in _RECHTSFORMEN]
+    return " ".join(teile)
+
+
+def _listing_rang(r):
+    """Sortierschluessel: welche Notierung soll die Gruppe vertreten?
+
+    1) vollstaendige Daten schlagen lueckenhafte
+    2) Heimatboerse vor Zweitnotierung (bestehende Suffix-Prioritaet)
+    3) kuerzeres Basissymbol (GOOG vor GOOGL, BP vor BP-B)
+    4) alphabetisch - nur damit das Ergebnis reproduzierbar ist
+    """
+    t = r.get("ticker") or ""
+    luecken = sum(1 for k in ("composite", "upside", "fair_value", "price")
+                  if r.get(k) is None)
+    base, pri = _canon_base(t)
+    return (luecken, pri, len(base), t)
+
+
+def collapse_scored(scored, label=""):
+    """Bewertete Titel nach Firmenname entdoppeln.
+
+    Laeuft NACH der Bewertung, weil der Name erst dann vorliegt. Das kostet
+    keine zusaetzlichen Abrufe - die Namen kommen aus derselben Abfrage.
+
+    Titel ohne Namen bleiben unangetastet: lieber eine Dublette zu viel als
+    zwei verschiedene Firmen faelschlich zusammengeworfen."""
+    gruppen, ohne_namen = {}, []
+    werte = scored.values() if isinstance(scored, dict) else scored
+    for r in werte:
+        key = _norm_name(r.get("name"))
+        if not key:
+            ohne_namen.append(r)
+            continue
+        gruppen.setdefault(key, []).append(r)
+
+    out, entfernt = [], 0
+    for key, gruppe in gruppen.items():
+        if len(gruppe) > 1:
+            gruppe = sorted(gruppe, key=_listing_rang)
+            entfernt += len(gruppe) - 1
+        out.append(gruppe[0])
+    out.extend(ohne_namen)
+
+    if entfernt:
+        print(f"  [{label or 'dedup'}] {entfernt} Doppelnotierung(en) entfernt "
+              f"-> {len(out)} Titel.")
+    return {r["ticker"]: r for r in out} if isinstance(scored, dict) else out

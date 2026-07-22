@@ -453,3 +453,139 @@ def status() -> dict:
                     "bis v3 die vom Support bestaetigten Fehler behebt "
                     "(GBP-Kurse, Buchwert)."),
     }
+
+
+# ============================================================================
+# VOLLE KENNZAHLEN, FINANZDATEN, TRANSKRIPTE
+# ============================================================================
+
+def ratios_working_capital(t: str):
+    return _first(_get(f"fundamental/ratios/working-capital/{t}"))
+
+
+def ratios_alle(t: str) -> dict:
+    """Alle vier Kennzahlenblöcke in einem Aufruf-Bündel (4 Abrufe).
+
+    Rohwerte OHNE Umrechnung - die Einordnung passiert in kennzahlen.py,
+    weil dort auch steht, welches Feld Prozent und welches ein rohes
+    Verhaeltnis ist."""
+    if not covers(t):
+        return {}
+    return {
+        "profitabilitaet": ratios_profitability(t) or {},
+        "verschuldung": ratios_credit(t) or {},
+        "liquiditaet": ratios_liquidity(t) or {},
+        "kapitalbindung": ratios_working_capital(t) or {},
+    }
+
+
+def financials(t: str, art="income", period="annual", limit=10) -> list:
+    """Mehrjahresreihen: art = income | balance | cashflow.
+
+    Das ist der eigentliche Zugewinn gegenueber yfinance: dort gibt es
+    Momentaufnahmen, hier zehn Jahre. Erst damit laesst sich fragen, ob
+    eine Marge steigt oder faellt."""
+    if not covers(t):
+        return []
+    pfad = {"income": "income-statement", "balance": "balance-sheet",
+            "cashflow": "cash-flow"}.get(art, "income-statement")
+    d = _get(f"fundamental/{pfad}/{t}", {"period": period, "limit": limit})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    return reihen if isinstance(reihen, list) else []
+
+
+def multiples_historie(t: str, jahre=10) -> list:
+    """Bewertungs-Multiples je Geschaeftsjahr - fuer historische Baender.
+
+    Liefert nicht nur das KGV, sondern auch EV/EBITDA, KUV und KBV samt
+    Jahreshoch und -tief. Damit laesst sich fuer JEDE Methode sagen, ob
+    der heutige Wert im historischen Rahmen liegt."""
+    if not multiples_ok(t):
+        return []
+    d = _get(f"fundamental/multiples/{t}", {"period": "annual", "limit": jahre})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    out = []
+    for z in reihen:
+        out.append({
+            "jahr": _g(z, "fiscal_year"),
+            "pe": _num(_g(z, "average_price_earnings_ratio")) or _num(_g(z, "pe_ratio")),
+            "pe_hoch": _num(_g(z, "pe_ratio_with_high_clos_pr")),
+            "pe_tief": _num(_g(z, "pe_ratio_with_low_clos_pr")),
+            "ev_ebitda": _num(_g(z, "avg_ev_to_ttm_ebitda")) or _num(_g(z, "ev_to_ttm_ebitda")),
+            "ev_ebitda_hoch": _num(_g(z, "high_ev_to_ttm_ebitda")),
+            "ev_ebitda_tief": _num(_g(z, "low_ev_to_ttm_ebitda")),
+            "ps": _num(_g(z, "average_price_to_sales_ratio")) or _num(_g(z, "pr_to_sales_ratio")),
+            "pb": _num(_g(z, "average_price_to_book_ratio")) or _num(_g(z, "pr_to_book_ratio")),
+            "pfcf": _num(_g(z, "average_price_to_free_cash_flow")) or _num(_g(z, "pr_to_free_cash_flow")),
+            "kurs_hoch": _num(_g(z, "pr_high")),
+            "kurs_tief": _num(_g(z, "pr_low")),
+        })
+    return [z for z in out if z.get("jahr")]
+
+
+def news(t: str, limit=15) -> list:
+    """Firmennachrichten. Ergaenzt marketnews.py, ersetzt es nicht."""
+    if not covers(t):
+        return []
+    d = _get(f"company/news/{t}", {"limit": limit})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    out = []
+    for z in reihen:
+        out.append({
+            "datum": str(_g(z, "published_date", "date", "datetime") or "")[:19],
+            "titel": _g(z, "title", "headline"),
+            "quelle": _g(z, "site", "source", "publisher"),
+            "url": _g(z, "url", "link"),
+            "text": _g(z, "text", "summary", "content"),
+        })
+    return [z for z in out if z.get("titel")]
+
+
+def transcript_liste(t: str, limit=8) -> list:
+    """Verfuegbare Earnings-Calls (Quartal/Jahr/Datum)."""
+    if not covers(t):
+        return []
+    d = _get(f"transcripts/list/{t}", {"limit": limit})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    out = []
+    for z in reihen:
+        out.append({"jahr": _g(z, "year", "fiscal_year"),
+                    "quartal": _g(z, "quarter", "period"),
+                    "datum": str(_g(z, "date") or "")[:10]})
+    return [z for z in out if z.get("datum") or z.get("jahr")]
+
+
+def transcript(t: str, jahr=None, quartal=None) -> dict:
+    """Wortprotokoll eines Earnings-Calls.
+
+    Ohne Jahr/Quartal: das neueste. Rueckgabe {datum, quartal, jahr, text}."""
+    if not covers(t):
+        return {}
+    if jahr and quartal:
+        d = _get(f"transcripts/{t}", {"year": jahr, "quarter": quartal})
+    else:
+        d = _get(f"transcripts/latest/{t}")
+    z = _first(d)
+    if not z:
+        return {}
+    return {
+        "datum": str(_g(z, "date") or "")[:10],
+        "jahr": _g(z, "year", "fiscal_year"),
+        "quartal": _g(z, "quarter", "period"),
+        "text": _g(z, "content", "transcript", "text") or "",
+    }
+
+
+def ticker_suche(q: str, limit=10) -> list:
+    """Symbolsuche ueber roic - Ergaenzung zur yfinance-Suche."""
+    if not enabled():
+        return []
+    d = _get("tickers/search", {"query": q, "limit": limit})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    out = []
+    for z in reihen:
+        out.append({"symbol": _g(z, "ticker", "symbol"),
+                    "name": _g(z, "company_name", "name"),
+                    "boerse": _g(z, "exchange_short_name", "exchange"),
+                    "land": _g(z, "country_code", "country")})
+    return [z for z in out if z.get("symbol")]

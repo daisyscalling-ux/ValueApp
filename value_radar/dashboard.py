@@ -679,6 +679,20 @@ def render_trackrecord():
             _sig = store.get_signals() or []
             st.write(f"Speicher: **{store.backend()}**")
             st.write(f"Signale gespeichert: **{len(_sig)}**")
+            # --- Datenquelle roic.ai
+            try:
+                import roic as _rc
+                _rs = _rc.status()
+                if _rs["aktiv"]:
+                    st.write("Datenquelle: **roic.ai aktiv** "
+                             f"({_rs['limit_pro_minute']}/min) \u00b7 Europa: "
+                             + ("freigeschaltet" if _rs["eu_freigeschaltet"]
+                                else "gesperrt (bis v3)"))
+                else:
+                    st.write("Datenquelle: roic.ai **nicht konfiguriert** "
+                             "(ROIC_API_KEY in den Secrets setzen)")
+            except Exception:
+                pass
             if store.backend() != "sheet":
                 st.warning("Ohne Google-Sheet-Speicher gehen die Signale beim "
                            "Neustart verloren \u2013 und der Cron-Job schreibt in einen "
@@ -2495,11 +2509,41 @@ if nav == "Einzelanalyse":
                          "net_debt_ebitda", "current_ratio"]
                 _missing = [k for k in _core if f.get(k) is None]
                 if len(_missing) >= 3:
-                    st.warning("\u26a0 Unvollst\u00e4ndige Kennzahlen von der Datenquelle "
-                               f"({len(_missing)} Kernwerte fehlen \u2013 vermutlich Rate-Limit). "
-                               "Der Score ist dadurch evtl. zu niedrig. Bitte in der Seitenleiste "
-                               "\u201eMarktdaten neu laden\u201c klicken oder es gleich nochmal "
-                               "versuchen.")
+                    # Ursache benennen statt pauschal "Rate-Limit" zu raten.
+                    # Mit roic.ai ist das Limit meist NICHT mehr die Ursache -
+                    # dann fehlen die Felder wirklich fuer diesen Titel.
+                    try:
+                        import roic as _rcw
+                        _rc_an = _rcw.enabled()
+                        _rc_deckt = _rc_an and _rcw.covers(ticker)
+                        _rc_pence = _rcw.is_pence_market(ticker)
+                    except Exception:
+                        _rc_an = _rc_deckt = _rc_pence = False
+
+                    if f.get("_roic"):
+                        _ursache = ("Die Werte kamen von **roic.ai**, dort fehlen "
+                                    "sie f\u00fcr diesen Titel. Kein Limit-Problem \u2013 "
+                                    "erneutes Laden \u00e4ndert daran nichts.")
+                    elif _rc_pence:
+                        _ursache = ("Dieser Titel notiert in Pence (London). "
+                                    "roic.ai ist daf\u00fcr bewusst gesperrt, weil der "
+                                    "Anbieter dort einen best\u00e4tigten Umrechnungs"
+                                    "fehler hat. Daten kommen von yfinance.")
+                    elif _rc_an and not _rc_deckt:
+                        _ursache = ("F\u00fcr diesen Titel ist roic.ai nicht "
+                                    "freigeschaltet, die Daten kommen von "
+                                    "yfinance \u2013 dort k\u00f6nnen Limits greifen.")
+                    elif _rc_an:
+                        _ursache = ("roic.ai lieferte f\u00fcr diesen Titel nichts, "
+                                    "es wurde auf yfinance zur\u00fcckgefallen. "
+                                    "Erneutes Laden kann helfen.")
+                    else:
+                        _ursache = ("Datenquelle ist yfinance/Finnhub \u2013 dort "
+                                    "greifen Limits. Erneutes Laden kann helfen.")
+                    st.warning(f"\u26a0 **{len(_missing)} Kernkennzahlen fehlen** "
+                               f"({', '.join(_missing)}). Der Score wird dadurch "
+                               "Richtung 50 gezogen, weil fehlende Werte neutral "
+                               f"z\u00e4hlen \u2013 er ist also eher zu niedrig. {_ursache}")
 
                 # Quantum Score: Meta-Score ueber Qualitaet/Bewertung/Analysten/Momentum
                 q = scoring.quantum_score(s["composite"], v, intel.get("analyst"),
@@ -2598,6 +2642,388 @@ if nav == "Einzelanalyse":
                         st.caption(f"\u23f0 {_fr['hinweis']}")
                 except Exception:
                     pass
+
+                # ============================================================
+                # FINANZKENNZAHLEN — Ampel je Kennzahl, Mehrjahresreihen
+                # ============================================================
+                with st.expander("\U0001f9ee FINANZKENNZAHLEN \u00b7 Bilanz im Detail",
+                                 expanded=False):
+                    try:
+                        import roic as _rk
+                        import kennzahlen as _kz
+                    except Exception:
+                        _rk = _kz = None
+
+                    if _rk is None or not _rk.enabled():
+                        st.info("Ben\u00f6tigt die roic.ai-Anbindung "
+                                "(ROIC_API_KEY nicht gesetzt).")
+                    elif not _rk.covers(ticker):
+                        st.info("F\u00fcr diesen Titel ist roic.ai nicht "
+                                "freigeschaltet \u2013 Pence-Notierungen (London) "
+                                "sind wegen eines best\u00e4tigten Umrechnungsfehlers "
+                                "beim Anbieter gesperrt.")
+                    else:
+                        @st.cache_data(ttl=3600, show_spinner=False)
+                        def _hole_ratios(t):
+                            return _rk.ratios_alle(t)
+
+                        @st.cache_data(ttl=3600, show_spinner=False)
+                        def _hole_fin(t, art, per, lim):
+                            return _rk.financials(t, art, per, lim)
+
+                        with st.spinner("Kennzahlen werden geladen \u2026"):
+                            _roh = _hole_ratios(ticker)
+                        _bew = _kz.bewerte(_roh)
+
+                        if not _bew:
+                            st.info("Keine Kennzahlen verf\u00fcgbar.")
+                        else:
+                            _zus = _kz.zusammenfassung(_bew)
+                            _k = st.columns(4)
+                            card(_k[0], "Gut", str(_zus["gruen"]), "Kennzahlen",
+                                 "var(--green)")
+                            card(_k[1], "Mittel", str(_zus["gelb"]), "Kennzahlen",
+                                 "var(--amber)")
+                            card(_k[2], "Bedenklich", str(_zus["rot"]),
+                                 "Kennzahlen", "var(--red)")
+                            card(_k[3], "Gesamtbild", _zus["urteil"].title(),
+                                 f"{_zus['gesamt']} bewertet", "var(--amber)")
+                            if _zus["schwach"]:
+                                st.caption("Schwachstellen: "
+                                           + " \u00b7 ".join(_zus["schwach"]))
+                            st.caption("**Wichtig:** Das beurteilt die "
+                                       "**Finanzlage**, nicht die Aktie. Eine "
+                                       "solide Bilanz sagt nichts \u00fcber den "
+                                       "Kurs. Schwellenwerte sind zudem "
+                                       "branchenabh\u00e4ngig \u2013 die Hinweise unter "
+                                       "den Tabellen nennen die wichtigsten "
+                                       "Ausnahmen.")
+
+                            _amp = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
+                                    "rot": "\U0001f534", "grau": "\u26aa"}
+                            for _bl in _bew:
+                                st.markdown(f'<div class="sec-title" '
+                                            f'style="margin-top:12px">'
+                                            f'{esc(_bl["titel"].upper())}</div>',
+                                            unsafe_allow_html=True)
+                                vr_table([{
+                                    "": _amp.get(z["ampel"], "\u26aa"),
+                                    "Kennzahl": z["name"],
+                                    "Wert": z["anzeige"],
+                                    "gut ab" if z["richtung"] == "hoch"
+                                    else "gut bis": (
+                                        "\u2014" if z["schwelle_gut"] is None
+                                        else (f"{z['schwelle_gut']:g} %"
+                                              if z["einheit"] == "pct"
+                                              else f"{z['schwelle_gut']:g}")),
+                                } for z in _bl["zeilen"]],
+                                    height=min(len(_bl["zeilen"]) * 40 + 46, 420))
+                                for z in _bl["zeilen"]:
+                                    if z["ampel"] in ("rot", "gelb") or "ACHTUNG" in z["hinweis"]:
+                                        st.caption(f"**{z['name']}:** {z['hinweis']}")
+
+                        # --- Mehrjahresentwicklung
+                        st.markdown('<div class="sec-title" '
+                                    'style="margin-top:16px">'
+                                    'ENTWICKLUNG \u00dcBER DIE JAHRE</div>',
+                                    unsafe_allow_html=True)
+                        _fa1, _fa2 = st.columns(2)
+                        _art = _fa1.selectbox(
+                            "Rechnung",
+                            [("income", "Gewinn- und Verlustrechnung"),
+                             ("balance", "Bilanz"),
+                             ("cashflow", "Kapitalflussrechnung")],
+                            format_func=lambda x: x[1], key="fin_art")[0]
+                        _per = _fa2.selectbox(
+                            "Zeitraum", [("annual", "j\u00e4hrlich"),
+                                         ("quarter", "quartalsweise")],
+                            format_func=lambda x: x[1], key="fin_per")[0]
+                        with st.spinner("Finanzdaten werden geladen \u2026"):
+                            _fin = _hole_fin(ticker, _art, _per, 10)
+                        if not _fin:
+                            st.info("Keine Mehrjahresdaten verf\u00fcgbar.")
+                        else:
+                            _WICHTIG = {
+                                "income": [
+                                    ("Umsatz", "is_sales_revenue_turnover"),
+                                    ("Bruttoergebnis", "is_gross_profit"),
+                                    ("EBITDA", "ebitda"),
+                                    ("EBIT", "ebit"),
+                                    ("Nettogewinn", "is_net_income"),
+                                    ("Gewinn/Aktie", "eps"),
+                                    ("Bruttomarge %", "gross_margin"),
+                                    ("Op. Marge %", "oper_margin"),
+                                ],
+                                "balance": [
+                                    ("Bilanzsumme", "bs_tot_asset"),
+                                    ("Eigenkapital", "bs_total_equity"),
+                                    ("Verbindlichkeiten", "bs_tot_liab"),
+                                    ("Nettoschulden", "net_debt"),
+                                    ("Barmittel", "bs_cash_near_cash_item"),
+                                    ("Vorr\u00e4te", "bs_inventories"),
+                                    ("Aktienzahl", "bs_sh_out"),
+                                ],
+                                "cashflow": [
+                                    ("Operativer Cashflow", "cf_cash_from_oper"),
+                                    ("Investitionen", "cf_cap_expenditures"),
+                                    ("Freier Cashflow", "cf_free_cash_flow"),
+                                    ("Dividenden", "cf_dvd_paid"),
+                                    ("Aktienr\u00fcckk\u00e4ufe", "cf_decr_cap_stock"),
+                                ],
+                            }[_art]
+
+                            def _kurz(v):
+                                if v is None:
+                                    return "\u2014"
+                                try:
+                                    v = float(v)
+                                except Exception:
+                                    return str(v)
+                                for teiler, kuerzel in ((1e9, " Mrd"), (1e6, " Mio")):
+                                    if abs(v) >= teiler:
+                                        return f"{v/teiler:,.1f}{kuerzel}".replace(",", ".")
+                                return f"{v:,.2f}".replace(",", ".")
+
+                            _perioden = [str(z.get("period_label")
+                                              or z.get("fiscal_year") or "")
+                                         for z in _fin][:8]
+                            _zeilen = []
+                            for _lbl, _feld in _WICHTIG:
+                                _r = {"Position": _lbl}
+                                for _i, _z in enumerate(_fin[:8]):
+                                    _r[_perioden[_i] or f"P{_i}"] = _kurz(_z.get(_feld))
+                                _zeilen.append(_r)
+                            vr_table(_zeilen,
+                                     height=min(len(_zeilen) * 40 + 46, 420))
+
+                            # Trend der wichtigsten Groessen
+                            _tr = []
+                            for _lbl, _feld in _WICHTIG[:6]:
+                                _t = _kz.trend(_fin, _feld, 5)
+                                if _t:
+                                    _tr.append(f"**{_lbl}**: {_t['wort']} "
+                                               f"({_t['aenderung_pct']:+.0f} % "
+                                               f"seit {_t['von']})")
+                            if _tr:
+                                st.caption("\u00b7 ".join(_tr))
+                            st.caption("Aktuellste Periode links. Bei "
+                                       "quartalsweiser Ansicht liefert roic "
+                                       "rollierende Zw\u00f6lfmonatswerte (TTM), "
+                                       "keine Einzelquartale.")
+
+                # ============================================================
+                # HISTORISCHE BEWERTUNGSBAENDER — teuer oder billig
+                # gegenueber der EIGENEN Vergangenheit
+                # ============================================================
+                try:
+                    import roic as _rb
+                    _bands_ok = _rb.enabled() and _rb.multiples_ok(ticker)
+                except Exception:
+                    _rb, _bands_ok = None, False
+
+                if _bands_ok:
+                    with st.expander("\U0001f4d0 BEWERTUNG IM HISTORISCHEN "
+                                     "VERGLEICH", expanded=False):
+                        @st.cache_data(ttl=21600, show_spinner=False)
+                        def _hole_bands(t):
+                            return _rb.multiples_historie(t, 10)
+
+                        _hist = _hole_bands(ticker)
+                        if len(_hist) < 3:
+                            st.info("Zu wenig Historie f\u00fcr einen Vergleich.")
+                        else:
+                            _METH = [
+                                ("KGV", "pe", f.get("pe_trailing"),
+                                 "Kurs je Gewinn"),
+                                ("EV/EBITDA", "ev_ebitda", f.get("ev_ebitda"),
+                                 "Unternehmenswert je Bruttoergebnis \u2013 "
+                                 "unabh\u00e4ngig von der Finanzierung"),
+                                ("KUV", "ps", f.get("ps"),
+                                 "Kurs je Umsatz \u2013 n\u00fctzlich, wenn Gewinne "
+                                 "schwanken"),
+                                ("KBV", "pb", f.get("pb"),
+                                 "Kurs je Buchwert \u2013 vor allem bei Banken "
+                                 "und Industrie aussagekr\u00e4ftig"),
+                            ]
+                            _zeilen, _hinweise = [], []
+                            for _lbl, _key, _heute, _erkl in _METH:
+                                _werte = [z[_key] for z in _hist
+                                          if z.get(_key) and 0 < z[_key] < 500]
+                                if len(_werte) < 3:
+                                    continue
+                                _srt = sorted(_werte)
+                                _mid = len(_srt) // 2
+                                _med = (_srt[_mid] if len(_srt) % 2
+                                        else (_srt[_mid-1] + _srt[_mid]) / 2)
+                                _abw = ((_heute / _med - 1) * 100
+                                        if _heute and _med else None)
+                                _zeilen.append({
+                                    "Methode": _lbl,
+                                    "heute": (round(_heute, 1) if _heute else "\u2014"),
+                                    "Median": round(_med, 1),
+                                    "tiefstes": round(min(_werte), 1),
+                                    "h\u00f6chstes": round(max(_werte), 1),
+                                    "vs. Median %": (round(_abw, 0)
+                                                     if _abw is not None else None),
+                                    "Jahre": len(_werte),
+                                })
+                                if _abw is not None:
+                                    _hinweise.append((_lbl, _abw, _erkl))
+                            if not _zeilen:
+                                st.info("Keine belastbaren Reihen vorhanden.")
+                            else:
+                                vr_table(_zeilen,
+                                         signed_cols=("vs. Median %",),
+                                         height=min(len(_zeilen)*40+46, 260))
+                                _teuer = [l for l, a, _e in _hinweise if a > 20]
+                                _billig = [l for l, a, _e in _hinweise if a < -20]
+                                if _teuer and not _billig:
+                                    st.warning("Nach **" + ", ".join(_teuer)
+                                               + "** liegt die Aktie deutlich "
+                                               "\u00fcber ihrem eigenen Durchschnitt "
+                                               "der letzten Jahre.")
+                                elif _billig and not _teuer:
+                                    st.success("Nach **" + ", ".join(_billig)
+                                               + "** liegt die Aktie deutlich "
+                                               "unter ihrem eigenen Durchschnitt.")
+                                elif _teuer and _billig:
+                                    st.info("Uneinheitlich: teuer nach "
+                                            + ", ".join(_teuer) + ", g\u00fcnstig nach "
+                                            + ", ".join(_billig)
+                                            + ". Das passiert, wenn sich Marge "
+                                            "oder Verschuldung ver\u00e4ndert haben.")
+                                st.caption(
+                                    "Verglichen wird die Aktie mit **sich "
+                                    "selbst**, nicht mit anderen Firmen. "
+                                    "**Die Schwäche dieser Betrachtung:** Ein "
+                                    "Unternehmen kann zu Recht neu bewertet "
+                                    "worden sein \u2013 weil das Gesch\u00e4ft heute "
+                                    "besser oder schlechter ist als vor f\u00fcnf "
+                                    "Jahren. \u201eUnter dem Schnitt\u201c hei\u00dft "
+                                    "also nicht automatisch \u201eg\u00fcnstig\u201c. "
+                                    "Kein Anlagerat.")
+
+                # ============================================================
+                # UNTERNEHMENSPROFIL, NACHRICHTEN, EARNINGS CALL
+                # ============================================================
+                if _rb is not None and _rb.enabled() and _rb.covers(ticker):
+                    with st.expander("\U0001f4c4 PROFIL, NACHRICHTEN & "
+                                     "EARNINGS CALL", expanded=False):
+                        _pv = st.radio(
+                            "Ansicht",
+                            ["Unternehmen", "Nachrichten", "Earnings Call"],
+                            horizontal=True, label_visibility="collapsed",
+                            key="prof_view")
+
+                        @st.cache_data(ttl=86400, show_spinner=False)
+                        def _hole_profil(t):
+                            return _rb.profile(t)
+
+                        @st.cache_data(ttl=3600, show_spinner=False)
+                        def _hole_news(t):
+                            return _rb.news(t, 15)
+
+                        @st.cache_data(ttl=86400, show_spinner=False)
+                        def _hole_transkript(t):
+                            return _rb.transcript(t)
+
+                        if _pv == "Unternehmen":
+                            _p = _hole_profil(ticker) or {}
+                            if not _p:
+                                st.info("Kein Profil verf\u00fcgbar.")
+                            else:
+                                _pc = st.columns(3)
+                                card(_pc[0], "Branche",
+                                     str(_p.get("industry") or "\u2014")[:22],
+                                     str(_p.get("sector") or ""), "var(--amber)")
+                                card(_pc[1], "Mitarbeiter",
+                                     (f"{int(_p['full_time_employees']):,}".replace(",", ".")
+                                      if _p.get("full_time_employees") else "\u2014"),
+                                     str(_p.get("country") or ""), "var(--amber)")
+                                card(_pc[2], "B\u00f6rsengang",
+                                     str(_p.get("ipo_date") or "\u2014")[:10],
+                                     str(_p.get("exchange_short_name") or ""),
+                                     "var(--amber)")
+                                if _p.get("ceo"):
+                                    st.caption(f"**Vorstandsvorsitz:** "
+                                               f"{esc(str(_p['ceo']))}"
+                                               + (f" \u00b7 **ISIN:** {esc(str(_p['isin']))}"
+                                                  if _p.get("isin") else ""))
+                                _txt = _p.get("description") or _p.get("ai_description")
+                                if _txt:
+                                    st.markdown("**Gesch\u00e4ftsmodell**")
+                                    st.write(str(_txt)[:1800])
+                                if _p.get("is_adr"):
+                                    st.caption("\u26a0\ufe0f Dies ist ein **ADR** \u2013 "
+                                               "ein Hinterlegungsschein auf eine "
+                                               "ausl\u00e4ndische Aktie. Kurs und "
+                                               "Kennzahlen k\u00f6nnen vom "
+                                               "Heimatmarkt abweichen.")
+
+                        elif _pv == "Nachrichten":
+                            _nw = _hole_news(ticker) or []
+                            if not _nw:
+                                st.info("Keine Nachrichten verf\u00fcgbar.")
+                            else:
+                                for _n in _nw[:12]:
+                                    _z = f"**{esc(str(_n['titel']))}**"
+                                    if _n.get("url"):
+                                        _z = f"[{esc(str(_n['titel']))}]({_n['url']})"
+                                    st.markdown(f"{_z}  \n"
+                                                f"<span class='muted'>"
+                                                f"{esc(str(_n.get('datum') or ''))} \u00b7 "
+                                                f"{esc(str(_n.get('quelle') or ''))}"
+                                                f"</span>",
+                                                unsafe_allow_html=True)
+                                    st.divider()
+                                st.caption("Nachrichten sind bereits im Kurs "
+                                           "verarbeitet \u2013 sie erkl\u00e4ren, was "
+                                           "passiert ist, sie sagen nichts voraus.")
+
+                        else:  # Earnings Call
+                            _tr = _hole_transkript(ticker) or {}
+                            if not _tr.get("text"):
+                                st.info("Kein Transkript verf\u00fcgbar. Nicht f\u00fcr "
+                                        "alle Titel und Quartale vorhanden.")
+                            else:
+                                st.caption(f"**{_tr.get('quartal') or ''} "
+                                           f"{_tr.get('jahr') or ''}** \u00b7 "
+                                           f"{_tr.get('datum') or ''} \u00b7 "
+                                           f"{len(_tr['text']):,}".replace(",", ".")
+                                           + " Zeichen")
+                                _t_all = _tr["text"]
+                                _such = st.text_input(
+                                    "Im Transkript suchen",
+                                    placeholder="z. B. guidance, margin, demand",
+                                    key="tr_such").strip()
+                                if _such:
+                                    _tref = []
+                                    _low = _t_all.lower()
+                                    _pos = _low.find(_such.lower())
+                                    while _pos >= 0 and len(_tref) < 12:
+                                        _tref.append(_t_all[max(0, _pos-220):_pos+320])
+                                        _pos = _low.find(_such.lower(), _pos+1)
+                                    st.caption(f"{len(_tref)} Fundstelle(n)")
+                                    for _s in _tref:
+                                        st.markdown(f"> \u2026{esc(_s)}\u2026")
+                                        st.divider()
+                                else:
+                                    st.text_area("Wortprotokoll", _t_all,
+                                                 height=420, key="tr_text")
+                                st.warning(
+                                    "**Warum es hier keine automatische "
+                                    "Einsch\u00e4tzung gibt:** In Earnings Calls "
+                                    "spricht die Unternehmensleitung \u00fcber das "
+                                    "eigene Unternehmen \u2013 sie klingt fast immer "
+                                    "zuversichtlich, auch kurz vor schlechten "
+                                    "Quartalen. Eine Stimmungsauswertung w\u00fcrde "
+                                    "deshalb vor allem messen, wie gut die "
+                                    "Kommunikationsabteilung ist. Aufschlussreich "
+                                    "ist stattdessen der **Frageteil**: Woran "
+                                    "haken Analysten nach, und wo weicht die "
+                                    "Antwort aus? Such gezielt nach "
+                                    "\u201eguidance\u201c, \u201emargin\u201c, "
+                                    "\u201eheadwind\u201c oder \u201edemand\u201c.")
 
                 # --- Relative Bewertung: historisches Band + Sektor-Vergleich ---
                 try:

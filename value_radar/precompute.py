@@ -482,6 +482,84 @@ def diff_newcomers(old_list_tickers, new_rows, section):
     return out
 
 
+
+# Auf Modulebene gehoben: _analyse wurde auch von live_scan() genutzt,
+# lag aber innerhalb von run(). Dort war der Name unbekannt - der
+# Aufruf lief in ein 'except' und der Radar-Score im Live-Scan blieb
+# deshalb IMMER leer, ohne dass es auffiel.
+def _analyse(t):
+    """Urteil UND passende Screener-Strategie in EINEM Datenabruf.
+    Die Strategien lagen bisher ungenutzt in screener_presets.py -
+    der Nachtlauf filterte nur generisch nach Score und Upside.
+    Jetzt wird festgehalten, WELCHE Vorlage ein Titel erfuellt."""
+    out = {"verdict": "", "strategie": "", "radar_score": None,
+           "radar_firing": None}
+    try:
+        f = providers.get_fundamentals(t, deep=True)
+        ep = valuation.classify_playbook(f)
+        s = scoring.score_stock(f, None, preset=ep)
+        v = valuation.fair_value(f, None, ep)
+        hist = providers.get_price_history(t, period="1y", interval="1d")
+        extras = providers.get_signal_extras(t)
+        sig = _mx.build_signals(f, hist, None, extras)
+        res = _sc.evaluate(f, v, s.get("composite"),
+                           _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
+                           extras, None, None)
+        out["verdict"] = res.get("verdict", "")
+        # Welche Screener-Vorlage passt? Bei mehreren: die mit der
+        # besseren Soft-Quote. Keine Treffer -> "keine".
+        try:
+            import screener_presets as _sp
+            best, best_q = "", -1.0
+            for key in _sp.PRESETS:
+                ev = _sp.evaluate(key, f, extras, v)
+                if ev.get("passed"):
+                    tot = ev.get("soft_total") or 1
+                    q = (ev.get("soft_pass") or 0) / tot
+                    if q > best_q:
+                        best, best_q = key, q
+            out["strategie"] = best or "keine"
+        except Exception:
+            pass
+        # ECHTER Radar-Score (radar.compute) - dieselbe Zahl, die der
+        # Radar-Tab zeigt. Bisher wurde r.get("radar") gelesen, ein Feld
+        # das score_ticker nie liefert -> der Score war immer leer.
+        # Fundamentaldaten und Historie sind hier schon geladen, es
+        # kommen nur die Event-Abrufe dazu.
+        try:
+            import radar as _rd
+            try:
+                _ev8 = providers.get_recent_8k(t) or []
+            except Exception:
+                _ev8 = []
+            try:
+                _news = providers.get_event_news(f.get("name") or t) or []
+            except Exception:
+                _news = []
+            _heads = [h.get("headline", "") if isinstance(h, dict) else str(h)
+                      for h in _news]
+            # EPS-Revisionen und Insider mitgeben, sonst bleiben zwei der
+            # vier Ebenen leer und der Score faellt systematisch zu
+            # niedrig aus (im Test 6 statt realistisch 40-60).
+            try:
+                _eps_rev = providers.get_eps_revision_light(t)
+            except Exception:
+                _eps_rev = None
+            try:
+                _ins = providers.get_insider_light(t)
+            except Exception:
+                _ins = None
+            _rr = _rd.compute(f, hist, _eps_rev, _ins, _ev8, _heads)
+            out["radar_score"] = _rr.get("score")
+            out["radar_firing"] = _rr.get("firing")
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return out
+
+
+
 def run():
     started = _berlin_now()
     print(f"=== precompute Start {started:%d.%m.%Y %H:%M} (dt. Zeit) ===")
@@ -518,14 +596,35 @@ def run():
     pf_tickers = collect_portfolio_tickers()
     wl_tickers = [t for t in store.get_watchlist() if t not in pf_tickers]
     print(f"Portfolio-Titel: {len(pf_tickers)} | Watchlist: {len(wl_tickers)}")
-    holdings = scan_list(pf_tickers, deep=True, label="Portfolio")
-    watch = scan_list(wl_tickers, deep=True, label="Watchlist")
+
+    # Abschnittsweise absichern. Der Lauf macht inzwischen sieben Dinge -
+    # faellt eines aus (Netz, Quote, Datenlage), sollen die uebrigen
+    # trotzdem gespeichert werden. Frueher hat ein einziger Fehler den
+    # ganzen Job mit Code 1 beendet und NICHTS geschrieben.
+    _fehler = []
+
+    def _abschnitt(name, fn, standard):
+        try:
+            return fn()
+        except Exception as _e:
+            import traceback
+            print(f"[FEHLER] Abschnitt '{name}': {type(_e).__name__}: {_e}")
+            traceback.print_exc()
+            _fehler.append(name)
+            return standard
+
+    holdings = _abschnitt("Portfolio",
+                          lambda: scan_list(pf_tickers, deep=True,
+                                            label="Portfolio"), {})
+    watch = _abschnitt("Watchlist",
+                       lambda: scan_list(wl_tickers, deep=True,
+                                         label="Watchlist"), {})
 
     # 2) Screener + Radar (bounded, shallow)
     print("Screener-Scan ...")
-    scr = screener_scan()
+    scr = _abschnitt("Screener", screener_scan, [])
     print("Radar-Scan ...")
-    rad = radar_scan()
+    rad = _abschnitt("Radar", radar_scan, [])
 
     # 3) Aenderungen bestimmen
     changes = []
@@ -591,77 +690,7 @@ def run():
         import scorecard as _sc
         import matrices as _mx
 
-        def _analyse(t):
-            """Urteil UND passende Screener-Strategie in EINEM Datenabruf.
-            Die Strategien lagen bisher ungenutzt in screener_presets.py -
-            der Nachtlauf filterte nur generisch nach Score und Upside.
-            Jetzt wird festgehalten, WELCHE Vorlage ein Titel erfuellt."""
-            out = {"verdict": "", "strategie": "", "radar_score": None,
-                   "radar_firing": None}
-            try:
-                f = providers.get_fundamentals(t, deep=True)
-                ep = valuation.classify_playbook(f)
-                s = scoring.score_stock(f, None, preset=ep)
-                v = valuation.fair_value(f, None, ep)
-                hist = providers.get_price_history(t, period="1y", interval="1d")
-                extras = providers.get_signal_extras(t)
-                sig = _mx.build_signals(f, hist, None, extras)
-                res = _sc.evaluate(f, v, s.get("composite"),
-                                   _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
-                                   extras, None, None)
-                out["verdict"] = res.get("verdict", "")
-                # Welche Screener-Vorlage passt? Bei mehreren: die mit der
-                # besseren Soft-Quote. Keine Treffer -> "keine".
-                try:
-                    import screener_presets as _sp
-                    best, best_q = "", -1.0
-                    for key in _sp.PRESETS:
-                        ev = _sp.evaluate(key, f, extras, v)
-                        if ev.get("passed"):
-                            tot = ev.get("soft_total") or 1
-                            q = (ev.get("soft_pass") or 0) / tot
-                            if q > best_q:
-                                best, best_q = key, q
-                    out["strategie"] = best or "keine"
-                except Exception:
-                    pass
-                # ECHTER Radar-Score (radar.compute) - dieselbe Zahl, die der
-                # Radar-Tab zeigt. Bisher wurde r.get("radar") gelesen, ein Feld
-                # das score_ticker nie liefert -> der Score war immer leer.
-                # Fundamentaldaten und Historie sind hier schon geladen, es
-                # kommen nur die Event-Abrufe dazu.
-                try:
-                    import radar as _rd
-                    try:
-                        _ev8 = providers.get_recent_8k(t) or []
-                    except Exception:
-                        _ev8 = []
-                    try:
-                        _news = providers.get_event_news(f.get("name") or t) or []
-                    except Exception:
-                        _news = []
-                    _heads = [h.get("headline", "") if isinstance(h, dict) else str(h)
-                              for h in _news]
-                    # EPS-Revisionen und Insider mitgeben, sonst bleiben zwei der
-                    # vier Ebenen leer und der Score faellt systematisch zu
-                    # niedrig aus (im Test 6 statt realistisch 40-60).
-                    try:
-                        _eps_rev = providers.get_eps_revision_light(t)
-                    except Exception:
-                        _eps_rev = None
-                    try:
-                        _ins = providers.get_insider_light(t)
-                    except Exception:
-                        _ins = None
-                    _rr = _rd.compute(f, hist, _eps_rev, _ins, _ev8, _heads)
-                    out["radar_score"] = _rr.get("score")
-                    out["radar_firing"] = _rr.get("firing")
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            return out
-
+        # (_analyse steht jetzt auf Modulebene)
         sig_new = []
         print(f"[trackrecord] Erfassung mit Code-Version {CODE_VERSION}")
         for r in (scr or [])[:10]:
@@ -786,6 +815,10 @@ def run():
                 _tk_uni = _roic_mod.index_universum()
                 print(f"[transkripte] Universum: {len(_tk_uni)} Titel")
                 _neu = _roic_mod.neue_transkripte(_tk_uni, tage=21, deckel=600)
+                if not hasattr(store, "set_transkripte"):
+                    print("[transkripte] ABBRUCH: store.py ist veraltet "
+                          "(set_transkripte fehlt) - bitte neu hochladen.")
+                    raise RuntimeError("store.py veraltet")
                 store.set_transkripte(_neu)
                 print(f"[transkripte] {len(_neu)} neue Calls gespeichert.")
             else:
@@ -815,8 +848,17 @@ def run():
         traceback.print_exc()
 
     # 6) E-Mail
-    _send_email(changes, holdings, watch, scr, rad, started, briefing_text)
-    print("=== precompute fertig ===")
+    try:
+        _send_email(changes, holdings, watch, scr, rad, started, briefing_text)
+    except Exception as _e:
+        print(f"[FEHLER] E-Mail: {_e}")
+        _fehler.append("E-Mail")
+
+    if _fehler:
+        print(f"=== precompute fertig MIT FEHLERN in: {', '.join(_fehler)} ===")
+        print("    Die uebrigen Abschnitte wurden gespeichert.")
+    else:
+        print("=== precompute fertig ===")
 
 
 def _send_email(changes, holdings, watch, scr, rad, started, briefing_text=None):
@@ -879,8 +921,6 @@ def _send_email(changes, holdings, watch, scr, rad, started, briefing_text=None)
     notify.send_email(subj, html, text)
 
 
-if __name__ == "__main__":
-    run()
 
 
 def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
@@ -1157,3 +1197,11 @@ def collapse_scored(scored, label=""):
         print(f"  [{label or 'dedup'}] {entfernt} Doppelnotierung(en) entfernt "
               f"-> {len(out)} Titel.")
     return {r["ticker"]: r for r in out} if isinstance(scored, dict) else out
+
+
+# Einstiegspunkt ganz am Ende: Alles, was der Lauf braucht,
+# muss VORHER definiert sein. Stand er weiter oben, waren spaeter
+# angehaengte Funktionen (z.B. collapse_scored) zur Laufzeit noch
+# unbekannt - genau daran ist der Nachtlauf gescheitert.
+if __name__ == "__main__":
+    run()

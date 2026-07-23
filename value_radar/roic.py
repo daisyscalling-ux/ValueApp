@@ -235,9 +235,55 @@ def cashflow_annual(t: str, limit: int = 2):
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
-def prices_history(t: str, von: str, bis: str):
-    d = _get(f"prices/historical/{t}", {"from": von, "to": bis})
-    return d if isinstance(d, list) else (d or {}).get("data")
+def prices_history(t: str, von: str = None, bis: str = None,
+                   limit: int = 100, order: str = "ASC"):
+    """Tageskurse. Pfad und Parameter laut Doku (24.07.2026):
+        GET /v2/stock-prices/{ticker}?limit=&date_start=&date_end=&order=
+    Felder: date, open, high, low, close, adj_close, volume, change_percent.
+
+    KORREKTUR: Meine erste Fassung nutzte 'prices/historical/{t}' mit
+    from/to - den Pfad gibt es nicht, der Abruf lieferte immer nichts."""
+    p = {"limit": limit, "order": order}
+    if von:
+        p["date_start"] = von
+    if bis:
+        p["date_end"] = bis
+    d = _get(f"stock-prices/{t}", p)
+    reihen = d if isinstance(d, list) else (d or {}).get("data")
+    return reihen if isinstance(reihen, list) else []
+
+
+def schlusskurse(t: str, tage: int = 260, adjustiert: bool = True):
+    """Schlusskurse als [(datum, kurs)], aelteste zuerst.
+
+    adj_close beruecksichtigt Splits und Dividenden - fuer Renditen ueber
+    laengere Zeitraeume ist das die richtige Reihe."""
+    reihen = prices_history(t, limit=tage, order="ASC")
+    feld = "adj_close" if adjustiert else "close"
+    out = []
+    for z in reihen or []:
+        if not isinstance(z, dict):
+            continue
+        d = str(_g(z, "date") or "")[:10]
+        k = _num(_g(z, feld)) or _num(_g(z, "close"))
+        if d and k:
+            out.append((d, k))
+    return out
+
+
+def monatsende(t: str, jahre: int = 20):
+    """Monatsschlusskurse aus der Tagesreihe - fuer Saisonalitaet.
+
+    Ein Abruf statt zwoelf: Die Tagesreihe wird geholt und je Monat der
+    letzte Handelstag genommen."""
+    tage = min(jahre * 252 + 20, 6000)
+    reihe = schlusskurse(t, tage=tage)
+    if not reihe:
+        return []
+    letzter = {}
+    for d, k in reihe:
+        letzter[d[:7]] = (d, k)          # spaeterer Tag ueberschreibt
+    return [letzter[m] for m in sorted(letzter)]
 
 
 def search(q: str):
@@ -869,3 +915,98 @@ def bundle_light(t: str) -> dict:
         out["pb"] = _num(_g(mu, "pr_to_book_ratio"))
         out["ev_ebitda"] = _num(_g(mu, "ev_to_ttm_ebitda"))
     return {k: v for k, v in out.items() if v is not None or k == "_src"}
+
+
+def call_kursreaktionen(t: str, max_calls: int = 24) -> list:
+    """Kursreaktion auf JEDEN bekannten Earnings Call.
+
+    Der Zugewinn gegenueber yfinance: Dort gibt es maximal 8 Quartale.
+    roic listet die Calls ueber viele Jahre, und mit der Tagesreihe laesst
+    sich die Reaktion zu jedem Termin berechnen - also 20+ statt 8 Faelle.
+
+    WICHTIG - was hier NICHT drinsteht: roic liefert keine damaligen
+    ANALYSTENSCHAETZUNGEN. 'Geschlagen oder verfehlt' laesst sich damit
+    nicht sagen, nur wie der Kurs reagiert hat. Fuer die Beat-Quote bleibt
+    yfinance noetig (und dessen 8-Quartals-Grenze).
+
+    Kosten: 2 Abrufe je Titel (Liste + Kursreihe)."""
+    if not covers(t):
+        return []
+    calls = transcript_liste(t, limit=max_calls)
+    if not calls:
+        return []
+    datums = sorted(c["datum"] for c in calls if c.get("datum"))
+    if not datums:
+        return []
+    # Tagesreihe ab dem aeltesten Call, mit Vorlauf fuer den Vortageskurs
+    reihe = prices_history(t, von=datums[0], limit=6000, order="ASC")
+    kurse = []
+    for z in reihe or []:
+        if not isinstance(z, dict):
+            continue
+        d = str(_g(z, "date") or "")[:10]
+        k = _num(_g(z, "adj_close")) or _num(_g(z, "close"))
+        if d and k:
+            kurse.append((d, k))
+    if len(kurse) < 10:
+        return []
+
+    idx = {d: i for i, (d, _k) in enumerate(kurse)}
+    out = []
+    for c in calls:
+        d = c.get("datum")
+        if not d:
+            continue
+        # Ersten Handelstag ab dem Call-Datum finden
+        pos = idx.get(d)
+        if pos is None:
+            spaeter = [i for i, (dd, _k) in enumerate(kurse) if dd >= d]
+            if not spaeter:
+                continue
+            pos = spaeter[0]
+        if pos == 0:
+            continue
+        vor, nach = kurse[pos - 1][1], kurse[pos][1]
+        if not vor:
+            continue
+        reak = (nach / vor - 1) * 100
+        # Fuenf Handelstage danach - zeigt, ob die erste Reaktion hielt
+        nach5 = kurse[min(pos + 5, len(kurse) - 1)][1]
+        out.append({
+            "datum": d,
+            "jahr": c.get("jahr"),
+            "quartal": c.get("quartal"),
+            "reaktion_pct": round(reak, 1),
+            "nach5t_pct": round((nach5 / vor - 1) * 100, 1),
+        })
+    out.sort(key=lambda z: z["datum"], reverse=True)
+    return out
+
+
+def call_reaktionsprofil(t: str) -> dict:
+    """Verdichtet die Kursreaktionen zu wenigen Kennzahlen.
+
+    Beantwortet: Bewegt dieser Titel sich an Zahlentagen ueberhaupt stark?
+    Und: Haelt die erste Reaktion, oder dreht sie in den Tagen danach?
+    Die zweite Frage ist die interessantere - sie unterscheidet eine
+    Neubewertung von einem kurzen Ausschlag."""
+    z = call_kursreaktionen(t)
+    if len(z) < 4:
+        return {}
+    r = [x["reaktion_pct"] for x in z]
+    pos = [x for x in r if x > 0]
+    gedreht = sum(1 for x in z
+                  if (x["reaktion_pct"] > 0) != (x["nach5t_pct"] > 0))
+    betrag = sorted(abs(x) for x in r)
+    m = len(betrag) // 2
+    return {
+        "n": len(z),
+        "positiv_pct": round(len(pos) / len(r) * 100),
+        "avg": round(sum(r) / len(r), 1),
+        "median_ausschlag": round(betrag[m] if len(betrag) % 2
+                                  else (betrag[m - 1] + betrag[m]) / 2, 1),
+        "groesster_plus": round(max(r), 1),
+        "groesster_minus": round(min(r), 1),
+        "gedreht_pct": round(gedreht / len(z) * 100),
+        "zeilen": z,
+    }

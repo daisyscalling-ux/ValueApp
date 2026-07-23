@@ -5527,6 +5527,54 @@ if nav == "Umfeld":
                            "Fall": r["fall"]} for r in _p["zeilen"]],
                          signed_cols=("\u00dcberraschung %", "Kursreaktion %"),
                          height=min(len(_p["zeilen"]) * 40 + 46, 400))
+                # --- Langfristige Kursreaktion aus roic (viel mehr Termine)
+                try:
+                    import roic as _rr
+                    _lang = (_rr.call_reaktionsprofil(_t)
+                             if _rr.enabled() and _rr.covers(_t) else {})
+                except Exception:
+                    _lang = {}
+                if _lang.get("n"):
+                    st.markdown('<div class="sec-title" style="margin-top:14px">'
+                                'KURSREAKTION \u00dcBER VIELE JAHRE</div>',
+                                unsafe_allow_html=True)
+                    _lk = st.columns(3)
+                    card(_lk[0], "Termine", str(_lang["n"]),
+                         "aus der Call-Historie", "var(--amber)")
+                    card(_lk[1], "\u00d8 Ausschlag",
+                         f"{_lang['median_ausschlag']:.1f} %",
+                         "Median, ohne Vorzeichen", "var(--amber)")
+                    card(_lk[2], "Reaktion gedreht",
+                         f"{_lang['gedreht_pct']} %",
+                         "binnen f\u00fcnf Handelstagen",
+                         "var(--red)" if _lang["gedreht_pct"] >= 40
+                         else "var(--green)")
+                    st.caption(
+                        f"An Zahlentagen bewegte sich der Titel im Mittel um "
+                        f"**{_lang['median_ausschlag']:.1f} %**, in "
+                        f"{_lang['positiv_pct']} % der F\u00e4lle nach oben. "
+                        f"Gr\u00f6\u00dfte Ausschl\u00e4ge: {_lang['groesster_plus']:+.1f} % "
+                        f"und {_lang['groesster_minus']:+.1f} %. "
+                        "**\u201eReaktion gedreht\u201c** hei\u00dft: Die Richtung des "
+                        "ersten Tages hielt f\u00fcnf Handelstage sp\u00e4ter nicht mehr. "
+                        "Ein hoher Wert spricht daf\u00fcr, dass die erste Bewegung "
+                        "eher Aufregung als Neubewertung war.")
+                    vr_table([{
+                        "Datum": z["datum"],
+                        "Quartal": (f"Q{z['quartal']} {z['jahr']}"
+                                    if z.get("quartal") else "\u2014"),
+                        "Tag %": z["reaktion_pct"],
+                        "nach 5 Tagen %": z["nach5t_pct"],
+                    } for z in _lang["zeilen"][:20]],
+                        signed_cols=("Tag %", "nach 5 Tagen %"),
+                        height=min(len(_lang["zeilen"][:20]) * 40 + 46, 420))
+                    st.caption("Diese Reihe stammt aus der Earnings-Call-"
+                               "Historie und reicht deutlich weiter zur\u00fcck als "
+                               "die acht Quartale oben. Sie sagt allerdings "
+                               "NICHTS \u00fcber geschlagen oder verfehlt \u2013 dafuer "
+                               "braucht es die damaligen Sch\u00e4tzungen, und die "
+                               "hat der Anbieter nicht.")
+
                 st.caption("**Nur bis zu 8 Quartale verf\u00fcgbar** \u2013 das ist ein "
                            "Stimmungsbild, keine Statistik. Bei acht Terminen "
                            "kann eine \u201eQuote von 75 %\u201c auch reiner Zufall sein. "

@@ -54,6 +54,31 @@ MONATE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
 _CACHE = {}
 
 
+try:
+    import roic as _roic
+except Exception:                                  # pragma: no cover
+    _roic = None
+
+
+def _jahre(period):
+    try:
+        return int(str(period).lower().replace("y", "").strip())
+    except Exception:
+        return 20
+
+
+def _roic_monatsreihe(ticker, jahre):
+    """Monatsschlusskurse aus roic. Rueckgabe [(datum, kurs)] oder []."""
+    if _roic is None or not _roic.enabled():
+        return []
+    try:
+        if not _roic.covers(ticker):
+            return []
+        return _roic.monatsende(ticker, jahre=jahre)
+    except Exception:
+        return []
+
+
 def _hist(ticker, period="20y", interval="1mo"):
     if providers is None:
         return None
@@ -66,6 +91,41 @@ def _hist(ticker, period="20y", interval="1mo"):
         h = None
     _CACHE[key] = h
     return h
+
+
+def _reihe(ticker, period="20y", interval="1mo"):
+    """Kursreihe als [(datum, kurs)] - roic bevorzugt, sonst yfinance.
+
+    roic liefert adjustierte Schlusskurse in einem Abruf und unterliegt
+    keiner Drosselung durch Gratislimits. Fuer ETFs ist die Abdeckung
+    aber nicht garantiert - deshalb der Rueckfall."""
+    key = ("_reihe", ticker, period, interval)
+    if key in _CACHE:
+        return _CACHE[key]
+    daten = []
+    if interval == "1mo":
+        daten = _roic_monatsreihe(ticker, _jahre(period))
+    if len(daten) < 24:
+        daten = _closes(_hist(ticker, period, interval))
+    _CACHE[key] = daten
+    return daten
+
+
+def _monat(d):
+    """Monatsnummer aus einem Datum - egal ob Zeitstempel oder Text.
+
+    roic liefert '2026-07-31' als Zeichenkette, yfinance einen Zeitstempel
+    mit .month. Ohne diese Vereinheitlichung waere die Saisonalitaet
+    STILL leergelaufen: Der Zugriff .month scheitert bei Text, der Fehler
+    wurde abgefangen und jeder Monat uebersprungen."""
+    try:
+        return int(d.month)
+    except Exception:
+        pass
+    try:
+        return int(str(d)[5:7])
+    except Exception:
+        return None
 
 
 def _closes(h):
@@ -95,7 +155,7 @@ def sector_seasonality(sector, years=20):
     if not ent:
         return None
     etf, label = ent
-    rows = _closes(_hist(etf, period=f"{years}y", interval="1mo"))
+    rows = _reihe(etf, period=f"{years}y", interval="1mo")
     if len(rows) < 24:
         return None
     monatlich = {i: [] for i in range(1, 13)}
@@ -104,9 +164,8 @@ def sector_seasonality(sector, years=20):
         d_cur, p_cur = rows[i]
         if not p_prev:
             continue
-        try:
-            m = d_cur.month
-        except Exception:
+        m = _monat(d_cur)
+        if not m:
             continue
         monatlich[m].append((p_cur / p_prev - 1) * 100)
     out = []
@@ -154,13 +213,13 @@ def leadership(years=3):
     Monate deutlich vor dem Index liegt, IST das der KI-Boom, ohne dass
     das Modell wissen muss, wie er heisst. Das ist robuster als eine
     Stichwortliste, die man staendig pflegen muesste."""
-    bench = _closes(_hist(BENCH, period=f"{years}y", interval="1mo"))
+    bench = _reihe(BENCH, period=f"{years}y", interval="1mo")
     if len(bench) < 13:
         return None
     b3, b6, b12 = (_ret_over(bench, 3), _ret_over(bench, 6), _ret_over(bench, 12))
     out = []
     for sector, (etf, label) in SECTOR_ETFS.items():
-        rows = _closes(_hist(etf, period=f"{years}y", interval="1mo"))
+        rows = _reihe(etf, period=f"{years}y", interval="1mo")
         if len(rows) < 13:
             continue
         r3, r6, r12 = (_ret_over(rows, 3), _ret_over(rows, 6), _ret_over(rows, 12))
@@ -186,7 +245,7 @@ def leadership(years=3):
 
 def market_state(years=3):
     """Zustand des Gesamtmarkts: Abstand zum Hoch der letzten 12 Monate."""
-    rows = _closes(_hist(BENCH, period=f"{years}y", interval="1mo"))
+    rows = _reihe(BENCH, period=f"{years}y", interval="1mo")
     if len(rows) < 13:
         return None
     letzte12 = [p for _d, p in rows[-13:]]

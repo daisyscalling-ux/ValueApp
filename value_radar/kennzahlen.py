@@ -227,3 +227,113 @@ def trend(reihen: list, feld: str, jahre: int = 5) -> dict | None:
     return {"werte": werte, "aenderung_pct": round(aend, 1),
             "richtung": richtung, "wort": wort,
             "von": werte[0][0], "bis": werte[-1][0]}
+
+
+# ===========================================================================
+# EARNINGS-CALL: KERNSTELLEN STATT ZUSAMMENFASSUNG
+# ---------------------------------------------------------------------------
+# Warum keine echte Zusammenfassung: Dafuer braeuchte es ein Sprachmodell,
+# und dessen Ergebnis waere eine Deutung, die wie eine Tatsache aussieht.
+# Was hier passiert, ist nachpruefbar: Saetze werden nach Thema sortiert
+# und WOERTLICH gezeigt. Die Deutung bleibt beim Leser.
+#
+# Zusaetzlich getrennt wird der VORTRAG vom FRAGETEIL. Der Vortrag ist
+# vorbereitet und klingt fast immer gut. Im Frageteil zeigt sich, woran
+# Analysten haken - dort steht das Aufschlussreiche.
+# ===========================================================================
+
+THEMEN = [
+    ("Ausblick", ("guidance", "outlook", "we expect", "we anticipate",
+                  "full year", "next quarter", "fiscal 20", "forecast",
+                  "we now see", "raising our", "lowering our")),
+    ("Margen & Kosten", ("margin", "cost invest", "pricing", "headwind from cost",
+                         "operating leverage", "efficiency", "restructur")),
+    ("Nachfrage", ("demand", "orders", "backlog", "bookings", "pipeline",
+                   "customer", "volume")),
+    ("Risiken", ("headwind", "challenge", "uncertain", "weakness", "decline",
+                 "pressure", "slowdown", "softness", "cautious", "risk")),
+    ("Kapitalverwendung", ("buyback", "repurchase", "dividend", "capital "
+                           "allocation", "capex", "acquisition", "debt")),
+]
+
+_FRAGE_MARKER = ("question-and-answer", "question and answer",
+                 "q&a session", "we will now begin the question",
+                 "first question", "operator:")
+
+
+def _saetze(text):
+    out, akt = [], []
+    for teil in text.replace("\n", " ").split(". "):
+        t = teil.strip()
+        if 40 <= len(t) <= 400:
+            out.append(t + ("." if not t.endswith(".") else ""))
+        akt = out
+    return akt
+
+
+def teile_transkript(text: str) -> dict:
+    """Trennt Vortrag und Frageteil."""
+    if not text:
+        return {"vortrag": "", "fragen": "", "geteilt": False}
+    low = text.lower()
+    pos = -1
+    for m in _FRAGE_MARKER:
+        p = low.find(m)
+        if p > len(text) * 0.2:          # nicht schon in der Begruessung
+            pos = p if pos < 0 else min(pos, p)
+    if pos < 0:
+        return {"vortrag": text, "fragen": "", "geteilt": False}
+    return {"vortrag": text[:pos], "fragen": text[pos:], "geteilt": True}
+
+
+def kernstellen(text: str, max_je_thema: int = 4) -> list:
+    """Woertliche Fundstellen je Thema - keine Deutung.
+
+    Rueckgabe: [{thema, stellen: [{satz, teil}]}]"""
+    if not text:
+        return []
+    t = teile_transkript(text)
+    quellen = [("Vortrag", t["vortrag"])]
+    if t["fragen"]:
+        quellen.append(("Frageteil", t["fragen"]))
+
+    out = []
+    for thema, begriffe in THEMEN:
+        stellen, gesehen = [], set()
+        for teil_name, teil_text in quellen:
+            for s in _saetze(teil_text):
+                sl = s.lower()
+                if any(b in sl for b in begriffe):
+                    kern = sl[:70]
+                    if kern in gesehen:
+                        continue
+                    gesehen.add(kern)
+                    stellen.append({"satz": s, "teil": teil_name})
+                if len(stellen) >= max_je_thema * 2:
+                    break
+        # Frageteil bevorzugen: dort steht das Ungeschoente
+        stellen.sort(key=lambda x: 0 if x["teil"] == "Frageteil" else 1)
+        if stellen:
+            out.append({"thema": thema, "stellen": stellen[:max_je_thema]})
+    return out
+
+
+def transkript_kennzahlen(text: str) -> dict:
+    """Wenige nachpruefbare Masszahlen - ausdruecklich KEINE Stimmungsanalyse.
+
+    Der Anteil des Frageteils ist die interessanteste davon: Ein sehr
+    langer Frageteil bedeutet meist, dass viel nachgehakt wurde."""
+    if not text:
+        return {}
+    t = teile_transkript(text)
+    ges = len(text)
+    fragen = len(t["fragen"])
+    low = text.lower()
+    return {
+        "zeichen": ges,
+        "lesedauer_min": round(ges / 1100),
+        "geteilt": t["geteilt"],
+        "frageanteil_pct": round(fragen / ges * 100) if ges and t["geteilt"] else None,
+        "nennungen": {thema: sum(low.count(b) for b in begriffe)
+                      for thema, begriffe in THEMEN},
+    }

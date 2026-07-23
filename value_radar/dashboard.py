@@ -1987,11 +1987,13 @@ def portfolio_candidates(analysis, held_tickers, held_names):
 
 
 PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist",
-         "Long/Short", "Portfoliocheck", "Trefferbilanz", "Umfeld"]
+         "Long/Short", "Portfoliocheck", "Trefferbilanz", "Earnings Calls",
+         "Umfeld"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
          "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0",
-         "Trefferbilanz": "\U0001f3c6", "Umfeld": "\U0001f30d"}
+         "Trefferbilanz": "\U0001f3c6", "Earnings Calls": "\U0001f399\ufe0f",
+         "Umfeld": "\U0001f30d"}
 _scroll_top_now = False
 # Klick auf einen orangenen Ticker-Link (?open=TICKER) in einer vr_table:
 # in die Einzelanalyse springen. Der Parameter wird sofort wieder entfernt.
@@ -2039,7 +2041,8 @@ MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
               "Screener": "\U0001f50d", "Watchlist": "\u2b50",
               "Long/Short": "\u2696\ufe0f", "Portfoliocheck": "\U0001f4bc",
-              "Trefferbilanz": "\U0001f3c6", "Umfeld": "\U0001f30d"}
+              "Trefferbilanz": "\U0001f3c6", "Earnings Calls": "\U0001f399\ufe0f",
+              "Umfeld": "\U0001f30d"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
@@ -5292,3 +5295,179 @@ if nav == "Umfeld":
                        "die Logik trug. Vor Quartalszahlen einzusteigen bleibt "
                        "eine Wette auf eine einzelne Nachricht. Kein Anlagerat.")
 
+
+
+# ===========================================================================
+# TAB — EARNINGS CALLS (S&P 500 · NASDAQ-100 · DAX)
+# ===========================================================================
+if nav == "Earnings Calls":
+    st.markdown('<div class="sec-title">\U0001f399\ufe0f EARNINGS CALLS \u00b7 '
+                'NEU ERSCHIENEN</div>', unsafe_allow_html=True)
+    st.caption("Wortprotokolle der Telefonkonferenzen aus S&P 500, NASDAQ-100 "
+               "und DAX. Der n\u00e4chtliche Job sucht, wer neu ver\u00f6ffentlicht "
+               "hat; der Volltext wird erst beim \u00d6ffnen geladen.")
+
+    try:
+        import roic as _rt
+        import kennzahlen as _kt
+        _rt_ok = _rt.enabled()
+    except Exception:
+        _rt = _kt = None
+        _rt_ok = False
+
+    if not _rt_ok:
+        st.info("Ben\u00f6tigt die roic.ai-Anbindung \u2013 ROIC_API_KEY ist nicht "
+                "gesetzt.")
+    else:
+        try:
+            _liste = store.get_transkripte() or []
+        except Exception as _e:
+            _liste = []
+            st.caption(f"(nicht ladbar: {_e})")
+
+        if not _liste:
+            st.info("Noch keine Calls erfasst. Der Nachtlauf pr\u00fcft rund 560 "
+                    "Titel (etwa 2 Minuten) und h\u00e4lt fest, wer in den letzten "
+                    "drei Wochen ver\u00f6ffentlicht hat. Starte den Workflow in "
+                    "GitHub oder warte den n\u00e4chsten Lauf ab.")
+        else:
+            _f1, _f2 = st.columns(2)
+            _zeit = _f1.selectbox("Zeitraum", [7, 14, 21],
+                                  format_func=lambda d: f"letzte {d} Tage",
+                                  key="ec_zeit")
+            _nur_pf = _f2.checkbox("Nur meine Titel (Portfolio + Watchlist)",
+                                   key="ec_nur_pf")
+
+            _meine = set()
+            if _nur_pf:
+                try:
+                    for _n, _rs in (store.load_all() or {}).items():
+                        for _r in _rs or []:
+                            _x = str(_r.get("ticker") or "").strip().upper()
+                            if _x:
+                                _meine.add(_x)
+                    for _r in (store.get_watchlist() or []):
+                        _x = str(_r.get("ticker") if isinstance(_r, dict)
+                                 else _r or "").strip().upper()
+                        if _x:
+                            _meine.add(_x)
+                except Exception:
+                    pass
+
+            _sicht = [r for r in _liste if (r.get("tage_her") or 99) <= _zeit]
+            if _nur_pf:
+                _sicht = [r for r in _sicht if r["ticker"] in _meine]
+
+            st.caption(f"{len(_sicht)} von {len(_liste)} erfassten Calls")
+            if not _sicht:
+                st.info("Keine Calls im gew\u00e4hlten Filter."
+                        + (" Deine Titel haben in diesem Zeitraum nicht "
+                           "berichtet." if _nur_pf else ""))
+            else:
+                vr_table([{
+                    "Ticker": r["ticker"],
+                    "Datum": r["datum"],
+                    "vor Tagen": r.get("tage_her"),
+                    "Quartal": (f"{r.get('quartal') or ''} "
+                                f"{r.get('jahr') or ''}").strip() or "\u2014",
+                } for r in _sicht],
+                    height=min(len(_sicht) * 40 + 46, 420))
+
+                st.markdown('<div class="sec-title" style="margin-top:16px">'
+                            'PROTOKOLL \u00d6FFNEN</div>', unsafe_allow_html=True)
+                _wahl = st.selectbox(
+                    "Firma",
+                    _sicht,
+                    format_func=lambda r: (f"{r['ticker']} \u00b7 {r['datum']} "
+                                           f"\u00b7 {r.get('quartal') or ''} "
+                                           f"{r.get('jahr') or ''}").strip(),
+                    key="ec_wahl")
+
+                @st.cache_data(ttl=86400, show_spinner=False)
+                def _ec_text(t, jahr, quartal):
+                    return _rt.transcript(t, jahr, quartal)
+
+                if st.button("\u25b6 Protokoll laden", key="ec_go",
+                             use_container_width=True):
+                    with st.spinner("Wortprotokoll wird geladen \u2026"):
+                        st.session_state["ec_geladen"] = _ec_text(
+                            _wahl["ticker"], _wahl.get("jahr"),
+                            _wahl.get("quartal"))
+                        st.session_state["ec_ticker"] = _wahl["ticker"]
+
+                _tr = st.session_state.get("ec_geladen") or {}
+                if _tr.get("text"):
+                    _tk = st.session_state.get("ec_ticker", "")
+                    _txt = _tr["text"]
+                    _mz = _kt.transkript_kennzahlen(_txt)
+
+                    _mc = st.columns(3)
+                    card(_mc[0], "Umfang", f"{_mz['lesedauer_min']} min",
+                         f"{_mz['zeichen']:,}".replace(",", ".") + " Zeichen",
+                         "var(--amber)")
+                    card(_mc[1], "Frageteil",
+                         (f"{_mz['frageanteil_pct']} %"
+                          if _mz.get("frageanteil_pct") is not None else "\u2014"),
+                         "Anteil am Protokoll", "var(--amber)")
+                    card(_mc[2], "Quartal",
+                         f"{_tr.get('quartal') or ''} {_tr.get('jahr') or ''}".strip()
+                         or "\u2014", _tr.get("datum") or "", "var(--amber)")
+
+                    _av = st.radio("Ansicht",
+                                   ["\U0001f4cc Kernstellen", "\U0001f4c4 Volltext"],
+                                   horizontal=True, label_visibility="collapsed",
+                                   key="ec_ansicht")
+
+                    if _av.endswith("Kernstellen"):
+                        _bl = _kt.kernstellen(_txt, max_je_thema=4)
+                        if not _bl:
+                            st.info("Keine Kernstellen gefunden \u2013 das "
+                                    "Protokoll ist eventuell sehr kurz.")
+                        else:
+                            st.caption("**W\u00f6rtliche Fundstellen, keine "
+                                       "Zusammenfassung.** Sortiert nach Thema; "
+                                       "Stellen aus dem **Frageteil** stehen "
+                                       "oben, weil dort nachgehakt wird.")
+                            for _b in _bl:
+                                st.markdown(f'<div class="sec-title" '
+                                            f'style="margin-top:12px">'
+                                            f'{esc(_b["thema"].upper())}</div>',
+                                            unsafe_allow_html=True)
+                                for _s in _b["stellen"]:
+                                    _tag = ("\U0001f5e3\ufe0f **Frageteil**"
+                                            if _s["teil"] == "Frageteil"
+                                            else "\U0001f4d6 Vortrag")
+                                    st.markdown(f"{_tag}  \n> {esc(_s['satz'])}")
+                            st.caption("Nennungen je Thema: "
+                                       + " \u00b7 ".join(f"{k} {v}" for k, v
+                                                          in _mz["nennungen"].items()))
+                    else:
+                        _such = st.text_input(
+                            "Im Protokoll suchen",
+                            placeholder="z. B. guidance, margin, demand",
+                            key="ec_such").strip()
+                        if _such:
+                            _low, _pos, _tref = _txt.lower(), 0, []
+                            _p = _low.find(_such.lower())
+                            while _p >= 0 and len(_tref) < 15:
+                                _tref.append(_txt[max(0, _p - 220):_p + 320])
+                                _p = _low.find(_such.lower(), _p + 1)
+                            st.caption(f"{len(_tref)} Fundstelle(n)")
+                            for _s in _tref:
+                                st.markdown(f"> \u2026{esc(_s)}\u2026")
+                                st.divider()
+                        else:
+                            st.text_area("Wortprotokoll", _txt, height=460,
+                                         key="ec_volltext")
+
+                    st.warning(
+                        "**Warum hier keine automatische Einsch\u00e4tzung steht:** "
+                        "In diesen Konferenzen spricht die Unternehmensleitung "
+                        "\u00fcber das eigene Unternehmen \u2013 sie klingt fast immer "
+                        "zuversichtlich, auch unmittelbar vor schlechten "
+                        "Quartalen. Eine automatische Stimmungsauswertung w\u00fcrde "
+                        "vor allem messen, wie gut die Kommunikationsabteilung "
+                        "arbeitet, und das mit dem Anschein von Objektivit\u00e4t. "
+                        "Aufschlussreich ist der **Frageteil**: Woran haken "
+                        "Analysten mehrfach nach, und wo weicht die Antwort aus? "
+                        "Kein Anlagerat.")

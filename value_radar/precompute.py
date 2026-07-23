@@ -48,9 +48,32 @@ except Exception:
 # ---- Schwellen fuer "meldenswerte" Aenderungen --------------------------------
 COMP_DELTA = 5          # Composite-Aenderung ab X Punkten melden
 UPSIDE_FLIP = True      # Vorzeichenwechsel des Upside melden
-SCREENER_TOP = 15       # so viele Screener-Top-Ideen speichern
-RADAR_TOP = 15
-UNIVERSE_SIZE = 90      # bounded: schont FMP-Tageslimit & Laufzeit
+# ---------------------------------------------------------------------------
+# Skalierung: Mit roic.ai (300 Abrufe/min statt FMP 250/Tag) darf der Lauf
+# deutlich breiter und tiefer werden. OHNE Schluessel bleiben die alten,
+# engen Grenzen - sonst laeuft der Job in dieselben Quoten wie bisher.
+# ---------------------------------------------------------------------------
+try:
+    import roic as _roic_mod
+    _ROIC_AKTIV = _roic_mod.enabled()
+except Exception:
+    _roic_mod, _ROIC_AKTIV = None, False
+
+if _ROIC_AKTIV:
+    SCREENER_TOP = 25       # mehr Top-Ideen speichern
+    RADAR_TOP = 25
+    UNIVERSE_SIZE = 300     # breiteres Universum (vorher 90)
+    SCAN_DEEP = True        # ganzer Scan tief statt flach - Kernvorteil:
+                            # gespeicherte Zahlen == Einzelanalyse, ohne
+                            # den Umweg ueber _rescore_deep
+    EARNINGS_DEEP_LIMIT = 120
+    print("[roic] aktiv - erweiterte Limits (Universum 300, deep-Scan).")
+else:
+    SCREENER_TOP = 15       # so viele Screener-Top-Ideen speichern
+    RADAR_TOP = 15
+    UNIVERSE_SIZE = 90      # bounded: schont FMP-Tageslimit & Laufzeit
+    SCAN_DEEP = False
+    EARNINGS_DEEP_LIMIT = 60
 
 
 def _berlin_now():
@@ -319,7 +342,7 @@ def screener_scan() -> list:
         tickers = collapse_listings(tickers)     # BHP.L + BHPL.XC -> nur eine
     except Exception:
         return []
-    scored = scan_list(tickers, deep=False, label="Screener")
+    scored = scan_list(tickers, deep=SCAN_DEEP, label="Screener")
     scored = collapse_scored(scored, "Screener")   # Dubletten ueber den Namen
     _LAST_SCAN["Screener"] = scored
     ranked = sorted(
@@ -369,7 +392,7 @@ def radar_scan() -> list:
                 seen.add(t)
                 tickers.append(t)
     tickers = collapse_listings(tickers)
-    scored = scan_list(tickers, deep=False, label="Radar")
+    scored = scan_list(tickers, deep=SCAN_DEEP, label="Radar")
     scored = collapse_scored(scored, "Radar")      # Dubletten ueber den Namen
     _LAST_SCAN["Radar"] = scored
     ranked = sorted(
@@ -702,7 +725,8 @@ def run():
             import regime as _rg
             _tk = _rg.sp500_tickers()
             print(f"[earnings] Universum: {len(_tk)} Titel")
-            _erg = _rg.earnings_scan_universe(_tk, max_wochen=4, deep_limit=60)
+            _erg = _rg.earnings_scan_universe(_tk, max_wochen=4,
+                                             deep_limit=EARNINGS_DEEP_LIMIT)
             store.set_earnings(_erg)
             print(f"[earnings] {len(_erg)} Termine mit Einordnung gespeichert.")
             for _e in _erg:
@@ -726,6 +750,22 @@ def run():
                 })
         except Exception as e:
             print(f"[earnings] uebersprungen: {e}")
+
+        # NEUE EARNINGS CALLS ueber S&P 500 + NASDAQ-100 + DAX.
+        # Nur die Kopfdaten (1 Abruf je Titel, ~560 Titel = gut 2 Minuten).
+        # Volltexte holt das Dashboard erst beim Oeffnen - alles andere
+        # waeren Megabyte an ungelesenem Text im Speicher.
+        try:
+            if _ROIC_AKTIV:
+                _tk_uni = _roic_mod.index_universum()
+                print(f"[transkripte] Universum: {len(_tk_uni)} Titel")
+                _neu = _roic_mod.neue_transkripte(_tk_uni, tage=21, deckel=600)
+                store.set_transkripte(_neu)
+                print(f"[transkripte] {len(_neu)} neue Calls gespeichert.")
+            else:
+                print("[transkripte] uebersprungen (roic nicht aktiv).")
+        except Exception as e:
+            print(f"[transkripte] uebersprungen: {e}")
 
         for _s in sig_new:                    # Herkunft des Signals festhalten
             _s["codever"] = CODE_VERSION

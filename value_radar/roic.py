@@ -589,3 +589,93 @@ def ticker_suche(q: str, limit=10) -> list:
                     "boerse": _g(z, "exchange_short_name", "exchange"),
                     "land": _g(z, "country_code", "country")})
     return [z for z in out if z.get("symbol")]
+
+
+# ============================================================================
+# INDEX-UNIVERSEN + TRANSKRIPT-SUCHE
+# ============================================================================
+
+# DAX 40. Bewusst fest hinterlegt: die Zusammensetzung aendert sich selten,
+# und ein Wikipedia-Abruf je Lauf ist eine unnoetige Fehlerquelle.
+DAX40 = [
+    "ADS.DE", "AIR.DE", "ALV.DE", "BAS.DE", "BAYN.DE", "BEI.DE", "BMW.DE",
+    "BNR.DE", "CBK.DE", "CON.DE", "1COV.DE", "DTG.DE", "DBK.DE", "DB1.DE",
+    "DPW.DE", "DTE.DE", "EOAN.DE", "FRE.DE", "HNR1.DE", "HEI.DE", "HEN3.DE",
+    "IFX.DE", "MBG.DE", "MRK.DE", "MTX.DE", "MUV2.DE", "P911.DE", "PAH3.DE",
+    "QIA.DE", "RHM.DE", "RWE.DE", "SAP.DE", "SRT3.DE", "SIE.DE", "ENR.DE",
+    "SHL.DE", "SY1.DE", "VOW3.DE", "VNA.DE", "ZAL.DE",
+]
+
+_UNIVERSUM_CACHE = {}
+
+
+def index_universum(mit_dax=True) -> list:
+    """S&P 500 + NASDAQ-100 + DAX 40, entdoppelt.
+
+    Der Dow Jones steckt vollstaendig im S&P 500, der NASDAQ-100 groesstenteils.
+    Rund 560 Titel."""
+    if "liste" in _UNIVERSUM_CACHE:
+        return _UNIVERSUM_CACHE["liste"]
+    tk = []
+    try:
+        import regime as _rg
+        tk.extend(_rg.sp500_tickers() or [])
+    except Exception:
+        pass
+    try:
+        import pandas as _pd
+        for tab in _pd.read_html("https://en.wikipedia.org/wiki/Nasdaq-100"):
+            for sp in ("Ticker", "Symbol"):
+                if sp in tab.columns:
+                    tk.extend(str(s).strip().upper().replace(".", "-")
+                              for s in tab[sp].tolist())
+                    break
+            else:
+                continue
+            break
+    except Exception:
+        pass
+    if mit_dax:
+        tk.extend(DAX40)
+    liste = [t for t in dict.fromkeys(tk) if t and len(t) <= 12]
+    _UNIVERSUM_CACHE["liste"] = liste
+    return liste
+
+
+def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> list:
+    """Welche Firmen haben SEIT KURZEM einen Earnings Call veroeffentlicht?
+
+    Holt bewusst nur die Kopfdaten (Ticker, Datum, Quartal) - ein Abruf je
+    Titel. Der Volltext kommt erst, wenn jemand ihn oeffnet: 60 Transkripte
+    vorab zu speichern waeren rund 5 MB, die niemand liest.
+
+    tage: wie weit zurueck gilt ein Call als 'neu'."""
+    import datetime as _dt
+    tickers = tickers or index_universum()
+    grenze = _dt.date.today() - _dt.timedelta(days=tage)
+    out = []
+    for i, t in enumerate(tickers[:deckel]):
+        if not covers(t):
+            continue
+        try:
+            liste = transcript_liste(t, limit=2)
+        except Exception:
+            liste = []
+        for z in liste[:1]:                      # nur der neueste
+            d = str(z.get("datum") or "")[:10]
+            if not d:
+                continue
+            try:
+                tag = _dt.date.fromisoformat(d)
+            except Exception:
+                continue
+            if tag >= grenze:
+                out.append({"ticker": t, "datum": d,
+                            "quartal": z.get("quartal"), "jahr": z.get("jahr"),
+                            "tage_her": (_dt.date.today() - tag).days})
+        if fortschritt and (i + 1) % 50 == 0:
+            fortschritt(i + 1, min(len(tickers), deckel), len(out))
+    out.sort(key=lambda r: r["datum"], reverse=True)
+    print(f"  [Transkripte] {len(out)} neue Calls in {tage} Tagen "
+          f"(aus {min(len(tickers), deckel)} Titeln).")
+    return out

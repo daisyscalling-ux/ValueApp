@@ -276,3 +276,19 @@ def set_earnings(items: list) -> bool:
     d = _load_aux()
     d["earnings"] = items[:80]
     return _save_aux(d)
+
+
+def get_transkripte() -> list:
+    """Neu erschienene Earnings Calls (vom Nacht-Job gefunden).
+
+    Bewusst NUR die Kopfdaten - Ticker, Datum, Quartal. Die Volltexte
+    (50.000+ Zeichen je Stueck) werden erst beim Oeffnen geholt; sie hier
+    zu speichern waeren mehrere Megabyte, die niemand liest."""
+    t = _load_aux().get("transkripte", [])
+    return t if isinstance(t, list) else []
+
+
+def set_transkripte(items: list) -> bool:
+    d = _load_aux()
+    d["transkripte"] = items[:200]
+    return _save_aux(d)

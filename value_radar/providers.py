@@ -1273,6 +1273,39 @@ def get_signal_extras(ticker: str) -> dict:
     out["gross_profit"] = row(inc, "Gross Profit", "GrossProfit")
     out["net_income"] = row(inc, "Net Income", "NetIncome",
                             "Net Income Common Stockholders")
+
+    # --- roic bevorzugen: yfinance liefert meist nur 4 Geschaeftsjahre,
+    #     roic zehn. Die Matrizen bewerten Trends ueber mehrere Jahre -
+    #     mit vier Punkten ist ein "Trend" kaum mehr als Rauschen.
+    if _roic is not None and _roic.covers(ticker):
+        try:
+            _fin = _roic.financials(ticker, "income", "annual", 10)
+            if _fin and len(_fin) >= 4:
+                def _reihe(feld):
+                    v = []
+                    for z in _fin:                    # roic: neueste zuerst
+                        x = z.get(feld)
+                        try:
+                            x = float(x) if x is not None else None
+                        except Exception:
+                            x = None
+                        if x is not None:
+                            v.append(x)
+                    return v or None
+                _r = _reihe("is_sales_revenue_turnover")
+                _g = _reihe("is_gross_profit")
+                _n = _reihe("is_net_income")
+                # NUR ALS SATZ ersetzen. Einzeln zu tauschen waere ein
+                # ernster Fehler: matrices rechnet gross_profit[0]/revenue[0]
+                # - stammen die aus verschiedenen Quellen, koennen sich die
+                # Geschaeftsjahre unterscheiden und die Bruttomarge ist falsch.
+                if _r and _g and _n and len(_r) == len(_g) == len(_n):
+                    out["revenue"], out["gross_profit"] = _r, _g
+                    out["net_income"] = _n
+                    out["_jahre_quelle"] = "roic"
+                    out["_jahre_n"] = len(_r)
+        except Exception:
+            pass
     fcf = row(cf, "Free Cash Flow", "FreeCashFlow")
     if fcf is None:
         ocf = row(cf, "Operating Cash Flow", "OperatingCashFlow",
@@ -1281,6 +1314,27 @@ def get_signal_extras(ticker: str) -> dict:
         if ocf and cap and len(ocf) == len(cap):
             fcf = [o + c for o, c in zip(ocf, cap)]   # Capex ist negativ
     out["fcf"] = fcf
+
+    # FCF ebenfalls aus roic, wenn verfuegbar (laengere Reihe)
+    if _roic is not None and _roic.covers(ticker):
+        try:
+            _cf = _roic.financials(ticker, "cashflow", "annual", 10)
+            _v = []
+            for z in (_cf or []):
+                x = z.get("cf_free_cash_flow")
+                try:
+                    x = float(x) if x is not None else None
+                except Exception:
+                    x = None
+                if x is not None:
+                    _v.append(x)
+            # nur uebernehmen, wenn auch die GuV aus roic kam - sonst
+            # koennten fcf und net_income aus verschiedenen Jahren stammen
+            # (fcf_conversion = fcf[0] / net_income[0])
+            if len(_v) >= 4 and out.get("_jahre_quelle") == "roic":
+                out["fcf"] = _v
+        except Exception:
+            pass
 
     try:
         info = tk.info

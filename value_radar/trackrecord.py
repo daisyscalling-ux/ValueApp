@@ -72,12 +72,42 @@ def record(signals):
     Ein Ticker wird je Quelle nur EINMAL erfasst (kein Nachtragen von Gewinnern)."""
     log = store.get_signals() or []
     known = {(e["ticker"], e.get("quelle")) for e in log}
+
+    # Zweite Absicherung gegen Doppelnotierungen. Die Entdopplung passiert
+    # eigentlich schon im Scan - aber wenn dort ein Firmenname fehlte
+    # (haeufig bei Zweitnotierungen), rutschte dieselbe Firma mehrfach durch:
+    # GOOGL, GOOG, ABEC.DE, ABE0.F standen alle in der Bilanz.
+    # Hier wird zusaetzlich je Quelle nach FIRMENNAME gesperrt.
+    try:
+        import precompute as _pcn
+        _norm = _pcn._norm_name
+    except Exception:
+        _norm = lambda x: (str(x or "").lower().strip())
+    firmen = set()
+    for e in log:
+        n = _norm(e.get("name"))
+        if n:
+            firmen.add((n, e.get("quelle")))
+
+    # Zweitnotierungen gar nicht erst erfassen - ihre Kurse stehen oft in
+    # einer anderen Einheit als die Heimatnotierung (Ursache der -52 %).
+    def _zweitnotierung(t):
+        return "." in (t or "") and t.rsplit(".", 1)[-1].upper() in ("IL", "XC")
+
     bp = _bench_price()
     now = time.time()
     added = 0
+    uebersprungen = 0
     for s in signals or []:
         key = (s.get("ticker"), s.get("quelle"))
         if not key[0] or key in known:
+            continue
+        if _zweitnotierung(key[0]):
+            uebersprungen += 1
+            continue
+        _fn = _norm(s.get("name"))
+        if _fn and (_fn, s.get("quelle")) in firmen:
+            uebersprungen += 1
             continue
         px = s.get("price") or _price(s["ticker"])
         if not px:
@@ -126,8 +156,13 @@ def record(signals):
             "bench_entry": round(bp, 2) if bp else None,
         })
         known.add(key)
+        if _fn:
+            firmen.add((_fn, s.get("quelle")))
         added += 1
     store.set_signals(log[:250])
+    if uebersprungen:
+        print(f"[trackrecord] {uebersprungen} Doppelnotierung(en)/Dubletten "
+              "uebersprungen.")
     print(f"[trackrecord] {added} neue Signale erfasst ({len(log)} gesamt).")
     return added
 
@@ -381,3 +416,55 @@ def calibration(rows=None):
         if st:
             out.append({"band": label, **st})
     return {"bands": out, "n_ready": len(ready)}
+
+
+def bereinige_dubletten():
+    """Bestehende Bilanz aufraeumen: Doppelnotierungen und Firmen-Dubletten raus.
+
+    Betrifft Eintraege aus Laeufen VOR der Entdopplung. Behalten wird je
+    Firma und Quelle die Heimatnotierung mit der laengsten Historie -
+    das ist die Zeile mit dem meisten Aussagewert.
+
+    Rueckgabe: (entfernt, verbleibend, entfernte_ticker)"""
+    log = store.get_signals() or []
+    if not log:
+        return 0, 0, []
+    try:
+        import precompute as _pcn
+        _norm, _base = _pcn._norm_name, _pcn._canon_base
+    except Exception:
+        _norm = lambda x: (str(x or "").lower().strip())
+        _base = lambda t: (t, 50)
+
+    def _zweit(t):
+        return "." in (t or "") and t.rsplit(".", 1)[-1].upper() in ("IL", "XC")
+
+    behalten, raus = [], []
+    gruppen = {}
+    for e in log:
+        t = e.get("ticker") or ""
+        if _zweit(t):                       # Zweitnotierung: immer raus
+            raus.append(t)
+            continue
+        n = _norm(e.get("name"))
+        if not n:                           # ohne Namen nicht zuordenbar
+            behalten.append(e)
+            continue
+        gruppen.setdefault((n, e.get("quelle")), []).append(e)
+
+    for (_n, _q), gruppe in gruppen.items():
+        if len(gruppe) == 1:
+            behalten.append(gruppe[0])
+            continue
+        # aelteste zuerst (laengste Historie), bei Gleichstand Heimatboerse
+        gruppe.sort(key=lambda e: (e.get("ts") or 0,
+                                   _base(e.get("ticker") or "")[1]))
+        behalten.append(gruppe[0])
+        raus.extend(e.get("ticker") for e in gruppe[1:])
+
+    if not raus:
+        return 0, len(log), []
+    ok = store.set_signals(behalten)
+    if not ok:
+        return 0, len(log), []
+    return len(raus), len(behalten), raus

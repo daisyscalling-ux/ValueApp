@@ -922,6 +922,33 @@ def render_trackrecord():
                      height=min(len(_bad) * 40 + 46, 300))
 
     # === Signale verwalten (loeschen + neu aufbauen) ===
+    with st.expander("\U0001f9f9 DUBLETTEN BEREINIGEN"):
+        st.caption("Entfernt Eintr\u00e4ge aus L\u00e4ufen **vor** der Entdopplung: "
+                   "dieselbe Firma unter mehreren Symbolen (GOOGL, GOOG, "
+                   "ABEC.DE, ABE0.F) sowie Zweitnotierungen wie `.IL` und "
+                   "`.XC`. Behalten wird je Firma und Quelle die **\u00e4lteste** "
+                   "Zeile \u2013 die hat die l\u00e4ngste Historie.")
+        st.caption("Warum `.IL`/`.XC` ganz raus: Diese Zweitnotierungen "
+                   "liefern oft keinen Firmennamen und ihre Kurse stehen in "
+                   "einer anderen Einheit als die Heimatnotierung \u2013 daher "
+                   "die unsinnigen \u221252 bis \u221262 %. Die Heimatnotierung "
+                   "derselben Firma bleibt erhalten.")
+        if st.button("\U0001f9f9 Jetzt bereinigen", key="tb_dedupe",
+                     use_container_width=True):
+            try:
+                import trackrecord as _tk
+                _ent, _bleibt, _raus = _tk.bereinige_dubletten()
+                if _ent:
+                    st.success(f"{_ent} Dublette(n) entfernt, {_bleibt} "
+                               "Eintr\u00e4ge bleiben.")
+                    st.caption("Entfernt: " + ", ".join(str(x) for x in _raus[:25])
+                               + (" \u2026" if len(_raus) > 25 else ""))
+                    st.cache_data.clear()
+                else:
+                    st.info("Keine Dubletten gefunden.")
+            except Exception as _e:
+                st.error(f"Bereinigung fehlgeschlagen: {_e}")
+
     with st.expander("\U0001f5d1\ufe0f Signale zur\u00fccksetzen"):
         st.caption("Bereits erfasste Signale werden vom n\u00e4chtlichen Lauf "
                    "**\u00fcbersprungen** \u2013 er f\u00fcgt nur neue Ticker hinzu. Nach "
@@ -3627,13 +3654,28 @@ if nav == "News":
         sections = ["WSJ", "US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News"]
         _sec = st.radio("Bereich", sections, horizontal=True,
                         label_visibility="collapsed", key="news_section")
+
+        # WSJ ist nach Ressorts getrennt. Bewusst als ZWEITE Reihe und nicht
+        # als drei weitere Eintraege oben: Neun Schaltflaechen nebeneinander
+        # sind auf dem Handy nicht mehr bedienbar.
+        if _sec == "WSJ":
+            _wsj_res = st.radio(
+                "Ressort",
+                ["\U0001f4bc Business", "\U0001f4c8 Markets & Finance",
+                 "\U0001f30d World"],
+                horizontal=True, label_visibility="collapsed",
+                key="wsj_ressort")
+            _sec = {"\U0001f4bc Business": "WSJ Business",
+                    "\U0001f4c8 Markets & Finance": "WSJ Markets & Finance",
+                    "\U0001f30d World": "WSJ World"}[_wsj_res]
+
         for section in [_sec]:
             if True:
                 # WSJ ist komplett hinter einer Paywall - der "nur frei lesbar"-Filter
                 # wuerde den Bereich leer machen. Hier greift stattdessen die
                 # Weiterleitung ueber removepaywalls.com (siehe read_url).
-                _fo = False if section == "WSJ" else free_only
-                if section == "WSJ":
+                _fo = False if section.startswith("WSJ") else free_only
+                if section.startswith("WSJ"):
                     st.caption("\U0001f512 Alle WSJ-Artikel liegen hinter der Paywall. "
                                "Jede Headline wird automatisch \u00fcber "
                                "**removepaywalls.com** ge\u00f6ffnet. Klappt nur, wenn "

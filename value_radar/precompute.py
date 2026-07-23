@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-23-a"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-23-b"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -349,7 +349,7 @@ def screener_scan() -> list:
         usd = providers.get_fx_to_eur("USD") or 0.92
         tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
                                         (5e9) / usd, UNIVERSE_SIZE)
-        tickers = collapse_listings(tickers)     # BHP.L + BHPL.XC -> nur eine
+        tickers = filter_boersen(collapse_listings(tickers))   # nur Heimatnotierungen
     except Exception:
         return []
     scored = scan_list(tickers, deep=SCAN_DEEP, label="Screener")
@@ -417,7 +417,7 @@ def radar_scan() -> list:
         except Exception as e:
             print(f"  [Radar] Marktschnitt uebersprungen: {e}")
 
-    tickers = collapse_listings(tickers)
+    tickers = filter_boersen(collapse_listings(tickers))
     scored = scan_list(tickers, deep=SCAN_DEEP, label="Radar")
     scored = collapse_scored(scored, "Radar")      # Dubletten ueber den Namen
     _LAST_SCAN["Radar"] = scored
@@ -956,7 +956,7 @@ def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
         usd = providers.get_fx_to_eur("USD") or 0.92
         tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
                                         (5e9) / usd, universum)
-        tickers = collapse_listings(tickers)
+        tickers = filter_boersen(collapse_listings(tickers))
     except Exception as e:
         print(f"[live_scan] Universum nicht ladbar: {e}")
         return []
@@ -1217,3 +1217,36 @@ def collapse_scored(scored, label=""):
 # unbekannt - genau daran ist der Nachtlauf gescheitert.
 if __name__ == "__main__":
     run()
+
+
+# ============================================================================
+# ZWEITNOTIERUNGEN GANZ AUSSCHLIESSEN
+# ----------------------------------------------------------------------------
+# .IL (London International Order Book) und .XC (Zweitnotierung ohne
+# Heimatboerse) sind ausnahmslos Doppelnotierungen auslaendischer Firmen.
+# Sie bringen drei Probleme:
+#   1) Sie liefern oft KEINEN Firmennamen - dann kann die namensbasierte
+#      Entdopplung sie nicht zuordnen und sie erscheinen als eigener Titel
+#      (0NC6.IL, 0NZF.IL).
+#   2) Ihre Kurse stehen haeufig in einer anderen Einheit oder Waehrung als
+#      die Heimatnotierung - daher unsinnige Renditen wie -52 %.
+#   3) Sie sind fuer einen Privatanleger praktisch nicht handelbar.
+# Es geht also nichts verloren: Die Heimatnotierung derselben Firma bleibt.
+# ============================================================================
+
+AUSGESCHLOSSENE_BOERSEN = ("IL", "XC")
+
+
+def ist_zweitnotierung(t: str) -> bool:
+    if "." not in (t or ""):
+        return False
+    return t.rsplit(".", 1)[-1].upper() in AUSGESCHLOSSENE_BOERSEN
+
+
+def filter_boersen(tickers):
+    """Zweitnotierungen aus einer Tickerliste entfernen."""
+    raus = [t for t in tickers if ist_zweitnotierung(t)]
+    if raus:
+        print(f"  [Filter] {len(raus)} Zweitnotierung(en) ausgeschlossen: "
+              f"{', '.join(raus[:8])}{' ...' if len(raus) > 8 else ''}")
+    return [t for t in tickers if not ist_zweitnotierung(t)]

@@ -60,20 +60,30 @@ except Exception:
     _roic_mod, _ROIC_AKTIV = None, False
 
 if _ROIC_AKTIV:
-    SCREENER_TOP = 25       # mehr Top-Ideen speichern
-    RADAR_TOP = 25
-    UNIVERSE_SIZE = 300     # breiteres Universum (vorher 90)
-    SCAN_DEEP = True        # ganzer Scan tief statt flach - Kernvorteil:
-                            # gespeicherte Zahlen == Einzelanalyse, ohne
-                            # den Umweg ueber _rescore_deep
-    EARNINGS_DEEP_LIMIT = 120
-    print("[roic] aktiv - erweiterte Limits (Universum 300, deep-Scan).")
+    SCREENER_TOP = 30       # mehr Top-Ideen speichern
+    RADAR_TOP = 30
+    # Mit der Sparfassung (3 Abrufe je Titel in der Vorauswahl) kostet ein
+    # 600er-Universum rund 7,5 Minuten statt 20. Das ist der eigentliche
+    # Gewinn der bezahlten Anbindung: Breite statt Rationierung.
+    UNIVERSE_SIZE = 600
+    # Vorauswahl bewusst FLACH (Sparfassung, 3 Abrufe je Titel). Die
+    # gespeicherten Zahlen bleiben trotzdem deckungsgleich mit der
+    # Einzelanalyse, weil _rescore_deep die Top-Titel ohnehin tief
+    # nachrechnet. Alles tief zu scannen kostete 8 Abrufe je Titel und
+    # damit bei 600 Titeln 20 Minuten - fuer Raenge, die sich dadurch
+    # kaum verschieben.
+    SCAN_DEEP = False
+    EARNINGS_DEEP_LIMIT = 150
+    RADAR_MARKT = 250       # Marktschnitt zusaetzlich zu den Themen-Tickern
+    print(f"[roic] aktiv - Universum {UNIVERSE_SIZE}, "
+          f"Top {SCREENER_TOP} tief nachgerechnet.")
 else:
     SCREENER_TOP = 15       # so viele Screener-Top-Ideen speichern
     RADAR_TOP = 15
     UNIVERSE_SIZE = 90      # bounded: schont FMP-Tageslimit & Laufzeit
     SCAN_DEEP = False
     EARNINGS_DEEP_LIMIT = 60
+    RADAR_MARKT = 0         # ohne roic kein Marktschnitt - Limits zu eng
 
 
 def _berlin_now():
@@ -391,6 +401,22 @@ def radar_scan() -> list:
             if t not in seen:
                 seen.add(t)
                 tickers.append(t)
+    # Mit roic zusaetzlich einen Marktschnitt aufnehmen. Die 113 kuratierten
+    # Themen-Ticker sind eine Vorauswahl von MIR - das Radar findet dort
+    # naturgemaess nur, was ich vorher fuer interessant hielt. Ein breiter
+    # Schnitt kann Titel liefern, an die keiner von uns gedacht hat.
+    if _ROIC_AKTIV and ms is not None:
+        try:
+            usd = providers.get_fx_to_eur("USD") or 0.92
+            markt, _q = ms.get_universe(["us", "de", "fr", "gb", "nl"],
+                                        (3e9) / usd, RADAR_MARKT)
+            neu_dazu = [t for t in markt if t not in seen]
+            tickers.extend(neu_dazu)
+            print(f"  [Radar] {len(neu_dazu)} Markttitel zusaetzlich "
+                  f"zu {len(seen)} Themen-Tickern.")
+        except Exception as e:
+            print(f"  [Radar] Marktschnitt uebersprungen: {e}")
+
     tickers = collapse_listings(tickers)
     scored = scan_list(tickers, deep=SCAN_DEEP, label="Radar")
     scored = collapse_scored(scored, "Radar")      # Dubletten ueber den Namen

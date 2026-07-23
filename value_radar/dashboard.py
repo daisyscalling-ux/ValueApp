@@ -3963,24 +3963,41 @@ if nav == "Screener":
         st.warning(f"**Schwäche dieser Strategie:** {_sinfo['risiko']}")
 
         _lc1, _lc2 = st.columns(2)
+        try:
+            import roic as _rq
+            _roic_da = _rq.enabled()
+        except Exception:
+            _roic_da = False
+        _groessen = [90, 200, 400, 600] if _roic_da else [40, 90, 150]
         _uni = _lc1.selectbox("Universumsgr\u00f6\u00dfe",
-                              [40, 90, 150],
+                              _groessen,
                               index=1,
                               format_func=lambda n: f"{n} Titel",
                               key="live_uni",
                               help="Gro\u00dfe Titel aus US, DE, FR, GB, NL ab 5 Mrd. "
-                                   "Marktkapitalisierung. Mehr Titel = gr\u00fc"
-                                   "ndlicher, aber deutlich l\u00e4nger.")
-        _topn = _lc2.selectbox("Davon tief nachrechnen", [5, 10, 15, 20],
-                               index=2, format_func=lambda n: f"Top {n}",
+                                   "Marktkapitalisierung. Mehr Titel = "
+                                   "gr\u00fcndlicher, aber l\u00e4nger.")
+        _topn = _lc2.selectbox("Davon tief nachrechnen",
+                               [10, 20, 30, 40] if _roic_da else [5, 10, 15, 20],
+                               index=1, format_func=lambda n: f"Top {n}",
                                key="live_top",
-                               help="Nur f\u00fcr diese wird der Radar-Score "
-                                    "berechnet \u2013 das kostet mehrere Zusatz"
-                                    "abrufe je Titel.")
-        _dauer = int(_uni * 1.2 + _topn * 6)
-        st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {_dauer//60} bis "
-                   f"{_dauer//60 + 2} Minuten** (etwa {_uni * 2 + _topn * 5} "
-                   "Abrufe). Bitte den Tab offen lassen.")
+                               help="Nur f\u00fcr diese werden Radar-Score und "
+                                    "volle Bewertung berechnet \u2013 das kostet "
+                                    "mehrere Zusatzabrufe je Titel.")
+        if _roic_da:
+            # 3 Abrufe je Titel in der Vorauswahl, ~13 je tief gerechnetem
+            # Titel (volles Buendel + Radar-Ebenen), gedrosselt auf 240/min.
+            _abrufe = _uni * 3 + _topn * 13
+            _sek = int(_abrufe / 240 * 60 * 1.25)      # Puffer fuer yfinance
+            st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {max(1, _sek//60)} bis "
+                       f"{_sek//60 + 2} Minuten** ({_abrufe} Abrufe \u00fcber "
+                       "roic.ai). Bitte den Tab offen lassen.")
+        else:
+            _dauer = int(_uni * 1.2 + _topn * 6)
+            st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {_dauer//60} bis "
+                       f"{_dauer//60 + 2} Minuten**. Ohne roic.ai-Anbindung "
+                       "greifen die Limits der Gratisquellen \u2013 gr\u00f6\u00dfere "
+                       "Universen sind deshalb gesperrt.")
 
         if st.button("\u25b6 Scan jetzt starten", key="live_go",
                      use_container_width=True):

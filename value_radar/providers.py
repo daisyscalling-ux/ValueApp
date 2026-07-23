@@ -549,7 +549,11 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     R = None
     if _roic is not None and _roic.covers(ticker):
         try:
-            R = _roic.bundle(ticker)
+            # Beim flachen Scan die Sparfassung (3 Abrufe statt 8). Sonst
+            # wuerde eine breite Vorauswahl allein durch roic minutenlang
+            # dauern - und die Zusatzfelder braucht sie gar nicht.
+            R = (_roic.bundle(ticker) if deep
+                 else _roic.bundle_light(ticker))
         except Exception:
             R = None
     C = None

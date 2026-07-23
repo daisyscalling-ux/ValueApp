@@ -793,3 +793,52 @@ def peer_median(reihen: list, feld: str):
     w.sort()
     m = len(w) // 2
     return w[m] if len(w) % 2 else (w[m - 1] + w[m]) / 2
+
+
+def bundle_light(t: str) -> dict:
+    """Sparfassung mit 3 statt 8 Abrufen - fuer breite Scans.
+
+    Enthaelt alles, was die Vorauswahl braucht: Stammdaten, Groesse,
+    Margen, Renditen, Umsatz und die Multiples. Weggelassen sind die
+    Bilanz- und Liquiditaetsdetails sowie das Umsatzwachstum aus zwei
+    Geschaeftsjahren - die kommen beim tiefen Nachrechnen dazu.
+
+    Damit kostet ein 400-Titel-Scan 1.200 statt 3.200 Abrufe:
+    5 Minuten statt 13."""
+    if not covers(t):
+        return {}
+    prof = profile(t)
+    ev = enterprise_value(t)
+    rp = ratios_profitability(t)
+    mu = multiples(t) if multiples_ok(t) else None
+
+    out = {
+        "_src": "roic_light",
+        "name": _g(prof, "company_name"),
+        "sector": _g(prof, "sector"),
+        "industry": _g(prof, "industry"),
+        "country": _g(prof, "country_code"),
+        "currency": _g(prof, "currency"),
+        "price": _num(_g(prof, "price")),
+        "market_cap": _num(_g(ev, "market_cap")),
+        "enterprise_value": _num(_g(ev, "enterprise_value")),
+        "total_debt": _num(_g(ev, "short_and_long_term_debt")),
+        "cash": _num(_g(ev, "bs_cash_near_cash_item")),
+        "revenue": _num(_g(ev, "ttm_net_sales")),
+        "ebitda": _num(_g(ev, "ttm_ebitda")),
+        "ebit": _num(_g(ev, "ttm_oper_inc")),
+        "free_cashflow": _num(_g(ev, "ttm_free_cash_flow_firm")),
+        "gross_margin": _pct(_g(rp, "gross_margin")),
+        "operating_margin": _pct(_g(rp, "oper_margin")),
+        "profit_margin": _pct(_g(rp, "profit_margin")),
+        "ebitda_margin": _pct(_g(rp, "ebitda_margin")),
+        "roe": _pct(_g(rp, "return_com_eqy")),
+        "roa": _pct(_g(rp, "return_on_asset")),
+        "roic": _pct(_g(rp, "return_on_inv_capital")),
+    }
+    if mu:
+        out["pe_trailing"] = _num(_g(mu, "pe_ratio"))
+        out["ps"] = _num(_g(mu, "pr_to_sales_ratio"))
+        out["pb"] = _num(_g(mu, "pr_to_book_ratio"))
+        out["ev_ebitda"] = _num(_g(mu, "ev_to_ttm_ebitda"))
+    return {k: v for k, v in out.items() if v is not None or k == "_src"}

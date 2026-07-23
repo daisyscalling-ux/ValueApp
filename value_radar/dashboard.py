@@ -2104,7 +2104,9 @@ with st.sidebar:
                 fn.clear()
             except Exception:
                 pass
-        for k in ("radar_results", "radar_last_pick"):
+        for k in ("radar_results", "radar_last_pick", "scr_passed",
+                  "scr_zeit", "pf_rows_cache", "live_ergebnis",
+                  "live_zeit", "live_strat_used", "live_spalten"):
             st.session_state.pop(k, None)
         st.success("Cache geleert \u2013 der n\u00e4chste Lauf holt frische Daten.")
     st.markdown("---")
@@ -4192,56 +4194,75 @@ if nav == "Screener":
                 st.info("Keine Aktie erf\u00fcllt alle Pflicht-Kriterien \u2013 mehr Titel laden "
                         "oder Regionen erweitern.")
 
-    if go:
-        with st.spinner("Hole Markt-Universum ..."):
-            universe, src = load_universe(tuple(regions or ms.DEFAULT_REGIONS),
-                                          f_mcap, int(max_load) * 2)
-        st.caption(f"Universum-Quelle: {src} \u00b7 {len(universe)} Kandidaten "
-                   f"\u2192 lade die ersten {int(max_load)}.")
-        universe = universe[:int(max_load)]
+    # ------------------------------------------------------------------
+    # Ergebnis fuer die Dauer der Sitzung behalten. Streamlit baut die
+    # Seite bei JEDEM Tabwechsel neu auf - ohne Zwischenspeicher waere ein
+    # mehrminuetiger Scan danach verloren.
+    # ------------------------------------------------------------------
+    if go or st.session_state.get("scr_passed"):
+        if go:
+            with st.spinner("Hole Markt-Universum ..."):
+                universe, src = load_universe(tuple(regions or ms.DEFAULT_REGIONS),
+                                              f_mcap, int(max_load) * 2)
+            st.caption(f"Universum-Quelle: {src} \u00b7 {len(universe)} Kandidaten "
+                       f"\u2192 lade die ersten {int(max_load)}.")
+            universe = universe[:int(max_load)]
 
-        def ok(fd):
-            if mcap_eur_bn(fd) < f_mcap:                 # gleiche Schwelle wie Radar
-                return False
-            eps_fwd = fd.get("eps_forward")
-            if f_profit == "positiv" and not (eps_fwd is not None and eps_fwd > 0):
-                if not ((fd.get("profit_margin") or -1) > 0):
+            def ok(fd):
+                if mcap_eur_bn(fd) < f_mcap:                 # gleiche Schwelle wie Radar
                     return False
-            if f_profit == "negativ" and (eps_fwd is not None and eps_fwd > 0):
-                return False
-            if f_revg and (fd.get("revenue_growth") or -99) * 100 < f_revg:
-                return False
-            if f_roe and (fd.get("roe") or -99) * 100 < f_roe:
-                return False
-            if f_fcf and (fd.get("fcf_yield") or -99) * 100 < f_fcf:
-                return False
-            if f_curr and (fd.get("current_ratio") or -99) < f_curr:
-                return False
-            if f_pe and (fd.get("pe_forward") or 1e9) > f_pe:
-                return False
-            if f_evebitda and (fd.get("ev_ebitda") or 1e9) > f_evebitda:
-                return False
-            if f_pb and (fd.get("pb") or 1e9) > f_pb:
-                return False
-            if f_peg and (fd.get("peg") or 1e9) > f_peg:
-                return False
-            if f_nde and (fd.get("net_debt_ebitda") or -1e9) > f_nde:
-                return False
-            return True
+                eps_fwd = fd.get("eps_forward")
+                if f_profit == "positiv" and not (eps_fwd is not None and eps_fwd > 0):
+                    if not ((fd.get("profit_margin") or -1) > 0):
+                        return False
+                if f_profit == "negativ" and (eps_fwd is not None and eps_fwd > 0):
+                    return False
+                if f_revg and (fd.get("revenue_growth") or -99) * 100 < f_revg:
+                    return False
+                if f_roe and (fd.get("roe") or -99) * 100 < f_roe:
+                    return False
+                if f_fcf and (fd.get("fcf_yield") or -99) * 100 < f_fcf:
+                    return False
+                if f_curr and (fd.get("current_ratio") or -99) < f_curr:
+                    return False
+                if f_pe and (fd.get("pe_forward") or 1e9) > f_pe:
+                    return False
+                if f_evebitda and (fd.get("ev_ebitda") or 1e9) > f_evebitda:
+                    return False
+                if f_pb and (fd.get("pb") or 1e9) > f_pb:
+                    return False
+                if f_peg and (fd.get("peg") or 1e9) > f_peg:
+                    return False
+                if f_nde and (fd.get("net_debt_ebitda") or -1e9) > f_nde:
+                    return False
+                return True
 
-        passed = []
-        prog = st.progress(0.0, text="Lade & filtere Titel ...")
-        for i, t in enumerate(universe, 1):
-            fd = load_fundamentals(t)
-            if fd.get("price"):
-                fd["_fx"] = fx_to_eur(fd.get("currency", "USD")) or 1.0
-                if ok(fd):
-                    passed.append(fd)
-            prog.progress(i / max(len(universe), 1), text=f"Pr\u00fcfe {t} ... "
-                          f"({len(passed)} Treffer)")
-        prog.empty()
-        passed = radar.dedupe_by_name(passed)      # Doppel-Listings entfernen
-        st.caption(f"{len(passed)} Titel bestehen die Filter.")
+            passed = []
+            prog = st.progress(0.0, text="Lade & filtere Titel ...")
+            for i, t in enumerate(universe, 1):
+                fd = load_fundamentals(t)
+                if fd.get("price"):
+                    fd["_fx"] = fx_to_eur(fd.get("currency", "USD")) or 1.0
+                    if ok(fd):
+                        passed.append(fd)
+                prog.progress(i / max(len(universe), 1), text=f"Pr\u00fcfe {t} ... "
+                              f"({len(passed)} Treffer)")
+            prog.empty()
+            passed = radar.dedupe_by_name(passed)      # Doppel-Listings entfernen
+            st.caption(f"{len(passed)} Titel bestehen die Filter.")
+            st.session_state["scr_passed"] = passed
+            st.session_state["scr_zeit"] = datetime.now().strftime("%H:%M")
+        else:
+            passed = st.session_state["scr_passed"]
+            _c1, _c2 = st.columns([3, 1])
+            _c1.info(f"Ergebnis von **{st.session_state.get('scr_zeit', '\u2014')} "
+                     f"Uhr** \u00b7 {len(passed)} Titel. Auf \u201eSCREENEN\u201c "
+                     "klicken f\u00fcr einen neuen Lauf.")
+            if _c2.button("\U0001f5d1\ufe0f Verwerfen", key="scr_clear",
+                          use_container_width=True):
+                st.session_state.pop("scr_passed", None)
+                st.session_state.pop("scr_zeit", None)
+                st.rerun()
 
         rows = []
         # Doppelnotierungen ueber den Firmennamen entfernen. Die symbol-
@@ -4872,9 +4893,35 @@ if nav == "Portfoliocheck":
                 fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
                 load_fundamentals.clear()
                 load_fundamentals_deep.clear()    # frischer Basis-Kurs (tiefe Quelle)
+                st.session_state.pop("pf_rows_cache", None)
                 st.rerun()
-            with st.spinner("Analysiere Positionen (Intraday-Kurse) ..."):
-                rows, invalid, resolved = build_portfolio_rows(records, inc_radar, inc_pl, live=live_px)
+            # Ergebnis fuer die Sitzung behalten: Bei vielen Positionen dauert
+            # der Aufbau spuerbar, und Streamlit rechnet ihn sonst nach jedem
+            # Tabwechsel neu. Schluessel enthaelt die Einstellungen, damit ein
+            # Wechsel von z.B. "mit Radar" auch wirklich neu rechnet.
+            _pf_key = (tuple(sorted(str(r.get("ticker") or "") for r in records)),
+                       bool(inc_radar), bool(inc_pl), bool(live_px))
+            _pf_cache = st.session_state.get("pf_rows_cache")
+            if _pf_cache and _pf_cache.get("key") == _pf_key:
+                rows = _pf_cache["rows"]
+                invalid = _pf_cache["invalid"]
+                resolved = _pf_cache["resolved"]
+                _pc1, _pc2 = st.columns([3, 1])
+                _pc1.caption(f"Stand {_pf_cache.get('zeit', '\u2014')} Uhr \u00b7 "
+                             "aus dem Sitzungsspeicher")
+                if _pc2.button("\U0001f504 Neu berechnen", key="pf_recalc",
+                               use_container_width=True):
+                    st.session_state.pop("pf_rows_cache", None)
+                    st.rerun()
+            else:
+                with st.spinner("Analysiere Positionen (Intraday-Kurse) ..."):
+                    rows, invalid, resolved = build_portfolio_rows(
+                        records, inc_radar, inc_pl, live=live_px)
+                st.session_state["pf_rows_cache"] = {
+                    "key": _pf_key, "rows": rows, "invalid": invalid,
+                    "resolved": resolved,
+                    "zeit": _berlin_now().strftime("%H:%M"),
+                }
             if live_px:
                 n_live = sum(1 for r in rows if r.get("live"))
                 st.caption(f"\u23f1 Intraday-Kurse aktiv f\u00fcr {n_live}/{len(rows)} Positionen \u00b7 "

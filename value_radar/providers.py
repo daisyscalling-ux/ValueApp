@@ -563,11 +563,42 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     # roic-Werte gewinnen feldweise, wo vorhanden - ausser Kurs/Waehrung:
     # die bleiben bei yfinance, weil dort die Pence-Normalisierung haengt.
     if R:
+        # ------------------------------------------------------------------
+        # WAEHRUNGS-ABGLEICH. roic normalisiert internationale Abschluesse
+        # auf USD (Anbieterangabe), unser Kurs kommt von yfinance in
+        # Handelswaehrung. Ungeprueft gemischt ergaebe das falsche
+        # Verhaeltniszahlen - dieselbe Fehlerklasse wie BP.L mit KGV 168.091.
+        #
+        # Statt zu raten oder pauschal zu verwerfen wird der Faktor GEMESSEN:
+        # Beide Quellen liefern einen Kurs fuer denselben Titel. Ihr
+        # Verhaeltnis IST der Umrechnungsfaktor - unabhaengig davon, welche
+        # Waehrungen im Spiel sind. Damit lassen sich die absoluten Werte
+        # umrechnen, statt sie wegzuwerfen.
+        #
+        # Einheitenlose Groessen (Margen, Renditen, Wachstum, Verhaeltnisse)
+        # bleiben unberuehrt - sie sind waehrungsunabhaengig.
+        # ------------------------------------------------------------------
+        _ABSOLUT = {                      # Betraege und Je-Aktie-Werte
+            "market_cap", "enterprise_value", "cash", "total_debt",
+            "net_debt", "revenue", "ebitda", "ebit", "free_cashflow",
+            "net_income", "book_value_ps", "eps_trailing",
+        }
+        _px_y, _px_r = merged.get("price"), R.get("price")
+        _faktor = 1.0
+        if _px_y and _px_r and _px_r > 0:
+            _q = _px_y / _px_r
+            if 0.2 <= _q <= 5.0 and abs(_q - 1.0) > 0.02:
+                _faktor = _q          # verschiedene Waehrungen/Einheiten
+                merged["_roic_fx"] = round(_q, 4)
         for k, v in R.items():
-            if k in ("price", "currency", "_src"):
+            if k in ("price", "currency", "_src") or v is None:
                 continue
-            if v is not None:
-                merged[k] = v
+            if _faktor != 1.0 and k in _ABSOLUT:
+                try:
+                    v = v * _faktor
+                except Exception:
+                    continue
+            merged[k] = v
         merged["_roic"] = True
         # Historisches KGV-Band: bisher bei ALLEN Titeln leer (FMP-Quote),
         # dadurch lief relval.py ins Leere. roic liefert es aus Jahres-EPS

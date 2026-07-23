@@ -181,8 +181,16 @@ def profile(t: str):
 
 
 def quote(t: str):
-    """Kurs. ACHTUNG: prices/latest existiert im Individual-Plan NICHT -
-    der aktuelle Kurs steht im Company Profile."""
+    """Letzter Kurs. Pfad laut Doku: stock-prices/latest/{ticker}.
+    (Mein erster Versuch 'prices/latest/' war falsch - daher die
+    Notloesung ueber das Profil, die jetzt nur noch Rueckfall ist.)"""
+    d = _get(f"stock-prices/latest/{t}")
+    z = d if isinstance(d, dict) else _first(d)
+    if z:
+        return {"price": _num(_g(z, "close", "adj_close")),
+                "datum": str(_g(z, "date") or "")[:10],
+                "aenderung_pct": _num(_g(z, "change_percent")),
+                "volumen": _num(_g(z, "volume"))}
     p = profile(t)
     return {"price": _num(_g(p, "price"))} if p else None
 
@@ -505,6 +513,15 @@ def status() -> dict:
 # VOLLE KENNZAHLEN, FINANZDATEN, TRANSKRIPTE
 # ============================================================================
 
+def ratios_yield(t: str):
+    """Renditekennzahlen: Free-Cashflow-, Shareholder- und Capital-Yield.
+
+    Beim ersten Test antwortete dieser Endpunkt nicht - laut Doku gibt es
+    ihn. Deshalb hier vorhanden, aber nirgends vorausgesetzt: Fehlt die
+    Antwort, bleibt das Feld leer und nichts bricht."""
+    return _first(_get(f"fundamental/ratios/yield/{t}"))
+
+
 def ratios_working_capital(t: str):
     return _first(_get(f"fundamental/ratios/working-capital/{t}"))
 
@@ -573,14 +590,10 @@ def news(t: str, limit=15) -> list:
     """Firmennachrichten. Ergaenzt marketnews.py, ersetzt es nicht."""
     if not covers(t):
         return []
-    reihen = []
-    for pfad in (f"company/news/{t}", f"news/company/{t}", f"news/{t}"):
-        d = _get(pfad, {"limit": limit})
-        if d is None:
-            continue
-        reihen = d if isinstance(d, list) else (d or {}).get("data") or []
-        if reihen:
-            break
+    # Pfad laut Doku: company/news/{identifier}, Parameter limit, page,
+    # date_start, date_end. Das Raten von drei Varianten entfaellt.
+    d = _get(f"company/news/{t}", {"limit": limit})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     out = []
     for z in reihen:
         if not isinstance(z, dict):
@@ -778,25 +791,10 @@ def peers(t: str, limit=12) -> list:
     Deshalb werden mehrere plausible Varianten versucht; schlaegt alles fehl,
     uebernimmt peers_nach_branche() ueber die Branche aus dem Profil.
     Das ist ehrlicher als eine Funktion, die still nichts zurueckgibt."""
-    if not covers(t):
-        return []
-    for pfad in (f"company/peers/{t}", f"company/competitors/{t}",
-                 f"tickers/peers/{t}"):
-        d = _get(pfad)
-        if d is None:
-            continue
-        reihen = d if isinstance(d, list) else (d or {}).get("data") or []
-        out = []
-        for z in reihen:
-            if isinstance(z, str):
-                out.append({"ticker": z.upper(), "name": None})
-            elif isinstance(z, dict):
-                sym = _g(z, "ticker", "symbol", "peer")
-                if sym:
-                    out.append({"ticker": str(sym).upper(),
-                                "name": _g(z, "company_name", "name")})
-        if out:
-            return out[:limit]
+    # Die Doku listet 28 Endpunkte in 9 Gruppen - ein Peer-Endpunkt ist
+    # NICHT darunter. Frueher wurden hier drei Pfade geraten; das kostete
+    # bei jedem Aufruf drei vergebliche Abrufe. Die Auswahl laeuft
+    # ausschliesslich ueber die Branche aus dem Profil.
     return []
 
 

@@ -2614,6 +2614,17 @@ if nav == "Einzelanalyse":
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
 
+                # Hinweis, wenn roic-Werte umgerechnet werden mussten
+                if f.get("_roic_fx"):
+                    st.caption(
+                        f"\u2139\ufe0f Kennzahlen von roic.ai wurden mit dem "
+                        f"Faktor **{f['_roic_fx']}** auf die Handelsw\u00e4hrung "
+                        "umgerechnet (der Anbieter normalisiert internationale "
+                        "Abschl\u00fcsse auf USD). Der Faktor stammt aus dem "
+                        "Verh\u00e4ltnis beider Kursquellen, nicht aus einem "
+                        "Wechselkurs \u2013 kleine Abweichungen sind m\u00f6glich, "
+                        "wenn die Kurse von verschiedenen Handelstagen stammen.")
+
                 # --- NOTBEHELF-WARNUNG: keine Methode lieferte ein Ergebnis
                 if v.get("used_fallback"):
                     st.error(

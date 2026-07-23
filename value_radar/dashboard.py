@@ -2907,24 +2907,21 @@ if nav == "Einzelanalyse":
                                     "Kein Anlagerat.")
 
                 # ============================================================
-                # UNTERNEHMENSPROFIL, NACHRICHTEN, EARNINGS CALL
+                # UNTERNEHMENSPROFIL, NACHRICHTEN, PEERS, EARNINGS CALL
                 # ============================================================
                 if _rb is not None and _rb.enabled() and _rb.covers(ticker):
-                    with st.expander("\U0001f4c4 PROFIL, NACHRICHTEN & "
-                                     "EARNINGS CALL", expanded=False):
+                    with st.expander("\U0001f4c4 PROFIL, NACHRICHTEN, "
+                                     "PEERS & EARNINGS CALL", expanded=False):
                         _pv = st.radio(
                             "Ansicht",
-                            ["Unternehmen", "Nachrichten", "Earnings Call"],
+                            ["Unternehmen", "Nachrichten",
+                             "Peers & Wettbewerb", "Earnings Call"],
                             horizontal=True, label_visibility="collapsed",
                             key="prof_view")
 
                         @st.cache_data(ttl=86400, show_spinner=False)
                         def _hole_profil(t):
                             return _rb.profile(t)
-
-                        @st.cache_data(ttl=3600, show_spinner=False)
-                        def _hole_news(t):
-                            return _rb.news(t, 15)
 
                         @st.cache_data(ttl=86400, show_spinner=False)
                         def _hole_transkript(t):
@@ -2964,24 +2961,167 @@ if nav == "Einzelanalyse":
                                                "Heimatmarkt abweichen.")
 
                         elif _pv == "Nachrichten":
+                            @st.cache_data(ttl=1800, show_spinner=False)
+                            def _hole_news(t):
+                                return _rb.news(t, 15)
+
                             _nw = _hole_news(ticker) or []
                             if not _nw:
-                                st.info("Keine Nachrichten verf\u00fcgbar.")
+                                st.info("Keine Nachrichten von roic.ai zu "
+                                        "diesem Titel.")
                             else:
+                                _mit_link = sum(1 for n in _nw if n.get("url"))
                                 for _n in _nw[:12]:
-                                    _z = f"**{esc(str(_n['titel']))}**"
-                                    if _n.get("url"):
-                                        _z = f"[{esc(str(_n['titel']))}]({_n['url']})"
-                                    st.markdown(f"{_z}  \n"
-                                                f"<span class='muted'>"
-                                                f"{esc(str(_n.get('datum') or ''))} \u00b7 "
-                                                f"{esc(str(_n.get('quelle') or ''))}"
-                                                f"</span>",
-                                                unsafe_allow_html=True)
-                                    st.divider()
+                                    _h = esc(str(_n.get("titel") or ""))
+                                    _q = esc(str(_n.get("quelle") or ""))
+                                    _d = esc(str(_n.get("datum") or "")[:16]
+                                             .replace("T", " "))
+                                    _meta = _q + (f" \u00b7 {_d}" if _d else "")
+                                    _u = _n.get("url")
+                                    # Echter Anker wie im News-Tab. Markdown-
+                                    # Links funktionieren in einem Block mit
+                                    # unsafe_allow_html nicht zuverlaessig -
+                                    # deshalb waren die Meldungen vorher tot.
+                                    if _u:
+                                        _inhalt = (f'<a href="{esc(str(_u))}" '
+                                                   f'target="_blank" '
+                                                   f'rel="noopener">{_h}</a>')
+                                    else:
+                                        _inhalt = _h
+                                    st.markdown(
+                                        f'<div class="news-box">{_inhalt}'
+                                        f'<div class="meta">{_meta}</div></div>',
+                                        unsafe_allow_html=True)
+                                if _mit_link == 0:
+                                    st.caption("\u26a0\ufe0f Keine dieser Meldungen "
+                                               "enth\u00e4lt einen Verweis \u2013 roic.ai "
+                                               "liefert das Feld hier offenbar "
+                                               "nicht. Bitte melden, dann passe "
+                                               "ich die Zuordnung an.")
+                                elif _mit_link < len(_nw[:12]):
+                                    st.caption(f"{_mit_link} von "
+                                               f"{len(_nw[:12])} Meldungen mit "
+                                               "Verweis.")
                                 st.caption("Nachrichten sind bereits im Kurs "
                                            "verarbeitet \u2013 sie erkl\u00e4ren, was "
-                                           "passiert ist, sie sagen nichts voraus.")
+                                           "passiert ist, sie sagen nichts "
+                                           "voraus.")
+
+                        elif _pv.startswith("Peers"):
+                            @st.cache_data(ttl=86400, show_spinner=False)
+                            def _hole_peers(t):
+                                p = _rb.peers(t, 10)
+                                if p:
+                                    return p, "Anbieterliste"
+                                return _rb.peers_nach_branche(t, limit=8), "Branche"
+
+                            @st.cache_data(ttl=3600, show_spinner=False)
+                            def _hole_vgl(t, pk):
+                                return _rb.peer_vergleich(t, list(pk))
+
+                            with st.spinner("Wettbewerber werden gesucht \u2026"):
+                                _pl, _quelle = _hole_peers(ticker)
+                            if not _pl:
+                                st.info("Keine vergleichbaren Unternehmen "
+                                        "gefunden.")
+                            else:
+                                _opt = [p["ticker"] for p in _pl][:10]
+                                _sel = st.multiselect(
+                                    "Vergleich mit", _opt, default=_opt[:4],
+                                    key="peer_sel",
+                                    help="Je Titel 8 Abrufe \u2013 deshalb "
+                                         "standardm\u00e4\u00dfig nur vier.")
+                                st.caption(f"Quelle der Auswahl: **{_quelle}**"
+                                           + (" \u2013 Titel derselben Branche "
+                                              "aus den gro\u00dfen Indizes."
+                                              if _quelle == "Branche" else ""))
+                                if _sel:
+                                    with st.spinner("Kennzahlen werden "
+                                                    "geladen \u2026"):
+                                        _vgl = _hole_vgl(ticker, tuple(_sel))
+                                    if len(_vgl) < 2:
+                                        st.info("Zu wenige vergleichbare Daten.")
+                                    else:
+                                        def _mcap(v):
+                                            if not v:
+                                                return "\u2014"
+                                            return (f"{v/1e12:.2f} Bio"
+                                                    if v >= 1e12 else
+                                                    f"{v/1e9:.0f} Mrd")
+                                        vr_table([{
+                                            "": ("\u25b6" if r["ist_basis"] else ""),
+                                            "Ticker": r["ticker"],
+                                            "Name": r["name"],
+                                            "Gr\u00f6\u00dfe": _mcap(r["market_cap"]),
+                                            "KGV": (round(r["pe"], 1)
+                                                    if r["pe"] else None),
+                                            "EV/EBITDA": (round(r["ev_ebitda"], 1)
+                                                          if r["ev_ebitda"] else None),
+                                            "Op. Marge %": (round(r["oper_marge"]*100, 1)
+                                                            if r["oper_marge"] is not None
+                                                            else None),
+                                            "ROE %": (round(r["roe"]*100, 1)
+                                                      if r["roe"] is not None else None),
+                                            "Wachstum %": (round(r["wachstum"]*100, 1)
+                                                           if r["wachstum"] is not None
+                                                           else None),
+                                            "Netto/EBITDA": (round(r["net_debt_ebitda"], 1)
+                                                             if r["net_debt_ebitda"]
+                                                             is not None else None),
+                                        } for r in _vgl],
+                                            signed_cols=("Op. Marge %", "ROE %",
+                                                         "Wachstum %"),
+                                            height=min(len(_vgl)*40+46, 420))
+
+                                        _basis = next((r for r in _vgl
+                                                       if r["ist_basis"]), None)
+                                        _zeilen = []
+                                        for _f, _lbl, _teuer_hoch in (
+                                                ("pe", "KGV", True),
+                                                ("ev_ebitda", "EV/EBITDA", True),
+                                                ("ps", "KUV", True),
+                                                ("oper_marge", "Op. Marge", False),
+                                                ("roe", "ROE", False),
+                                                ("wachstum", "Wachstum", False)):
+                                            _m = _rb.peer_median(_vgl, _f)
+                                            _b = (_basis or {}).get(_f)
+                                            if _m is None or _b is None or _m == 0:
+                                                continue
+                                            _abw = (_b / _m - 1) * 100
+                                            _zeilen.append({
+                                                "Kennzahl": _lbl,
+                                                "dieser Titel": (round(_b*100, 1)
+                                                                 if abs(_b) < 10
+                                                                 else round(_b, 1)),
+                                                "Peer-Median": (round(_m*100, 1)
+                                                                if abs(_m) < 10
+                                                                else round(_m, 1)),
+                                                "Abweichung %": round(_abw, 0),
+                                            })
+                                        if _zeilen:
+                                            st.markdown('<div class="sec-title" '
+                                                        'style="margin-top:12px">'
+                                                        'GEGEN DEN PEER-MEDIAN'
+                                                        '</div>',
+                                                        unsafe_allow_html=True)
+                                            vr_table(_zeilen,
+                                                     signed_cols=("Abweichung %",),
+                                                     height=min(len(_zeilen)*40+46, 300))
+                                        st.caption(
+                                            "Der Median l\u00e4sst den Titel selbst "
+                                            "au\u00dfen vor. **So liest man das:** "
+                                            "Ein h\u00f6heres KGV allein hei\u00dft nicht "
+                                            "\u201eteuer\u201c \u2013 es kann durch bessere "
+                                            "Marge, h\u00f6heres Wachstum oder "
+                                            "geringere Verschuldung gerechtfertigt "
+                                            "sein. Aufschlussreich ist der "
+                                            "**Widerspruch**: teurer bewertet bei "
+                                            "gleichzeitig schlechteren "
+                                            "Kennzahlen. Und: Vergleichbarkeit "
+                                            "endet dort, wo Gesch\u00e4ftsmodelle "
+                                            "auseinandergehen \u2013 zwei Firmen "
+                                            "derselben Branche k\u00f6nnen v\u00f6llig "
+                                            "Unterschiedliches tun. Kein Anlagerat.")
 
                         else:  # Earnings Call
                             _tr = _hole_transkript(ticker) or {}
@@ -3207,89 +3347,70 @@ if nav == "Einzelanalyse":
                      f"{an.get('buy','\u2014')}B / {an.get('hold','\u2014')}H / {an.get('sell','\u2014')}S"
                      if an else "n/a")
 
-                ec1, ec2 = st.columns([1, 1])
-                with ec1:
-                    st.markdown("**Peers / Wettbewerber**")
-                    peers = intel.get("peers") or []
-                    if not peers:
-                        st.markdown('<span class="na">n/a (Finnhub-Key n\u00f6tig)</span>',
-                                    unsafe_allow_html=True)
+                # (Der zweite Nachrichten-Block an dieser Stelle wurde
+                #  entfernt - die Meldungen stehen jetzt oben unter
+                #  'Profil, Nachrichten, Peers & Earnings Call'.)
+                st.markdown("**Peers / Wettbewerber**")
+                peers = intel.get("peers") or []
+                if not peers:
+                    st.markdown('<span class="na">n/a (Finnhub-Key n\u00f6tig)</span>',
+                                unsafe_allow_html=True)
+                else:
+                    peer_key = f"peers_loaded_{ticker}"
+                    if not st.session_state.get(peer_key):
+                        st.caption("Spart Datenabrufe: Wettbewerber-Kennzahlen werden "
+                                   "nur auf Wunsch geladen.")
+                        if st.button("\U0001f4ca Wettbewerber-Kennzahlen laden",
+                                     key=f"loadpeers_{ticker}"):
+                            st.session_state[peer_key] = True
+                            st.rerun()
+                        st.markdown("".join(f'<span class="pill">{p}</span>'
+                                            for p in peers), unsafe_allow_html=True)
+                        prowz = []
                     else:
-                        peer_key = f"peers_loaded_{ticker}"
-                        if not st.session_state.get(peer_key):
-                            st.caption("Spart Datenabrufe: Wettbewerber-Kennzahlen werden "
-                                       "nur auf Wunsch geladen.")
-                            if st.button("\U0001f4ca Wettbewerber-Kennzahlen laden",
-                                         key=f"loadpeers_{ticker}"):
-                                st.session_state[peer_key] = True
-                                st.rerun()
-                            st.markdown("".join(f'<span class="pill">{p}</span>'
-                                                for p in peers), unsafe_allow_html=True)
+                        with st.spinner("Lade Wettbewerber-Kennzahlen ..."):
                             prowz = []
-                        else:
-                            with st.spinner("Lade Wettbewerber-Kennzahlen ..."):
-                                prowz = []
-                                for ptk in peers[:6]:
-                                    if ptk.upper() == ticker.upper():
-                                        continue
-                                    pf_ = load_fundamentals_deep(ptk)
-                                    if not pf_.get("price"):
-                                        continue
-                                    pep = valuation.classify_playbook(pf_)
-                                    pcomp = scoring.score_stock(pf_, None, preset=pep)["composite"]
-                                    pv = valuation.fair_value(pf_, None, pep)
-                                    atgt = pv.get("analyst_target")
-                                    prowz.append({
-                                        "Ticker": pf_["ticker"],
-                                        "Name": (pf_.get("name") or "")[:18],
-                                        "Score": round(pcomp),
-                                        "Kurs": round(pf_["price"], 2),
-                                        "Fair Value": pv.get("fair_value"),
-                                        "Upside %": pv.get("upside_pct"),
-                                        "Analysten-Ziel": atgt,
-                                        "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
-                                                          if atgt and pf_.get("price") else None)})
-                        if prowz:
-                            vr_rows(prowz, key_prefix="peer",
-                                    score_cols=("Score",),
-                                    signed_cols=("Upside %", "Ziel-Upside %"))
-                            st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet "
-                                       "den Wettbewerber. Kurse/Werte in Handelsw\u00e4hrung "
-                                       "des jeweiligen Titels.")
-                        else:
-                            st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
-                                        unsafe_allow_html=True)
-                    scn = intel.get("supply_chain", {})
-                    st.markdown("**Kunden**")
-                    cust = scn.get("customers") or []
-                    st.markdown("".join(f'<span class="pill">{c}</span>' for c in cust) if cust else
-                                '<span class="na">n/a (Premium-Supply-Chain n\u00f6tig)</span>',
-                                unsafe_allow_html=True)
-                    st.markdown("**Lieferanten**")
-                    supp = scn.get("suppliers") or []
-                    st.markdown("".join(f'<span class="pill">{c}</span>' for c in supp) if supp else
-                                '<span class="na">n/a (Premium-Supply-Chain n\u00f6tig)</span>',
-                                unsafe_allow_html=True)
-                with ec2:
-                    st.markdown("**News \u00b7 Yahoo Finance / Investing.com / onvista / MarketScreener**")
-                    news = intel.get("news") or []
-                    # Nach Datum sortieren (neueste zuerst) - kam vorher ungeordnet
-                    # aus verschiedenen Quellen.
-                    news = sorted(news, key=news_sort_key, reverse=True)
-                    if news:
-                        for n in news[:10]:
-                            head = clean_headline(n.get("headline"))
-                            url = read_url(n.get("url"), n.get("access", ""))
-                            src = n.get("source") or ""
-                            dt = fmt_news_date(n.get("datetime"))
-                            meta = src + (f" \u00b7 {dt}" if dt else "")
-                            st.markdown(
-                                f'<div class="news-box"><a href="{url}" target="_blank">{head}</a>'
-                                f'<div class="meta">{meta}</div></div>', unsafe_allow_html=True)
+                            for ptk in peers[:6]:
+                                if ptk.upper() == ticker.upper():
+                                    continue
+                                pf_ = load_fundamentals_deep(ptk)
+                                if not pf_.get("price"):
+                                    continue
+                                pep = valuation.classify_playbook(pf_)
+                                pcomp = scoring.score_stock(pf_, None, preset=pep)["composite"]
+                                pv = valuation.fair_value(pf_, None, pep)
+                                atgt = pv.get("analyst_target")
+                                prowz.append({
+                                    "Ticker": pf_["ticker"],
+                                    "Name": (pf_.get("name") or "")[:18],
+                                    "Score": round(pcomp),
+                                    "Kurs": round(pf_["price"], 2),
+                                    "Fair Value": pv.get("fair_value"),
+                                    "Upside %": pv.get("upside_pct"),
+                                    "Analysten-Ziel": atgt,
+                                    "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
+                                                      if atgt and pf_.get("price") else None)})
+                    if prowz:
+                        vr_rows(prowz, key_prefix="peer",
+                                score_cols=("Score",),
+                                signed_cols=("Upside %", "Ziel-Upside %"))
+                        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet "
+                                   "den Wettbewerber. Kurse/Werte in Handelsw\u00e4hrung "
+                                   "des jeweiligen Titels.")
                     else:
-                        st.markdown('<span class="na">Keine aktuellen News aus diesen '
-                                    'Quellen gefunden.</span>', unsafe_allow_html=True)
-
+                        st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
+                                    unsafe_allow_html=True)
+                scn = intel.get("supply_chain", {})
+                st.markdown("**Kunden**")
+                cust = scn.get("customers") or []
+                st.markdown("".join(f'<span class="pill">{c}</span>' for c in cust) if cust else
+                            '<span class="na">n/a (Premium-Supply-Chain n\u00f6tig)</span>',
+                            unsafe_allow_html=True)
+                st.markdown("**Lieferanten**")
+                supp = scn.get("suppliers") or []
+                st.markdown("".join(f'<span class="pill">{c}</span>' for c in supp) if supp else
+                            '<span class="na">n/a (Premium-Supply-Chain n\u00f6tig)</span>',
+                            unsafe_allow_html=True)
     # ===========================================================================
     # Gemeinsame Signal-Vorbereitung fuer beide Matrizen
     # ===========================================================================

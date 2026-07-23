@@ -527,16 +527,29 @@ def news(t: str, limit=15) -> list:
     """Firmennachrichten. Ergaenzt marketnews.py, ersetzt es nicht."""
     if not covers(t):
         return []
-    d = _get(f"company/news/{t}", {"limit": limit})
-    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    reihen = []
+    for pfad in (f"company/news/{t}", f"news/company/{t}", f"news/{t}"):
+        d = _get(pfad, {"limit": limit})
+        if d is None:
+            continue
+        reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+        if reihen:
+            break
     out = []
     for z in reihen:
+        if not isinstance(z, dict):
+            continue
+        # URL-Feldnamen breit abdecken - hiess der Schluessel anders,
+        # blieben die Meldungen ohne Verweis und damit nicht anklickbar.
+        url = _g(z, "url", "link", "article_url", "news_url", "source_url",
+                 "story_url", "href", "web_url")
         out.append({
-            "datum": str(_g(z, "published_date", "date", "datetime") or "")[:19],
-            "titel": _g(z, "title", "headline"),
-            "quelle": _g(z, "site", "source", "publisher"),
-            "url": _g(z, "url", "link"),
-            "text": _g(z, "text", "summary", "content"),
+            "datum": str(_g(z, "published_date", "date", "datetime",
+                            "published_at", "publishedDate") or "")[:19],
+            "titel": _g(z, "title", "headline", "heading"),
+            "quelle": _g(z, "site", "source", "publisher", "provider"),
+            "url": str(url) if url else None,
+            "text": _g(z, "text", "summary", "content", "description"),
         })
     return [z for z in out if z.get("titel")]
 
@@ -679,3 +692,104 @@ def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> lis
     print(f"  [Transkripte] {len(out)} neue Calls in {tage} Tagen "
           f"(aus {min(len(tickers), deckel)} Titeln).")
     return out
+
+
+# ============================================================================
+# PEERS / WETTBEWERBER
+# ============================================================================
+
+def peers(t: str, limit=12) -> list:
+    """Vergleichbare Unternehmen.
+
+    Die Pfadbenennung ist NICHT gesichert - ich habe sie nicht live geprueft.
+    Deshalb werden mehrere plausible Varianten versucht; schlaegt alles fehl,
+    uebernimmt peers_nach_branche() ueber die Branche aus dem Profil.
+    Das ist ehrlicher als eine Funktion, die still nichts zurueckgibt."""
+    if not covers(t):
+        return []
+    for pfad in (f"company/peers/{t}", f"company/competitors/{t}",
+                 f"tickers/peers/{t}"):
+        d = _get(pfad)
+        if d is None:
+            continue
+        reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+        out = []
+        for z in reihen:
+            if isinstance(z, str):
+                out.append({"ticker": z.upper(), "name": None})
+            elif isinstance(z, dict):
+                sym = _g(z, "ticker", "symbol", "peer")
+                if sym:
+                    out.append({"ticker": str(sym).upper(),
+                                "name": _g(z, "company_name", "name")})
+        if out:
+            return out[:limit]
+    return []
+
+
+def peers_nach_branche(t: str, universum=None, limit=12) -> list:
+    """Rueckfall: Titel derselben Branche aus den grossen Indizes.
+
+    Kostet ein Profil-Abruf je Kandidat, deshalb gedeckelt und
+    zwischengespeichert. Weniger treffsicher als eine gepflegte Peer-Liste,
+    aber nachvollziehbar: gleiche Branche laut Anbieter."""
+    p = profile(t)
+    branche = _g(p, "industry")
+    sektor = _g(p, "sector")
+    if not branche and not sektor:
+        return []
+    kandidaten = universum or index_universum()
+    out = []
+    for k in kandidaten:
+        if k.upper() == t.upper() or not covers(k):
+            continue
+        pk = profile(k)
+        if not pk:
+            continue
+        if branche and _g(pk, "industry") == branche:
+            out.append({"ticker": k.upper(), "name": _g(pk, "company_name"),
+                        "grund": "gleiche Branche"})
+        elif sektor and _g(pk, "sector") == sektor and len(out) < limit:
+            out.append({"ticker": k.upper(), "name": _g(pk, "company_name"),
+                        "grund": "gleicher Sektor"})
+        if len(out) >= limit * 2:
+            break
+    out.sort(key=lambda r: 0 if r.get("grund") == "gleiche Branche" else 1)
+    return out[:limit]
+
+
+def peer_vergleich(t: str, peer_tickers: list) -> list:
+    """Kennzahlen des Titels und seiner Peers nebeneinander.
+
+    Bewusst wenige, gut vergleichbare Groessen. Kosten: 8 Abrufe je Titel,
+    deshalb im Dashboard auf wenige Peers begrenzt."""
+    reihen = []
+    for tk in [t] + [p for p in peer_tickers if p.upper() != t.upper()]:
+        b = bundle(tk)
+        if not b or not b.get("name"):
+            continue
+        reihen.append({
+            "ticker": tk.upper(),
+            "name": (b.get("name") or "")[:24],
+            "ist_basis": tk.upper() == t.upper(),
+            "market_cap": b.get("market_cap"),
+            "pe": b.get("pe_trailing"),
+            "ev_ebitda": b.get("ev_ebitda"),
+            "ps": b.get("ps"),
+            "oper_marge": b.get("operating_margin"),
+            "roe": b.get("roe"),
+            "wachstum": b.get("revenue_growth"),
+            "net_debt_ebitda": b.get("net_debt_ebitda"),
+        })
+    return reihen
+
+
+def peer_median(reihen: list, feld: str):
+    """Median eines Feldes ueber die Peers OHNE den Basistitel."""
+    w = [r[feld] for r in reihen
+         if not r.get("ist_basis") and r.get(feld) is not None]
+    if not w:
+        return None
+    w.sort()
+    m = len(w) // 2
+    return w[m] if len(w) % 2 else (w[m - 1] + w[m]) / 2

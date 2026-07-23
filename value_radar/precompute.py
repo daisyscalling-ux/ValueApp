@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-19-a"
+CODE_VERSION = "2026-07-23-a"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -562,7 +562,19 @@ def _analyse(t):
 
 def run():
     started = _berlin_now()
-    print(f"=== precompute Start {started:%d.%m.%Y %H:%M} (dt. Zeit) ===")
+    # Versionsstempel GANZ nach vorn. Ohne ihn ist im Log nicht erkennbar,
+    # welcher Stand tatsaechlich laeuft - genau daran haben wir mehrfach Zeit
+    # verloren: Der Job scheiterte an Code, der im Repo laengst korrigiert war.
+    print(f"=== precompute Start {started:%d.%m.%Y %H:%M} (dt. Zeit) \u00b7 "
+          f"Code-Version {CODE_VERSION} ===")
+    print(f"    Datei: {__file__}")
+    try:
+        import roic as _rv
+        print(f"    Datenquelle: roic.ai "
+              f"{'AKTIV' if _rv.enabled() else 'NICHT konfiguriert'} \u00b7 "
+              f"Universum {UNIVERSE_SIZE}")
+    except Exception:
+        print("    Datenquelle: roic.py nicht gefunden \u2013 alte Fassung?")
     if store.backend() != "sheet":
         print("WARNUNG: Google Sheets nicht aktiv - Ergebnisse landen nur lokal "
               "und werden von der Cloud-App nicht gelesen.")

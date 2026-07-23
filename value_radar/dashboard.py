@@ -4470,6 +4470,22 @@ if nav == "Long/Short":
             with st.expander(f"{_sn.get(_k, _k)} \u00b7 {sym_eur(_v)} "
                              f"({_ret:+.1f} %) \u00b7 {len(_s.get('positions', []))} Pos.",
                              expanded=(_k == "marktneutral")):
+                # Neustart-Vermerk: ohne ihn laesst sich eine Rendite nicht
+                # einordnen - ein zwei Wochen altes Depot ist mit einem seit
+                # Monaten laufenden nicht vergleichbar.
+                _na = _s.get("neustart_am") or _s.get("created")
+                if _na:
+                    try:
+                        _tage = int((time.time() - float(_na)) / 86400)
+                        _dat = datetime.fromtimestamp(float(_na)).strftime("%d.%m.%Y")
+                        _gr = (_s.get("neustart_grund") or "").strip()
+                        st.caption(f"L\u00e4uft seit **{_dat}** ({_tage} Tage)"
+                                   + (f" \u00b7 Neustart: {esc(_gr)}" if _gr else "")
+                                   + (" \u00b7 \u26a0\ufe0f zu kurz f\u00fcr eine Beurteilung"
+                                      if _tage < 30 else ""))
+                    except Exception:
+                        pass
+
                 _rows = [{"Ticker": p["ticker"], "Richtung": (f'\U0001f680 KO-{p["ko_dir"]} 3x' if p.get("type") == "ko"
                            else ("\U0001f7e2 Long" if p["dir"] == "long" else "\U0001f534 Short")), "Einstieg \u20ac": p["entry_eur"],
                           "Kurs \u20ac": p.get("last_eur"), "G/V %": p.get("pl_pct"),
@@ -4534,6 +4550,49 @@ if nav == "Long/Short":
                                      use_container_width=True):
                         st.session_state.pop("hf_confirm_reset", None)
                         st.rerun()
+        # --- ALLE Strategien gemeinsam neu starten ---
+        with st.expander("\u21ba ALLE STRATEGIEN NEU STARTEN", expanded=False):
+            st.caption("Setzt **alle vier** Depots gleichzeitig zur\u00fcck und "
+                       "baut sie aus einem gemeinsamen Kandidaten-Scan neu auf. "
+                       "Sinnvoll, wenn sich die Datengrundlage ge\u00e4ndert hat \u2013 "
+                       "dann sind alte und neue Ergebnisse ohnehin nicht "
+                       "vergleichbar.")
+            _grund = st.text_input(
+                "Grund (wird gespeichert)",
+                value="Umstellung auf roic.ai-Daten",
+                key="hf_reset_grund",
+                help="Erscheint sp\u00e4ter neben jedem Depot. Ohne Vermerk "
+                     "l\u00e4sst sich in einigen Monaten nicht mehr sagen, "
+                     "warum die Historie dort beginnt.")
+            try:
+                import roic as _rhf
+                if not _rhf.enabled():
+                    st.warning("\u26a0\ufe0f **roic.ai ist in dieser App nicht "
+                               "aktiv** (ROIC_API_KEY fehlt in den Secrets). "
+                               "Ein Neustart w\u00fcrde jetzt wieder auf die "
+                               "Gratisquellen zur\u00fcckfallen \u2013 also genau auf "
+                               "die Datenlage, die du hinter dir lassen "
+                               "wolltest. Erst den Schl\u00fcssel setzen.")
+            except Exception:
+                pass
+            st.warning("**Das verwirft die gesamte bisherige Historie** aller "
+                       "vier Strategien: Positionen, Trades, Wertentwicklung. "
+                       "Das ist nicht r\u00fcckg\u00e4ngig zu machen.")
+            _ok = st.checkbox("Ja, ich m\u00f6chte alle vier Depots verwerfen",
+                              key="hf_reset_all_ok")
+            if st.button("\u21ba ALLE NEU AUFSETZEN", key="hf_reset_all_go",
+                         disabled=not _ok, use_container_width=True):
+                with st.spinner("Setze alle Depots zur\u00fcck und baue neu auf \u2026"):
+                    try:
+                        import hedgefund as _hfm
+                        _hfm.reset_all(refill=True, scan_size=60,
+                                       grund=_grund.strip())
+                        st.session_state.pop("hf_reset_all_ok", None)
+                        st.success("Alle Strategien neu aufgesetzt.")
+                        st.rerun()
+                    except Exception as _e:
+                        st.error(f"Neustart fehlgeschlagen: {_e}")
+
         _hb = st.columns(2)
         if _hb[0].button("\U0001f4b6 Werte aktualisieren (nur Kurse)",
                          use_container_width=True):
@@ -5504,11 +5563,23 @@ if nav == "Earnings Calls":
         st.info("Ben\u00f6tigt die roic.ai-Anbindung \u2013 ROIC_API_KEY ist nicht "
                 "gesetzt.")
     else:
-        try:
-            _liste = store.get_transkripte() or []
-        except Exception as _e:
-            _liste = []
-            st.caption(f"(nicht ladbar: {_e})")
+        # Robust gegen einen veralteten Upload: Fehlt die Funktion, liegt
+        # eine alte store.py auf dem Server - dann sagen wir genau das,
+        # statt eine kryptische Meldung zu zeigen.
+        _liste = []
+        if not hasattr(store, "get_transkripte"):
+            st.error(
+                "\u26a0\ufe0f **Die hochgeladene `store.py` ist veraltet.** "
+                "Ihr fehlen die Funktionen `get_transkripte` / "
+                "`set_transkripte`, die dieser Tab braucht. Bitte "
+                "**`store.py`** neu hochladen (am besten das komplette ZIP, "
+                "damit die Dateien zueinander passen) und die App neu "
+                "starten.")
+        else:
+            try:
+                _liste = store.get_transkripte() or []
+            except Exception as _e:
+                st.caption(f"(nicht ladbar: {_e})")
 
         if not _liste:
             st.info("Noch keine Calls erfasst. Der Nachtlauf pr\u00fcft rund 560 "

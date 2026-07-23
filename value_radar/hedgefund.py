@@ -511,26 +511,67 @@ def refresh_prices():
     return hf
 
 
-def fresh_state(strategy):
-    """Leeres Startdepot fuer eine Strategie (Papiergeld, keine Positionen)."""
+def fresh_state(strategy, grund=""):
+    """Leeres Startdepot fuer eine Strategie (Papiergeld, keine Positionen).
+
+    'grund' haelt fest, WARUM neu gestartet wurde. Ohne diesen Vermerk
+    laesst sich eine Wertentwicklung spaeter nicht einordnen: Ein Depot,
+    das vor zwei Wochen neu aufgesetzt wurde, ist mit einem seit Monaten
+    laufenden schlicht nicht vergleichbar."""
     return {"strategy": strategy, "start_capital": START_CAPITAL,
             "cash": START_CAPITAL, "positions": [], "trades": [],
             "created": time.time(), "value_eur": START_CAPITAL,
-            "last_check": None}
+            "last_check": None,
+            "neustart_am": time.time(),
+            "neustart_grund": grund or ""}
 
 
-def reset(strategy, refill=True, scan_size=50):
+def reset(strategy, refill=True, scan_size=50, grund=""):
     """Ein Strategie-Depot komplett neu aufsetzen (alle Positionen verwerfen).
     refill=True baut direkt nach den aktuellen Regeln neu auf."""
     _SC_CACHE.clear()
     hf = store.get_hf() or {}
-    st_ = fresh_state(strategy)
+    st_ = fresh_state(strategy, grund)
     if refill:
         lc, sc, pc = candidates(scan_size)
         st_ = rebalance(st_, lc, sc, pc)
+        st_["neustart_am"] = st_.get("neustart_am") or time.time()
+        st_["neustart_grund"] = grund or ""
     hf[strategy] = st_
     store.set_hf(hf)
     return st_
+
+
+def reset_all(refill=True, scan_size=60, grund=""):
+    """ALLE Strategien gemeinsam neu aufsetzen.
+
+    Sinnvoll, wenn sich die Datengrundlage geaendert hat - dann sind die
+    bisherigen Ergebnisse nicht mehr mit den kuenftigen vergleichbar, weil
+    sie unter anderen Voraussetzungen entstanden sind.
+
+    Bewusst EIN gemeinsamer Kandidaten-Scan fuer alle Strategien: So starten
+    sie am selben Tag aus derselben Auswahl, und ein spaeterer Vergleich
+    misst die Regeln - nicht den Zufall unterschiedlicher Starttage."""
+    _SC_CACHE.clear()
+    hf = store.get_hf() or {}
+    lc, sc, pc = ([], [], [])
+    if refill:
+        lc, sc, pc = candidates(scan_size)
+        print(f"[hedgefund] Neustart: {len(lc)} Long-, {len(sc)} Short-, "
+              f"{len(pc)} KO-Kandidaten.")
+    jetzt = time.time()
+    for strat in STRATS:
+        st_ = fresh_state(strat, grund)
+        st_["neustart_am"] = jetzt          # identischer Startzeitpunkt
+        if refill:
+            st_ = rebalance(st_, lc, sc, pc)
+            st_["neustart_am"] = jetzt
+            st_["neustart_grund"] = grund or ""
+        hf[strat] = st_
+        print(f"[hedgefund] {strat}: neu aufgesetzt, "
+              f"{len(st_.get('positions') or [])} Positionen.")
+    store.set_hf(hf)
+    return hf
 
 
 def run_all(scan_size=60):

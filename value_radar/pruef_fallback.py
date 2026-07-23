@@ -62,6 +62,19 @@ def main():
     for i, t in enumerate(tickers, 1):
         try:
             f = providers.get_fundamentals(t, deep=True)
+            # Wie die App: Findet sich zum Rohtext kein Kurs, wird das
+            # Boersensymbol gesucht ("GILEAD SCIENCES" -> "GILD"). Ohne
+            # diesen Schritt meldet das Skript Fehler, die es nicht gibt.
+            if not f or not f.get("price"):
+                try:
+                    tr = providers.search_symbol(t)
+                    if tr:
+                        sym = tr[0]["symbol"].upper()
+                        f = providers.get_fundamentals(sym, deep=True)
+                        if f and f.get("price"):
+                            t = f"{t} -> {sym}"
+                except Exception:
+                    pass
             if not f or not f.get("price"):
                 fehler.append((t, "kein Kurs"))
                 continue

@@ -26,6 +26,15 @@ ALPHAVANTAGE_API_KEY = os.getenv("ALPHAVANTAGE_API_KEY", "")
 # Nur Preis/Waehrung - KEINE Fundamentaldaten (im Gratis-Tarif nicht enthalten).
 TIINGO_API_KEY = os.getenv("TIINGO_API_KEY", "")
 
+# --- roic.ai (Individual, 300 Abrufe/min) --------------------------------
+# Schluessel NUR ueber Umgebungsvariable bzw. Streamlit-Secrets setzen -
+# nicht hier eintragen (das Repo ist oeffentlich einsehbar gewesen).
+ROIC_API_KEY = os.getenv("ROIC_API_KEY", "")
+# Europa-Freigabe: erst umlegen, wenn test_roic_live.py auf .DE/.L-Tickern
+# sauber durchlaeuft. Stand Juli 2026: Support hat GBP-Kursbehandlung und
+# Buchwert als fehlerhaft bestaetigt; v3 in geschlossenem Test.
+ROIC_EU_ENABLED = os.getenv("ROIC_EU_ENABLED", "0") == "1"
+
 # ---------------------------------------------------------------------------
 # Screening-Schwellen (branchenrelativ denken!). None = Kriterium aus.
 # ---------------------------------------------------------------------------

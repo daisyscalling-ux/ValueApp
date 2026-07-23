@@ -554,37 +554,64 @@ def news(t: str, limit=15) -> list:
     return [z for z in out if z.get("titel")]
 
 
-def transcript_liste(t: str, limit=8) -> list:
-    """Verfuegbare Earnings-Calls (Quartal/Jahr/Datum)."""
+# ---------------------------------------------------------------------------
+# EARNINGS-CALL-TRANSKRIPTE - Pfade aus der offiziellen Doku (24.07.2026):
+#   GET /v2/company/earnings-calls/latest/{ticker}
+#   GET /v2/company/earnings-calls/list/{ticker}?limit=100
+#   GET /v2/company/earnings-calls/transcript/{ticker}?year=&quarter=
+# Antwort: {symbol, year, quarter (1-4 als ZAHL), date, content}
+#
+# Meine erste Fassung riet "transcripts/latest/{t}" - deshalb kam nichts an.
+# Laut Doku sind Transkripte in JEDEM Plan enthalten, auch im kostenlosen.
+# ---------------------------------------------------------------------------
+
+
+def transcript_liste(t: str, limit=100) -> list:
+    """Alle verfuegbaren Earnings-Calls: Jahr, Quartal, Datum (ohne Text)."""
     if not covers(t):
         return []
-    d = _get(f"transcripts/list/{t}", {"limit": limit})
+    d = _get(f"company/earnings-calls/list/{t}", {"limit": limit})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    if isinstance(reihen, dict):
+        reihen = [reihen]
     out = []
     for z in reihen:
-        out.append({"jahr": _g(z, "year", "fiscal_year"),
-                    "quartal": _g(z, "quarter", "period"),
-                    "datum": str(_g(z, "date") or "")[:10]})
+        if not isinstance(z, dict):
+            continue
+        _j, _q = _num(_g(z, "year")), _num(_g(z, "quarter"))
+        out.append({
+            "jahr": int(_j) if _j else None,      # sonst steht "2026.0" da
+            "quartal": int(_q) if _q else None,
+            "datum": str(_g(z, "date") or "")[:10],
+        })
     return [z for z in out if z.get("datum") or z.get("jahr")]
 
 
 def transcript(t: str, jahr=None, quartal=None) -> dict:
     """Wortprotokoll eines Earnings-Calls.
 
-    Ohne Jahr/Quartal: das neueste. Rueckgabe {datum, quartal, jahr, text}."""
+    Ohne Jahr/Quartal: das neueste. Rueckgabe {datum, jahr, quartal, text}.
+    Das Feld 'quarter' ist eine ZAHL (1-4), nicht "Q2" - fuer die Anzeige
+    wird daraus 'Q2' gebaut."""
     if not covers(t):
         return {}
     if jahr and quartal:
-        d = _get(f"transcripts/{t}", {"year": jahr, "quarter": quartal})
+        try:
+            q = int(str(quartal).upper().replace("Q", "").strip())
+        except Exception:
+            q = quartal
+        d = _get(f"company/earnings-calls/transcript/{t}",
+                 {"year": int(jahr), "quarter": q})
     else:
-        d = _get(f"transcripts/latest/{t}")
-    z = _first(d)
-    if not z:
+        d = _get(f"company/earnings-calls/latest/{t}")
+    z = d if isinstance(d, dict) else _first(d)
+    if not z or not isinstance(z, dict):
         return {}
+    q, j = _num(_g(z, "quarter")), _num(_g(z, "year"))
     return {
         "datum": str(_g(z, "date") or "")[:10],
-        "jahr": _g(z, "year", "fiscal_year"),
-        "quartal": _g(z, "quarter", "period"),
+        "jahr": int(j) if j else None,
+        "quartal": (f"Q{int(q)}" if q else None),
         "text": _g(z, "content", "transcript", "text") or "",
     }
 

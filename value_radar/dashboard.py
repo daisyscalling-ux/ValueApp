@@ -3153,10 +3153,55 @@ if nav == "Einzelanalyse":
                                             "Unterschiedliches tun. Kein Anlagerat.")
 
                         else:  # Earnings Call
-                            _tr = _hole_transkript(ticker) or {}
+                            @st.cache_data(ttl=86400, show_spinner=False)
+                            def _hole_calls(t):
+                                return _rb.transcript_liste(t, 24)
+
+                            @st.cache_data(ttl=86400, show_spinner=False)
+                            def _hole_quartal(t, j, q):
+                                return _rb.transcript(t, j, q)
+
+                            _calls = _hole_calls(ticker) or []
+                            _tr = {}
+                            if _calls:
+                                # Quartal waehlbar - der neueste steht oben.
+                                _wahl_c = st.selectbox(
+                                    "Quartal",
+                                    _calls[:16],
+                                    format_func=lambda z: (
+                                        f"Q{z['quartal']} {z['jahr']} \u00b7 "
+                                        f"{z['datum']}"),
+                                    key="ea_call_q")
+                                _tr = _hole_quartal(ticker, _wahl_c["jahr"],
+                                                    _wahl_c["quartal"]) or {}
                             if not _tr.get("text"):
-                                st.info("Kein Transkript verf\u00fcgbar. Nicht f\u00fcr "
-                                        "alle Titel und Quartale vorhanden.")
+                                _tr = _hole_transkript(ticker) or {}
+                            if not _tr.get("text"):
+                                st.warning(
+                                    "**Kein Transkript abrufbar.** M\u00f6gliche "
+                                    "Gr\u00fcnde: Der Call liegt erst wenige Stunden "
+                                    "zur\u00fcck (Protokolle erscheinen oft mit "
+                                    "einem Tag Verzug), Transkripte sind im "
+                                    "gebuchten Plan nicht enthalten, oder der "
+                                    "Endpunkt hei\u00dft anders als angenommen.")
+                                st.caption("Laut Anbieter-Doku sind "
+                                           "Transkripte in jedem Plan "
+                                           "enthalten \u2013 fehlt der Text, ist "
+                                           "er f\u00fcr diesen Termin noch nicht "
+                                           "eingestellt.")
+                                _vl = []
+                                try:
+                                    _vl = _rb.transcript_liste(ticker, 6) or []
+                                except Exception:
+                                    pass
+                                if _vl:
+                                    st.caption("Verf\u00fcgbare Termine laut "
+                                               "Anbieter: "
+                                               + ", ".join(
+                                                   f"{v.get('quartal') or ''} "
+                                                   f"{v.get('jahr') or ''} "
+                                                   f"({v.get('datum') or ''})"
+                                                   for v in _vl[:6]))
                             else:
                                 st.caption(f"**{_tr.get('quartal') or ''} "
                                            f"{_tr.get('jahr') or ''}** \u00b7 "
@@ -3651,23 +3696,15 @@ if nav == "News":
         # (st.radio), und das automatisch beim ersten Betreten - kein Knopfdruck
         # mehr noetig. Der 10-Minuten-Cache sorgt dafuer, dass ein erneuter Besuch
         # sofort da ist.
-        sections = ["WSJ", "US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News"]
+        # WSJ-Ressorts direkt in der Hauptauswahl - gleichrangig mit den
+        # uebrigen Quellen. Kurze Beschriftungen, damit die Reihe auf dem
+        # Handy umbrechen kann statt zu ueberlaufen.
+        sections = ["WSJ Business", "WSJ Markets", "WSJ World",
+                    "US-Markt", "Yahoo US", "DAX", "Asien", "Aktien-News"]
         _sec = st.radio("Bereich", sections, horizontal=True,
                         label_visibility="collapsed", key="news_section")
-
-        # WSJ ist nach Ressorts getrennt. Bewusst als ZWEITE Reihe und nicht
-        # als drei weitere Eintraege oben: Neun Schaltflaechen nebeneinander
-        # sind auf dem Handy nicht mehr bedienbar.
-        if _sec == "WSJ":
-            _wsj_res = st.radio(
-                "Ressort",
-                ["\U0001f4bc Business", "\U0001f4c8 Markets & Finance",
-                 "\U0001f30d World"],
-                horizontal=True, label_visibility="collapsed",
-                key="wsj_ressort")
-            _sec = {"\U0001f4bc Business": "WSJ Business",
-                    "\U0001f4c8 Markets & Finance": "WSJ Markets & Finance",
-                    "\U0001f30d World": "WSJ World"}[_wsj_res]
+        # Anzeigename -> Sektionsname in marketnews.FEEDS
+        _sec = {"WSJ Markets": "WSJ Markets & Finance"}.get(_sec, _sec)
 
         for section in [_sec]:
             if True:

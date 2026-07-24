@@ -842,6 +842,7 @@ def render_trackrecord():
     _tab("\U0001f4c5 EARNINGS \u00b7 POSITIV ERWARTET", "Earnings+",
          "Noch keine Termine mit klarem Positiv-Muster erfasst.",
          extra=[("Beat-Quote", "score", lambda v: f"{round(v)} %"),
+                ("L\u00fccke", "luecke", lambda v: f"{int(v):+d}"),
                 ("Lage", "merkmal", lambda v: str(v)),
                 ("Spricht daf\u00fcr", "strategie", lambda v: str(v))])
     _tab("\U0001f4c5 EARNINGS \u00b7 NEGATIV ERWARTET (als Short gerechnet)",
@@ -5663,6 +5664,31 @@ if nav == "Umfeld":
                                 st.write(f"\u2022 erwarteter Gewinn/Aktie: {r['eps_estimate']}")
                             if r.get("revenue_growth") is not None:
                                 st.write(f"\u2022 Umsatzwachstum: {r['revenue_growth']:+.1f} %")
+                        # Erwartungsluecke: laeuft das Geschaeft der
+                        # Schaetzung davon? Nutzt die Quartalshistorie aus
+                        # roic - deutlich mehr Quartale als yfinance.
+                        try:
+                            import regime as _rgl
+                            _el = _rgl.erwartungsluecke(r["ticker"])
+                        except Exception:
+                            _el = None
+                        if _el and (_el.get("spannungen") or _el.get("gegen")):
+                            _sy = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
+                                   "rot": "\U0001f534"}.get(_el["ampel"], "\u26aa")
+                            st.markdown(f"**{_sy} Erwartungsl\u00fccke "
+                                        f"({_el['punkte']:+d} Punkte):** "
+                                        f"{_el['urteil']}")
+                            if _el.get("beschleunigung_pp") is not None:
+                                st.caption("Umsatzdynamik gegen\u00fcber den drei "
+                                           "Quartalen davor: "
+                                           f"**{_el['beschleunigung_pp']:+.1f} "
+                                           "Prozentpunkte** (aus "
+                                           f"{_el['n_quartale']} Quartalen)")
+                            for _x in (_el.get("spannungen") or [])[:4]:
+                                st.write(f"\u2022 {_x}")
+                            for _x in (_el.get("gegen") or [])[:3]:
+                                st.write(f"\u2022 \u26a0\ufe0f {_x}")
+
                         if r.get("pro"):
                             st.success("**Spricht gegen die Erwartung:**\n"
                                        + "\n".join(f"\u2022 {x}" for x in r["pro"]))

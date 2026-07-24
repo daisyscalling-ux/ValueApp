@@ -707,3 +707,191 @@ def earnings_scan_universe(tickers=None, max_wochen=4, deep_limit=60,
             out.append(p)
     out.sort(key=lambda r: r["tage"])
     return out
+
+
+# ============================================================================
+# ERWARTUNGSLUECKE — wo laeuft das Geschaeft der Schaetzung davon?
+# ----------------------------------------------------------------------------
+# WAS DAS IST UND WAS NICHT
+#   Das sagt KEINEN Beat voraus. Rund 75 % aller S&P-500-Unternehmen
+#   uebertreffen die Schaetzung ohnehin - "es wird geschlagen" ist zu 75 %
+#   richtig, ganz ohne Modell, und der Markt weiss das auch.
+#
+#   Gesucht wird deshalb etwas anderes: Stellen, an denen die ANALYSTEN-
+#   ERWARTUNG dem beobachtbaren Geschaeftsverlauf hinterherlaeuft. Wenn
+#   der Umsatz drei Quartale in Folge beschleunigt, die Schaetzung fuer das
+#   naechste Quartal aber einen Rueckgang unterstellt, ist das eine messbare
+#   Spannung - kein Beweis, aber eine Frage, der man nachgehen kann.
+#
+#   Genau diese Konstellation lag bei Intel Q2 2026 vor: 16,1 statt 14,4
+#   Mrd. Umsatz. Ob unser Filter sie VORHER gefunden haette, weiss man
+#   erst, wenn die Trefferbilanz genug Faelle gesammelt hat.
+#
+# DATENGRENZEN
+#   Ist-Zahlen je Quartal: roic, viele Jahre.
+#   Damalige Schaetzungen: nur yfinance, maximal 8 Quartale.
+#   Kommende Schaetzung: yfinance (eps_forward, Revisionen).
+# ============================================================================
+
+
+def _quartalsreihe(ticker, n=12):
+    """Umsatz und Gewinn je Quartal aus roic - aelteste zuerst."""
+    if _roic is None or not _roic.enabled() or not _roic.covers(ticker):
+        return []
+    try:
+        roh = _roic.financials(ticker, "income", "quarter", n) or []
+    except Exception:
+        return []
+    out = []
+    for z in roh:
+        if not isinstance(z, dict):
+            continue
+        d = str(z.get("date") or "")[:10]
+        rev = z.get("is_sales_revenue_turnover") or z.get(
+            "is_sales_and_services_revenues")
+        eps = z.get("eps") or z.get("diluted_eps")
+        try:
+            rev = float(rev) if rev is not None else None
+            eps = float(eps) if eps is not None else None
+        except Exception:
+            continue
+        if d and rev:
+            out.append({"datum": d, "revenue": rev, "eps": eps})
+    out.sort(key=lambda z: z["datum"])
+    return out
+
+
+def _beschleunigung(reihe):
+    """Waechst der Umsatz zuletzt schneller als davor?
+
+    Verglichen werden die letzten drei Quartalsveraenderungen mit den drei
+    davor - so faellt Saisonalitaet weniger ins Gewicht als bei einem
+    einzelnen Quartalsvergleich."""
+    if len(reihe) < 8:
+        return None
+    def _wachstum(a, b):
+        return (b / a - 1) * 100 if a else None
+    v = []
+    for i in range(1, len(reihe)):
+        w = _wachstum(reihe[i - 1]["revenue"], reihe[i]["revenue"])
+        if w is not None:
+            v.append(w)
+    if len(v) < 6:
+        return None
+    neu = sum(v[-3:]) / 3
+    alt = sum(v[-6:-3]) / 3
+    return round(neu - alt, 1)
+
+
+def erwartungsluecke(ticker):
+    """Wo laeuft das Geschaeft der Analystenerwartung davon?
+
+    Rueckgabe: {punkte, spannungen, gegen, urteil, ...} oder None."""
+    if providers is None:
+        return None
+    try:
+        f = providers.get_fundamentals(ticker, deep=True) or {}
+    except Exception:
+        f = {}
+    if not f.get("price"):
+        return None
+    reihe = _quartalsreihe(ticker, 12)
+    profil = reaction_profile(ticker)
+    try:
+        rev_rev = providers.get_eps_revision_light(ticker) or {}
+    except Exception:
+        rev_rev = {}
+
+    spannungen, gegen = [], []
+    punkte = 0
+
+    # 1) Beschleunigt das Geschaeft?
+    besch = _beschleunigung(reihe)
+    if besch is not None:
+        if besch >= 3:
+            spannungen.append(f"Umsatzwachstum beschleunigt "
+                              f"(+{besch:.1f} Prozentpunkte gegenüber den "
+                              "drei Quartalen davor)")
+            punkte += 2
+        elif besch <= -3:
+            gegen.append(f"Umsatzwachstum verlangsamt sich ({besch:.1f} Pp)")
+            punkte -= 1
+
+    # 2) Sequenzielle Erholung nach schwachen Quartalen
+    if len(reihe) >= 4:
+        letzte = [z["revenue"] for z in reihe[-4:]]
+        if letzte[-1] > letzte[-2] > letzte[-3]:
+            spannungen.append("Umsatz steigt zwei Quartale in Folge")
+            punkte += 1
+        eps4 = [z["eps"] for z in reihe[-4:] if z.get("eps") is not None]
+        if len(eps4) >= 3 and eps4[0] < 0 <= eps4[-1]:
+            spannungen.append("Rückkehr in die Gewinnzone")
+            punkte += 2
+
+    # 3) Richtung der Revisionen
+    up, down = rev_rev.get("up"), rev_rev.get("down")
+    if up is not None and down is not None and (up + down) > 0:
+        if up > down:
+            spannungen.append(f"Schätzungen zuletzt angehoben "
+                              f"({up} hoch / {down} runter)")
+            punkte += 1
+        elif down > up * 2:
+            gegen.append(f"Schätzungen deutlich gesenkt ({down} runter / {up} hoch)")
+            punkte -= 2
+
+    # 4) Erwartet die Schaetzung einen Rueckgang, obwohl der Umsatz waechst?
+    epsf, epst = f.get("eps_forward"), f.get("eps_trailing")
+    rg = f.get("revenue_growth")
+    if epsf is not None and epst is not None and epst > 0 and epsf < epst * 0.95:
+        if rg is not None and rg >= 0.05:
+            spannungen.append(f"Gewinnrückgang erwartet, obwohl der Umsatz "
+                              f"um {rg*100:.0f} % wächst")
+            punkte += 2
+
+    # 5) Historie: wird gewohnheitsmaessig uebertroffen?
+    bq = (profil or {}).get("beat_quote")
+    n_prof = (profil or {}).get("n") or 0
+    if n_prof >= 4 and bq is not None:
+        if bq >= 75:
+            spannungen.append(f"übertrifft die Schätzung in {bq} % der "
+                              f"letzten {n_prof} Quartale")
+            punkte += 1
+        elif bq <= 40:
+            gegen.append(f"verfehlt häufig (Beat-Quote {bq} % aus {n_prof})")
+            punkte -= 2
+
+    # 6) Belohnt der Markt Beats ueberhaupt?
+    bel = (profil or {}).get("beat_belohnt_pct")
+    if bel is not None and n_prof >= 4:
+        if bel <= 40:
+            gegen.append(f"gute Zahlen wurden zuletzt nur in {bel} % der Fälle "
+                         "belohnt – ein Beat allein bewegt den Kurs kaum")
+            punkte -= 1
+
+    if punkte >= 5:
+        urteil = ("mehrere unabhängige Spannungen – die Erwartung wirkt "
+                  "niedrig gegenüber dem Geschäftsverlauf")
+        ampel = "gruen"
+    elif punkte >= 3:
+        urteil = "einzelne Spannungen, kein klares Bild"
+        ampel = "gelb"
+    elif punkte <= -2:
+        urteil = "die Erwartung wirkt eher zu hoch als zu niedrig"
+        ampel = "rot"
+    else:
+        urteil = "keine auffällige Lücke zwischen Erwartung und Verlauf"
+        ampel = "grau"
+
+    return {
+        "ticker": ticker,
+        "punkte": punkte,
+        "ampel": ampel,
+        "urteil": urteil,
+        "spannungen": spannungen,
+        "gegen": gegen,
+        "beschleunigung_pp": besch,
+        "n_quartale": len(reihe),
+        "beat_quote": bq,
+        "belohnt_pct": bel,
+        "reihe": reihe[-8:],
+    }

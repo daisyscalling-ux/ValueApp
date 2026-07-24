@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-24-b"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-24-c"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -802,10 +802,19 @@ def run():
                 # Auswertung mit Rauschen fuellen.
                 if _e.get("ampel") not in ("gruen", "rot"):
                     continue
+                # Erwartungsluecke mit protokollieren - nur so laesst sich
+                # spaeter pruefen, ob dieser Teil ueberhaupt etwas beitraegt.
+                _luecke = None
+                try:
+                    _luecke = _rg.erwartungsluecke(_e["ticker"])
+                except Exception:
+                    pass
                 sig_new.append({
                     "ticker": _e["ticker"],
                     "quelle": ("Earnings+" if _e["ampel"] == "gruen"
                                else "Earnings-"),
+                    "luecke": (_luecke or {}).get("punkte"),
+                    "luecke_urteil": (_luecke or {}).get("urteil", "")[:70],
                     "score": _e.get("beat_quote"),
                     "upside": None,
                     "merkmal": (f"meldet in {_e['tage']} T · Beat "

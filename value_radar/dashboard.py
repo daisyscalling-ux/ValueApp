@@ -977,9 +977,8 @@ def render_trackrecord():
                                "oder starte den Workflow in GitHub manuell.")
                     st.cache_data.clear()
                 else:
-                    st.error("Nichts gel\u00f6scht. M\u00f6glich, wenn der Speicher gerade "
-                             "nicht schreibbar ist \u2013 siehe Speicher-Diagnose "
-                             "in der Watchlist.")
+                    st.error("Nichts gel\u00f6scht. M\u00f6glich, wenn der Speicher "
+                             "gerade nicht schreibbar ist.")
             except Exception as e:
                 st.error(f"L\u00f6schen fehlgeschlagen: {e}")
 
@@ -2478,11 +2477,6 @@ if nav == "Einzelanalyse":
             ticker = (exact or mm[0])["symbol"].upper()
         else:
             ticker = qv.upper()
-    if not qv:
-        st.info("Aktie eingeben (Name oder Ticker) \u2013 oder in Radar, Screener, "
-                "Watchlist bzw. Portfolio auf einen orangenen Ticker tippen. "
-                "Die zuletzt analysierte Aktie bleibt bis zum n\u00e4chsten Start "
-                "der App stehen.")
     run = False
 
     ea_tabs = st.tabs(["  ANALYSE  ", "  SCORECARD  ", "  MATRIX 1  ", "  MATRIX 2  "])
@@ -3861,12 +3855,10 @@ if nav == "Trefferbilanz":
 
 if nav == "Radar":
     if True:
-        st.markdown('<div class="sec-title">RADAR \u00b7 DAS MICRON VON MORGEN</div>',
+        st.markdown('<div class="sec-title">RADAR</div>',
                     unsafe_allow_html=True)
         st.caption("Scannt vier Frueh-Signal-Ebenen \u2014 Events (SEC-8-K + News), "
-                   "Fundamental, Schaetzungs-Momentum, stille Akkumulation \u2014 und "
-                   "vergibt einen Vor-der-Welle-Score. Leuchten mehrere Ebenen gleichzeitig, "
-                   "gibt es einen Koinzidenz-Bonus.")
+                   "Fundamental, Schaetzungs-Momentum, stille Akkumulation.")
 
         mode = st.radio("Suchradius", ["Themen-Universum (eng & schnell)",
                                        "Branche marktweit",
@@ -4172,9 +4164,6 @@ if nav == "Screener":
                 "der Trefferbilanz \u2013 dort wird nur der Nachtlauf protokolliert, "
                 "damit die Messung sauber bleibt. Kein Anlagerat.")
 
-    st.caption("Screent gegen den breiten Markt (keine Tickerliste). W\u00e4hle eine "
-               "fertige Vorlage oder eigene Filter. Geld in EUR.")
-
     vorlage = st.selectbox("Vorlage", ["Eigene Filter"] + list(sp.PRESETS.keys()),
                            help="Fertige Screening-Strategien oder eigene Filter.")
     manual_mode = (vorlage == "Eigene Filter")
@@ -4431,10 +4420,6 @@ if nav == "Screener":
 # ===========================================================================
 if nav == "Watchlist":
     st.markdown('<div class="sec-title">WATCHLIST</div>', unsafe_allow_html=True)
-    st.caption("Beobachtete Titel \u2013 t\u00e4glich vom Nacht-Job \u00fcberwacht. Erreicht ein "
-               "Titel die Kaufzone (Kurs \u2264 Einstieg), erscheint das auf der Startseite. "
-               "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
-
     wl = store.get_watchlist()
     ac = st.columns([2, 1])
     new_tk = ac[0].text_input("Ticker/Unternehmen hinzuf\u00fcgen", key="wl_add_input",
@@ -4459,49 +4444,6 @@ if nav == "Watchlist":
             else:
                 st.session_state.pop("wl_add_input", None)
                 st.rerun()
-
-    # --- Speicher-Diagnose: haeufigste Ursache, wenn Eintraege "verschwinden" ---
-    with st.expander("\u2699\ufe0f Speicher-Diagnose (wenn Eintr\u00e4ge nicht erscheinen)"):
-        try:
-            _be = store.backend()
-            st.write(f"Speicher: **{_be}** \u00b7 Eintr\u00e4ge: **{len(store.get_watchlist())}**")
-            if _be != "sheet":
-                st.warning("Es wird **nicht** ins Google Sheet geschrieben. Auf Streamlit "
-                           "Cloud ist der lokale Speicher fl\u00fcchtig \u2013 Eintr\u00e4ge sind "
-                           "nach einem Neustart weg, und der Nacht-Job sieht sie nie.")
-            if st.button("\U0001f9ea Schreibtest durchf\u00fchren", key="wl_wtest"):
-                _probe = store.get_watchlist()
-                _res = store.set_watchlist(_probe)      # unveraendert zurueckschreiben
-                if _res:
-                    st.success("Schreiben ins Google Sheet funktioniert.")
-                else:
-                    st.error("Schreiben FEHLGESCHLAGEN. H\u00e4ufigste Ursache: die "
-                             "Zusatzdaten sprengen das Zellen-Limit von 50.000 Zeichen "
-                             "(Hedgefonds-Historie, Snapshot, Logbuch). Die neue "
-                             "gsheet.py verteilt die Daten auf mehrere Zellen \u2013 "
-                             "bitte hochladen.")
-        except Exception as e:
-            st.error(f"Diagnose fehlgeschlagen: {e}")
-
-        # Wiederherstellungs-Status: zeigt, ob Daten geladen werden konnten
-        try:
-            import gsheet as _gs
-            _le = getattr(_gs, "_LOAD_ERROR", {})
-            if _le.get("blocked") or _le.get("blocked_main"):
-                st.error("\u26a0\ufe0f **Laden der gespeicherten Daten ist fehlgeschlagen.** "
-                         "Das Schreiben wurde automatisch **gesperrt**, damit nichts "
-                         "\u00fcberschrieben wird. Die Rohdaten wurden im Google Sheet "
-                         "in Zelle **A33** (Zusatzdaten) bzw. **A34** (Portfolios) "
-                         "gesichert \u2013 dort kannst du pr\u00fcfen, ob die Inhalte noch da "
-                         "sind. Schick mir den Inhalt, dann stelle ich das Format wieder her.")
-            _pf = store.names()
-            _hf = (store.get_hf() or {})
-            st.write(f"Gefundene Portfolios: **{len(_pf)}** \u00b7 "
-                     f"Hedgefonds-Depots: **{len(_hf)}**")
-            if _pf:
-                st.caption("Portfolios: " + ", ".join(_pf))
-        except Exception as e:
-            st.caption(f"Wiederherstellungs-Status nicht lesbar: {e}")
 
     if not wl:
         st.info("Noch keine Titel auf der Watchlist. Oben hinzuf\u00fcgen \u2013 oder in der "

@@ -4032,8 +4032,7 @@ if nav == "Radar":
             st.caption("Hinweis: Radar liefert Kandidaten, keine Kaufsignale \u2013 "
                        "jeden Treffer einzeln pr\u00fcfen (Matrix 1/2 & Bewertung).")
         else:
-            st.info("Noch kein Scan \u2013 oben Parameter w\u00e4hlen und "
-                    "\u201eRADAR SCANNEN\u201c klicken.")
+            pass
 
 
 # ===========================================================================
@@ -4514,7 +4513,7 @@ if nav == "Long/Short":
             _col = "#3FB950" if _ret >= 0 else "#F85149"
             with st.expander(f"{_sn.get(_k, _k)} \u00b7 {sym_eur(_v)} "
                              f"({_ret:+.1f} %) \u00b7 {len(_s.get('positions', []))} Pos.",
-                             expanded=(_k == "marktneutral")):
+                             expanded=False):
                 # Neustart-Vermerk: ohne ihn laesst sich eine Rendite nicht
                 # einordnen - ein zwei Wochen altes Depot ist mit einem seit
                 # Monaten laufenden nicht vergleichbar.
@@ -4671,10 +4670,6 @@ if nav == "Long/Short":
                    "Bewertungs-Upside. SHORT = deutlich \u00fcberbewertet + schw\u00e4chere "
                    "Qualit\u00e4t + KEIN starker Aufw\u00e4rtstrend. Volatilit\u00e4t = nur Kontext. "
                    "\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse.")
-        st.warning("\u26a0\ufe0f Experimentell & ausdr\u00fccklich kein Anlagerat. Short-Positionen "
-                   "haben theoretisch unbegrenztes Verlustrisiko (Squeeze). \u201eNur teuer\u201c "
-                   "ist kein Short-Grund \u2013 der Trendfilter blendet laufende Aufw\u00e4rtstrends "
-                   "bewusst aus, aber pr\u00fcfe jeden Fall selbst.")
 
         lc = st.columns([1.4, 1, 1])
         region_choice = lc[0].selectbox(
@@ -4773,9 +4768,7 @@ if nav == "Long/Short":
                            "erfordern real Margin/Leerverkauf beim Broker; Vorschlag hier ist "
                            "eine Simulation zum Lernen.")
         else:
-            st.info("\u201eScan starten\u201c dr\u00fccken. Der Scan pr\u00fcft je Titel Kennzahlen, "
-                    "Bewertung und Kurstrend \u2013 er l\u00e4uft separat, damit der Tab sofort "
-                    "reagiert.")
+            pass
 
 
 # ===========================================================================
@@ -4888,22 +4881,32 @@ if nav == "Portfoliocheck":
 
         saved = store.names()
 
-        # --- Gespeichertes Portfolio laden (explizit, ein Button je Portfolio) ---
+        # --- Gespeichertes Portfolio laden (Dropdown statt Buttonliste) ---
         if saved:
             st.markdown('<div class="vr-th">Gespeichertes Portfolio laden</div>',
                         unsafe_allow_html=True)
-            for pname in saved:
-                active = (pname == st.session_state.get("pf_cur_name"))
-                lc = st.columns([3, 1])
-                if lc[0].button(("\u2705 " if active else "\U0001f4c2 ") + pname,
-                                key=f"pfload_{pname}", use_container_width=True,
-                                type="primary" if active else "secondary"):
-                    _pf_load(pname)
-                    st.rerun()
-                if lc[1].button("\U0001f5d1\ufe0f", key=f"pfdel_{pname}",
-                                use_container_width=True, help=f"{pname} l\u00f6schen"):
-                    st.session_state["pf_confirm_delete"] = pname
-                    st.rerun()
+            _cur = st.session_state.get("pf_cur_name")
+            # Aktuell geladenes Portfolio in der Auswahl vorwaehlen
+            _idx = saved.index(_cur) if _cur in saved else 0
+            _wahl = st.selectbox(
+                "Portfolio", saved, index=_idx, key="pf_select",
+                format_func=lambda n: (("\u2705 " if n == _cur else "")
+                                       + n),
+                label_visibility="collapsed")
+            _pc = st.columns([3, 1])
+            _aktiv = (_wahl == _cur)
+            if _pc[0].button(("\u2705 Geladen: " if _aktiv else "\U0001f4c2 Laden: ")
+                             + _wahl, key="pf_load_sel",
+                             use_container_width=True,
+                             type="secondary" if _aktiv else "primary",
+                             disabled=_aktiv):
+                _pf_load(_wahl)
+                st.rerun()
+            if _pc[1].button("\U0001f5d1\ufe0f", key="pf_del_sel",
+                             use_container_width=True,
+                             help=f"{_wahl} l\u00f6schen"):
+                st.session_state["pf_confirm_delete"] = _wahl
+                st.rerun()
             if st.session_state.get("pf_confirm_delete"):
                 _dn = st.session_state["pf_confirm_delete"]
                 st.warning(f"\u26a0\ufe0f Portfolio \u201e{_dn}\u201c wirklich l\u00f6schen? "

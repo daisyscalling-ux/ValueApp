@@ -98,13 +98,42 @@ def record(signals):
     def _zweitnotierung(t):
         return "." in (t or "") and t.rsplit(".", 1)[-1].upper() in ("IL", "XC")
 
+    # Index ueber vorhandene Eintraege, um fehlende Urteile NACHZUTRAGEN.
+    # Vorher wurde ein bereits erfasster Ticker komplett uebersprungen -
+    # dadurch behielten alte Signale ihr leeres verdict fuer immer, und die
+    # Trefferbilanz erkannte nie einen Kaufkandidaten, obwohl der Scan das
+    # Urteil laengst liefert.
+    nach_key = {}
+    for i, e in enumerate(log):
+        nach_key.setdefault((e.get("ticker"), e.get("quelle")), i)
+
     bp = _bench_price()
     now = time.time()
     added = 0
+    ergaenzt = 0
     uebersprungen = 0
     for s in signals or []:
         key = (s.get("ticker"), s.get("quelle"))
-        if not key[0] or key in known:
+        if not key[0]:
+            continue
+        if key in known:
+            # Schon erfasst - aber vielleicht ohne Urteil. Dann nachtragen,
+            # statt das Signal verfallen zu lassen.
+            _neu_v = str(s.get("verdict", "")).strip()
+            if _neu_v:
+                _i = nach_key.get(key)
+                if _i is not None:
+                    _alt = log[_i]
+                    _alt_v = str(_alt.get("verdict", "")).strip()
+                    if not _alt_v:
+                        _alt["verdict"] = _neu_v
+                        if s.get("vkey"):
+                            _alt["vkey"] = s["vkey"]
+                        # weitere Felder, die frueh gefehlt haben koennen
+                        for _f in ("strategie", "merkmal", "firing", "codever"):
+                            if not _alt.get(_f) and s.get(_f):
+                                _alt[_f] = s[_f]
+                        ergaenzt += 1
             continue
         if _zweitnotierung(key[0]):
             uebersprungen += 1
@@ -172,6 +201,8 @@ def record(signals):
     if uebersprungen:
         print(f"[trackrecord] {uebersprungen} Doppelnotierung(en)/Dubletten "
               "uebersprungen.")
+    if ergaenzt:
+        print(f"[trackrecord] {ergaenzt} fehlende(s) Urteil(e) nachgetragen.")
     print(f"[trackrecord] {added} neue Signale erfasst ({len(log)} gesamt).")
     return added
 

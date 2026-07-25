@@ -860,6 +860,13 @@ def is_pence(ticker: str) -> bool:
     """
     if not ticker:
         return False
+    # Ein Kuerzel OHNE Boersensuffix ist die US-Notierung (USD). Pence gibt
+    # es nur an britischen Boersen, und die tragen immer ein Suffix (.L/.IL).
+    # Ohne diesen Kurzschluss koennte yfinance fuer ein mehrfach vergebenes
+    # Kuerzel (PRU: NYSE und LSE) die Londoner Waehrung GBp zurueckgeben und
+    # den US-Kurs faelschlich durch 100 teilen.
+    if "." not in ticker:
+        return False
     cur = _CCY_CACHE.get(ticker)
     if cur is None:
         cur = ""

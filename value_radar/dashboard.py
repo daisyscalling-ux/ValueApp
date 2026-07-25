@@ -1852,20 +1852,23 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
         if live:                                    # minutengenauer Kurs fuer Wert & G/V
             p_live, cur_live = load_intraday_quote(tk, native_cur)
             if p_live and p_live > 0:
-                # Sicherung: Weicht der Live-Kurs um mehr als Faktor 10 vom
-                # normalisierten Basiskurs ab, ist er vermutlich in Pence
-                # statt Pfund (BP.L: 645 statt 6,45). Dann verwerfen und beim
-                # Basiskurs bleiben, statt einen 100-fach falschen Wert zu zeigen.
+                # Sicherung gegen einen falschen Live-Kurs. Zwei Faelle:
+                #   - Pence statt Pfund (BP.L: 645 statt 6,45), Faktor ~100
+                #   - falsche Boersennotierung desselben Kuerzels (PRU an der
+                #     LSE statt NYSE), Faktor ~8
+                # Beides zeigt sich als deutliche Abweichung vom bereits
+                # korrekten Basiskurs. Toleranz 25 % (mehr als jede normale
+                # Intraday-Bewegung); darueber wird der Basiskurs behalten.
                 _basis = f.get("price")
-                if (_basis and _basis > 0
-                        and (p_live / _basis > 10 or _basis / p_live > 10)):
-                    pass                              # Live-Kurs unplausibel -> ignorieren
-                else:
+                _ok = True
+                if _basis and _basis > 0:
+                    _v = p_live / _basis
+                    _ok = 0.75 <= _v <= 1.25
+                if _ok:
                     p_now = p_live
-                # Deutscher Vormittagskurs kommt in EUR -> mit EUR-FX (=1) rechnen,
-                # US-Kurs in native Waehrung -> mit deren FX. Waehrung wandert mit.
-                fx = fx_to_eur(cur_live) or 1.0
-                live_used = True
+                    fx = fx_to_eur(cur_live) or 1.0   # Waehrung wandert nur
+                    live_used = True                  # bei akzeptiertem Kurs mit
+                # sonst: p_now, fx und Waehrung bleiben beim Basiskurs
         # Wert bestimmen: Stueckzahl x Kurs (exakt) hat Vorrang, sonst manueller Wert
         if has_shares and p_now:
             value_eur = shares * p_now * fx

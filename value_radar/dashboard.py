@@ -596,10 +596,6 @@ def render_trackrecord():
     """Trefferbilanz: was ist aus unseren Signalen geworden - gegen den Index."""
     st.markdown('<div class="sec-title">\U0001f4c8 TREFFERBILANZ \u00b7 Signal-Tagebuch'
                 '</div>', unsafe_allow_html=True)
-    st.caption("Kein Backtest, sondern ein **Vorw\u00e4rts-Test**: Jedes Screener-/"
-               "Radar-Signal wird beim Auftauchen festgehalten \u2013 auch die sp\u00e4teren "
-               "Fehlschl\u00e4ge \u2013 und danach gegen den S&P 500 gemessen. Erst so l\u00e4sst "
-               "sich sagen, ob das Modell etwas kann oder nur der Markt lief.")
     try:
         import trackrecord as tr
         rows = tr.evaluate()
@@ -619,7 +615,7 @@ def render_trackrecord():
             f"\u26a0\ufe0f **{len(_stored)} Signale gespeichert**, aber keines l\u00e4sst sich "
             "gerade auswerten. H\u00e4ufigste Ursachen: aktuelle Kurse nicht abrufbar "
             "(API-Limit/Ticker), oder die Signale sind noch keine 14 Tage alt "
-            f"({_n_reif} bereits reif). Details unten in der Diagnose.")
+            f"({_n_reif} bereits reif).")
     elif not rows:
         st.info("Noch keine Signale erfasst. Der automatische Lauf (2\u00d7 t\u00e4glich) "
                 "h\u00e4lt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig wird das "
@@ -627,9 +623,8 @@ def render_trackrecord():
 
     # --- Sofort erfassen (ohne auf den Cron-Job zu warten) ---
     _rr = st.session_state.get("radar_results") or []
-    _cap = st.columns([2, 1])
-    if _cap[0].button(f"\U0001f4cc Aktuelle Radar-Treffer erfassen ({len(_rr)})",
-                      use_container_width=True, disabled=not _rr):
+    if st.button(f"\U0001f4cc Aktuelle Radar-Treffer erfassen ({len(_rr)})",
+                 use_container_width=True, disabled=not _rr):
         try:
             new = tr.record([{"ticker": r["ticker"], "quelle": "Radar",
                               "score": r.get("score"),
@@ -639,95 +634,6 @@ def render_trackrecord():
             st.rerun()
         except Exception as e:
             st.error(f"Erfassen fehlgeschlagen: {e}")
-    if not _rr:
-        _cap[0].caption("Erst im Radar scannen \u2013 dann lassen sich die Treffer "
-                        "hier mit einem Klick ins Tagebuch \u00fcbernehmen.")
-
-    # --- Selbsttest: erfasst JETZT ein Signal und zeigt jeden Schritt ---
-    with st.expander("\U0001f527 Selbsttest \u2013 warum erscheinen keine Signale?"):
-        st.caption("Pr\u00fcft die ganze Kette an einem Testticker (AAPL): Kurs abrufbar? "
-                   "Benchmark? Speicher schreibbar? So l\u00e4sst sich eingrenzen, ob das "
-                   "Problem beim Cron-Job, den Kursen oder dem Speicher liegt.")
-        if st.button("Selbsttest starten", key="tr_selftest"):
-            steps = []
-            try:
-                _p = tr._price("AAPL")
-                steps.append(("Kurs AAPL abrufbar", bool(_p), str(_p)))
-            except Exception as e:
-                steps.append(("Kurs AAPL abrufbar", False, str(e)))
-            try:
-                _b = tr._bench_price()
-                steps.append(("Benchmark (S&P) abrufbar", bool(_b), str(_b)))
-            except Exception as e:
-                steps.append(("Benchmark abrufbar", False, str(e)))
-            _before = len(store.get_signals() or [])
-            try:
-                _n = tr.record([{"ticker": "AAPL", "quelle": "Selbsttest",
-                                 "score": 60, "verdict": "Test"}])
-                _after = len(store.get_signals() or [])
-                steps.append(("Testsignal geschrieben",
-                              _after > _before or _n == 0,
-                              f"vorher {_before}, nachher {_after}, neu {_n}"))
-            except Exception as e:
-                steps.append(("Testsignal geschrieben", False, str(e)))
-            for label, ok, detail in steps:
-                st.write(("\u2705" if ok else "\u274c") + f" {label} \u2013 {detail}")
-
-    # --- Diagnose: schreibt der Speicher ueberhaupt? ---
-    with _cap[1].popover("\u2699\ufe0f Diagnose"):
-        try:
-            _sig = store.get_signals() or []
-            st.write(f"Speicher: **{store.backend()}**")
-            st.write(f"Signale gespeichert: **{len(_sig)}**")
-            # --- Datenquelle roic.ai
-            try:
-                import roic as _rc
-                _rs = _rc.status()
-                if _rs["aktiv"]:
-                    st.write("Datenquelle: **roic.ai aktiv** "
-                             f"({_rs['limit_pro_minute']}/min) \u00b7 Europa: "
-                             + ("freigeschaltet" if _rs["eu_freigeschaltet"]
-                                else "gesperrt (bis v3)"))
-                else:
-                    st.write("Datenquelle: roic.ai **nicht konfiguriert** "
-                             "(ROIC_API_KEY in den Secrets setzen)")
-            except Exception:
-                pass
-            if store.backend() != "sheet":
-                st.warning("Ohne Google-Sheet-Speicher gehen die Signale beim "
-                           "Neustart verloren \u2013 und der Cron-Job schreibt in einen "
-                           "anderen Speicher als die App.")
-            if _sig:
-                import time as _t
-                _n_bench = sum(1 for e in _sig if e.get("bench_entry"))
-                _n_verd = sum(1 for e in _sig if e.get("verdict"))
-                _reif = sum(1 for e in _sig
-                            if (_t.time() - (e.get("ts") or _t.time())) / 86400 >= 14)
-                _auswert = len(rows)
-                st.markdown(
-                    f"- mit Einstiegskurs: **{sum(1 for e in _sig if e.get('entry_px'))}**\n"
-                    f"- mit Benchmark-Kurs: **{_n_bench}**\n"
-                    f"- mit Scorecard-Urteil: **{_n_verd}**\n"
-                    f"- aktuell auswertbar (Kurs abrufbar): **{_auswert}**\n"
-                    f"- davon reif (\u2265 14 Tage): **{_reif}**")
-                if _auswert < len(_sig):
-                    st.caption("Nicht auswertbare Signale = aktueller Kurs gerade nicht "
-                               "abrufbar (API-Limit oder Ticker). Das ist meist "
-                               "vor\u00fcbergehend \u2013 beim n\u00e4chsten Laden erneut pr\u00fcfen.")
-                if _n_verd == 0:
-                    st.caption("Kein Signal hat ein Scorecard-Urteil: L\u00e4uft der "
-                               "Cron-Job schon mit der NEUEN precompute.py (die das "
-                               "Urteil mitschreibt)? \u00c4ltere Signale bleiben ohne Urteil.")
-                # Aelteste/juengste Signale zeigen
-                _ts = [e.get("ts") for e in _sig if e.get("ts")]
-                if _ts:
-                    import datetime as _dt
-                    _old = _dt.datetime.fromtimestamp(min(_ts)).strftime("%d.%m.%Y")
-                    _new = _dt.datetime.fromtimestamp(max(_ts)).strftime("%d.%m.%Y")
-                    st.caption(f"Signale von {_old} bis {_new}.")
-        except Exception as e:
-            st.error(f"Speicher nicht lesbar: {e}")
-
     if not rows:
         return
 
@@ -5148,8 +5054,6 @@ if nav == "Portfoliocheck":
                         line += f'<div class="sum" style="margin:1px 0 0 20px">{esc(note)}</div>'
                     st.markdown(f'<div class="rowline" style="padding:6px 0">{line}</div>',
                                 unsafe_allow_html=True)
-                st.caption("Absicherungs-Marken sind grobe Orientierung aus Kurs & Fair Value \u2013 "
-                           "kein Anlagerat.")
 
                 # Thesen-Check: konkrete Aktionen aus dem Kauf-Status
                 if a["have_pl"] and a["actions"]:

@@ -37,15 +37,35 @@ FEEDS = {
         "https://www.scmp.com/rss/92/feed",                        # SCMP Business
         "https://www.cnbc.com/id/19832390/device/rss/rss.html",   # CNBC Asia
     ],
-    "WSJ": [
-        # Die alten feeds.a.dj.com-Feeds liefern veraltete Artikel (Stand Anfang 2025).
-        # Aktuelle Quellen (Juli 2026): neue Domain feeds.content.dowjones.io + die
-        # direkten wsj.com/xml/rss-Feeds fuer Markets/Technology.
-        "https://www.wsj.com/xml/rss/3_7031.xml",                       # Markets & Finance
-        "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness",  # US Business
-        "https://www.wsj.com/xml/rss/3_7455.xml",                       # Technology
-        "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed",  # Economy
-        "https://www.wsj.com/xml/rss/3_7085.xml",                       # World News
+    # ---------------------------------------------------------------------
+    # WSJ nach Ressorts getrennt. Vorher lagen alle fuenf Feeds in EINEM
+    # Topf - Weltpolitik zwischen Quartalszahlen. Getrennt laesst sich
+    # gezielt lesen, und jedes Ressort bekommt seinen eigenen Abruf, statt
+    # sich 40 Plaetze mit den anderen zu teilen.
+    # Die alten feeds.a.dj.com-Feeds liefern veraltete Artikel (Stand Anfang
+    # 2025). Aktuell (Juli 2026): feeds.content.dowjones.io + die direkten
+    # wsj.com/xml/rss-Feeds.
+    # ---------------------------------------------------------------------
+    # Feed-Basis ist feeds.content.dowjones.io (stabil, Stand Mai 2026,
+    # gegengeprueft ueber FeedSpot). Die alten wsj.com/xml/rss/-Pfade sind
+    # unzuverlaessig geworden und stehen nur noch als Rueckfall dahinter.
+    # Alle URLs gegen FeedSpot geprueft (Stand Mai 2026). dowjones.io-Feeds
+    # sind stabil und stehen vorne; die wsj.com/xml-Pfade laufen noch, sind
+    # aber wackeliger und dienen als zweite Quelle. Je Ressort mehrere Feeds,
+    # damit der Bereich nicht leer ist, wenn eine Quelle kurz ausfaellt.
+    "WSJ Business": [
+        "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness",    # Business (dowjones.io)
+        "https://feeds.content.dowjones.io/public/rss/RSSPersonalFinance",  # Personal Finance (dowjones.io)
+        "https://www.wsj.com/xml/rss/3_7455.xml",                           # Technology (wsj.com)
+    ],
+    "WSJ Markets & Finance": [
+        "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed",   # Economy (dowjones.io)
+        "https://www.wsj.com/xml/rss/3_7031.xml",                           # Markets & Finance (wsj.com)
+    ],
+    "WSJ World": [
+        "https://feeds.content.dowjones.io/public/rss/RSSUSnews",           # US News (dowjones.io)
+        "https://feeds.content.dowjones.io/public/rss/socialpoliticsfeed",  # Politics (dowjones.io)
+        "https://www.wsj.com/xml/rss/3_7085.xml",                           # World (wsj.com)
     ],
     "Aktien-News": [
         "https://www.investing.com/rss/news_25.rss",              # Stock Market News
@@ -64,7 +84,8 @@ FEEDS = {
 # aber deckt die wichtigsten Finanzquellen ab. Reuters ist "metered" (erste
 # Artikel frei) -> als eher frei behandelt, aber separat gekennzeichnet.
 _PAYWALLED = {
-    "bloomberg.com", "wsj.com", "ft.com", "nytimes.com", "economist.com",
+    "bloomberg.com", "wsj.com", "dowjones.io", "dowjones.com",
+    "ft.com", "nytimes.com", "economist.com",
     "barrons.com", "seekingalpha.com", "investors.com", "theinformation.com",
     "thetimes.co.uk", "nikkei.com", "asia.nikkei.com", "scmp.com",
     "handelsblatt.com",
@@ -127,7 +148,7 @@ def access_of(url, source_url=""):
     return "frei"                      # bekannt frei ODER unbekannt -> als frei behandeln
 
 
-def fetch_feed(url, limit=25):
+def fetch_feed(url, limit=60):
     if requests is None:
         return []
     try:
@@ -171,7 +192,7 @@ def fetch_feed(url, limit=25):
     return [x for x in out if x["headline"]]
 
 
-def get_section(section, limit=40, free_only=False):
+def get_section(section, limit=None, free_only=False):
     """Meldungen einer Sektion: gemerged, dedupliziert, neueste zuerst.
     free_only=True blendet Artikel mit 'paywall'-Status aus.
 
@@ -181,6 +202,12 @@ def get_section(section, limit=40, free_only=False):
     urls = FEEDS.get(section, [])
     if not urls:
         return []
+    if limit is None:
+        # Die WSJ-Ressorts werden einzeln gelesen - dort soll der ganze
+        # Feed durchkommen, nicht nur ein Ausschnitt. Bei gemischten
+        # Sektionen bleibt es beim bisherigen Deckel, sonst verdraengt eine
+        # gespraechige Quelle die anderen.
+        limit = 120 if section.startswith("WSJ") else 40
     results = []
     try:
         from concurrent.futures import ThreadPoolExecutor, as_completed

@@ -1971,13 +1971,19 @@ try:
 except Exception:
     _logo_html = ""
 
+try:
+    import precompute as _pcv
+    _BUILD = getattr(_pcv, "CODE_VERSION", "?")
+except Exception:
+    _BUILD = "?"
+
 st.markdown(
     '<div class="vr-head"><div class="logorow">' + _logo_html +
     '<div class="brand">VALUE RADAR <span class="caret">\u25ae</span></div></div>'
     '<div class="status">// vor die welle kommen &nbsp;\u00b7&nbsp; lokales terminal '
     '&nbsp;\u00b7&nbsp; anzeige in EUR &nbsp;\u00b7&nbsp; daten: yfinance'
     + ('  +finnhub' if config.FINNHUB_API_KEY else '')
-    + ' &nbsp;\u00b7&nbsp; <span style="opacity:.7">Build 2026-07-06c</span></div></div>',
+    + ' &nbsp;\u00b7&nbsp; <span style="opacity:.7">Build ' + _BUILD + '</span></div></div>',
     unsafe_allow_html=True)
 
 if _scroll_top_now:

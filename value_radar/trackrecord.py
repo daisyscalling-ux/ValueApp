@@ -116,11 +116,16 @@ def record(signals):
         px = s.get("price") or _price(s["ticker"])
         if not px:
             continue
-        # Einstiegskurs auf dieselbe Einheit bringen wie spaeter der Vergleichskurs.
-        # s["price"] stammt aus den Scan-Daten und kann bei Londoner Titeln in
-        # PENCE vorliegen - ohne diese Zeile entstehen Renditen von -99 %.
+        # Einstiegskurs auf dieselbe Einheit bringen wie spaeter der Vergleichs-
+        # kurs. ABER NUR EINMAL: precompute liefert 'price' bereits aus
+        # get_fundamentals, wo Pence schon auf Pfund normalisiert wurde. Wird
+        # hier erneut geteilt, landet ein Londoner Titel bei 1/100 des wahren
+        # Werts (III.L: 0,27 statt 27 GBP). Deshalb NICHT normalisieren, wenn
+        # der Kurs schon aus den Scan-Daten kommt - nur wenn wir ihn selbst
+        # ueber _price() geholt haben (der kann roh in Pence sein).
+        _schon_norm = bool(s.get("price"))     # aus Scan = bereits normalisiert
         _n = getattr(providers, "normalise_price", None)
-        if _n:
+        if _n and not _schon_norm:
             try:
                 px = _n(s["ticker"], px) or px
             except Exception:
@@ -188,15 +193,24 @@ def evaluate(limit=120):
         # Erkennung ueber das Verhaeltnis, nicht ueber die Datumsgrenze, weil
         # nur so auch gemischte Bestaende sauber werden.
         repariert = False
-        if not e.get("entry_norm"):
-            try:
-                if providers.is_pence(e["ticker"]) and px_now > 0:
-                    verhaeltnis = entry / px_now
-                    if 20 < verhaeltnis < 500:        # ~Faktor 100 = Pence-Einstieg
-                        entry = entry / 100.0
-                        repariert = True
-            except Exception:
-                pass
+        try:
+            if providers.is_pence(e["ticker"]) and px_now > 0 and entry > 0:
+                verhaeltnis = entry / px_now
+                # Fall A: Einstieg in Pence, Vergleich in Pfund -> ~100x zu GROSS
+                if not e.get("entry_norm") and 20 < verhaeltnis < 500:
+                    entry = entry / 100.0
+                    repariert = True
+                # Fall B: Einstieg DOPPELT normalisiert -> ~100x zu KLEIN
+                # (III.L: gespeichert 0,27, aktueller Kurs 27 -> Verhaeltnis 0,01).
+                # NUR reparieren, wenn das Verhaeltnis nahe genau 1/100 liegt -
+                # dann ist die doppelte Teilung eindeutig. Bei 1/36 o.ae. koennte
+                # der Titel auch echt gefallen sein; solche Faelle NICHT raten,
+                # sondern als suspekt aus der Statistik halten (siehe unten).
+                elif 0.008 < verhaeltnis < 0.014:     # ~1/100, eng gefasst
+                    entry = entry * 100.0
+                    repariert = True
+        except Exception:
+            pass
 
         ret = (px_now / entry - 1) * 100
         # SICHERHEITSNETZ gegen verbleibenden Einheiten-Mischmasch. Greift in

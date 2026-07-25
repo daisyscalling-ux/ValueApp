@@ -4931,51 +4931,6 @@ if nav == "Portfoliocheck":
             st.rerun()
 
         # --- Backup / Wiederherstellung (reboot-fest, weil auf DEINEM Geraet) ---
-        with st.expander("\U0001f5c4\ufe0f Backup / Wiederherstellen "
-                         "(wichtig bei der Online-Version!)"):
-            if store.backend() == "sheet":
-                st.success("\u2601\ufe0f Cloud-Speicher aktiv (Google Sheets) \u2013 deine Portfolios "
-                           "\u00fcberleben Reboots automatisch. Das Backup unten ist optional.")
-            else:
-                st.caption("In der Streamlit-Cloud wird der lokale Speicher bei jedem Reboot "
-                           "geleert \u2013 gespeicherte Portfolios gehen dann verloren. L\u00f6sung: "
-                           "entweder Google Sheets als Cloud-Speicher einrichten (siehe "
-                           "GOOGLE_SHEETS_SETUP.md) ODER hier ein Backup herunterladen (liegt auf "
-                           "deinem Ger\u00e4t) und nach einem Reboot wieder importieren.")
-                if st.button("\U0001f50d Google-Sheets-Verbindung testen"):
-                    try:
-                        import gsheet
-                        gsheet.reset_cache()
-                        msg = gsheet.diagnose()
-                    except Exception as e:
-                        msg = f"Diagnose nicht m\u00f6glich: {e}"
-                    if msg == "OK":
-                        st.success("Verbindung steht! Bitte die App einmal neu laden \u2013 "
-                                   "dann wird oben \u201eCloud-Speicher aktiv\u201c angezeigt.")
-                    else:
-                        st.error(msg)
-            bc = st.columns([1, 1])
-            bc[0].download_button(
-                "\u2b07\ufe0f Backup herunterladen", data=store.export_json(),
-                file_name="value_radar_portfolios.json", mime="application/json",
-                use_container_width=True,
-                disabled=not store.names())
-            up = bc[1].file_uploader("\u2b06\ufe0f Backup importieren (.json)", type=["json"],
-                                     key="pf_backup_upload", label_visibility="collapsed")
-            if up is not None and not st.session_state.get("pf_backup_done"):
-                try:
-                    nimp = store.import_json(up.read().decode("utf-8"), merge=True)
-                except Exception:
-                    nimp = 0
-                if nimp:
-                    st.session_state["pf_backup_done"] = True
-                    st.success(f"{nimp} Portfolio(s) importiert. Oben unter \u201eLaden\u201c ausw\u00e4hlen.")
-                    st.rerun()
-                else:
-                    st.warning("Kein g\u00fcltiges Backup erkannt.")
-            if up is None:
-                st.session_state.pop("pf_backup_done", None)
-
         # records aus dem aktuell geladenen Portfolio (pf_records) bauen
         records = []
         for r in st.session_state.get("pf_records", []):
@@ -5196,31 +5151,6 @@ if nav == "Portfoliocheck":
                 st.caption("Absicherungs-Marken sind grobe Orientierung aus Kurs & Fair Value \u2013 "
                            "kein Anlagerat.")
 
-                # Transparenter Rechenweg: jede Zahl gegen den Broker pruefbar machen.
-                pl_rows = [r for r in rows if r.get("shares") and r.get("ret_pct") is not None
-                           and r.get("cost_eur") is not None]
-                if pl_rows:
-                    with st.expander("\U0001f50d G/V-Rechenweg anzeigen (Zahlen pr\u00fcfen)"):
-                        st.caption("Formel je Position: Kosten = Anzahl \u00d7 \u00d8 Buy-in \u20ac \u00b7 "
-                                   "Wert = Anzahl \u00d7 aktueller Kurs \u20ac \u00b7 G/V = Wert \u2212 Kosten. "
-                                   "Weicht dein Broker ab, liegt es fast immer am KURS "
-                                   "(Verz\u00f6gerung der freien Daten / anderer Handelsplatz) \u2013 "
-                                   "dann \u201eKurse aktualisieren\u201c dr\u00fccken und vergleichen.")
-                        calc = []
-                        for r in pl_rows:
-                            sh = r["shares"]
-                            cost = r["cost_eur"]
-                            val = r["value_eur"]
-                            buyin = cost / sh if sh else None
-                            calc.append({
-                                "Ticker": r["ticker"], "Anzahl": sh,
-                                "\u00d8 Buy-in \u20ac": round(buyin, 2) if buyin else None,
-                                "Kurs \u20ac": round(r.get("price_eur") or 0, 4),
-                                "Kosten \u20ac": round(cost, 2), "Wert \u20ac": round(val, 2),
-                                "G/V \u20ac": round(val - cost, 2),
-                                "G/V %": round(r["ret_pct"], 2)})
-                        vr_table(calc, signed_cols=("G/V \u20ac", "G/V %"))
-
                 # Thesen-Check: konkrete Aktionen aus dem Kauf-Status
                 if a["have_pl"] and a["actions"]:
                     st.markdown('<div class="sec-title">THESEN-CHECK \u00b7 Aktionen aus Gewinn/Verlust</div>',
@@ -5301,16 +5231,6 @@ if nav == "Portfoliocheck":
                     } for i in _perf["indizes"]],
                         signed_cols=("Heute", "1 Monat"),
                         height=226)
-                    st.caption(
-                        "Angegeben ist der **Vorsprung deines Portfolios in "
-                        "Prozentpunkten**: positiv heißt, du lagst vor dem "
-                        "Index, negativ dahinter. **Wichtig:** Gerechnet wird "
-                        "die Entwicklung der **heute gehaltenen** Positionen, "
-                        "gewichtet nach Wert \u2013 K\u00e4ufe und Verk\u00e4ufe im Zeitraum "
-                        "bleiben unber\u00fccksichtigt. Die Zahl beantwortet also "
-                        "\u201ewie liefen meine Titel\u201c, nicht \u201ewie gut war mein "
-                        "Timing\u201c. Indexwerte in eigener W\u00e4hrung, ohne "
-                        "W\u00e4hrungseffekt f\u00fcr dich als Euro-Anleger.")
                     if _perf["abdeckung"] < 95:
                         st.caption(f"\u26a0\ufe0f Nur {_perf['abdeckung']} % des "
                                    "Portfoliowerts konnten einbezogen werden"

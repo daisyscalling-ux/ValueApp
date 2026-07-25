@@ -43,14 +43,18 @@ def _price(t):
                     return float(n(t, px)) if n else float(px)
             except Exception:
                 pass
-    # 2) letzter Schlusskurs aus der Historie
+    _n = getattr(providers, "normalise_price", None)
+    # 2) letzter Schlusskurs aus der Historie - AUCH normalisieren, sonst
+    #    liefert ein Pence-Titel hier den rohen Pence-Kurs (FRES.L: 710
+    #    statt 7,10) und die Rendite explodiert -> als "suspekt" verworfen.
     try:
         h = providers.get_price_history(t, period="5d", interval="1d")
         if h is not None and not h.empty:
-            return float(h["Close"].dropna().iloc[-1])
+            _px = float(h["Close"].dropna().iloc[-1])
+            return float(_n(t, _px)) if _n else _px
     except Exception:
         pass
-    # 3) Fundamentaldaten als letzte Option
+    # 3) Fundamentaldaten als letzte Option (price ist dort bereits normalisiert)
     try:
         return providers.get_fundamentals(t).get("price")
     except Exception:

@@ -621,19 +621,6 @@ def render_trackrecord():
                 "h\u00e4lt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig wird das "
                 "erst nach einigen Wochen und vielen F\u00e4llen.")
 
-    # --- Sofort erfassen (ohne auf den Cron-Job zu warten) ---
-    _rr = st.session_state.get("radar_results") or []
-    if st.button(f"\U0001f4cc Aktuelle Radar-Treffer erfassen ({len(_rr)})",
-                 use_container_width=True, disabled=not _rr):
-        try:
-            new = tr.record([{"ticker": r["ticker"], "quelle": "Radar",
-                              "score": r.get("score"),
-                              "price": (r.get("_price") or 0) * (r.get("_fx") or 1.0)}
-                             for r in _rr[:15]])
-            st.success(f"{new} neue Signale erfasst.")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Erfassen fehlgeschlagen: {e}")
     if not rows:
         return
 
@@ -731,6 +718,24 @@ def render_trackrecord():
                 ("Upside %", "upside", lambda v: round(v, 1)),
                 ("Strategie", "strategie", lambda v: str(v))],
          filt=_ist_kauf)
+
+    # Kaufkandidaten, die GESPEICHERT sind, aber gerade keinen Kurs liefern
+    # (haeufig Londoner Pence-Titel wie FRES.L bei API-Limit). Ohne diesen
+    # Hinweis verschwinden sie spurlos - man denkt, es gebe keine.
+    _ok_ticker = {r["ticker"] for r in rows}
+    _fehlt = [e for e in _stored
+              if e.get("quelle") in ("Screener", "Radar")
+              and (e.get("vkey") == "buy"
+                   or str(e.get("verdict", "")).strip() in _BUY)
+              and e["ticker"] not in _ok_ticker]
+    if _fehlt:
+        st.caption(
+            f"\u2139\ufe0f {len(_fehlt)} weitere(r) Kaufkandidat(en) gespeichert, "
+            "aber gerade **kein Kurs abrufbar** (API-Limit oder Ticker \u2013 "
+            "oft Londoner Titel): "
+            + ", ".join(sorted(e["ticker"] for e in _fehlt)[:12])
+            + (" \u2026" if len(_fehlt) > 12 else "")
+            + ". Beim n\u00e4chsten Laden erneut pr\u00fcfen.")
     st.caption("Diese Titel h\u00e4tte die Regel \u201enur Kaufkandidaten kaufen\u201c "
                "tats\u00e4chlich gekauft. Sie erscheinen zus\u00e4tzlich unten in "
                "ihrer jeweiligen Quelle. Kein Anlagerat.")
@@ -768,15 +773,6 @@ def render_trackrecord():
          "Erwartungen, bei denen harte Zahlen dagegen sprechen.",
          extra=[("Niedrige Erwartung", "merkmal", lambda v: str(v)),
                 ("Spricht dagegen", "strategie", lambda v: str(v))])
-    st.caption("**Experiment, kein Kaufsignal.** Gesucht sind Titel, bei denen "
-               "Analysten negativ sind ODER Verluste erwartet werden \u2013 und wo "
-               "gleichzeitig harte Zahlen widersprechen, etwa positiver Cashflow "
-               "trotz Verlust oder steigende Umsätze. Die Idee: Wo alle skeptisch "
-               "sind, wirkt eine positive \u00dcberraschung besonders stark. Ob das "
-               "trägt, entscheidet diese Tabelle nach Monaten \u2013 nicht die Logik "
-               "dahinter. Solche Firmen sind meist aus gutem Grund unbeliebt. "
-               "Kein Anlagerat.")
-
     _tab("\u26a0\ufe0f KONTROLLGRUPPE (schwache Setups \u00b7 als Short gerechnet)", "Negativ",
          "Noch keine schwachen Setups erfasst \u2013 der n\u00e4chtliche Lauf "
          "sammelt sie ab jetzt automatisch.",
@@ -784,35 +780,6 @@ def render_trackrecord():
                 ("Upside %", "upside", lambda v: round(v, 1)),
                 ("Merkmal", "merkmal", lambda v: str(v))],
          short=True)
-    st.caption("Bei der Kontrollgruppe erwartet das Modell **fallende** Kurse. "
-               "Deshalb steht neben der Kursentwicklung die **Short-Rendite** "
-               "(umgekehrtes Vorzeichen): F\u00e4llt der Kurs, w\u00e4re die Position "
-               "im Plus. Reine Modellrechnung \u2013 echte Leerverk\u00e4ufe kosten "
-               "Leihgeb\u00fchr und Spread, erfordern Dividendenausgleich und haben "
-               "theoretisch unbegrenztes Verlustrisiko. Kein Anlagerat.")
-
-    st.caption("\u201evs. Index\u201c = Rendite minus S&P 500 im selben Zeitraum. Nur das "
-               "z\u00e4hlt. \u201eEinstieg \u20ac\u201c ist mit dem Wechselkurs des "
-               "**Einstiegstages** umgerechnet \u2013 nicht mit dem heutigen. Die "
-               "Renditespalten stehen in der Handelsw\u00e4hrung, zeigen also die "
-               "Entwicklung der Aktie ohne W\u00e4hrungseffekt. Kein Anlagerat.")
-
-    _rep = [r for r in _ok if r.get("repariert")]
-    if _rep:
-        st.caption(f"\u2139\ufe0f Bei {len(_rep)} Signalen wurde der Einstiegskurs von "
-                   "Pence auf Pfund umgerechnet \u2013 sie stammen aus der Zeit vor "
-                   "der Einheiten-Korrektur. Betroffen sind Londoner Titel "
-                   "(.L / .XC). Die Rendite stimmt jetzt.")
-
-    # Code-Version der Erfassung - haeufigste Fehlerquelle ist eine veraltete
-    # precompute.py auf GitHub. Fehlt die Angabe, stammt das Signal aus einem
-    # Lauf VOR der Versionskennung.
-    _vers = sorted({(r.get("codever") or "unbekannt") for r in rows})
-    if _vers:
-        st.caption("Erfasst mit Code-Version: " + ", ".join(_vers)
-                   + ("  \u2013 \u201eunbekannt\u201c bedeutet: der Lauf nutzte eine "
-                      "\u00e4ltere precompute.py. Neue Spalten bleiben dann leer."
-                      if "unbekannt" in _vers else ""))
 
     if _bad:
         with st.expander(f"\u26a0\ufe0f {len(_bad)} Signale mit fehlerhaften Kursdaten "

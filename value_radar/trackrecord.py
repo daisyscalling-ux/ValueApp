@@ -439,11 +439,19 @@ def bereinige_dubletten():
     def _zweit(t):
         return "." in (t or "") and t.rsplit(".", 1)[-1].upper() in ("IL", "XC")
 
+    # Pence-Londonnotierungen, fuer die es eine US-ADR gibt: ebenfalls raus.
+    # Ihre Bewertung war wegen der Pence-Kurse falsch (BP.L gut, BP schlecht).
+    try:
+        import precompute as _pcp
+        _PENCE = set(_pcp.PENCE_ZU_ADR)
+    except Exception:
+        _PENCE = set()
+
     behalten, raus = [], []
     gruppen = {}
     for e in log:
         t = e.get("ticker") or ""
-        if _zweit(t):                       # Zweitnotierung: immer raus
+        if _zweit(t) or t.upper() in _PENCE:   # Zweitnotierung/Pence-ADR-Fall
             raus.append(t)
             continue
         n = _norm(e.get("name"))

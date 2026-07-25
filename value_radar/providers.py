@@ -820,15 +820,24 @@ def get_intraday_quote(ticker: str, native_currency: str = "USD"):
                 continue
         return None
 
+    def _fertig(preis, waehrung):
+        # Pence-Normalisierung auch fuer den Live-Kurs. Ohne das zeigte das
+        # Portfolio den rohen Pence-Wert (BP.L: 645 statt 6,45) - der Basis-
+        # Kurs aus get_fundamentals ist laengst normalisiert, der Live-Kurs
+        # lief hier vorbei. Die deutsche Notierung (EUR) ist nie betroffen.
+        if preis and waehrung != "EUR" and is_pence(ticker):
+            return preis / 100.0, "GBP"
+        return preis, waehrung
+
     if de_hours and not us_regular:            # deutscher Vormittag -> DE-Kurs zuerst
         p = _de_price()
         if p:
             return p, "EUR"
         p = _us_price()
-        return (p, native_currency) if p else (None, native_currency)
+        return _fertig(p, native_currency) if p else (None, native_currency)
     p = _us_price()
     if p:
-        return p, native_currency
+        return _fertig(p, native_currency)
     p = _de_price()
     return (p, "EUR") if p else (None, native_currency)
 

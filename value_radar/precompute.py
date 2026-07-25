@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-24-c"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-24-e"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -349,7 +349,7 @@ def screener_scan() -> list:
         usd = providers.get_fx_to_eur("USD") or 0.92
         tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
                                         (5e9) / usd, UNIVERSE_SIZE)
-        tickers = filter_boersen(collapse_listings(tickers))   # nur Heimatnotierungen
+        tickers = filter_boersen(collapse_listings(ersetze_pence_durch_adr(tickers)))   # nur Heimatnotierungen
     except Exception:
         return []
     scored = scan_list(tickers, deep=SCAN_DEEP, label="Screener")
@@ -417,7 +417,7 @@ def radar_scan() -> list:
         except Exception as e:
             print(f"  [Radar] Marktschnitt uebersprungen: {e}")
 
-    tickers = filter_boersen(collapse_listings(tickers))
+    tickers = filter_boersen(collapse_listings(ersetze_pence_durch_adr(tickers)))
     scored = scan_list(tickers, deep=SCAN_DEEP, label="Radar")
     scored = collapse_scored(scored, "Radar")      # Dubletten ueber den Namen
     _LAST_SCAN["Radar"] = scored
@@ -965,7 +965,7 @@ def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
         usd = providers.get_fx_to_eur("USD") or 0.92
         tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
                                         (5e9) / usd, universum)
-        tickers = filter_boersen(collapse_listings(tickers))
+        tickers = filter_boersen(collapse_listings(ersetze_pence_durch_adr(tickers)))
     except Exception as e:
         print(f"[live_scan] Universum nicht ladbar: {e}")
         return []
@@ -1244,6 +1244,37 @@ if __name__ == "__main__":
 # ============================================================================
 
 AUSGESCHLOSSENE_BOERSEN = ("IL", "XC")
+
+# Grosse Firmen mit Pence-Londonnotierung (.L) UND US-ADR. Die Londonzeile
+# notiert in Pence und ist bei roic der bestaetigte Fehlerfall (BP.L: KGV
+# 168.091); die ADR notiert in USD und wird sauber bewertet. Deshalb wird
+# .L VOR dem Scan durch die ADR ersetzt - dieselbe Firma, bessere Datenlage.
+# Nur eindeutige Faelle, wo ADR und Londonzeile klar dieselbe Firma sind.
+PENCE_ZU_ADR = {
+    "BP.L": "BP", "SHEL.L": "SHEL", "HSBA.L": "HSBC", "AZN.L": "AZN",
+    "GSK.L": "GSK", "ULVR.L": "UL", "RIO.L": "RIO", "BTI.L": "BTI",
+    "VOD.L": "VOD", "NGG.L": "NGG", "BCS.L": "BCS", "LYG.L": "LYG",
+    "PUK.L": "PUK", "SMFG.L": "SMFG", "DEO.L": "DEO", "RELX.L": "RELX",
+    "PSO.L": "PSO", "WPP.L": "WPP", "AAL.L": "AAL",
+}
+
+
+def ersetze_pence_durch_adr(tickers):
+    """Londoner Pence-Notierungen durch ihre US-ADR ersetzen."""
+    out, getauscht = [], []
+    for t in tickers:
+        adr = PENCE_ZU_ADR.get(t.upper())
+        if adr:
+            out.append(adr)
+            getauscht.append(f"{t}->{adr}")
+        else:
+            out.append(t)
+    if getauscht:
+        print(f"  [ADR] {len(getauscht)} Pence-Notierung(en) durch ADR "
+              f"ersetzt: {', '.join(getauscht[:6])}"
+              f"{' ...' if len(getauscht) > 6 else ''}")
+    # doppelte entfernen, Reihenfolge halten
+    return list(dict.fromkeys(out))
 
 
 def ist_zweitnotierung(t: str) -> bool:

@@ -1852,7 +1852,16 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
         if live:                                    # minutengenauer Kurs fuer Wert & G/V
             p_live, cur_live = load_intraday_quote(tk, native_cur)
             if p_live and p_live > 0:
-                p_now = p_live
+                # Sicherung: Weicht der Live-Kurs um mehr als Faktor 10 vom
+                # normalisierten Basiskurs ab, ist er vermutlich in Pence
+                # statt Pfund (BP.L: 645 statt 6,45). Dann verwerfen und beim
+                # Basiskurs bleiben, statt einen 100-fach falschen Wert zu zeigen.
+                _basis = f.get("price")
+                if (_basis and _basis > 0
+                        and (p_live / _basis > 10 or _basis / p_live > 10)):
+                    pass                              # Live-Kurs unplausibel -> ignorieren
+                else:
+                    p_now = p_live
                 # Deutscher Vormittagskurs kommt in EUR -> mit EUR-FX (=1) rechnen,
                 # US-Kurs in native Waehrung -> mit deren FX. Waehrung wandert mit.
                 fx = fx_to_eur(cur_live) or 1.0

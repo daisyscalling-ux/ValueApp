@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-a"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-d"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt

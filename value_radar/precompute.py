@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-d"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-e"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1225,7 +1225,7 @@ def momentum_scan(universum=200, top_n=25, fortschritt=None):
                 return None
             f["_ticker"] = t
             f["_fx"] = providers.get_fx_to_eur(f.get("currency", "USD")) or 1.0
-            m = providers.get_momentum_snapshot(t) or {}
+            m = providers.get_screen_extras(t) or {}
             f["ch_6m"] = m.get("ch_6m")            # fuer den Branchen-Median
             f["_snap"] = m
             return f

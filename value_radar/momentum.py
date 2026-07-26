@@ -54,7 +54,7 @@ def bausteine(ticker: str, f: dict, hist=None, branchen_median_6m=None) -> dict:
         return {}
     mom = {}
     try:
-        m = providers.get_momentum_snapshot(ticker) or {}
+        m = providers.get_screen_extras(ticker) or {}
     except Exception:
         m = {}
     try:

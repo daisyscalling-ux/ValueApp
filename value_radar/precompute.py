@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-25-g"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-a"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -75,6 +75,8 @@ if _ROIC_AKTIV:
     SCAN_DEEP = False
     EARNINGS_DEEP_LIMIT = 150
     RADAR_MARKT = 250       # Marktschnitt zusaetzlich zu den Themen-Tickern
+    MOM_UNIVERSE_SIZE = 400 # Momentum: breites Feld, damit relative Staerke traegt
+    MOM_TOP = 25            # so viele Momentum-Titel als Signale erfassen
     print(f"[roic] aktiv - Universum {UNIVERSE_SIZE}, "
           f"Top {SCREENER_TOP} tief nachgerechnet.")
 else:
@@ -84,6 +86,8 @@ else:
     SCAN_DEEP = False
     EARNINGS_DEEP_LIMIT = 60
     RADAR_MARKT = 0         # ohne roic kein Marktschnitt - Limits zu eng
+    MOM_UNIVERSE_SIZE = 90
+    MOM_TOP = 15
 
 
 def _berlin_now():
@@ -637,6 +641,13 @@ def run():
     scr = _abschnitt("Screener", screener_scan, [])
     print("Radar-Scan ...")
     rad = _abschnitt("Radar", radar_scan, [])
+    print("Momentum-Scan ...")
+    # Momentum als eigener Nachtlauf-Abschnitt: Top-Titel werden als Signale
+    # erfasst und in der Trefferbilanz gegen den Index getestet - so laesst
+    # sich messen, ob die Momentum-Auswahl ueber Monate etwas taugt.
+    mom = _abschnitt("Momentum",
+                     lambda: momentum_scan(universum=MOM_UNIVERSE_SIZE,
+                                           top_n=MOM_TOP), [])
 
     # 3) Aenderungen bestimmen
     changes = []
@@ -731,6 +742,26 @@ def run():
                             "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "verdict": _a.get("verdict", ""), "price": r.get("price")})
+
+        # Momentum-Signale: der Momentum-Score selbst ist die Kennzahl. Kein
+        # Scorecard-Urteil (das misst Substanz, nicht Trend) - stattdessen wird
+        # der Score gespeichert, damit die Trefferbilanz spaeter zeigen kann,
+        # ob hohe Momentum-Scores den Index geschlagen haben.
+        for r in (mom or [])[:MOM_TOP]:
+            tk = r.get("ticker")
+            if not tk:
+                continue
+            sig_new.append({
+                "ticker": tk, "quelle": "Momentum",
+                "score": r.get("score"),
+                "verdict": ("Momentum stark" if r.get("ampel") == "gruen"
+                            else "Momentum mittel" if r.get("ampel") == "gelb"
+                            else "Momentum schwach"),
+                "vkey": ("mom_buy" if r.get("ampel") == "gruen" else "mom"),
+                "strategie": "Momentum",
+                "mom_12_1": r.get("mom_12_1"),
+                "rel_staerke": r.get("rel_staerke"),
+                "price": (r.get("price") or 0) * (r.get("_fx") or 1.0)})
 
         # KONTROLLGRUPPE: die schwaechsten Titel aus denselben Scans.
         # Ohne sie kann man nicht unterscheiden, ob die Scorecard trennt
@@ -972,15 +1003,31 @@ def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
 
     # --- Phase 1: flach ueber das ganze Universum
     scored = {}
-    for i, t in enumerate(tickers):
-        try:
-            r = score_ticker(t, deep=False)
-            if r:
-                scored[t] = r
-        except Exception:
-            pass
-        if fortschritt:
-            fortschritt(i + 1, len(tickers), "breit")
+    # Phase 1 parallelisieren: Jeder Titel macht mehrere Netzabrufe, die die
+    # meiste Zeit WARTEN (I/O). Sequenziell summiert sich das bei 150 Titeln
+    # auf Minuten - lange genug, dass Streamlit den Lauf abbricht. Mit einem
+    # Thread-Pool laufen mehrere Titel gleichzeitig; roic drosselt sich selbst
+    # ueber seinen Lock, die roic-Rate wird also eingehalten.
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    fertig = 0
+    gesamt = len(tickers)
+    # 8 gleichzeitig ist ein guter Kompromiss: schnell genug, ohne yfinance
+    # oder roic zu ueberfahren.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {pool.submit(score_ticker, t, False): t for t in tickers}
+        for fut in as_completed(futures):
+            t = futures[fut]
+            try:
+                # Pro Titel hart begrenzen - ein haengender Abruf darf nicht
+                # den ganzen Scan blockieren.
+                r = fut.result(timeout=20)
+                if r:
+                    scored[t] = r
+            except Exception:
+                pass
+            fertig += 1
+            if fortschritt:
+                fortschritt(fertig, gesamt, "breit")
     scored = collapse_scored(scored, "Live")       # Dubletten ueber den Namen
     _LAST_SCAN["Live"] = scored
 
@@ -996,14 +1043,14 @@ def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
         return auswahl
 
     # --- Phase 2: die Besten tief nachrechnen, inklusive Radar
-    out = []
-    for i, r in enumerate(auswahl):
+    # Auch hier parallel: top_n ist zwar klein (10-30), aber jeder Titel macht
+    # deep-Fundamentals PLUS _analyse (Radar) - das sind die teuersten Abrufe.
+    def _tief_rechnen(r):
         t = r["ticker"]
         try:
             tiefer = score_ticker(t, deep=True) or r
         except Exception:
             tiefer = r
-        # Radar-Score separat: braucht Zusatzabrufe, lohnt nur fuer die Top-Titel
         radar_score = radar_ebenen = None
         try:
             a = _analyse(t)
@@ -1015,9 +1062,20 @@ def live_scan(universum=90, top_n=15, tief=True, fortschritt=None,
             pass
         tiefer["radar_score"] = radar_score
         tiefer["radar_ebenen"] = radar_ebenen
-        out.append(tiefer)
-        if fortschritt:
-            fortschritt(i + 1, len(auswahl), "tief")
+        return tiefer
+
+    out = []
+    fertig_t = 0
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {pool.submit(_tief_rechnen, r): r for r in auswahl}
+        for fut in as_completed(futures):
+            try:
+                out.append(fut.result(timeout=30))
+            except Exception:
+                out.append(futures[fut])       # Rohwert behalten
+            fertig_t += 1
+            if fortschritt:
+                fortschritt(fertig_t, len(auswahl), "tief")
 
     return sorted(out, key=strat["sort"], reverse=True)
 
@@ -1128,7 +1186,88 @@ STRATEGIEN = {
 }
 
 
-# ============================================================================
+def momentum_scan(universum=200, top_n=25, fortschritt=None):
+    """Momentum-Scan: findet Titel mit starkem, aufmerksamkeitsstarkem Trend.
+
+    Ablauf parallel wie live_scan:
+      1) Universum holen, Zweitnotierungen zusammenfassen
+      2) je Titel Fundamentaldaten + Momentum-Snapshot laden (fuer Sektor,
+         52W, Analysten und die Kursreihe)
+      3) Branchen-Mediane bilden (relative Staerke braucht die Peers)
+      4) Momentum-Score je Titel, nach Score sortiert zurueck
+
+    Wichtig: Das ist eine Momentaufnahme des Trends, keine Prognose. Momentum
+    kehrt sich abrupt um - der Score misst Staerke JETZT, nicht die Zukunft.
+    """
+    if ms is None:
+        return []
+    try:
+        import momentum as momo
+    except Exception as e:
+        print(f"[momentum_scan] Modul fehlt: {e}")
+        return []
+    try:
+        usd = providers.get_fx_to_eur("USD") or 0.92
+        tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
+                                        (5e9) / usd, universum)
+        tickers = filter_boersen(collapse_listings(ersetze_pence_durch_adr(tickers)))
+    except Exception as e:
+        print(f"[momentum_scan] Universum nicht ladbar: {e}")
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # --- Phase 1: Fundamentaldaten + 6M-Performance je Titel (parallel)
+    def _lade(t):
+        try:
+            f = providers.get_fundamentals(t, deep=False)
+            if not f or not f.get("price"):
+                return None
+            f["_ticker"] = t
+            f["_fx"] = providers.get_fx_to_eur(f.get("currency", "USD")) or 1.0
+            m = providers.get_momentum_snapshot(t) or {}
+            f["ch_6m"] = m.get("ch_6m")            # fuer den Branchen-Median
+            f["_snap"] = m
+            return f
+        except Exception:
+            return None
+
+    geladen = []
+    fertig = 0
+    gesamt = len(tickers)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futs = {pool.submit(_lade, t): t for t in tickers}
+        for fut in as_completed(futs):
+            try:
+                f = fut.result(timeout=20)
+                if f:
+                    geladen.append(f)
+            except Exception:
+                pass
+            fertig += 1
+            if fortschritt:
+                fortschritt(fertig, gesamt, "laden")
+
+    # --- Phase 2: Branchen-Mediane (relative Staerke)
+    mediane = momo.branchen_mediane(geladen)
+
+    # --- Phase 3: Momentum-Score je Titel
+    ergebnisse = []
+    for f in geladen:
+        t = f["_ticker"]
+        med = mediane.get(f.get("sector"))
+        try:
+            r = momo.bausteine(t, f, branchen_median_6m=med)
+            if r and r.get("score") is not None:
+                r["_fx"] = f.get("_fx") or 1.0
+                ergebnisse.append(r)
+        except Exception:
+            pass
+
+    ergebnisse.sort(key=lambda r: r["score"], reverse=True)
+    print(f"  [momentum_scan] {len(ergebnisse)} Titel bewertet, "
+          f"Top {top_n} zurueck.")
+    return ergebnisse[:top_n]
 # DOPPELNOTIERUNGEN ueber den FIRMENNAMEN zusammenfassen
 # ----------------------------------------------------------------------------
 # Die symbolbasierte Variante (_canon_base) greift nur, wenn die Symbole

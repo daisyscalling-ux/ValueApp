@@ -187,6 +187,10 @@ def record(signals):
             "merkmal": s.get("merkmal", ""),
             "firing": s.get("firing"),
             "codever": s.get("codever", ""),
+            # Momentum-Zusatzfelder (fuer die Trefferbilanz-Spalten)
+            "vkey": s.get("vkey", ""),
+            "mom_12_1": s.get("mom_12_1"),
+            "rel_staerke": s.get("rel_staerke"),
             "entry_px": round(float(px), 4),
             "entry_norm": True,          # Kennzeichen: bereits normalisiert
             "entry_ccy": _ccy,

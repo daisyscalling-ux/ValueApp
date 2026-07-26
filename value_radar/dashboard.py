@@ -770,6 +770,12 @@ def render_trackrecord():
          extra=[("Radar-Score", "score", lambda v: round(v)),
                 ("Ebenen", "firing", lambda v: f"{int(v)}/4"),
                 ("Upside %", "upside", lambda v: round(v, 1))])
+    _tab("\U0001f680 MOMENTUM", "Momentum",
+         "Noch keine Momentum-Signale erfasst. Der Nachtlauf schreibt die "
+         "Top-Momentum-Titel mit und testet sie gegen den S&P 500.",
+         extra=[("Mom-Score", "score", lambda v: round(v)),
+                ("12\u20131 %", "mom_12_1", lambda v: round(v, 1)),
+                ("vs Branche", "rel_staerke", lambda v: round(v, 1))])
     _tab("\U0001f4c5 EARNINGS \u00b7 POSITIV ERWARTET", "Earnings+",
          "Noch keine Termine mit klarem Positiv-Muster erfasst.",
          extra=[("Beat-Quote", "score", lambda v: f"{round(v)} %"),
@@ -1936,11 +1942,12 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
-PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Watchlist",
-         "Long/Short", "Portfoliocheck", "Trefferbilanz", "Earnings Calls",
-         "Umfeld"]
+PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Momentum",
+         "Watchlist", "Long/Short", "Portfoliocheck", "Trefferbilanz",
+         "Earnings Calls", "Umfeld"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-         "Screener": "\U0001f50d", "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
+         "Screener": "\U0001f50d", "Momentum": "\U0001f680",
+         "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
          "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0",
          "Trefferbilanz": "\U0001f3c6", "Earnings Calls": "\U0001f399\ufe0f",
          "Umfeld": "\U0001f30d"}
@@ -1989,7 +1996,8 @@ if st.session_state.get("_last_nav") != nav:     # Tab-Wechsel -> hoch
 # (robust gegen Streamlit-Versionswechsel). Icons statt Text: passt auf jedes Display.
 MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-              "Screener": "\U0001f50d", "Watchlist": "\u2b50",
+              "Screener": "\U0001f50d", "Momentum": "\U0001f680",
+              "Watchlist": "\u2b50",
               "Long/Short": "\u2696\ufe0f", "Portfoliocheck": "\U0001f4bc",
               "Trefferbilanz": "\U0001f3c6", "Earnings Calls": "\U0001f399\ufe0f",
               "Umfeld": "\U0001f30d"}
@@ -3859,23 +3867,46 @@ if nav == "Radar":
 
             # 1) Fundamentaldaten laden + Mindest-Marktkap. erzwingen (wie im Screener)
             #    + Doppel-Listings (1YD.DE/.F/.XC ...) entfernen
+            # Parallel geladen: jeder Titel ist ein langsamer Netzabruf, der
+            # meist nur wartet. Sequenziell dauert das bei 150 Titeln Minuten
+            # und Streamlit bricht ab.
+            from concurrent.futures import ThreadPoolExecutor, as_completed
             loaded = []
             prog = st.progress(0.0, text="Lade Universum ...")
-            for i, t in enumerate(tickers, 1):
+            _fertig = 0
+            _ges = len(tickers)
+
+            def _lade_einen(t):
                 f = load_fundamentals(t)
                 if f.get("price"):
                     f["_fx"] = fx_to_eur(f.get("currency", "USD")) or 1.0
-                    if theme or mcap_eur_bn(f) >= rmcap_bn:   # Themen ohne Mcap-Filter
-                        loaded.append(f)
-                prog.progress(i / max(len(tickers), 1), text=f"Lade {t} ...")
+                    if theme or mcap_eur_bn(f) >= rmcap_bn:
+                        return f
+                return None
+
+            with ThreadPoolExecutor(max_workers=8) as _pool:
+                _futs = {_pool.submit(_lade_einen, t): t for t in tickers}
+                for _fut in as_completed(_futs):
+                    try:
+                        f = _fut.result(timeout=20)
+                        if f:
+                            loaded.append(f)
+                    except Exception:
+                        pass
+                    _fertig += 1
+                    prog.progress(_fertig / max(_ges, 1),
+                                  text=f"Lade Universum \u2026 {_fertig}/{_ges}")
             if branch:                                  # nach Hauptbranche filtern
                 sec, kw = radar.BRANCHES[branch]
                 loaded = [f for f in loaded if radar.in_branch(f, sec, kw)]
             deduped = radar.dedupe_by_name(loaded)[:int(rmax)]
 
-            # 2) Radar nur auf den bereinigten Titeln berechnen
+            # 2) Radar nur auf den bereinigten Titeln berechnen - ebenfalls
+            #    parallel, da compute() mehrere Zusatzabrufe je Titel macht.
             results = []
-            for i, f in enumerate(deduped, 1):
+            _fertig2 = 0
+
+            def _radar_einen(f):
                 t = f["ticker"]
                 r = radar.compute(f, load_history_full(t), load_eps_rev(t),
                                   load_insider(t), load_8k(t),
@@ -3884,9 +3915,18 @@ if nav == "Radar":
                 r["_price"] = f.get("price")
                 r["_mcap"] = f.get("market_cap")
                 r["_analysts"] = f.get("analyst_count")
-                results.append(r)
-                prog.progress(i / max(len(deduped), 1),
-                              text=f"Scanne {t} ... ({len(results)})")
+                return r
+
+            with ThreadPoolExecutor(max_workers=6) as _pool:
+                _futs = {_pool.submit(_radar_einen, f): f for f in deduped}
+                for _fut in as_completed(_futs):
+                    try:
+                        results.append(_fut.result(timeout=30))
+                    except Exception:
+                        pass
+                    _fertig2 += 1
+                    prog.progress(_fertig2 / max(len(deduped), 1),
+                                  text=f"Scanne \u2026 {_fertig2}/{len(deduped)}")
             prog.empty()
             results.sort(key=lambda x: x["score"], reverse=True)
             st.session_state["radar_results"] = results          # bleibt erhalten
@@ -3999,17 +4039,19 @@ if nav == "Screener":
                                     "volle Bewertung berechnet \u2013 das kostet "
                                     "mehrere Zusatzabrufe je Titel.")
         if _roic_da:
-            # 3 Abrufe je Titel in der Vorauswahl, ~13 je tief gerechnetem
-            # Titel (volles Buendel + Radar-Ebenen), gedrosselt auf 240/min.
+            # Parallel (8 gleichzeitig in der Vorauswahl, 6 beim Tief-Rechnen).
+            # Massgeblich ist jetzt das roic-Limit von 240/min, nicht mehr die
+            # Summe der Wartezeiten. 3 Abrufe je Titel breit, ~13 je Top-Titel.
             _abrufe = _uni * 3 + _topn * 13
-            _sek = int(_abrufe / 240 * 60 * 1.25)      # Puffer fuer yfinance
-            st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {max(1, _sek//60)} bis "
-                       f"{_sek//60 + 2} Minuten** ({_abrufe} Abrufe \u00fcber "
-                       "roic.ai). Bitte den Tab offen lassen.")
+            _sek = int(_abrufe / 240 * 60 * 1.15)      # kleiner Puffer
+            _sek = max(20, _sek)
+            st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {max(1, _sek//60)}\u2013"
+                       f"{_sek//60 + 1} Minuten** ({_abrufe} Abrufe \u00fcber "
+                       "roic.ai, parallel). Bitte den Tab offen lassen.")
         else:
-            _dauer = int(_uni * 1.2 + _topn * 6)
-            st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {_dauer//60} bis "
-                       f"{_dauer//60 + 2} Minuten**. Ohne roic.ai-Anbindung "
+            _dauer = int(_uni * 0.25 + _topn * 1.2)    # parallel, grob
+            st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {max(1, _dauer//60)}\u2013"
+                       f"{_dauer//60 + 1} Minuten**. Ohne roic.ai-Anbindung "
                        "greifen die Limits der Gratisquellen \u2013 gr\u00f6\u00dfere "
                        "Universen sind deshalb gesperrt.")
 
@@ -4330,6 +4372,101 @@ if nav == "Screener":
         else:
             st.info("Kein Titel besteht alle Filter \u2013 Schwellen lockern oder "
                     "mehr Titel laden.")
+
+
+# ===========================================================================
+# MOMENTUM
+# ===========================================================================
+if nav == "Momentum":
+    st.markdown('<div class="sec-title">MOMENTUM</div>', unsafe_allow_html=True)
+    st.caption("Sucht Titel mit starkem, aufmerksamkeitsstarkem Aufw\u00e4rtstrend: "
+               "Trendst\u00e4rke (12\u20131-Momentum), relative St\u00e4rke zur Branche, "
+               "N\u00e4he zum 52-Wochen-Hoch, K\u00e4ufer-\u00dcbergewicht (OBV) und "
+               "Handelsvolumen.")
+    st.warning("**Momentum ist der am besten belegte, aber auch der "
+               "gef\u00e4hrlichste Faktor.** Er kehrt sich abrupt um \u2013 gerade in "
+               "Wendephasen des Marktes. Ein hoher Score hei\u00dft \u201estarker "
+               "Trend jetzt\u201c, nicht \u201ewird weiter steigen\u201c. Kein Anlagerat.")
+
+    try:
+        import roic as _rqm
+        _roic_da_m = _rqm.enabled()
+    except Exception:
+        _roic_da_m = False
+
+    _mc1, _mc2 = st.columns(2)
+    _uni_m = _mc1.selectbox("Universumsgr\u00f6\u00dfe",
+                            [90, 200, 400, 600] if _roic_da_m else [40, 90, 150],
+                            index=1, format_func=lambda n: f"{n} Titel",
+                            key="mom_uni",
+                            help="Gro\u00dfe Titel aus US, DE, FR, GB, NL ab 5 Mrd. "
+                                 "Marktkapitalisierung.")
+    _top_m = _mc2.selectbox("Wie viele anzeigen", [15, 25, 40, 60],
+                            index=1, format_func=lambda n: f"Top {n}",
+                            key="mom_top")
+    _dauer_m = int(_uni_m * 0.25 + 15)
+    st.caption(f"Gesch\u00e4tzte Laufzeit: **rund {max(1, _dauer_m//60)}\u2013"
+               f"{_dauer_m//60 + 1} Minuten** (parallel). Bitte den Tab offen "
+               "lassen.")
+
+    if st.button("\U0001f680 Momentum scannen", key="mom_go",
+                 use_container_width=True):
+        import precompute as _pcm
+        _barm = st.progress(0.0, text="Universum wird geladen \u2026")
+
+        def _fm(fertig, gesamt, phase):
+            _barm.progress(min(fertig / max(gesamt, 1), 1.0),
+                           text=f"Bewerte \u2026 {fertig}/{gesamt}")
+
+        try:
+            _ergm = _pcm.momentum_scan(universum=_uni_m, top_n=_top_m,
+                                       fortschritt=_fm)
+            _barm.progress(1.0, text="fertig")
+            st.session_state["mom_ergebnis"] = _ergm
+            st.session_state["mom_zeit"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+        except Exception as _em:
+            st.error(f"Scan fehlgeschlagen: {_em}")
+        _barm.empty()
+
+    _ergm = st.session_state.get("mom_ergebnis")
+    if _ergm:
+        st.caption(f"Stand: {st.session_state.get('mom_zeit', '')} \u00b7 "
+                   f"{len(_ergm)} Titel")
+        _data_m = []
+        for r in _ergm:
+            _data_m.append({
+                "Ticker": r["ticker"],
+                "Name": (r.get("name") or "")[:20],
+                "Score": r["score"],
+                "12\u20131 %": round(r["mom_12_1"], 1) if r.get("mom_12_1") is not None else None,
+                "6M %": round(r["ch_6m"], 1) if r.get("ch_6m") is not None else None,
+                "vs Branche": round(r["rel_staerke"], 1) if r.get("rel_staerke") is not None else None,
+                "z. 52W-Hoch %": round(r["zu_hoch"], 1) if r.get("zu_hoch") is not None else None,
+                "RSI": round(r["rsi"]) if r.get("rsi") is not None else None,
+                "OBV": {"up": "\u2191 Kauf", "down": "\u2193 Verkauf",
+                        "flat": "\u2192"}.get(r.get("obv"), "\u2014"),
+                "\u2013\u2013": r["ticker"],
+            })
+        vr_table(_data_m, score_cols=("Score",),
+                 signed_cols=("12\u20131 %", "6M %", "vs Branche", "z. 52W-Hoch %"),
+                 height=min(len(_data_m) * 40 + 46, 640))
+        st.caption("**12\u20131 %** = Jahresrendite ohne den letzten Monat "
+                   "(Forschungsstandard, da der j\u00fcngste Monat zur Umkehr "
+                   "neigt). **vs Branche** = 6M-Vorsprung zum Median der "
+                   "Branche \u2013 nur positive Werte sind echte relative St\u00e4rke. "
+                   "**OBV** = kaufen oder verkaufen die Anleger per Saldo "
+                   "aggressiver.")
+
+        # Warnungen des Top-Titels als Beispiel zeigen
+        _mit_warn = [r for r in _ergm if r.get("warnungen")]
+        if _mit_warn:
+            with st.expander(f"\u26a0\ufe0f Warnhinweise ({len(_mit_warn)} Titel)"):
+                for r in _mit_warn[:20]:
+                    st.markdown(f"**{r['ticker']}** ({r['score']}): "
+                                + " \u00b7 ".join(r["warnungen"]))
+    else:
+        st.info("Noch kein Scan. Oben Parameter w\u00e4hlen und "
+                "\u201eMomentum scannen\u201c klicken.")
 
 
 # ===========================================================================

@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-e"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-f"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -209,6 +209,97 @@ def collapse_listings(tickers):
             if pri < prev_pri:
                 out[pos[base]] = t
     return out
+
+
+# ---------------------------------------------------------------------------
+# ISIN-BASIERTE ENTDOPPLUNG - die eigentliche Loesung
+# ---------------------------------------------------------------------------
+# APC.DE, 0R2V.L und AAPL sind DIESELBE Firma (Apple), tragen aber voellig
+# verschiedene Symbole - collapse_listings (Basissymbol) und die Namens-
+# Entdopplung greifen da nicht zuverlaessig. Der stabile Schluessel ist die
+# ISIN: Alle drei haben US0378331005. Ihr Laendercode (US) sagt zugleich,
+# wo die HEIMATBOERSE liegt.
+#
+# Regel: Bei mehreren Notierungen derselben ISIN gewinnt die, deren Boerse
+# zum ISIN-Land passt (US-ISIN -> US-Notierung ohne Suffix = AAPL). Fehlt
+# die Heimatnotierung, bleibt die am besten passende - aber Auslands-
+# Zweitnotierungen verschwinden.
+# ---------------------------------------------------------------------------
+
+# Boersensuffix -> Land, um "passt zur ISIN" zu pruefen.
+_SUFFIX_LAND = {
+    "": "US", "DE": "DE", "F": "DE", "MU": "DE", "BE": "DE", "SG": "DE",
+    "DU": "DE", "HM": "DE", "HA": "DE", "STU": "DE",
+    "L": "GB", "IL": "GB", "PA": "FR", "AS": "NL", "BR": "BE",
+    "MI": "IT", "MC": "ES", "SW": "CH", "VX": "CH", "ST": "SE",
+    "HE": "FI", "OL": "NO", "CO": "DK", "VI": "AT", "LS": "PT",
+    "TO": "CA", "T": "JP", "HK": "HK", "AX": "AU",
+}
+
+
+def _ticker_land(t: str) -> str:
+    """Land der Boerse aus dem Ticker-Suffix (leeres Suffix = US)."""
+    if "." not in t:
+        return "US"
+    return _SUFFIX_LAND.get(t.rsplit(".", 1)[-1].upper(), "?")
+
+
+def _isin_land(isin) -> str:
+    """Die ersten zwei Buchstaben der ISIN sind das Emittentenland."""
+    if not isin or len(str(isin)) < 2:
+        return ""
+    return str(isin)[:2].upper()
+
+
+def entdopple_nach_isin(rows):
+    """rows: Liste von dicts mit 'ticker' und moeglichst 'isin'.
+
+    Reduziert je ISIN auf die Heimatnotierung. Titel OHNE ISIN bleiben
+    unangetastet (kein Risiko, echte Titel zu verlieren). Rueckgabe: die
+    bereinigte Liste in Original-Reihenfolge.
+    """
+    gruppen = {}          # isin -> [row, ...]
+    ohne = []             # ohne ISIN: unveraendert behalten
+    for r in rows:
+        isin = r.get("isin")
+        if isin:
+            gruppen.setdefault(str(isin).upper(), []).append(r)
+        else:
+            ohne.append(r)
+
+    behalten = []
+    for isin, gruppe in gruppen.items():
+        if len(gruppe) == 1:
+            behalten.append(gruppe[0])
+            continue
+        land = _isin_land(isin)
+
+        def _rang(r):
+            t = r.get("ticker") or ""
+            passt = _ticker_land(t) == land            # Heimatboerse?
+            kein_suffix = "." not in t                 # US-Primaer ohne Suffix
+            luecken = sum(1 for k in ("composite", "price", "upside")
+                          if r.get(k) is None)
+            # kleiner = besser: Heimat zuerst, dann kein Suffix, dann Datenluecken
+            return (0 if passt else 1, 0 if kein_suffix else 1, luecken)
+
+        gruppe.sort(key=_rang)
+        behalten.append(gruppe[0])
+
+    # Reihenfolge wie im Original (nach ticker-Ersterscheinen)
+    reihenfolge = {r.get("ticker"): i for i, r in enumerate(rows)}
+    behalten.sort(key=lambda r: reihenfolge.get(r.get("ticker"), 1e9))
+    return behalten + [r for r in ohne if r not in behalten]
+
+
+def heimat_oder_none(ticker: str, isin) -> bool:
+    """True, wenn 'ticker' eine AUSLANDS-Zweitnotierung ist (ISIN-Land passt
+    nicht zum Boersen-Land). Fuer den Fall, dass die Heimatnotierung ohnehin
+    im Universum steht und die Zweitnotierung raus kann."""
+    land = _isin_land(isin)
+    if not land:
+        return False                     # ohne ISIN nichts entfernen
+    return _ticker_land(ticker) != land
 
 
 def _rescore_deep(ranked, label=""):
@@ -1248,6 +1339,13 @@ def momentum_scan(universum=200, top_n=25, fortschritt=None):
             if fortschritt:
                 fortschritt(fertig, gesamt, "laden")
 
+    # Auslands-Zweitnotierungen ueber die ISIN raus (APC.DE/0R2V.L -> AAPL),
+    # BEVOR die Branchen-Mediane gebildet werden - sonst zaehlt Apple dreifach.
+    # 'geladen' enthaelt schon 'ticker' und 'isin' aus get_fundamentals.
+    for f in geladen:
+        f.setdefault("ticker", f.get("_ticker"))
+    geladen = entdopple_nach_isin(geladen)
+
     # --- Phase 2: Branchen-Mediane (relative Staerke)
     mediane = momo.branchen_mediane(geladen)
 
@@ -1336,8 +1434,20 @@ def collapse_scored(scored, label=""):
 
     Titel ohne Namen bleiben unangetastet: lieber eine Dublette zu viel als
     zwei verschiedene Firmen faelschlich zusammengeworfen."""
+    werte = list(scored.values() if isinstance(scored, dict) else scored)
+
+    # ZUERST nach ISIN entdoppeln - der stabilste Schluessel. Faengt genau die
+    # Faelle, an denen die Namens-Entdopplung scheitert: APC.DE / 0R2V.L / AAPL
+    # heissen alle "Apple", tragen aber verschiedene Symbole; ueber die ISIN
+    # US0378331005 bleibt nur die Heimatnotierung AAPL. Titel ohne ISIN gehen
+    # unveraendert in die anschliessende Namens-Entdopplung.
+    vor_isin = len(werte)
+    werte = entdopple_nach_isin(werte)
+    if len(werte) < vor_isin:
+        print(f"  [{label or 'dedup'}] {vor_isin - len(werte)} Auslands-"
+              f"Zweitnotierung(en) ueber ISIN entfernt.")
+
     gruppen, ohne_namen = {}, []
-    werte = scored.values() if isinstance(scored, dict) else scored
     for r in werte:
         key = _norm_name(r.get("name"))
         if not key:

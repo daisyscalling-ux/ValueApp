@@ -886,6 +886,7 @@ def bundle_light(t: str) -> dict:
     out = {
         "_src": "roic_light",
         "name": _g(prof, "company_name"),
+        "isin": _g(prof, "isin"),
         "sector": _g(prof, "sector"),
         "industry": _g(prof, "industry"),
         "country": _g(prof, "country_code"),

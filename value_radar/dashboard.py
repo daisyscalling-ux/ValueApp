@@ -2414,6 +2414,34 @@ if nav == "Einzelanalyse":
                 st.error(f"Keine Daten f\u00fcr '{ticker}'. Ticker pr\u00fcfen "
                          "(z.B. MU, NVDA, ASML.AS, SAP.DE).")
             else:
+                # Auslands-Zweitnotierung erkennen (APC.DE / 0R2V.L fuer Apple):
+                # Wenn die ISIN ein anderes Land ausweist als die Boerse des
+                # eingegebenen Tickers, ist es eine Zweitnotierung. Wir zeigen
+                # die Daten (dieselbe Firma), weisen aber auf die Heimatboerse
+                # hin und bieten - falls auffindbar - den Heimatticker an.
+                try:
+                    import precompute as _pcz
+                    if _pcz.heimat_oder_none(ticker, f.get("isin")):
+                        _heim = None
+                        _mm2 = search_symbols(f.get("name") or "")
+                        for _c in (_mm2 or []):
+                            _s = _c.get("symbol", "")
+                            if _pcz._ticker_land(_s) == _pcz._isin_land(f.get("isin")):
+                                _heim = _s.upper()
+                                break
+                        if _heim and _heim != ticker:
+                            st.info(f"**{ticker}** ist eine Zweitnotierung von "
+                                    f"{f.get('name')}. Heimatb\u00f6rse: **{_heim}**.")
+                            if st.button(f"\u2192 Zu {_heim} wechseln",
+                                         key="ea_heimat"):
+                                st.session_state["pending_search"] = _heim
+                                st.rerun()
+                        else:
+                            st.caption(f"Hinweis: {ticker} ist eine Auslands-"
+                                       "Zweitnotierung \u2013 dieselbe Firma wie an "
+                                       "der Heimatb\u00f6rse.")
+                except Exception:
+                    pass
                 cur = f.get("currency", "USD")
                 mult = fx_to_eur(cur)
                 if mult is None:

@@ -457,6 +457,7 @@ def _merge_sources(ticker, A, B, C=None, use_tiingo=False):
     return {
         "ticker": ticker.upper(),
         "name": _pick(A.get("name"), C.get("name"), B.get("name")) or ticker.upper(),
+        "isin": _pick(A.get("isin"), C.get("isin"), B.get("isin")),
         "sector": A.get("sector") or C.get("sector") or "Unknown",
         "industry": _pick(A.get("industry"), C.get("industry"), B.get("industry")) or "Unknown",
         "currency": currency,

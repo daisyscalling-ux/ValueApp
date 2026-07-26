@@ -86,8 +86,53 @@ def _pref(f):
     return (1 if "." in t else 0, len(t), -(f.get("market_cap") or 0))
 
 
+_SUFFIX_LAND = {
+    "": "US", "DE": "DE", "F": "DE", "MU": "DE", "BE": "DE", "SG": "DE",
+    "DU": "DE", "HM": "DE", "HA": "DE", "STU": "DE",
+    "L": "GB", "IL": "GB", "PA": "FR", "AS": "NL", "BR": "BE",
+    "MI": "IT", "MC": "ES", "SW": "CH", "VX": "CH", "ST": "SE",
+    "HE": "FI", "OL": "NO", "CO": "DK", "VI": "AT", "LS": "PT",
+    "TO": "CA", "T": "JP", "HK": "HK", "AX": "AU",
+}
+
+
+def _ticker_land(t):
+    if "." not in (t or ""):
+        return "US"
+    return _SUFFIX_LAND.get(t.rsplit(".", 1)[-1].upper(), "?")
+
+
+def _dedupe_isin(funds):
+    """Auslands-Zweitnotierungen ueber die ISIN entfernen (APC.DE/0R2V.L ->
+    AAPL). Titel ohne ISIN bleiben fuer die Namens-Entdopplung erhalten."""
+    gruppen, ohne = {}, []
+    for f in funds:
+        isin = f.get("isin")
+        if isin:
+            gruppen.setdefault(str(isin).upper(), []).append(f)
+        else:
+            ohne.append(f)
+    behalten = []
+    for isin, g in gruppen.items():
+        if len(g) == 1:
+            behalten.append(g[0])
+            continue
+        land = str(isin)[:2].upper()
+
+        def _rang(f):
+            t = f.get("ticker") or ""
+            return (0 if _ticker_land(t) == land else 1,
+                    0 if "." not in t else 1)
+        g.sort(key=_rang)
+        behalten.append(g[0])
+    return behalten + ohne
+
+
 def dedupe_by_name(funds):
-    """Doppel-Listings (z.B. AVGO vs 1YD.DE/1YDD.XC) auf eine Aktie je Firma reduzieren."""
+    """Doppel-Listings (z.B. AVGO vs 1YD.DE/1YDD.XC) auf eine Aktie je Firma
+    reduzieren. ZUERST ueber die ISIN (stabilster Schluessel, faengt auch
+    APC.DE/0R2V.L fuer Apple), dann ueber den Namen als Rueckfall."""
+    funds = _dedupe_isin(funds)
     best = {}
     for f in funds:
         nm = (f.get("name") or f.get("ticker") or "").strip().lower()

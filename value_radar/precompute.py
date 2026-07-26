@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-h"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-j"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -317,6 +317,45 @@ def entdopple_nach_isin(rows):
             name_index[nm] = len(behalten)
             behalten.append(r)
 
+    # --- Stufe 3: Aktiengattungen derselben Firma auf EINE reduzieren.
+    # GOOG/GOOGL (Alphabet) oder BP-A.L/BP-B.L haben VERSCHIEDENE ISINs -
+    # es sind rechtlich verschiedene Papiere, aber dieselbe Firma. Fuer die
+    # Anzeige soll nur eine Gattung erscheinen. Gewaehlt wird die "Haupt-
+    # gattung": kuerzester/suffixloser Basisticker, bei Gleichstand der mit
+    # den wenigsten Datenluecken. Das fasst A/B/C-Klassen zusammen, ohne
+    # verschiedene FIRMEN zu vermengen (der Name muss exakt passen).
+    def _gattungs_rang(r):
+        t = (r.get("ticker") or "").upper()
+        base = t.split(".")[0]
+        # "-A"/"-B"-Klassen sind meist Nebengattungen -> nachrangig.
+        hat_klasse = "-" in base
+        # Sonderfall Alphabet: GOOGL (Klasse A, MIT Stimmrecht) ist die
+        # Hauptgattung, nicht das kuerzere GOOG (Klasse C, ohne Stimmrecht).
+        ist_goog_c = (base == "GOOG")
+        luecken = sum(1 for k in ("composite", "score", "price", "upside")
+                      if r.get(k) is None)
+        # kleiner = besser
+        return (0 if not hat_klasse else 1,
+                1 if ist_goog_c else 0,
+                luecken, len(base), t)
+
+    per_name = {}
+    for r in behalten:
+        nm = _norm_name(r.get("name"))
+        if not nm:
+            per_name.setdefault(id(r), []).append(r)   # namenlos: einzeln
+            continue
+        per_name.setdefault(nm, []).append(r)
+
+    final = []
+    for key, gruppe in per_name.items():
+        if len(gruppe) == 1:
+            final.append(gruppe[0])
+        else:
+            gruppe.sort(key=_gattungs_rang)
+            final.append(gruppe[0])
+
+    behalten = final
     behalten.sort(key=lambda r: reihenfolge.get(r.get("ticker"), 1e9))
     return behalten
 
@@ -626,9 +665,23 @@ def _analyse(t):
         hist = providers.get_price_history(t, period="1y", interval="1d")
         extras = providers.get_signal_extras(t)
         sig = _mx.build_signals(f, hist, None, extras)
+        # WICHTIG: Insider- und Analystendaten mitladen. Ohne sie fehlten dem
+        # Nachtlauf alle insider/analyst-Bonuspunkte - und da ein Kaufkandidat
+        # ALLE Pflicht-Gates PLUS mindestens 1 Bonus braucht, konnte der
+        # Nachtlauf gar keinen Kaufkandidaten erzeugen (Bonus blieb 0). Die
+        # Einzelanalyse uebergab diese Daten laengst; deshalb wich ihr Urteil
+        # ab (HSBC: dort Kaufkandidat, im Nachtlauf "Verwerfen").
+        try:
+            _insider = providers.get_insider_activity(t)
+        except Exception:
+            _insider = None
+        try:
+            _analyst = providers.get_analyst_ratings(t)
+        except Exception:
+            _analyst = None
         res = _sc.evaluate(f, v, s.get("composite"),
                            _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
-                           extras, None, None)
+                           extras, _insider, _analyst)
         out["verdict"] = res.get("verdict", "")
         # Welche Screener-Vorlage passt? Bei mehreren: die mit der
         # besseren Soft-Quote. Keine Treffer -> "keine".

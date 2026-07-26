@@ -517,9 +517,23 @@ def bereinige_dubletten():
         if len(gruppe) == 1:
             behalten.append(gruppe[0])
             continue
-        # aelteste zuerst (laengste Historie), bei Gleichstand Heimatboerse
-        gruppe.sort(key=lambda e: (e.get("ts") or 0,
-                                   _base(e.get("ticker") or "")[1]))
+        # Auswahl der zu behaltenden Gattung/Notierung:
+        #  1) echte Notierung ohne A/B-Klassenzusatz bevorzugen
+        #  2) GOOGL vor GOOG (Stimmrecht)
+        #  3) Heimatboerse (suffixlos)
+        #  4) dann aelteste (laengste Historie)
+        def _wahl(e):
+            t = (e.get("ticker") or "").upper()
+            base = t.split(".")[0]
+            hat_klasse = "-" in base
+            ist_goog_c = (base == "GOOG")
+            suffixlos = "." not in t
+            return (1 if hat_klasse else 0,
+                    1 if ist_goog_c else 0,
+                    0 if suffixlos else 1,
+                    e.get("ts") or 0,                 # aeltere zuerst
+                    _base(t)[1])
+        gruppe.sort(key=_wahl)
         behalten.append(gruppe[0])
         raus.extend(e.get("ticker") for e in gruppe[1:])
 

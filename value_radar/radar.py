@@ -146,12 +146,17 @@ def dedupe_by_name(funds):
     Letzteres faengt Auslands-Zweitnotierungen wie 0R2V.L / APC8.F, fuer die
     roic oft keine ISIN liefert. Beide Stufen bevorzugen die Heimatboerse."""
     def _rang(f):
-        t = f.get("ticker") or ""
+        t = (f.get("ticker") or "").upper()
+        base = t.split(".")[0]
         isin = f.get("isin")
         land = (str(isin)[:2].upper() if isin and len(str(isin)) >= 2
                 else _ticker_land(t))
+        hat_klasse = "-" in base                 # A/B-Klassen nachrangig
+        ist_goog_c = (base == "GOOG")            # GOOGL vor GOOG (Stimmrecht)
         return (0 if _ticker_land(t) == land else 1,
-                0 if "." not in t else 1)
+                0 if "." not in t else 1,
+                1 if hat_klasse else 0,
+                1 if ist_goog_c else 0)
 
     # Stufe 1: ISIN
     funds = _dedupe_isin(funds)

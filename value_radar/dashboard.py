@@ -43,6 +43,26 @@ CSS = """
 :root{--bg:#0A0E14;--panel:#121821;--line:#1F2733;--fg:#E6E1D3;
   --muted:#6B7686;--amber:#FFB000;--green:#3FB950;--red:#F85149;}
 .stApp{background:var(--bg);}
+/* Beim Tab-Wechsel laeuft das Skript neu. Streamlit laesst den ALTEN Frame
+   abgedunkelt stehen, bis der neue fertig ist - dadurch sah man kurz die
+   Inhalte des vorherigen Tabs. Veraltete Bloecke werden jetzt AUSGEBLENDET
+   statt abgedunkelt: lieber kurz Leerraum als fremder Inhalt.
+   Streamlit markiert veraltete Elemente mit [data-stale="true"]. */
+[data-stale="true"]{opacity:0 !important; transition:none !important;}
+.element-container[data-stale="true"]{display:none !important;}
+/* Aeltere/neuere Streamlit-Versionen benennen das Attribut unterschiedlich -
+   beide Schreibweisen abdecken, damit es versionsunabhaengig greift. */
+.stApp [class*="stale"]{opacity:0 !important;}
+div[data-testid="stVerticalBlock"] > div[data-stale="true"]{display:none !important;}
+/* Dezenter Ladebalken oben, solange das Skript laeuft - fuellt die kurze
+   Leere beim Tab-Wechsel, ohne fremden Inhalt zu zeigen. Streamlit setzt
+   [data-test-script-state="running"] am App-Container. */
+[data-test-script-state="running"]::before,
+[data-testid="stApp"][data-test-script-state="running"]::before{
+  content:""; position:fixed; top:0; left:0; right:0; height:2px; z-index:9999;
+  background:linear-gradient(90deg,transparent,var(--amber),transparent);
+  background-size:50% 100%; animation:vrload 1s linear infinite;}
+@keyframes vrload{0%{background-position:-50% 0;}100%{background-position:150% 0;}}
 html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 .vr-head{border:1px solid var(--line);border-left:3px solid var(--amber);
   background:var(--panel);padding:14px 18px;margin-bottom:18px;}
@@ -1802,7 +1822,25 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
         is_commodity = (_qt in ("COMMODITY", "FUTURE")
                         or tk.upper() in _GOLD_TICKERS
                         or "GOLD" in _nm or "SILBER" in _nm or "SILVER" in _nm)
+        # Zusaetzliche Erkennung ueber die Datenlage: Wenn KEINE einzige
+        # Fundamentalkennzahl vorliegt (kein Umsatz, Gewinn, Marge, Buchwert),
+        # ist es kein operatives Einzelunternehmen. Faengt Faelle, in denen die
+        # Datenquelle keinen 'type' liefert - z.B. roic bei VWRL, das sonst
+        # faelschlich als Aktie mit irrefuehrendem Score (~50) durchlief.
+        _hat_fundamentaldaten = any(
+            f.get(k) is not None for k in
+            ("eps_trailing", "revenue", "operating_margin", "roe",
+             "pe_trailing", "book_value_ps", "ebitda", "net_income"))
+        if not _hat_fundamentaldaten and not is_commodity:
+            is_fund = True
         is_single_stock = not (is_fund or is_commodity)
+        # Score und Upside sind fuer Nicht-Aktien nicht aussagekraeftig - der
+        # Composite fuellt fehlende Kennzahlen mit Mittelwerten auf und landet
+        # dann bei ~50, was nichts misst. Fuer Fonds/Rohstoffe verwerfen.
+        if not is_single_stock:
+            comp = None
+            up_reliable = None
+            fv_reliable = None
         rows.append({
             "ticker": tk, "name": f.get("name"), "value_eur": float(value_eur),
             "shares": shares if has_shares else None,
@@ -2312,7 +2350,8 @@ if nav == "Start":
                               "Wert \u20ac": round(r["value_eur"], 2),
                               "Gew. %": round(r["weight"] * 100, 2),
                               "Sektor": (r["sector"] or "")[:12],
-                              "Comp.": round(r["composite"] or 0),
+                              "Comp.": (round(r["composite"])
+                                        if r.get("composite") is not None else None),
                               "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                               **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
                                  if an["have_pl"] else {})}
@@ -4936,7 +4975,8 @@ if nav == "Portfoliocheck":
                 prows = sorted(rows, key=lambda r: -r["weight"])
                 data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:18],
                          "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
-                         "Comp.": round(r["composite"] or 0),
+                         "Comp.": (round(r["composite"])
+                                   if r.get("composite") is not None else None),
                          "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                          **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
                             if a["have_pl"] else {}),

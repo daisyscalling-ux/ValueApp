@@ -57,15 +57,21 @@ FEEDS = {
         "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness",    # Business (dowjones.io)
         "https://feeds.content.dowjones.io/public/rss/RSSPersonalFinance",  # Personal Finance (dowjones.io)
         "https://www.wsj.com/xml/rss/3_7455.xml",                           # Technology (wsj.com)
+        "https://www.wsj.com/xml/rss/3_7014.xml",                           # Business (wsj.com direkt)
+        "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",                  # Business (dj.com Spiegel)
     ],
     "WSJ Markets & Finance": [
         "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed",   # Economy (dowjones.io)
         "https://www.wsj.com/xml/rss/3_7031.xml",                           # Markets & Finance (wsj.com)
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",                    # Markets Main (dj.com)
+        "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",      # Markets Main (dowjones.io)
     ],
     "WSJ World": [
         "https://feeds.content.dowjones.io/public/rss/RSSUSnews",           # US News (dowjones.io)
         "https://feeds.content.dowjones.io/public/rss/socialpoliticsfeed",  # Politics (dowjones.io)
         "https://www.wsj.com/xml/rss/3_7085.xml",                           # World (wsj.com)
+        "https://feeds.a.dj.com/rss/RSSWorldNews.xml",                      # World News (dj.com)
+        "https://feeds.a.dj.com/rss/RSSOpinion.xml",                        # Opinion (dj.com)
     ],
     "Aktien-News": [
         "https://www.investing.com/rss/news_25.rss",              # Stock Market News
@@ -207,7 +213,7 @@ def get_section(section, limit=None, free_only=False):
         # Feed durchkommen, nicht nur ein Ausschnitt. Bei gemischten
         # Sektionen bleibt es beim bisherigen Deckel, sonst verdraengt eine
         # gespraechige Quelle die anderen.
-        limit = 120 if section.startswith("WSJ") else 40
+        limit = 150 if section.startswith("WSJ") else 40
     results = []
     try:
         from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -215,8 +221,9 @@ def get_section(section, limit=None, free_only=False):
             futs = {ex.submit(fetch_feed, u): u for u in urls}
             try:
                 # Harte Gesamt-Frist: schnelle Feeds kommen sofort, ein einzelner
-                # haengender Feed kann die Sektion NICHT mehr blockieren.
-                for fut in as_completed(futs, timeout=8):
+                # haengender Feed kann die Sektion NICHT mehr blockieren. Etwas
+                # groesser (12s), damit die zusaetzlichen WSJ-Feeds mitkommen.
+                for fut in as_completed(futs, timeout=12):
                     try:
                         results.extend(fut.result() or [])
                     except Exception:

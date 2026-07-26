@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-j"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-k"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -894,7 +894,7 @@ def run():
             if not tk:
                 continue
             _a = _analyse(tk)
-            sig_new.append({"ticker": tk, "quelle": "Screener",
+            sig_new.append({"ticker": tk, "quelle": "Screener", "name": r.get("name"),
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "verdict": _a.get("verdict", ""), "price": r.get("price")})
@@ -905,7 +905,7 @@ def run():
             # BUG: r.get("radar") gibt es in score_ticker nicht -> Score war immer
             # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
             _a = _analyse(tk)
-            sig_new.append({"ticker": tk, "quelle": "Radar",
+            sig_new.append({"ticker": tk, "quelle": "Radar", "name": r.get("name"),
                             "score": (_a.get("radar_score")
                                       if _a.get("radar_score") is not None
                                       else (r.get("quantum")
@@ -925,7 +925,7 @@ def run():
             if not tk:
                 continue
             sig_new.append({
-                "ticker": tk, "quelle": "Momentum",
+                "ticker": tk, "quelle": "Momentum", "name": r.get("name"),
                 "score": r.get("score"),
                 "verdict": ("Momentum stark" if r.get("ampel") == "gruen"
                             else "Momentum mittel" if r.get("ampel") == "gelb"
@@ -959,7 +959,7 @@ def run():
                 else:
                     _merkmal = "schwaches Setup"
                 _a = _analyse(tk)
-                sig_new.append({"ticker": tk, "quelle": "Negativ",
+                sig_new.append({"ticker": tk, "quelle": "Negativ", "name": r.get("name"),
                                 "score": r.get("composite"),
                                 "upside": r.get("upside"),
                                 "merkmal": _merkmal,
@@ -979,7 +979,7 @@ def run():
                 if not tk:
                     continue
                 _a = _analyse(tk)
-                sig_new.append({"ticker": tk, "quelle": "Contrarian",
+                sig_new.append({"ticker": tk, "quelle": "Contrarian", "name": r.get("name"),
                                 "score": None, "upside": None,
                                 "merkmal": r.get("pessimismus", ""),
                                 "strategie": r.get("widerspruch", ""),
@@ -1014,7 +1014,7 @@ def run():
                 except Exception:
                     pass
                 sig_new.append({
-                    "ticker": _e["ticker"],
+                    "ticker": _e["ticker"], "name": _e.get("name"),
                     "quelle": ("Earnings+" if _e["ampel"] == "gruen"
                                else "Earnings-"),
                     "luecke": (_luecke or {}).get("punkte"),

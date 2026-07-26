@@ -691,7 +691,9 @@ def render_trackrecord():
                 _dt_ein = datetime.fromtimestamp(r.get("ts") or 0).strftime("%d.%m.%y")
             except Exception:
                 _dt_ein = "\u2014"
-            row = {"Ticker": r["ticker"], "Einstieg am": _dt_ein,
+            row = {"Ticker": r["ticker"],
+                   "Name": (r.get("name") or "")[:22],
+                   "Einstieg am": _dt_ein,
                    "Tage": r["days"],
                    "Einstieg": round(r["entry_px"], 2),
                    "Whg": (r.get("entry_ccy") or "").strip() or "\u2014",
@@ -815,7 +817,9 @@ def render_trackrecord():
                        "Sie flie\u00dfen in KEINE Statistik ein. Nach dem n\u00e4chsten "
                        "n\u00e4chtlichen Lauf sollten sie verschwinden; bleiben sie, "
                        "l\u00f6sche die betroffenen Signale im Speicher.")
-            vr_table([{"Ticker": r["ticker"], "Quelle": r.get("quelle", ""),
+            vr_table([{"Ticker": r["ticker"],
+                       "Name": (r.get("name") or "")[:20],
+                       "Quelle": r.get("quelle", ""),
                        "Tage": r["days"], "Einstieg": round(r["entry_px"], 2),
                        "Rendite %": r["ret_pct"]} for r in _bad],
                      signed_cols=("Rendite %",),
@@ -5604,7 +5608,9 @@ if nav == "Umfeld":
             else:
                 vr_table([{
                     "": _amp.get(r.get("ampel"), "\u26aa"),
-                    "Ticker": r["ticker"], "in Tagen": r["tage"],
+                    "Ticker": r["ticker"],
+                    "Name": (r.get("name") or "")[:20],
+                    "in Tagen": r["tage"],
                     "Datum": r["datum"], "Beat-Quote %": r.get("beat_quote"),
                     "belohnt %": r.get("belohnt_pct"), "n": r.get("n_termine"),
                     "Umsatz +%": r.get("revenue_growth"),

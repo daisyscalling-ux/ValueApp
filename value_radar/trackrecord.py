@@ -177,6 +177,7 @@ def record(signals):
             _fx = None
         log.insert(0, {
             "ts": now, "ticker": s["ticker"], "quelle": s.get("quelle", ""),
+            "name": s.get("name", ""),
             "score": s.get("score"), "upside": s.get("upside"),
             "verdict": s.get("verdict", ""),
             # Zusatzfelder MUESSEN durchgereicht werden. Vorher war hier eine

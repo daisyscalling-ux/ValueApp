@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-f"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-g"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -254,42 +254,71 @@ def _isin_land(isin) -> str:
 def entdopple_nach_isin(rows):
     """rows: Liste von dicts mit 'ticker' und moeglichst 'isin'.
 
-    Reduziert je ISIN auf die Heimatnotierung. Titel OHNE ISIN bleiben
-    unangetastet (kein Risiko, echte Titel zu verlieren). Rueckgabe: die
-    bereinigte Liste in Original-Reihenfolge.
+    Reduziert je Firma auf die Heimatnotierung - ZWEISTUFIG:
+      1) ueber die ISIN (stabilster Schluessel)
+      2) fuer Titel OHNE ISIN zusaetzlich ueber den Firmennamen
+
+    Der zweite Schritt ist noetig, weil roic Auslands-Zweitnotierungen wie
+    0R2V.L (London IOB) oder APC8.F (Frankfurt) oft nicht abdeckt - dann
+    fehlt die ISIN, und ohne Namens-Rueckfall bliebe Apple dreifach stehen.
+    Beide Stufen bevorzugen die Heimatboerse.
     """
-    gruppen = {}          # isin -> [row, ...]
-    ohne = []             # ohne ISIN: unveraendert behalten
+    # Reihenfolge merken, um am Ende die Original-Ordnung zu halten
+    reihenfolge = {}
+    for i, r in enumerate(rows):
+        reihenfolge.setdefault(r.get("ticker"), i)
+
+    def _heimat_rang(r, land):
+        t = r.get("ticker") or ""
+        passt = _ticker_land(t) == land if land else False
+        kein_suffix = "." not in t
+        luecken = sum(1 for k in ("composite", "score", "price", "upside")
+                      if r.get(k) is None)
+        return (0 if passt else 1, 0 if kein_suffix else 1, luecken)
+
+    # --- Stufe 1: nach ISIN
+    gruppen, ohne_isin = {}, []
     for r in rows:
         isin = r.get("isin")
         if isin:
             gruppen.setdefault(str(isin).upper(), []).append(r)
         else:
-            ohne.append(r)
+            ohne_isin.append(r)
 
     behalten = []
     for isin, gruppe in gruppen.items():
-        if len(gruppe) == 1:
-            behalten.append(gruppe[0])
-            continue
         land = _isin_land(isin)
-
-        def _rang(r):
-            t = r.get("ticker") or ""
-            passt = _ticker_land(t) == land            # Heimatboerse?
-            kein_suffix = "." not in t                 # US-Primaer ohne Suffix
-            luecken = sum(1 for k in ("composite", "price", "upside")
-                          if r.get(k) is None)
-            # kleiner = besser: Heimat zuerst, dann kein Suffix, dann Datenluecken
-            return (0 if passt else 1, 0 if kein_suffix else 1, luecken)
-
-        gruppe.sort(key=_rang)
+        gruppe.sort(key=lambda r: _heimat_rang(r, land))
         behalten.append(gruppe[0])
 
-    # Reihenfolge wie im Original (nach ticker-Ersterscheinen)
-    reihenfolge = {r.get("ticker"): i for i, r in enumerate(rows)}
+    # --- Stufe 2: die ISIN-losen zusaetzlich nach Firmenname buendeln
+    # (und dabei auch gegen bereits behaltene Titel desselben Namens pruefen,
+    #  damit 0R2V.L nicht neben AAPL ueberlebt).
+    name_index = {}                       # norm_name -> Index in behalten
+    for i, r in enumerate(behalten):
+        nm = _norm_name(r.get("name"))
+        if nm:
+            name_index[nm] = i
+
+    for r in ohne_isin:
+        nm = _norm_name(r.get("name"))
+        if not nm:                        # ohne Name nicht raten -> behalten
+            behalten.append(r)
+            continue
+        if nm in name_index:
+            # Es gibt schon eine Notierung dieser Firma - die mit dem
+            # besseren Heimat-Rang gewinnt (meist die mit ISIN = Heimat).
+            j = name_index[nm]
+            best = min(behalten[j], r,
+                       key=lambda x: _heimat_rang(x, _isin_land(x.get("isin"))
+                                                  or _ticker_land(x.get("ticker") or "")))
+            behalten[j] = best
+        else:
+            name_index[nm] = len(behalten)
+            behalten.append(r)
+
     behalten.sort(key=lambda r: reihenfolge.get(r.get("ticker"), 1e9))
-    return behalten + [r for r in ohne if r not in behalten]
+    return behalten
 
 
 def heimat_oder_none(ticker: str, isin) -> bool:
@@ -1529,7 +1558,16 @@ def ersetze_pence_durch_adr(tickers):
 def ist_zweitnotierung(t: str) -> bool:
     if "." not in (t or ""):
         return False
-    return t.rsplit(".", 1)[-1].upper() in AUSGESCHLOSSENE_BOERSEN
+    base, suf = t.rsplit(".", 1)
+    suf = suf.upper()
+    if suf in AUSGESCHLOSSENE_BOERSEN:
+        return True
+    # London IOB: Ticker beginnen mit einer Ziffer (0R2V.L, 0QZ8.L ...) -
+    # das sind fast ausnahmslos Zweitnotierungen auslaendischer Titel, keine
+    # echten UK-Aktien. Echte LSE-Titel fangen mit einem Buchstaben an.
+    if suf == "L" and base[:1].isdigit():
+        return True
+    return False
 
 
 def filter_boersen(tickers):

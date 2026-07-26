@@ -128,17 +128,41 @@ def _dedupe_isin(funds):
     return behalten + ohne
 
 
+def _norm_firma(name):
+    """Firmenname auf Vergleichsform bringen (Rechtsformen/Zusaetze weg)."""
+    if not name:
+        return ""
+    s = str(name).lower()
+    for w in (" plc", " inc.", " inc", " corp.", " corp", " ag", " se",
+              " nv", " sa", " ltd.", " ltd", " limited", " group", " holdings",
+              " company", " co.", " the ", ",", "."):
+        s = s.replace(w, " ")
+    return " ".join(s.split())
+
+
 def dedupe_by_name(funds):
-    """Doppel-Listings (z.B. AVGO vs 1YD.DE/1YDD.XC) auf eine Aktie je Firma
-    reduzieren. ZUERST ueber die ISIN (stabilster Schluessel, faengt auch
-    APC.DE/0R2V.L fuer Apple), dann ueber den Namen als Rueckfall."""
+    """Doppel-Listings auf eine Aktie je Firma reduzieren. ZWEISTUFIG:
+    zuerst ueber die ISIN (stabilster Schluessel), dann ueber den Namen -
+    Letzteres faengt Auslands-Zweitnotierungen wie 0R2V.L / APC8.F, fuer die
+    roic oft keine ISIN liefert. Beide Stufen bevorzugen die Heimatboerse."""
+    def _rang(f):
+        t = f.get("ticker") or ""
+        isin = f.get("isin")
+        land = (str(isin)[:2].upper() if isin and len(str(isin)) >= 2
+                else _ticker_land(t))
+        return (0 if _ticker_land(t) == land else 1,
+                0 if "." not in t else 1)
+
+    # Stufe 1: ISIN
     funds = _dedupe_isin(funds)
+
+    # Stufe 2: Name (auch gegen die ISIN-Gewinner pruefen)
     best = {}
     for f in funds:
-        nm = (f.get("name") or f.get("ticker") or "").strip().lower()
+        nm = _norm_firma(f.get("name")) or (f.get("ticker") or "").lower()
         if not nm:
             continue
-        if nm not in best or _pref(f) < _pref(best[nm]):
+        if nm not in best or _rang(f) < _rang(best[nm]):
             best[nm] = f
     return list(best.values())
 

@@ -4907,6 +4907,18 @@ if nav == "Portfoliocheck":
 
         def _render_pf_editor():
             st.markdown("---")
+            # Anker direkt vor dem Editor: st.data_editor loest bei jeder
+            # Eingabe einen Rerun aus, und auf Mobil springt die Seite dabei
+            # nach oben. Ist der Editor offen, scrollen wir nach dem Rerun
+            # zu diesem Anker zurueck - die Position bleibt beim Tippen erhalten.
+            st.markdown('<div id="pf-editor-anchor"></div>', unsafe_allow_html=True)
+            if st.session_state.get("pf_edit_open"):
+                components.html(
+                    "<script>setTimeout(function(){try{"
+                    "var d=window.parent.document;"
+                    "var a=d.getElementById('pf-editor-anchor');"
+                    "if(a){a.scrollIntoView({block:'start',behavior:'auto'});}"
+                    "}catch(e){}},80);</script>", height=0)
             with st.expander("\u270f\ufe0f Portfolio bearbeiten / anlegen",
                              expanded=st.session_state.get("pf_edit_open", False)):
                 st.caption("Kompakte Tabelle: Ticker/Unternehmen, Anzahl, \u00d8 Buy-in (\u20ac). "
@@ -5661,6 +5673,61 @@ if nav == "Umfeld":
                        "mitprotokolliert \u2013 dort siehst du in einigen Wochen, ob "
                        "die Logik trug. Vor Quartalszahlen einzusteigen bleibt "
                        "eine Wette auf eine einzelne Nachricht. Kein Anlagerat.")
+
+    # -----------------------------------------------------------------
+    # BRANCHEN-ZUORDNUNG: welche Aktie steckt in welchem Sektor?
+    # -----------------------------------------------------------------
+    st.markdown("---")
+    st.markdown('<div class="sec-title">\U0001f5c2\ufe0f BRANCHEN-ZUORDNUNG</div>',
+                unsafe_allow_html=True)
+    st.caption("Zeigt, welchem Sektor das Tool jede Aktie zuordnet \u2013 dieselbe "
+               "Einteilung, die Screener, Radar und der Branchenvergleich im "
+               "Momentum nutzen. Die Sektor-Angabe stammt aus den Fundamental"
+               "daten (roic/yfinance), nicht aus einer eigenen Liste.")
+
+    _bz1, _bz2 = st.columns(2)
+    _bz_uni = _bz1.selectbox("Universumsgr\u00f6\u00dfe",
+                             [90, 200, 400], index=1,
+                             format_func=lambda n: f"{n} Titel", key="bz_uni")
+    _bz_go = _bz2.button("\U0001f5c2\ufe0f Branchen laden", key="bz_go",
+                         use_container_width=True)
+
+    if _bz_go:
+        import precompute as _pcb
+        _bzbar = st.progress(0.0, text="Lade Universum \u2026")
+
+        def _bzf(fertig, gesamt, phase):
+            _bzbar.progress(min(fertig / max(gesamt, 1), 1.0),
+                            text=f"Lade \u2026 {fertig}/{gesamt}")
+        try:
+            _rows = _pcb.branchen_uebersicht(universum=_bz_uni, fortschritt=_bzf)
+            st.session_state["bz_rows"] = _rows
+            st.session_state["bz_zeit"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+        except Exception as _ebz:
+            st.error(f"Laden fehlgeschlagen: {_ebz}")
+        _bzbar.empty()
+
+    _bz_rows = st.session_state.get("bz_rows")
+    if _bz_rows:
+        from collections import defaultdict
+        _nach_sektor = defaultdict(list)
+        for r in _bz_rows:
+            _nach_sektor[r.get("sector") or "Unbekannt"].append(r)
+        st.caption(f"Stand: {st.session_state.get('bz_zeit', '')} \u00b7 "
+                   f"{len(_bz_rows)} Titel in {len(_nach_sektor)} Sektoren")
+        # Sektoren nach Anzahl absteigend
+        for _sek in sorted(_nach_sektor, key=lambda s: -len(_nach_sektor[s])):
+            _titel = sorted(_nach_sektor[_sek],
+                            key=lambda r: (r.get("name") or r.get("ticker") or ""))
+            with st.expander(f"{_sek}  ({len(_titel)})"):
+                _bzdata = [{"Ticker": r.get("ticker"),
+                            "Name": (r.get("name") or "")[:32],
+                            "Industrie": (r.get("industry") or "\u2014")[:28]}
+                           for r in _titel]
+                vr_table(_bzdata, height=min(len(_bzdata) * 38 + 44, 460))
+    else:
+        st.info("Noch nicht geladen. Oben Gr\u00f6\u00dfe w\u00e4hlen und "
+                "\u201eBranchen laden\u201c klicken.")
 
 
 

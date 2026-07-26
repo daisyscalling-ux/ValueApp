@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-g"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-h"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1304,6 +1304,56 @@ STRATEGIEN = {
         "spalten": [("Analysten", "analyst_count")],
     },
 }
+
+
+def branchen_uebersicht(universum=200, fortschritt=None):
+    """Laedt ein breites Universum und gibt je Titel Sektor + Industrie zurueck.
+
+    Zeigt, welchem Sektor das Tool jede Aktie zuordnet - genau die Einteilung,
+    die Screener/Radar/Momentum verwenden. Parallel geladen, ISIN-entdoppelt,
+    damit keine Zweitnotierungen (Apple dreifach) erscheinen.
+    """
+    if ms is None:
+        return []
+    try:
+        usd = providers.get_fx_to_eur("USD") or 0.92
+        tickers, _src = ms.get_universe(["us", "de", "fr", "gb", "nl"],
+                                        (5e9) / usd, universum)
+        tickers = filter_boersen(collapse_listings(ersetze_pence_durch_adr(tickers)))
+    except Exception as e:
+        print(f"[branchen_uebersicht] Universum nicht ladbar: {e}")
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _lade(t):
+        try:
+            f = providers.get_fundamentals(t, deep=False)
+            if not f or not f.get("price"):
+                return None
+            return {"ticker": t, "name": f.get("name"),
+                    "isin": f.get("isin"),
+                    "sector": f.get("sector"), "industry": f.get("industry")}
+        except Exception:
+            return None
+
+    geladen, fertig, gesamt = [], 0, len(tickers)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futs = {pool.submit(_lade, t): t for t in tickers}
+        for fut in as_completed(futs):
+            try:
+                r = fut.result(timeout=20)
+                if r:
+                    geladen.append(r)
+            except Exception:
+                pass
+            fertig += 1
+            if fortschritt:
+                fortschritt(fertig, gesamt, "laden")
+
+    geladen = entdopple_nach_isin(geladen)      # keine Zweitnotierungen
+    print(f"  [branchen_uebersicht] {len(geladen)} Titel geladen.")
+    return geladen
 
 
 def momentum_scan(universum=200, top_n=25, fortschritt=None):

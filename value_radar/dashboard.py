@@ -612,8 +612,136 @@ def svg_area_chart(pcts, color, height=250):
         f'{lo:.1f}%</text></svg>')
 
 
+def _render_autodepot():
+    """Selbstverwaltetes 50k-Papierdepot: Wert, Positionen, Trades, Steuerung."""
+    import autodepot as ad
+    st.markdown('<div class="sec-title">\U0001f916 AUTO-DEPOT \u00b7 50.000 \u20ac '
+                'selbstverwaltet</div>', unsafe_allow_html=True)
+    st.caption("Ein Papierdepot, das nach festen Regeln aus Screener, Radar und "
+               "Momentum kauft: gleichgewichtet (10\u201315 Positionen), Obergrenze "
+               "je Titel, Long und Short (ungehebelt), mit Stop-Loss, "
+               "Take-Profit, nachgezogenem Gewinn-Stop und Teilverkauf. "
+               "**Mechanische Regeln, keine Prognose \u2013 kein Anlagerat.**")
+
+    k = ad.kennzahlen()
+
+    # Kennzahlen-Karten
+    c = st.columns(4)
+    _farbe = "var(--green)" if k["rendite_pct"] >= 0 else "var(--red)"
+    card(c[0], "Depotwert", f"{k['wert']:,.0f} \u20ac".replace(",", "."))
+    card(c[1], "Rendite", f"{k['rendite_pct']:+.2f} %", color=_farbe)
+    card(c[2], "Investiert",
+         f"{100 - k['cash_quote']:.0f} %",
+         sub=f"Cash {k['cash_quote']:.0f} %")
+    card(c[3], "Positionen", str(k["n_positionen"]),
+         sub=(f"Trefferquote {k['trefferquote']:.0f} %"
+              if k["trefferquote"] is not None else "noch keine Exits"))
+
+    if k.get("neustart_am"):
+        _tage = (time.time() - k["neustart_am"]) / 86400
+        _hinweis = f"L\u00e4uft seit {_tage:.0f} Tagen"
+        if k.get("neustart_grund"):
+            _hinweis += f" \u00b7 Neustart: {k['neustart_grund']}"
+        if _tage < 30:
+            _hinweis += " \u00b7 \u26a0\ufe0f zu kurz f\u00fcr eine Beurteilung"
+        st.caption(_hinweis)
+
+    st.markdown("---")
+
+    # Steuerung
+    _s1, _s2 = st.columns([2, 1])
+    _shorts = _s1.checkbox("Short-Positionen zulassen (max. 1x)", value=True,
+                           key="ad_shorts")
+    if _s2.button("\u25b6 Depot aktualisieren", key="ad_run",
+                  use_container_width=True):
+        with st.spinner("Scanne M\u00e4rkte und passe das Depot an \u2026 "
+                        "(kann 1\u20132 Minuten dauern)"):
+            try:
+                ad.durchlauf(scan_size=200, erlauben_shorts=_shorts)
+                st.success("Depot aktualisiert.")
+                st.rerun()
+            except Exception as _e:
+                st.error(f"Aktualisierung fehlgeschlagen: {_e}")
+    st.caption("Ein Durchlauf pr\u00fcft zuerst Ausstiege (Stop-Loss, Take-Profit, "
+               "Gewinn-Stop, erloschene Signale), dann f\u00fcllt er freie Slots mit "
+               "neuen Signalen. Das Depot muss nicht voll investiert sein.")
+
+    st_ = ad.lade()
+
+    # Offene Positionen
+    if st_["positions"]:
+        st.markdown('<div class="vr-th">Offene Positionen</div>',
+                    unsafe_allow_html=True)
+        _pdata = []
+        for p in st_["positions"]:
+            _pe, _ = ad._price_eur(p["ticker"])
+            _wert = (p["qty"] * _pe) if _pe else (p["qty"] * p["entry_eur"])
+            _pdata.append({
+                "Ticker": p["ticker"],
+                "Name": (p.get("name") or "")[:20],
+                "Richtung": "\u2191 Long" if p["dir"] == "long" else "\u2193 Short",
+                "Wert \u20ac": round(_wert),
+                "G/V %": p.get("pl_pct"),
+                "Peak %": p.get("peak_pl"),
+                "Gewinn-Stop": (f"+{p['trail_stop']:.0f} %"
+                                if p.get("trail_stop") is not None else "\u2014"),
+                "Quelle": p.get("quelle", ""),
+            })
+        vr_table(_pdata, signed_cols=("G/V %", "Peak %"),
+                 height=min(len(_pdata) * 40 + 46, 460))
+    else:
+        st.info("Noch keine Positionen. \u201eDepot aktualisieren\u201c startet den "
+                "ersten Kauf-Durchlauf.")
+
+    # Handelshistorie
+    if st_["trades"]:
+        with st.expander(f"\U0001f4d3 Handelshistorie ({len(st_['trades'])})"):
+            _tdata = []
+            for t in st_["trades"][:60]:
+                try:
+                    _dt = datetime.fromtimestamp(t.get("ts") or 0).strftime("%d.%m. %H:%M")
+                except Exception:
+                    _dt = "\u2014"
+                _akt = {"open": "Kauf", "close": "Verkauf",
+                        "teilverkauf": "Teilverkauf"}.get(t.get("action"), t.get("action"))
+                _tdata.append({
+                    "Zeit": _dt,
+                    "Aktion": _akt,
+                    "Ticker": t.get("ticker"),
+                    "Richtung": t.get("dir", ""),
+                    "G/V %": t.get("pl_pct"),
+                    "Gewinn \u20ac": t.get("gain_eur"),
+                    "Grund": t.get("why", ""),
+                })
+            vr_table(_tdata, signed_cols=("G/V %", "Gewinn \u20ac"),
+                     height=min(len(_tdata) * 38 + 44, 480))
+
+    # Neustart
+    with st.expander("\u21bb Depot zur\u00fccksetzen"):
+        st.caption("Setzt das Depot auf 50.000 \u20ac Cash zur\u00fcck und l\u00f6scht alle "
+                   "Positionen und die Historie. Nicht r\u00fcckg\u00e4ngig zu machen.")
+        _grund = st.text_input("Grund (optional)", key="ad_reset_grund",
+                               placeholder="z.B. Regeln ge\u00e4ndert")
+        if st.button("Depot jetzt zur\u00fccksetzen", key="ad_reset"):
+            ad.reset(_grund or "manueller Neustart")
+            st.success("Depot zur\u00fcckgesetzt.")
+            st.rerun()
+
+    st.caption("**Ehrlich eingeordnet:** Dieses Depot misst, ob die Kombination "
+               "der Scan-Signale mit diesen Regeln \u00fcber Monate etwas taugt. "
+               "Ein positiver Verlauf \u00fcber wenige Wochen ist Zufall, kein Beleg. "
+               "Kein Anlagerat.")
+
+
 def render_trackrecord():
     """Trefferbilanz: was ist aus unseren Signalen geworden - gegen den Index."""
+    _tb_view = st.radio("Ansicht",
+                        ["\U0001f4c8 Signal-Tagebuch", "\U0001f916 Auto-Depot (50k)"],
+                        horizontal=True, key="tb_view", label_visibility="collapsed")
+    if _tb_view.endswith("Auto-Depot (50k)"):
+        _render_autodepot()
+        return
+
     st.markdown('<div class="sec-title">\U0001f4c8 TREFFERBILANZ \u00b7 Signal-Tagebuch'
                 '</div>', unsafe_allow_html=True)
     try:

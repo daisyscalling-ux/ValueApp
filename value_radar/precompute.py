@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-26-k"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-26-m"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1078,6 +1078,17 @@ def run():
     except Exception as _e:
         print(f"[FEHLER] E-Mail: {_e}")
         _fehler.append("E-Mail")
+
+    # 7) Auto-Depot (50k, selbstverwaltet) einen Schritt weiterlaufen lassen.
+    #    Nutzt dieselben Scans, die oben schon liefen - so wird das Depot
+    #    taeglich neu bewertet, ohne dass der Nutzer manuell klicken muss.
+    try:
+        import autodepot as _ad
+        _ad.durchlauf(scan_size=UNIVERSE_SIZE, erlauben_shorts=True)
+        print("[autodepot] Depot aktualisiert.")
+    except Exception as _e:
+        print(f"[FEHLER] Auto-Depot: {_e}")
+        _fehler.append("Auto-Depot")
 
     if _fehler:
         print(f"=== precompute fertig MIT FEHLERN in: {', '.join(_fehler)} ===")

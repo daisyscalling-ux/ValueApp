@@ -4122,10 +4122,40 @@ if nav == "Screener":
             st.caption(f"Stand: {st.session_state.get('live_zeit', '\u2014')} \u00b7 "
                        f"Strategie: **{st.session_state.get('live_strat_used', '\u2014')}** "
                        f"\u00b7 {len(_erg)} Titel")
+            # Branchenfilter: die im Scan gefundenen Sektoren als Auswahl.
+            # Filtert nur die ANZEIGE - der Scan selbst bleibt marktweit.
+            _rd_br = radar.BRANCHES
+            _vorhandene = sorted({(r.get("sector") or "") for r in _erg
+                                  if r.get("sector")})
+            # Auf die deutschen Branchen-Labels abbilden, wo moeglich
+            _sek_zu_label = {}
+            for _lbl, (_sek, _kw) in _rd_br.items():
+                if _kw is None:               # nur die eindeutigen Haupt-Sektoren
+                    _sek_zu_label.setdefault(_sek, _lbl)
+            _optionen = ["Alle Branchen"] + [
+                _sek_zu_label.get(s, s) for s in _vorhandene]
+            _wahl_br = st.selectbox("Branche filtern", _optionen,
+                                    key="live_branche")
+            if _wahl_br != "Alle Branchen":
+                # gewaehltes Label zurueck auf den Sektor mappen
+                _ziel_sek = None
+                for _lbl, (_sek, _kw) in _rd_br.items():
+                    if _lbl == _wahl_br:
+                        _ziel_sek = _sek
+                        break
+                if _ziel_sek is None:
+                    _ziel_sek = _wahl_br      # war schon ein roher Sektorname
+                _erg_gefiltert = [r for r in _erg
+                                  if (r.get("sector") or "") == _ziel_sek]
+            else:
+                _erg_gefiltert = _erg
+            if _wahl_br != "Alle Branchen":
+                st.caption(f"{len(_erg_gefiltert)} von {len(_erg)} Titeln "
+                           f"in **{_wahl_br}**")
             # Strategiespezifische Spalten hinter den Standardspalten
             _extra = st.session_state.get("live_spalten", [])
             _zeilen = []
-            for r in _erg:
+            for r in _erg_gefiltert:
                 _z = {"Ticker": r.get("ticker"),
                       "Name": (r.get("name") or "")[:22],
                       "Comp": r.get("composite"),
@@ -4143,7 +4173,7 @@ if nav == "Screener":
             _signed = ["Upside %"] + [l for l, _k in _extra
                                       if "%" in l or "52W" in l]
             vr_table(_zeilen, signed_cols=tuple(_signed),
-                     height=min(len(_erg) * 40 + 46, 520))
+                     height=min(len(_zeilen) * 40 + 46, 520))
             st.caption(
                 "**Comp** = Composite Score (Fundamentaldaten), **Quantum** = "
                 "Meta-Score aus Composite, Bewertung, Analysten und Momentum, "

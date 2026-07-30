@@ -105,16 +105,27 @@ hr{border-color:var(--line);}
 section[data-testid="stSidebar"] .stButton>button{
   text-align:left !important; justify-content:flex-start !important;
   border-radius:8px; border:1px solid var(--line);
-  padding:10px 12px; margin:2px 0; font-weight:600; letter-spacing:.3px;}
-/* Streamlit steckt den Text in ein <p> das zentriert ist - DORT die
-   Ausrichtung erzwingen, sonst bleibt der Text mittig. Gilt fuer ALLE
-   Sidebar-Buttons, damit der Selektor garantiert greift. */
+  padding:10px 12px 10px 16px; margin:2px 0;
+  font-weight:600; letter-spacing:.3px;
+  background:transparent !important;}
+/* Text linksbuendig erzwingen (Streamlit zentriert das innere <p>). KEIN
+   width:100% am <p> - das spannte den Hintergrund zu einer sichtbaren
+   Extra-Box auf. */
 section[data-testid="stSidebar"] .stButton>button p{
-  text-align:left !important; width:100% !important; margin:0 !important;}
+  text-align:left !important; margin:0 !important;}
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
-/* Ueberpunkte (mit Pfeil) etwas kraeftiger */
-div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; }
+/* Aktiver (primary) Nav-Button bleibt farbig hervorgehoben */
+section[data-testid="stSidebar"] .stButton>button[kind="primary"]{
+  background:var(--amber) !important; border-color:var(--amber);}
+/* Ueberpunkte (mit Pfeil): kraeftiger. Pfeil steht als erstes Zeichen im
+   Label ganz links; wir vergroessern das erste Zeichen NICHT einzeln (geht
+   per CSS nicht zuverlaessig), sondern erhoehen die Schriftgroesse des Labels
+   leicht - der Pfeil waechst mit. */
+div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; font-size:15px; }
+/* Unterpunkte: eingerueckt ueber padding (nicht ueber Leerzeichen), damit
+   keine sichtbare Extra-Box entsteht. Top-Punkte ohne Pfeil linksbuendig. */
+div[class*="st-key-navsub_"] .stButton>button p{ padding-left:22px; }
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{
   font-weight:800; color:var(--amber); background:transparent;
@@ -2179,8 +2190,12 @@ with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
         if st.button(_icon, key=f"mnav_{_pg}", use_container_width=True,
                      help=_pg, type=("primary" if _pg == nav else "secondary")):
-            # Kein explizites st.rerun() - der Klick loest schon einen aus.
-            st.session_state["nav"] = _pg
+            # st.rerun() ist noetig: der restliche Seiteninhalt wurde in DIESEM
+            # Durchlauf schon mit dem alten nav gezeichnet. Ohne Rerun muesste
+            # man zweimal tippen, bis die neue Seite erscheint.
+            if _pg != nav:
+                st.session_state["nav"] = _pg
+                st.rerun()
 
 try:
     from assets_logo import LGI_LOGO_B64
@@ -2222,15 +2237,16 @@ with st.sidebar:
 
     def _nav_button(_key, _label, _icon, _active, _indent=False):
         btype = "primary" if _active else "secondary"
-        # Ausrichtung: Ueberpunkte beginnen mit "▸  " (Pfeil + 2 Leerzeichen).
-        # Top-Punkte bekommen "    " (Leerzeichen an der Pfeilstelle + 2), damit
-        # ihr erster Buchstabe UNTER dem der Ueberpunkte steht und der Pfeil
-        # links davor. Unterpunkte weiter eingerueckt.
-        _pre = "        " if _indent else "    "     # 8 vs 4 Leerzeichen
+        # Einrueckung ueber Key-Praefix + CSS (padding-left), NICHT ueber
+        # Leerzeichen - die erzeugten den sichtbaren Kasten-Versatz.
         _pfx = "navsub" if _indent else "navtop"
-        if st.button(f"{_pre}{_label}", key=f"{_pfx}_{_key}",
+        if st.button(_label, key=f"{_pfx}_{_key}",
                      use_container_width=True, type=btype):
-            st.session_state["nav"] = _key
+            # st.rerun() noetig, sonst Doppelklick (Seite unten schon mit
+            # altem nav gezeichnet).
+            if not _active:
+                st.session_state["nav"] = _key
+                st.rerun()
 
     for grp in NAV_GROUPS:
         kinder = grp.get("children") or []
@@ -2250,9 +2266,8 @@ with st.sidebar:
         # sonst behandelt Streamlit den Button beim Umschalten als neuen und
         # der Klick geht verloren -> das war der Doppelklick.
         _car = "\u25be" if offen else "\u25b8"   # ▾ offen / ▸ zu
-        # "Pfeil + 2 Leerzeichen" - die Top-Punkte haben "4 Leerzeichen", also
-        # steht ihr erster Buchstabe unter dem der Ueberpunkte, der Pfeil davor.
-        if st.button(f"{_car}   {grp['label']}",
+        # Pfeil ganz links, ein Leerzeichen Abstand zum Text. Groesse per CSS.
+        if st.button(f"{_car} {grp['label']}",
                      key=f"navgrp_{grp['key']}",
                      use_container_width=True, type=btype,
                      help=("zuklappen" if offen else "aufklappen")):

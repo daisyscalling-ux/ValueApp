@@ -103,42 +103,18 @@ html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 hr{border-color:var(--line);}
 /* Navigation als Boxen: linksbuendig, ganze Zeile klickbar */
 section[data-testid="stSidebar"] .stButton>button{
-  text-align:left; justify-content:flex-start; border-radius:8px;
-  border:1px solid var(--line); padding:10px 12px; margin:2px 0;
-  font-weight:600; letter-spacing:.3px;}
+  text-align:left !important; justify-content:flex-start !important;
+  border-radius:8px; border:1px solid var(--line);
+  padding:10px 12px; margin:2px 0; font-weight:600; letter-spacing:.3px;}
+/* Streamlit steckt den Text in ein <p> das zentriert ist - DORT die
+   Ausrichtung erzwingen, sonst bleibt der Text mittig. Gilt fuer ALLE
+   Sidebar-Buttons, damit der Selektor garantiert greift. */
+section[data-testid="stSidebar"] .stButton>button p{
+  text-align:left !important; width:100% !important; margin:0 !important;}
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
-/* --- Kategorisierte Navigation: linksbuendig + Pfeil vor Ueberpunkten -----
-   WICHTIG: Streamlit rendert den Button-Text in einem <p>. Die Zentrierung
-   sitzt am <p>, deshalb muss die Ausrichtung DORT gesetzt werden (nicht am
-   button). Alle Nav-Labels beginnen an derselben x-Position; der Pfeil der
-   Ueberpunkte sitzt per ::before im linken Rand und verschiebt das Label
-   nicht. Offen/zu steuert der Button-Key (navgrp_open_* / navgrp_zu_*). */
-div[class*="st-key-navgrp_"] .stButton>button,
-div[class*="st-key-navtop_"] .stButton>button,
-div[class*="st-key-navsub_"] .stButton>button{
-  text-align:left !important; justify-content:flex-start !important;
-  position:relative;}
-div[class*="st-key-navgrp_"] .stButton>button p,
-div[class*="st-key-navtop_"] .stButton>button p,
-div[class*="st-key-navsub_"] .stButton>button p{
-  text-align:left !important; width:100%; margin:0;
-  padding-left:26px;}                    /* Top-Punkte: Label-Start = Pfeil-x */
-/* Ueberpunkte: Label weiter rechts, damit der Pfeil (bei 26px) NEBEN dem
-   Label steht, nicht darunter. Der Pfeil sitzt so exakt unter dem ersten
-   Buchstaben der punktlosen Tabs (Start/News/Earnings). */
-div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; padding-left:46px; }
-div[class*="st-key-navgrp_"] .stButton>button:hover{
-  border-color:var(--amber); color:var(--amber);}
-/* Pfeil bei x=26px -> genau unter dem ersten Buchstaben der Top-Punkte */
-div[class*="st-key-navgrp_zu_"] .stButton>button p::before{
-  content:"\25b8"; position:absolute; left:26px; top:50%;
-  transform:translateY(-50%); color:#C9962B; font-size:13px;}
-div[class*="st-key-navgrp_open_"] .stButton>button p::before{
-  content:"\25be"; position:absolute; left:26px; top:50%;
-  transform:translateY(-50%); color:var(--amber); font-size:13px;}
-/* Unterpunkte: Label weiter eingerueckt (Hierarchie sichtbar) */
-div[class*="st-key-navsub_"] .stButton>button p{ padding-left:46px; }
+/* Ueberpunkte (mit Pfeil) etwas kraeftiger */
+div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; }
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{
   font-weight:800; color:var(--amber); background:transparent;
@@ -2246,11 +2222,13 @@ with st.sidebar:
 
     def _nav_button(_key, _label, _icon, _active, _indent=False):
         btype = "primary" if _active else "secondary"
-        # Key-Praefix steuert die Einrueckung per CSS: navsub_ (Unterpunkt,
-        # weiter eingerueckt) vs navtop_ (Top-Level-Punkt ohne Kinder, auf
-        # gleicher Hoehe wie die Ueberpunkt-Labels).
+        # Ausrichtung: Ueberpunkte beginnen mit "▸  " (Pfeil + 2 Leerzeichen).
+        # Top-Punkte bekommen "    " (Leerzeichen an der Pfeilstelle + 2), damit
+        # ihr erster Buchstabe UNTER dem der Ueberpunkte steht und der Pfeil
+        # links davor. Unterpunkte weiter eingerueckt.
+        _pre = "        " if _indent else "    "     # 8 vs 4 Leerzeichen
         _pfx = "navsub" if _indent else "navtop"
-        if st.button(_label, key=f"{_pfx}_{_key}",
+        if st.button(f"{_pre}{_label}", key=f"{_pfx}_{_key}",
                      use_container_width=True, type=btype):
             st.session_state["nav"] = _key
 
@@ -2267,27 +2245,21 @@ with st.sidebar:
         kind_keys = [k for k, _, _ in kinder]
         grp_aktiv = (nav == grp["key"]) or (nav in kind_keys)
         btype = "primary" if grp_aktiv else "secondary"
-        # Der Pfeil kommt per CSS (::before), NICHT im Text - so verschiebt er
-        # das Label nie und alle Labels stehen exakt untereinander. Offen/zu
-        # wird ueber den Button-Key gesteuert: das CSS setzt je nach Key den
-        # richtigen Pfeil.
-        _zk = "open" if offen else "zu"
-        if st.button(grp["label"],
-                     key=f"navgrp_{_zk}_{grp['key']}",
+        # Pfeil als Zeichen IM Label (kein CSS-Targeting noetig - das griff in
+        # deiner Streamlit-Version nicht). Der Key bleibt STABIL (nur grp-key),
+        # sonst behandelt Streamlit den Button beim Umschalten als neuen und
+        # der Klick geht verloren -> das war der Doppelklick.
+        _car = "\u25be" if offen else "\u25b8"   # ▾ offen / ▸ zu
+        # "Pfeil + 2 Leerzeichen" - die Top-Punkte haben "4 Leerzeichen", also
+        # steht ihr erster Buchstabe unter dem der Ueberpunkte, der Pfeil davor.
+        if st.button(f"{_car}   {grp['label']}",
+                     key=f"navgrp_{grp['key']}",
                      use_container_width=True, type=btype,
                      help=("zuklappen" if offen else "aufklappen")):
-            # Aufklapp-Zustand umschalten. Hier IST ein st.rerun() noetig: die
-            # Anzeige (Pfeilrichtung, sichtbare Unterpunkte) wurde in DIESEM
-            # Durchlauf schon mit dem alten Zustand gezeichnet. Ohne Rerun
-            # muesste man zweimal klicken, bis die Unterpunkte erscheinen.
             if offen:
                 _open_groups.discard(grp["key"])
             else:
                 _open_groups.add(grp["key"])
-                # Beim AUFKLAPPEN zusaetzlich die Landeseite des Ueberpunkts
-                # oeffnen (Aktien&Markt zeigt die Index-Maerkte, My Value App
-                # die Portfolios). So bleibt die eigene Seite ohne zweiten
-                # Klick erreichbar.
                 if grp["key"] in NAV_GROUP_SEITEN:
                     st.session_state["nav"] = grp["key"]
             st.session_state["_nav_open"] = _open_groups

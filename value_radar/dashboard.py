@@ -108,6 +108,16 @@ section[data-testid="stSidebar"] .stButton>button{
   font-weight:600; letter-spacing:.3px;}
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
+/* Caret-Button (Auf-/Zuklappen): schmal, zentriert, dezent, kein Rahmen */
+div[class*="st-key-navcar_"] .stButton>button{
+  text-align:center; justify-content:center; border:none;
+  background:transparent; padding:10px 0; margin:2px 0;
+  color:#B8860B; font-size:13px; min-width:0;}
+div[class*="st-key-navcar_"] .stButton>button:hover{
+  color:var(--amber); background:rgba(255,176,0,.06);}
+/* Ueberpunkt-Label (Rubrik): Grossbuchstaben-Anmutung, etwas kraeftiger */
+div[class*="st-key-navgrp_"] .stButton>button{
+  font-weight:800; letter-spacing:.5px;}
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{
   font-weight:800; color:var(--amber); background:transparent;
@@ -2077,6 +2087,40 @@ def portfolio_candidates(analysis, held_tickers, held_names):
 PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Momentum",
          "Watchlist", "Long/Short", "Portfoliocheck", "Trefferbilanz",
          "Earnings Calls", "Umfeld"]
+
+# Kategorisierte Navigation: Ueberpunkte mit Unterpunkten. Der interne nav-Wert
+# bleibt unveraendert (z.B. "Portfoliocheck"), nur das Label wird angezeigt.
+# Ueberpunkte MIT Kindern sind selbst navigierbar (oeffnen eine eigene Seite)
+# und zusaetzlich auf-/zuklappbar. Reihenfolge und Benennung wie gewuenscht.
+NAV_GROUPS = [
+    {"key": "Start", "label": "Start", "icon": "\U0001f3e0", "children": []},
+    {"key": "News", "label": "News", "icon": "\U0001f4f0", "children": []},
+    {"key": "Earnings Calls", "label": "Earnings Calls",
+     "icon": "\U0001f399\ufe0f", "children": []},
+    {"key": "AktienMarkt", "label": "Aktien und Markt Analyse",
+     "icon": "\U0001f4ca", "children": [
+        ("Einzelanalyse", "Einzelanalyse", "\U0001f4c8"),
+        ("Radar", "Radar", "\U0001f3af"),
+        ("Screener", "Screener", "\U0001f50d"),
+        ("Momentum", "Momentum", "\U0001f680"),
+        ("Umfeld", "Umfeld", "\U0001f30d"),
+     ]},
+    {"key": "MyValueApp", "label": "My Value App", "icon": "\U0001f4bc",
+     "children": [
+        ("Portfoliocheck", "Portfolio", "\U0001f4bc"),
+        ("Watchlist", "Watchlist", "\u2b50"),
+     ]},
+    {"key": "StrategieStatistik", "label": "Strategie und Statistik",
+     "icon": "\U0001f3c6", "children": [
+        ("Trefferbilanz", "Trefferbilanz", "\U0001f3c6"),
+        ("Long/Short", "Long/Short", "\u2696\ufe0f"),
+     ]},
+]
+# Ueberpunkte, die selbst eine eigene Seite haben (kein reiner Container).
+# "AktienMarkt", "MyValueApp", "StrategieStatistik" sind eigene Landeseiten.
+NAV_GROUP_SEITEN = {"AktienMarkt", "MyValueApp", "StrategieStatistik"}
+# Auch die Ueberpunkt-Landeseiten sind gueltige nav-Ziele.
+PAGES = PAGES + ["AktienMarkt", "MyValueApp", "StrategieStatistik"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
          "Screener": "\U0001f50d", "Momentum": "\U0001f680",
          "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
@@ -2176,15 +2220,56 @@ if _scroll_top_now:
 
 with st.sidebar:
     st.markdown('<div class="sec-title">NAVIGATION</div>', unsafe_allow_html=True)
-    # Navigation als anklickbare Boxen (ganze Zeile klickbar, keine Radio-Punkte)
-    for pg in PAGES:
-        active = (pg == nav)
-        btype = "primary" if active else "secondary"
-        if st.button(f"{ICONS[pg]}  {pg}", key=f"navbtn_{pg}",
+
+    # Aufklapp-Zustand je Gruppe (Start: alles zugeklappt).
+    _open_groups = st.session_state.setdefault("_nav_open", set())
+
+    def _nav_button(_key, _label, _icon, _active, _indent=False):
+        btype = "primary" if _active else "secondary"
+        _pre = "\u2003" if _indent else ""      # Einrueckung fuer Unterpunkte
+        if st.button(f"{_pre}{_icon}  {_label}", key=f"navbtn_{_key}",
                      use_container_width=True, type=btype):
-            if not active:
-                st.session_state["nav"] = pg
+            if not _active:
+                st.session_state["nav"] = _key
                 st.rerun()
+
+    for grp in NAV_GROUPS:
+        kinder = grp.get("children") or []
+        if not kinder:
+            # Einfacher Punkt ohne Unterpunkte
+            _nav_button(grp["key"], grp["label"], grp["icon"], grp["key"] == nav)
+            continue
+
+        # Ueberpunkt MIT Kindern: schmaler Caret-Button + breiter Label-Button.
+        offen = grp["key"] in _open_groups
+        # aktiv, wenn die Gruppenseite selbst oder eines ihrer Kinder offen ist
+        kind_keys = [k for k, _, _ in kinder]
+        grp_aktiv = (nav == grp["key"]) or (nav in kind_keys)
+        _ck, _lk = st.columns([1, 5], gap="small")
+        with _ck:
+            # Gefuellter Caret, gedreht wenn offen (per Label-Zeichen).
+            _car = "\u23f7" if offen else "\u23f5"   # ⏷ offen / ⏵ zu
+            if st.button(_car, key=f"navcar_{grp['key']}",
+                         use_container_width=True,
+                         help=("zuklappen" if offen else "aufklappen")):
+                if offen:
+                    _open_groups.discard(grp["key"])
+                else:
+                    _open_groups.add(grp["key"])
+                st.session_state["_nav_open"] = _open_groups
+                st.rerun()
+        with _lk:
+            btype = "primary" if grp_aktiv else "secondary"
+            if st.button(f"{grp['icon']}  {grp['label']}",
+                         key=f"navgrp_{grp['key']}",
+                         use_container_width=True, type=btype):
+                if nav != grp["key"]:
+                    st.session_state["nav"] = grp["key"]
+                    st.rerun()
+        # Unterpunkte nur zeigen, wenn aufgeklappt
+        if offen:
+            for _ckey, _clabel, _cicon in kinder:
+                _nav_button(_ckey, _clabel, _cicon, _ckey == nav, _indent=True)
     st.markdown("---")
 
     st.markdown("---")
@@ -2362,30 +2447,6 @@ if nav == "Start":
                    "Ticker anklicken \u2013 oder in die Einzelanalyse eingeben.")
         st.markdown("---")
 
-    st.markdown('<div class="sec-title">M\u00c4RKTE HEUTE</div>', unsafe_allow_html=True)
-    st.caption("Tagesverlauf je Index \u00b7 gestrichelte Linie = Startwert (0 %). "
-               "Rechts der Indexstand, unten die Uhrzeit.")
-    for row_start in range(0, len(INDICES), 2):          # zwei Kacheln pro Zeile
-        rcols = st.columns(2)
-        for col, (nm, tk) in zip(rcols, INDICES[row_start:row_start + 2]):
-            with col:
-                h = load_index(tk)
-                if h is None or h.empty:
-                    st.markdown(f'<div style="font-weight:700">{nm}</div>'
-                                '<span class="na">n/a</span>', unsafe_allow_html=True)
-                    continue
-                closes = list(h["Close"])
-                times = list(h.index)
-                b, last = float(closes[0]), float(closes[-1])
-                pct = (last / b - 1) * 100 if b else 0
-                hexc = "#3FB950" if pct >= 0 else "#F85149"
-                st.markdown(
-                    f'<div style="font-weight:700;font-size:14px">{nm}</div>'
-                    f'<div style="color:{hexc};font-size:16px;font-weight:700">'
-                    f'{pct:+.2f} %</div>'
-                    + svg_index_chart(closes, times, b, hexc, height=132),
-                    unsafe_allow_html=True)
-
     st.markdown("---")
 
     saved_all = store.load_all()
@@ -2446,6 +2507,116 @@ if nav == "Start":
                     with cols[j]:
                         render_saved_portfolio(pname, precs)
 
+
+
+# ===========================================================================
+# UEBERPUNKT-SEITEN (kategorisierte Navigation)
+# ===========================================================================
+if nav == "AktienMarkt":
+    st.markdown('<div class="sec-title">AKTIEN UND MARKT ANALYSE</div>',
+                unsafe_allow_html=True)
+    st.caption("W\u00e4hle links einen Unterpunkt \u2013 Einzelanalyse, Radar, "
+               "Screener, Momentum oder Umfeld. Unten der Tagesverlauf der "
+               "wichtigsten Indizes.")
+
+    # Die 5 Index-Maerkte in EINER Reihe (kompakter als auf der alten Startseite)
+    st.markdown('<div class="sec-title" style="margin-top:8px">M\u00c4RKTE '
+                'HEUTE</div>', unsafe_allow_html=True)
+    _mcols = st.columns(len(INDICES))
+    for _col, (_nm, _tk) in zip(_mcols, INDICES):
+        with _col:
+            _h = load_index(_tk)
+            if _h is None or _h.empty:
+                st.markdown(f'<div style="font-weight:700;font-size:12px">{_nm}</div>'
+                            '<span class="na">n/a</span>', unsafe_allow_html=True)
+                continue
+            _closes = list(_h["Close"])
+            _times = list(_h.index)
+            _b, _last = float(_closes[0]), float(_closes[-1])
+            _pct = (_last / _b - 1) * 100 if _b else 0
+            _hexc = "#3FB950" if _pct >= 0 else "#F85149"
+            st.markdown(
+                f'<div style="font-weight:700;font-size:12px">{_nm}</div>'
+                f'<div style="color:{_hexc};font-size:14px;font-weight:700">'
+                f'{_pct:+.2f} %</div>'
+                + svg_index_chart(_closes, _times, _b, _hexc, height=96),
+                unsafe_allow_html=True)
+    st.caption("Tagesverlauf je Index \u00b7 gestrichelte Linie = Startwert (0 %).")
+
+if nav == "MyValueApp":
+    st.markdown('<div class="sec-title">MY VALUE APP</div>',
+                unsafe_allow_html=True)
+    st.caption("Deine gespeicherten Portfolios und die Watchlist. W\u00e4hle "
+               "links Portfolio oder Watchlist \u2013 oder \u00f6ffne unten ein "
+               "Portfolio direkt.")
+    _saved_all = store.load_all()
+    if not _saved_all:
+        st.info("Noch keine Portfolios gespeichert. Lege im Portfoliocheck "
+                "eines an.")
+    else:
+        st.markdown('<div class="sec-title" style="margin-top:8px">MEINE '
+                    'PORTFOLIOS</div>', unsafe_allow_html=True)
+        st.caption("Beim \u00d6ffnen neu berechnet.")
+
+        def _render_pf_kachel(pname, precs):
+            with st.spinner(f"Berechne {pname} ..."):
+                prows, _inv, _res = build_portfolio_rows(precs, inc_radar=False,
+                                                         inc_pl=True)
+            if not prows:
+                st.markdown(
+                    f'<div class="news-box" style="font-size:12px"><b>{esc(pname)}</b>'
+                    '<div class="meta">keine g\u00fcltigen Positionen</div></div>',
+                    unsafe_allow_html=True)
+            else:
+                an = pf.analyze(prows)
+                pvcol = ("#3FB950" if an["score"] >= 66 else
+                         "#E3B341" if an["score"] >= 45 else "#F85149")
+                pl_line = ""
+                if an.get("have_pl") and an.get("pl_return") is not None:
+                    g = an.get("pl_gain_eur") or 0
+                    pl_line = (f'<div class="meta" style="font-size:11px">Kauf-Perf. '
+                               f'{an["pl_return"]:+.2f} % \u00b7 '
+                               f'{"+" if g >= 0 else "\u2212"}{sym_eur(abs(g))}</div>')
+                st.markdown(
+                    f'<div class="news-box" style="font-size:12px;line-height:1.45">'
+                    f'<b style="font-size:13px">{esc(pname)}</b> &nbsp;'
+                    f'<b style="color:{pvcol}">{an["label"]} \u00b7 {an["score"]:.2f}/100</b>'
+                    f'<div class="meta" style="font-size:11px">{sym_eur(an["total_eur"])} \u00b7 '
+                    f'{an["n"]} Pos. \u00b7 gr\u00f6\u00dfte {an["max_pos"]*100:.2f} % \u00b7 '
+                    f'{esc(an["max_sector_name"])} {an["max_sector"]*100:.2f} %</div>'
+                    f'{pl_line}</div>', unsafe_allow_html=True)
+                prsort = sorted(prows, key=lambda r: -r["weight"])
+                pdata = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:16],
+                          "Wert \u20ac": round(r["value_eur"], 2),
+                          "Gew. %": round(r["weight"] * 100, 2),
+                          "Sektor": (r["sector"] or "")[:12],
+                          "Comp.": (round(r["composite"])
+                                    if r.get("composite") is not None else None),
+                          "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
+                          **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
+                             if an["have_pl"] else {})}
+                         for r in prsort]
+                vr_table(pdata, score_cols=("Comp.",),
+                         signed_cols=("Upside %", "Kauf %"),
+                         height=min(len(pdata) * 38 + 46, 360))
+            if st.button("\u00d6ffnen", key=f"mva_open_pf_{pname}",
+                         use_container_width=True):
+                st.session_state["pf_pending_load"] = pname
+                st.session_state["pending_nav"] = "Portfoliocheck"
+                st.rerun()
+
+        _items = list(_saved_all.items())
+        for _i in range(0, len(_items), 2):
+            _cols = st.columns(2)
+            for _j, (_pname, _precs) in enumerate(_items[_i:_i + 2]):
+                with _cols[_j]:
+                    _render_pf_kachel(_pname, _precs)
+
+if nav == "StrategieStatistik":
+    st.markdown('<div class="sec-title">STRATEGIE UND STATISTIK</div>',
+                unsafe_allow_html=True)
+    st.caption("W\u00e4hle links einen Unterpunkt \u2013 Trefferbilanz "
+               "(Signal-Tagebuch & Auto-Depot) oder Long/Short.")
 
 
 # ===========================================================================

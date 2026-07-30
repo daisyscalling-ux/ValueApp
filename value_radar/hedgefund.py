@@ -254,7 +254,21 @@ def candidates(size=60):
                         print(f"[hedgefund] {t} verworfen (long): Scorecard "
                               f"\"{verdict}\" - offen: {missing}")
                         continue
-                    longs.append((comp * 0.6 + min(up, 60) * 0.5, t))
+                    # EINSTIEGSZONEN-BONUS (kein harter Filter): Liegt der Kurs
+                    # in der Zone (Kurs <= definierter Einstieg), ist der Titel
+                    # attraktiver bepreist und wird im Ranking bevorzugt. Titel
+                    # ueber der Zone bleiben kaufbar (das Depot soll aktiv sein
+                    # und starken Trends folgen koennen), landen aber weiter
+                    # hinten. So wird "zu teuer gekauft" seltener, ohne das
+                    # Depot bei teurem Markt komplett in Cash zu zwingen.
+                    _entry = v.get("entry_price")
+                    _zonen_bonus = 0.0
+                    if _entry and price:
+                        if price <= _entry:
+                            _zonen_bonus = 12.0       # in der Zone -> klar bevorzugt
+                        elif price <= _entry * 1.05:
+                            _zonen_bonus = 5.0        # knapp drueber (<5%) -> leicht bevorzugt
+                    longs.append((comp * 0.6 + min(up, 60) * 0.5 + _zonen_bonus, t))
                 continue
             # --- Short-Seite ---
             score = (-up) * 0.5 + max(60 - comp, 0) * 0.4

@@ -252,6 +252,105 @@ def analyze(rows: list) -> dict:
     }
 
 
+def erklaere_score(a: dict) -> dict:
+    """Erklaert den Gesamtscore aus dem analyze()-Ergebnis: was ihn HEBT, was
+    ihn SENKT und was konkret zu VERBESSERN waere. Gibt Klartext-Listen zurueck,
+    damit der Nutzer versteht, warum das Depot z.B. 'Ausbaufaehig' ist."""
+    score = a.get("score", 50)
+    label = a.get("label", "")
+    plus, minus, tipps = [], [], []
+
+    # --- Was den Score bestimmt ---
+    wc = a.get("w_composite")
+    if wc is not None:
+        if wc >= 65:
+            plus.append(f"Gute Aktienqualitaet: gewichteter Composite {wc:.0f}/100.")
+        elif wc >= 50:
+            plus.append(f"Solide Aktienqualitaet: Composite {wc:.0f}/100.")
+        else:
+            minus.append(f"Schwache Aktienqualitaet: Composite nur {wc:.0f}/100.")
+            tipps.append("Positionen mit niedrigem Composite pruefen und durch "
+                         "hoeher bewertete Titel ersetzen.")
+
+    wu = a.get("w_upside")
+    if wu is not None:
+        if wu >= 10:
+            plus.append(f"Positiver Bewertungs-Tilt: gewichtetes Upside {wu:+.0f} %.")
+        elif wu <= -5:
+            minus.append(f"Depot im Schnitt eher teuer: Upside {wu:+.0f} %.")
+            tipps.append("Ueberbewertete Positionen (negatives Upside) reduzieren.")
+
+    # --- Klumpenrisiken (senken den Score) ---
+    mps = a.get("max_pos_stock", 0)
+    if mps > 0.25:
+        abzug = (mps - 0.25) * 60
+        minus.append(f"Groesste Einzelaktie {mps*100:.0f} % \u2013 Klumpenrisiko "
+                     f"(\u2212{abzug:.0f} Punkte).")
+        tipps.append(f"Groesste Aktienposition auf unter 25 % senken.")
+
+    ms = a.get("max_sector", 0)
+    if ms > 0.40:
+        abzug = (ms - 0.40) * 50
+        minus.append(f"Sektor {a.get('max_sector_name','')} {ms*100:.0f} % \u2013 "
+                     f"Sektorklumpen (\u2212{abzug:.0f} Punkte).")
+        tipps.append(f"Sektor {a.get('max_sector_name','')} breiter streuen.")
+
+    ns = a.get("n_stocks", 0)
+    if ns < 5:
+        minus.append(f"Nur {ns} Einzelaktien \u2013 wenig Streuung "
+                     f"(\u2212{(5-ns)*3} Punkte).")
+        tipps.append("Auf mindestens 5\u20138 Einzelaktien verteilen.")
+
+    dups = a.get("duplicates") or []
+    if dups:
+        minus.append(f"{len(dups)} doppelte Firma(en) \u2013 evtl. Cross-Listing "
+                     f"(\u2212{4*len(dups)} Punkte).")
+        tipps.append("Doppelnotierungen zusammenlegen (nur eine Notierung halten).")
+
+    # --- Gewinn/Verlust-These ---
+    if a.get("have_pl"):
+        pr = a.get("pl_return")
+        if pr is not None and pr > 0:
+            plus.append(f"Kaufthese bestaetigt: Depot {pr:+.0f} % seit Einstieg.")
+        elif pr is not None and pr < -5:
+            minus.append(f"Depot {pr:+.0f} % seit Einstieg \u2013 gebrochene Thesen "
+                         f"belasten den Score.")
+            tipps.append("Verlustpositionen mit schwacher Qualitaet ehrlich pruefen.")
+
+    # --- Sektorluecken ---
+    gaps = a.get("gaps") or []
+    if gaps and len(gaps) >= 3:
+        tipps.append(f"Fehlende Sektoren fuer mehr Streuung: "
+                     f"{', '.join(gaps[:4])}"
+                     + (" \u2026" if len(gaps) > 4 else "") + ".")
+
+    # --- Einordnung, was zum naechsten Level fehlt ---
+    naechste = None
+    if score < 40:
+        naechste = ("Ausbaufaehig", 40)
+    elif score < 55:
+        naechste = ("Solide", 55)
+    elif score < 70:
+        naechste = ("Robust", 70)
+    fazit = ""
+    if naechste:
+        fehlt = naechste[1] - score
+        fazit = (f"Aktuell {score:.0f}/100 ({label}). Bis \u201e{naechste[0]}\u201c "
+                 f"fehlen {fehlt:.0f} Punkte \u2013 vor allem \u00fcber die Punkte "
+                 f"oben unter \u201eVerbessern\u201c erreichbar.")
+    else:
+        fazit = (f"Aktuell {score:.0f}/100 ({label}) \u2013 das ist bereits die "
+                 f"hoechste Stufe. Halten, was funktioniert.")
+
+    if not minus:
+        minus.append("Keine groben Score-Bremsen erkannt.")
+    if not tipps:
+        tipps.append("Keine dringenden Baustellen \u2013 Qualitaet und Streuung "
+                     "im Blick behalten.")
+
+    return {"plus": plus, "minus": minus, "tipps": tipps, "fazit": fazit}
+
+
 # ============================================================================
 # PERFORMANCE-VERGLEICH gegen die grossen Indizes
 # ============================================================================

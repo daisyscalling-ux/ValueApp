@@ -1999,6 +1999,7 @@ def build_portfolio_rows(records, inc_radar=False, inc_pl=True, live=False,
             fv_reliable = None
         rows.append({
             "ticker": tk, "name": f.get("name"), "value_eur": float(value_eur),
+            "raw": raw,          # urspruenglicher Eingabewert (fuer Loeschung/Match)
             "shares": shares if has_shares else None,
             "sector": f.get("sector"), "country": f.get("country"),
             "composite": comp, "upside": up_reliable,
@@ -2227,7 +2228,27 @@ if _scroll_top_now:
         "var m=d.querySelector('section.main')||d.querySelector('[data-testid=\"stMain\"]');"
         "if(m){m.scrollTo({top:0,left:0,behavior:'auto'});}"
         "window.parent.scrollTo({top:0,behavior:'auto'});"
+        "d.sessionStorage.setItem('vr_scroll','0');"     # gespeicherte Position zuruecksetzen
         "}catch(e){}},60);</script>", height=0)
+else:
+    # SCROLL-ERHALTUNG: Bei jeder Interaktion (Expander, Button, data_editor)
+    # loest Streamlit einen Rerun aus und der Browser springt nach oben. Wir
+    # merken die Scroll-Position laufend im sessionStorage und stellen sie nach
+    # dem Rerun wieder her - AUSSER bei Tab-Wechsel/Link (dann greift der
+    # Block oben). So bleibt die Ansicht dort, wo der Nutzer gerade war.
+    components.html(
+        "<script>(function(){try{"
+        "var d=window.parent.document;"
+        "var m=d.querySelector('section.main')||d.querySelector('[data-testid=\"stMain\"]');"
+        "if(!m){return;}"
+        # gespeicherte Position wiederherstellen
+        "var y=parseInt(d.sessionStorage.getItem('vr_scroll')||'0',10);"
+        "if(y>0){setTimeout(function(){m.scrollTo({top:y,left:0,behavior:'auto'});},50);}"
+        # laufend die aktuelle Position speichern
+        "if(!m._vrScrollHook){m._vrScrollHook=true;"
+        "m.addEventListener('scroll',function(){"
+        "d.sessionStorage.setItem('vr_scroll',String(m.scrollTop));},{passive:true});}"
+        "}catch(e){}})();</script>", height=0)
 
 with st.sidebar:
     st.markdown('<div class="sec-title">NAVIGATION</div>', unsafe_allow_html=True)
@@ -5399,6 +5420,47 @@ if nav == "Portfoliocheck":
                     f'{_score_note}</div></div>',
                     unsafe_allow_html=True)
 
+                # Score-Erklaerung: warum dieser Score, was verbessern?
+                _erk = pf.erklaere_score(a)
+                with st.expander("\u2139\ufe0f Warum dieser Score \u2013 und was verbessern?",
+                                 expanded=False):
+                    st.markdown(f"**{_erk['fazit']}**")
+                    if _erk["plus"]:
+                        st.markdown("**Das spricht f\u00fcr das Depot:**")
+                        for _p in _erk["plus"]:
+                            st.markdown(f"- \u2705 {_p}")
+                    if _erk["minus"]:
+                        st.markdown("**Das bremst den Score:**")
+                        for _m in _erk["minus"]:
+                            st.markdown(f"- \u26a0\ufe0f {_m}")
+                    if _erk["tipps"]:
+                        st.markdown("**Verbessern:**")
+                        for _t in _erk["tipps"]:
+                            st.markdown(f"- \U0001f4a1 {_t}")
+                    st.caption("Orientierung aus deinen Depotdaten \u2013 kein "
+                               "Anlagerat.")
+
+                # Freies Kommentarfeld pro Portfolio (wird gespeichert)
+                _pf_name_akt = st.session_state.get("pf_cur_name", "")
+                if _pf_name_akt:
+                    with st.expander("\U0001f4dd Mein Kommentar zu diesem Portfolio",
+                                     expanded=False):
+                        _komm_key = f"pf_komm_{_pf_name_akt}"
+                        if _komm_key not in st.session_state:
+                            st.session_state[_komm_key] = store.get_kommentar(_pf_name_akt)
+                        _komm_txt = st.text_area(
+                            "Notizen, Thesen, To-dos \u2026", key=_komm_key,
+                            height=140, label_visibility="collapsed",
+                            placeholder="Eigene Gedanken zu diesem Depot \u2013 "
+                                        "z.B. warum du Positionen haeltst, was du "
+                                        "beobachtest, geplante Aenderungen \u2026")
+                        if st.button("\U0001f4be Kommentar speichern",
+                                     key=f"pf_komm_save_{_pf_name_akt}"):
+                            if store.set_kommentar(_pf_name_akt, _komm_txt):
+                                st.success("Kommentar gespeichert.")
+                            else:
+                                st.error("Konnte nicht gespeichert werden.")
+
                 ncards = 5 if a["have_pl"] else 4
                 mc = st.columns(ncards)
                 card(mc[0], "\u00d8 Composite (gew.)",
@@ -5485,10 +5547,22 @@ if nav == "Portfoliocheck":
                                 store.pf_log_add(_entry)
                             except Exception as e:
                                 st.error(f"Logbuch-Eintrag fehlgeschlagen: {e}")
-                            # Position aus dem Portfolio entfernen (und speichern)
+                            # Position aus dem Portfolio entfernen (und speichern).
+                            # Robust matchen: der angezeigte Ticker (_sell) kann
+                            # ein aufgeloester Ticker sein (z.B. "AAPL"), waehrend
+                            # in pf_records noch der Roheingabewert steht (z.B.
+                            # "Apple"). Deshalb ueber BEIDES matchen: den
+                            # Roheingabewert der verkauften Zeile UND den Ticker.
+                            _sell_raw = (_pos.get("raw") or "").strip().upper()
+                            _sell_tk = _sell.strip().upper()
+
+                            def _ist_verkauft(rec):
+                                _rt = str(rec.get("ticker", "")).strip().upper()
+                                return _rt == _sell_tk or (_sell_raw and _rt == _sell_raw)
+
                             st.session_state["pf_records"] = [
                                 r for r in st.session_state.get("pf_records", [])
-                                if str(r.get("ticker", "")).upper() != _sell]
+                                if not _ist_verkauft(r)]
                             _nm = st.session_state.get("pf_cur_name", "")
                             if _nm:
                                 store.save(_nm, [

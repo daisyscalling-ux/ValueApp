@@ -108,12 +108,30 @@ section[data-testid="stSidebar"] .stButton>button{
   font-weight:600; letter-spacing:.3px;}
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
-/* Ueberpunkt-Box (Rubrik mit Pfeil links IN der Box): kraeftiger, der Pfeil
-   sitzt als erstes Zeichen im Label und ist damit Teil derselben Box. */
-div[class*="st-key-navgrp_"] .stButton>button{
-  font-weight:800; letter-spacing:.4px;}
+/* --- Kategorisierte Navigation: perfekte Ausrichtung ohne Emojis ---------
+   Alle Nav-Buttons (Ueber- und Unterpunkte) haben denselben linken Texteinzug,
+   damit die Labels exakt untereinander stehen. Der Auf-/Zuklapp-Pfeil der
+   Ueberpunkte wird per ::before absolut positioniert - er verschiebt das
+   Label NICHT. Offen/zu steuert der Button-Key (navgrp_open_* / navgrp_zu_*).
+*/
+div[class*="st-key-navgrp_"] .stButton>button,
+div[class*="st-key-navtop_"] .stButton>button,
+div[class*="st-key-navsub_"] .stButton>button{
+  position:relative; padding-left:32px; text-align:left;
+  justify-content:flex-start;}
+/* Ueberpunkte etwas kraeftiger */
+div[class*="st-key-navgrp_"] .stButton>button{ font-weight:800; letter-spacing:.3px; }
 div[class*="st-key-navgrp_"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
+/* Pfeil links im Padding-Bereich, feste Position -> kein Textversatz */
+div[class*="st-key-navgrp_zu_"] .stButton>button::before{
+  content:"\23f5"; position:absolute; left:12px; top:50%;
+  transform:translateY(-50%); color:#B8860B; font-size:12px;}
+div[class*="st-key-navgrp_open_"] .stButton>button::before{
+  content:"\23f7"; position:absolute; left:12px; top:50%;
+  transform:translateY(-50%); color:var(--amber); font-size:12px;}
+/* Unterpunkte: weiter eingerueckt, damit die Hierarchie sichtbar ist */
+div[class*="st-key-navsub_"] .stButton>button{ padding-left:44px; }
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{
   font-weight:800; color:var(--amber); background:transparent;
@@ -2221,11 +2239,11 @@ with st.sidebar:
 
     def _nav_button(_key, _label, _icon, _active, _indent=False):
         btype = "primary" if _active else "secondary"
-        _pre = "\u2003" if _indent else ""      # Einrueckung fuer Unterpunkte
-        # KEIN explizites st.rerun(): der Button-Klick loest bei Streamlit
-        # ohnehin genau einen Rerun aus. Ein zusaetzliches st.rerun() erzwingt
-        # einen ZWEITEN Durchlauf - das war die Ursache des Flackerns.
-        if st.button(f"{_pre}{_icon}  {_label}", key=f"navbtn_{_key}",
+        # Key-Praefix steuert die Einrueckung per CSS: navsub_ (Unterpunkt,
+        # weiter eingerueckt) vs navtop_ (Top-Level-Punkt ohne Kinder, auf
+        # gleicher Hoehe wie die Ueberpunkt-Labels).
+        _pfx = "navsub" if _indent else "navtop"
+        if st.button(_label, key=f"{_pfx}_{_key}",
                      use_container_width=True, type=btype):
             st.session_state["nav"] = _key
 
@@ -2241,13 +2259,20 @@ with st.sidebar:
         offen = grp["key"] in _open_groups
         kind_keys = [k for k, _, _ in kinder]
         grp_aktiv = (nav == grp["key"]) or (nav in kind_keys)
-        _car = "\u23f7" if offen else "\u23f5"       # ⏷ offen / ⏵ zu
         btype = "primary" if grp_aktiv else "secondary"
-        if st.button(f"{_car}  {grp['icon']}  {grp['label']}",
-                     key=f"navgrp_{grp['key']}",
+        # Der Pfeil kommt per CSS (::before), NICHT im Text - so verschiebt er
+        # das Label nie und alle Labels stehen exakt untereinander. Offen/zu
+        # wird ueber den Button-Key gesteuert: das CSS setzt je nach Key den
+        # richtigen Pfeil.
+        _zk = "open" if offen else "zu"
+        if st.button(grp["label"],
+                     key=f"navgrp_{_zk}_{grp['key']}",
                      use_container_width=True, type=btype,
                      help=("zuklappen" if offen else "aufklappen")):
-            # Aufklapp-Zustand umschalten - KEIN st.rerun() (siehe oben).
+            # Aufklapp-Zustand umschalten. Hier IST ein st.rerun() noetig: die
+            # Anzeige (Pfeilrichtung, sichtbare Unterpunkte) wurde in DIESEM
+            # Durchlauf schon mit dem alten Zustand gezeichnet. Ohne Rerun
+            # muesste man zweimal klicken, bis die Unterpunkte erscheinen.
             if offen:
                 _open_groups.discard(grp["key"])
             else:
@@ -2259,6 +2284,7 @@ with st.sidebar:
                 if grp["key"] in NAV_GROUP_SEITEN:
                     st.session_state["nav"] = grp["key"]
             st.session_state["_nav_open"] = _open_groups
+            st.rerun()
         # Unterpunkte nur zeigen, wenn aufgeklappt
         if offen:
             for _ckey, _clabel, _cicon in kinder:

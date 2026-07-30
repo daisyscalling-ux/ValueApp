@@ -108,30 +108,37 @@ section[data-testid="stSidebar"] .stButton>button{
   font-weight:600; letter-spacing:.3px;}
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
-/* --- Kategorisierte Navigation: perfekte Ausrichtung ohne Emojis ---------
-   Alle Nav-Buttons (Ueber- und Unterpunkte) haben denselben linken Texteinzug,
-   damit die Labels exakt untereinander stehen. Der Auf-/Zuklapp-Pfeil der
-   Ueberpunkte wird per ::before absolut positioniert - er verschiebt das
-   Label NICHT. Offen/zu steuert der Button-Key (navgrp_open_* / navgrp_zu_*).
-*/
+/* --- Kategorisierte Navigation: linksbuendig + Pfeil vor Ueberpunkten -----
+   WICHTIG: Streamlit rendert den Button-Text in einem <p>. Die Zentrierung
+   sitzt am <p>, deshalb muss die Ausrichtung DORT gesetzt werden (nicht am
+   button). Alle Nav-Labels beginnen an derselben x-Position; der Pfeil der
+   Ueberpunkte sitzt per ::before im linken Rand und verschiebt das Label
+   nicht. Offen/zu steuert der Button-Key (navgrp_open_* / navgrp_zu_*). */
 div[class*="st-key-navgrp_"] .stButton>button,
 div[class*="st-key-navtop_"] .stButton>button,
 div[class*="st-key-navsub_"] .stButton>button{
-  position:relative; padding-left:32px; text-align:left;
-  justify-content:flex-start;}
-/* Ueberpunkte etwas kraeftiger */
-div[class*="st-key-navgrp_"] .stButton>button{ font-weight:800; letter-spacing:.3px; }
+  text-align:left !important; justify-content:flex-start !important;
+  position:relative;}
+div[class*="st-key-navgrp_"] .stButton>button p,
+div[class*="st-key-navtop_"] .stButton>button p,
+div[class*="st-key-navsub_"] .stButton>button p{
+  text-align:left !important; width:100%; margin:0;
+  padding-left:26px;}                    /* Top-Punkte: Label-Start = Pfeil-x */
+/* Ueberpunkte: Label weiter rechts, damit der Pfeil (bei 26px) NEBEN dem
+   Label steht, nicht darunter. Der Pfeil sitzt so exakt unter dem ersten
+   Buchstaben der punktlosen Tabs (Start/News/Earnings). */
+div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; padding-left:46px; }
 div[class*="st-key-navgrp_"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
-/* Pfeil links im Padding-Bereich, feste Position -> kein Textversatz */
-div[class*="st-key-navgrp_zu_"] .stButton>button::before{
-  content:"\23f5"; position:absolute; left:12px; top:50%;
-  transform:translateY(-50%); color:#B8860B; font-size:12px;}
-div[class*="st-key-navgrp_open_"] .stButton>button::before{
-  content:"\23f7"; position:absolute; left:12px; top:50%;
-  transform:translateY(-50%); color:var(--amber); font-size:12px;}
-/* Unterpunkte: weiter eingerueckt, damit die Hierarchie sichtbar ist */
-div[class*="st-key-navsub_"] .stButton>button{ padding-left:44px; }
+/* Pfeil bei x=26px -> genau unter dem ersten Buchstaben der Top-Punkte */
+div[class*="st-key-navgrp_zu_"] .stButton>button p::before{
+  content:"\25b8"; position:absolute; left:26px; top:50%;
+  transform:translateY(-50%); color:#C9962B; font-size:13px;}
+div[class*="st-key-navgrp_open_"] .stButton>button p::before{
+  content:"\25be"; position:absolute; left:26px; top:50%;
+  transform:translateY(-50%); color:var(--amber); font-size:13px;}
+/* Unterpunkte: Label weiter eingerueckt (Hierarchie sichtbar) */
+div[class*="st-key-navsub_"] .stButton>button p{ padding-left:46px; }
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{
   font-weight:800; color:var(--amber); background:transparent;

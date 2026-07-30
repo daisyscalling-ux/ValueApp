@@ -828,7 +828,8 @@ def transcript_liste(t: str, limit=100) -> list:
     for z in reihen:
         if not isinstance(z, dict):
             continue
-        _j, _q = _num(_g(z, "year")), _num(_g(z, "quarter"))
+        _j = _num(_g(z, "fiscal_year", "year"))
+        _q = _num(_g(z, "fiscal_quarter", "quarter"))
         out.append({
             "jahr": int(_j) if _j else None,      # sonst steht "2026.0" da
             "quartal": int(_q) if _q else None,
@@ -838,31 +839,63 @@ def transcript_liste(t: str, limit=100) -> list:
 
 
 def transcript(t: str, jahr=None, quartal=None) -> dict:
-    """Wortprotokoll eines Earnings-Calls.
+    """Wortprotokoll eines Earnings-Calls (v3).
 
-    Ohne Jahr/Quartal: das neueste. Rueckgabe {datum, jahr, quartal, text}.
-    Das Feld 'quarter' ist eine ZAHL (1-4), nicht "Q2" - fuer die Anzeige
-    wird daraus 'Q2' gebaut."""
+    v3-Endpunkt: GET /earnings-calls/{identifier}?fiscal_year=&fiscal_quarter=
+    Beide Parameter sind PFLICHT (es gibt kein 'latest' mehr). Der Text kommt
+    als Liste von {speaker, text}-Bloecken und wird hier zu Fliesstext
+    zusammengesetzt. Rueckgabe {datum, jahr, quartal, text}.
+
+    Ohne Jahr/Quartal: neuesten Eintrag aus der Liste nehmen und den abrufen.
+    """
     if not covers(t):
         return {}
-    if jahr and quartal:
-        try:
-            q = int(str(quartal).upper().replace("Q", "").strip())
-        except Exception:
-            q = quartal
-        d = _get(f"company/earnings-calls/transcript/{_sym(t)}",
-                 {"year": int(jahr), "quarter": q})
-    else:
-        d = _get(f"company/earnings-calls/latest/{_sym(t)}")
+    sym = _sym(t)
+
+    # Jahr/Quartal fehlen -> neuesten Call aus der Liste holen
+    if not (jahr and quartal):
+        liste = transcript_liste(t, limit=1)
+        if not liste:
+            return {}
+        jahr = liste[0].get("jahr")
+        quartal = liste[0].get("quartal")
+    if not (jahr and quartal):
+        return {}
+    try:
+        q = int(str(quartal).upper().replace("Q", "").strip())
+    except Exception:
+        return {}
+
+    d = _get(f"earnings-calls/{sym}",
+             {"fiscal_year": int(jahr), "fiscal_quarter": q})
     z = d if isinstance(d, dict) else _first(d)
     if not z or not isinstance(z, dict):
         return {}
-    q, j = _num(_g(z, "quarter")), _num(_g(z, "year"))
+
+    # Text zusammensetzen: v3 liefert 'transcript' als Liste von
+    # {speaker, text}. Wir bauen "Speaker: Text"-Absaetze. Faellt zurueck auf
+    # ein evtl. vorhandenes Klartextfeld.
+    roh = _g(z, "transcript", "content", "text")
+    if isinstance(roh, list):
+        teile = []
+        for blk in roh:
+            if not isinstance(blk, dict):
+                continue
+            sp = str(blk.get("speaker") or "").strip()
+            tx = str(blk.get("text") or "").strip()
+            if not tx:
+                continue
+            teile.append(f"{sp}: {tx}" if sp else tx)
+        text = "\n\n".join(teile)
+    else:
+        text = str(roh or "")
+
+    q2, j2 = _num(_g(z, "fiscal_quarter", "quarter")), _num(_g(z, "fiscal_year", "year"))
     return {
         "datum": str(_g(z, "date") or "")[:10],
-        "jahr": int(j) if j else None,
-        "quartal": (f"Q{int(q)}" if q else None),
-        "text": _g(z, "content", "transcript", "text") or "",
+        "jahr": int(j2) if j2 else (int(jahr) if jahr else None),
+        "quartal": (f"Q{int(q2)}" if q2 else f"Q{q}"),
+        "text": text,
     }
 
 

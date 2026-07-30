@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-27-f"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-27-g"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -48,6 +48,8 @@ except Exception:
 # ---- Schwellen fuer "meldenswerte" Aenderungen --------------------------------
 COMP_DELTA = 5          # Composite-Aenderung ab X Punkten melden
 UPSIDE_FLIP = True      # Vorzeichenwechsel des Upside melden
+RADAR_DELTA = 8         # Radar-Score-Sprung ab X Punkten melden
+UPSIDE_DELTA = 8        # Upside-Sprung ab X Prozentpunkten melden
 # ---------------------------------------------------------------------------
 # Skalierung: Mit roic.ai (300 Abrufe/min statt FMP 250/Tag) darf der Lauf
 # deutlich breiter und tiefer werden. OHNE Schluessel bleiben die alten,
@@ -628,6 +630,19 @@ def diff_changes(old_snap, new_rows, section):
             changes.append({"ticker": t, "name": r.get("name"), "section": section,
                             "kind": "upside_flip",
                             "text": f"{t} Upside dreht {ou:+.0f}%\u2192{up:+.0f}%"})
+        # Deutlicher Upside-Sprung (auch ohne Vorzeichenwechsel)
+        elif up is not None and ou is not None and abs(up - ou) >= UPSIDE_DELTA:
+            arrow = "\u2197" if up > ou else "\u2198"
+            changes.append({"ticker": t, "name": r.get("name"), "section": section,
+                            "kind": "upside_jump",
+                            "text": f"{t} Upside {arrow} {ou:+.0f}%\u2192{up:+.0f}%"})
+        # Radar-Score-Sprung
+        nr, orr = r.get("radar_score"), o.get("radar_score")
+        if nr is not None and orr is not None and abs(nr - orr) >= RADAR_DELTA:
+            arrow = "\u2197" if nr > orr else "\u2198"
+            changes.append({"ticker": t, "name": r.get("name"), "section": section,
+                            "kind": "radar",
+                            "text": f"{t} Radar-Score {arrow} {orr:.0f}\u2192{nr:.0f}"})
     return changes
 
 
@@ -694,6 +709,15 @@ def _analyse(t):
                            screen_extras, _insider, _analyst)
         out["verdict"] = res.get("verdict", "")
         out["isin"] = f.get("isin")     # fuer die ISIN-Entdopplung der Signale
+        # Einstiegskurs und aktueller Kurs - fuer die Kaufzonen-Pruefung.
+        # Ein Signal darf NUR erfasst werden, wenn der Kurs die Einstiegszone
+        # erreicht hat (Kurs <= Einstieg). Sonst tauchten Titel wie LLY in der
+        # Trefferbilanz auf, deren Kurs weit ueber dem Einstieg lag - die
+        # Strategie kann so nie funktionieren.
+        out["entry"] = (round(v["entry_price"], 2)
+                        if v.get("entry_price") else None)
+        out["price"] = f.get("price")
+        out["upside"] = v.get("upside_pct")
         # Welche Screener-Vorlage passt? Bei mehreren: die mit der
         # besseren Soft-Quote. Keine Treffer -> "keine".
         try:
@@ -837,6 +861,19 @@ def run():
     changes = []
     changes += diff_changes(old_snaps, holdings, "Portfolio")
     changes += diff_changes(old_snaps, watch, "Watchlist")
+    # BREITE Veraenderungen: der Screener-Scan deckt ~600 Titel ueber alle
+    # Branchen und fuenf Laender ab. Wir vergleichen jeden davon mit dem
+    # Vortags-Snapshot und melden starke Spruenge in Composite, Radar-Score
+    # oder Upside. Das ist die Startseiten-Logik "Was hat sich geaendert".
+    _scr_map = {r["ticker"]: r for r in scr if r.get("ticker")}
+    _rad_map = {r["ticker"]: r for r in rad if r.get("ticker")}
+    # Radar-Score aus dem Radar-Scan in die Screener-Zeilen mischen, damit
+    # diff_changes auch Radar-Spruenge sieht.
+    for _t, _r in _scr_map.items():
+        if _t in _rad_map and _rad_map[_t].get("score") is not None:
+            _r.setdefault("radar_score", _rad_map[_t].get("score"))
+    _prev_breit = old_snaps.get("_breit", {})
+    changes += diff_changes(_prev_breit, _scr_map, "Markt")
     changes += diff_newcomers(prev_scr, scr, "Screener")
     changes += diff_newcomers(prev_rad, rad, "Radar")
 
@@ -852,6 +889,13 @@ def run():
     new_snap["_radar_top"] = [r["ticker"] for r in rad]
     new_snap["_screener_rows"] = scr
     new_snap["_radar_rows"] = rad
+    # Breite Werte je Titel fuer den naechsten Vergleich (nur die Felder, die
+    # diff_changes braucht - haelt den Snapshot klein).
+    new_snap["_breit"] = {
+        t: {"composite": r.get("composite"), "upside": r.get("upside"),
+            "radar_score": r.get("radar_score"), "name": r.get("name"),
+            "price": r.get("price"), "entry": r.get("entry")}
+        for t, r in _scr_map.items()}
     store.set_snapshot(new_snap)
 
     # 5) Aenderungs-Feed fortschreiben (neueste zuerst, gekappt)
@@ -900,16 +944,33 @@ def run():
         # (_analyse steht jetzt auf Modulebene)
         sig_new = []
         print(f"[trackrecord] Erfassung mit Code-Version {CODE_VERSION}")
+
+        def _in_kaufzone(analyse, row):
+            """True, wenn der Kurs die Einstiegszone erreicht hat (Kurs <=
+            Einstieg). Ohne belastbaren Einstieg (kein Fair Value) wird das
+            Signal NICHT erfasst - lieber kein Signal als ein Fehlkauf weit
+            ueber der Zone (LLY: Kurs 1180 vs Einstieg 868)."""
+            entry = analyse.get("entry")
+            price = analyse.get("price") or row.get("price")
+            if not entry or not price:
+                return False
+            return price <= entry
+
+        _uebersprungen = 0
         for r in (scr or [])[:10]:
             tk = r.get("ticker")
             if not tk:
                 continue
             _a = _analyse(tk)
+            if not _in_kaufzone(_a, r):
+                _uebersprungen += 1
+                continue
             sig_new.append({"ticker": tk, "quelle": "Screener", "name": r.get("name"),
                             "isin": _a.get("isin"),
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
-                            "verdict": _a.get("verdict", ""), "price": r.get("price")})
+                            "entry": _a.get("entry"),
+                            "verdict": _a.get("verdict", ""), "price": _a.get("price") or r.get("price")})
         for r in (rad or [])[:10]:
             tk = r.get("ticker")
             if not tk:
@@ -917,6 +978,9 @@ def run():
             # BUG: r.get("radar") gibt es in score_ticker nicht -> Score war immer
             # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
             _a = _analyse(tk)
+            if not _in_kaufzone(_a, r):
+                _uebersprungen += 1
+                continue
             sig_new.append({"ticker": tk, "quelle": "Radar", "name": r.get("name"),
                             "isin": _a.get("isin"),
                             "score": (_a.get("radar_score")
@@ -927,7 +991,11 @@ def run():
                             "firing": _a.get("radar_firing"),
                             "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
-                            "verdict": _a.get("verdict", ""), "price": r.get("price")})
+                            "entry": _a.get("entry"),
+                            "verdict": _a.get("verdict", ""), "price": _a.get("price") or r.get("price")})
+        if _uebersprungen:
+            print(f"[trackrecord] {_uebersprungen} Titel uebersprungen "
+                  f"(Kurs nicht in Einstiegszone).")
 
         # Momentum-Signale: der Momentum-Score selbst ist die Kennzahl. Kein
         # Scorecard-Urteil (das misst Substanz, nicht Trend) - stattdessen wird

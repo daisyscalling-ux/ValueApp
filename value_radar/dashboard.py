@@ -2341,8 +2341,13 @@ if nav == "Start":
         st.markdown('<div class="sec-title">WAS HAT SICH GE\u00c4NDERT</div>',
                     unsafe_allow_html=True)
         _kind_icon = {"buyzone": "\U0001f3af", "composite": "\U0001f4ca",
-                      "upside_flip": "\U0001f504", "new_idea": "\u2728"}
-        for _c in _changes[:8]:
+                      "upside_flip": "\U0001f504", "upside_jump": "\U0001f4c8",
+                      "radar": "\U0001f4e1", "new_idea": "\u2728"}
+        st.caption("Breiter Marktscan \u00fcber alle Branchen und f\u00fcnf L\u00e4nder \u2013 "
+                   "starke Spr\u00fcnge in Composite, Radar-Score oder Upside. "
+                   "\U0001f4ca Composite \u00b7 \U0001f4e1 Radar \u00b7 \U0001f4c8 Upside \u00b7 "
+                   "\U0001f3af Kaufzone.")
+        for _c in _changes[:20]:
             _ic = _kind_icon.get(_c.get("kind"), "\u2022")
             _tk = esc(str(_c.get("ticker") or ""))
             _txt = esc(str(_c.get("text") or ""))
@@ -2383,77 +2388,7 @@ if nav == "Start":
 
     st.markdown("---")
 
-    def hot_table(rows, kind, key):
-        if not rows:
-            if kind == "radar":
-                st.info("Aktuell keine Radar-Daten abrufbar \u2013 sp\u00e4ter erneut versuchen "
-                        "oder das Radar-Modul mit eigenem Universum nutzen.")
-            else:
-                st.info("Aktuell keine Titel mit Composite \u2265 55 gefunden \u2013 sp\u00e4ter "
-                        "erneut versuchen.")
-            return
-        if kind == "radar":
-            data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:24],
-                     "Radar-Score": r["score"], "Aktive Ebenen": r["firing"],
-                     "Preis \u20ac": r["price_eur"], "Sektor": (r["sector"] or "")[:16]}
-                    for r in rows]
-            cstyle = ["Radar-Score"]
-        else:
-            data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
-                     "Chance": round(r.get("opportunity") or 0),
-                     "Score": r["score"],
-                     "Upside %": (round(r["upside"], 2)
-                                  if (r.get("upside") is not None and r.get("reliable")) else None),
-                     "Preis \u20ac": r["price_eur"], "Sektor": (r["sector"] or "")[:16]}
-                    for r in rows]
-            cstyle = ["Chance", "Score"]
-        vr_rows(data, key_prefix=f"hot_{key}",
-                score_cols=("Radar-Score", "Chance", "Score"),
-                signed_cols=("Upside %",))
-        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
-
-    if not st.session_state.get("home_hot_loaded"):
-        st.markdown('<div class="sec-title">HOT PICKS</div>', unsafe_allow_html=True)
-        if st.button("\u25b6 Radar- & Screener-Hot-Picks laden", use_container_width=True):
-            st.session_state["home_hot_loaded"] = True
-            st.rerun()
-        st.caption("Der Scan dauert beim ersten Mal etwas \u2013 wird separat geladen, "
-                   "damit die Startseite sofort reagiert.")
-    else:
-        htabs = st.tabs(["  \U0001f3af RADAR \u00b7 HOT PICKS  ",
-                         "  \U0001f50d SCREENER \u00b7 HOT PICKS  "])
-        with htabs[0]:
-            st.caption("Radar-Scan \u00fcber kuratierte Inflektions-/Breakout-Kandidaten "
-                       "(Semis, AI, Power, Defense, Uran, Biotech) \u2013 nach Radar-Score sortiert.")
-            with st.spinner("Lade Radar Hot Picks ... (erster Aufruf dauert l\u00e4nger)"):
-                hot_table(home_radar_picks(10), "radar", "home_radar_tbl")
-        with htabs[1]:
-            st.caption("Qualit\u00e4ts-Scan (weltweit) \u2013 nach \u201eChance\u201c sortiert "
-                       "(Qualit\u00e4t + verl\u00e4sslicher Bewertungs-Upside). Upside leer = Fair Value unsicher.")
-            with st.spinner("Lade Screener Hot Picks ..."):
-                hot_table(home_screener_picks(10), "screener", "home_screen_tbl")
-
-    st.markdown("---")
     saved_all = store.load_all()
-    st.markdown("---")
-    st.markdown('<div class="sec-title">HOT NEWS \u00b7 SCHNELL-BRIEFING</div>',
-                unsafe_allow_html=True)
-    for nitem in (load_marketnews("US-Markt") or [])[:5]:
-        head_raw = nitem.get("headline") or ""
-        summ_raw = nitem.get("summary") or ""
-        chips = bfg.tags_for(head_raw, summ_raw)
-        points = bfg.key_points(head_raw, summ_raw, max_points=1)
-        chip_html = "".join(f'<span class="pill">{e} {esc(l)}</span>' for e, l in chips)
-        pt_html = (f'<div class="sum">\u2022 {esc(points[0])}</div>' if points else "")
-        url = esc(read_url(nitem.get("url"), nitem.get("access", "")))
-        src = esc(nitem.get("source") or "")
-        date = fmt_ts(nitem.get("ts"))
-        st.markdown(f'<div class="news-box">{chip_html}'
-                    f'<a href="{url}" target="_blank">{esc(head_raw)}</a>{pt_html}'
-                    f'<div class="meta">{src}{" \u00b7 " + date if date else ""}</div></div>',
-                    unsafe_allow_html=True)
-    st.caption("Chips = Thema, Punkt = Kernaussage. Mehr (auf Deutsch, mit Briefing-Modus) "
-               "im Men\u00fcpunkt \u201eNews\u201c.")
     if saved_all:
         st.markdown('<div class="sec-title">MEINE PORTFOLIOS</div>', unsafe_allow_html=True)
         st.caption("Beim Start neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
@@ -5979,7 +5914,7 @@ if nav == "Earnings Calls":
                            "berichtet." if _nur_pf else ""))
             else:
                 vr_table([{
-                    "Ticker": r["ticker"],
+                    "Firma": (r.get("name") or r["ticker"]),
                     "Datum": r["datum"],
                     "vor Tagen": r.get("tage_her"),
                     "Quartal": (f"{r.get('quartal') or ''} "
@@ -5992,10 +5927,19 @@ if nav == "Earnings Calls":
                 _wahl = st.selectbox(
                     "Firma",
                     _sicht,
-                    format_func=lambda r: (f"{r['ticker']} \u00b7 {r['datum']} "
-                                           f"\u00b7 {r.get('quartal') or ''} "
+                    format_func=lambda r: (f"{r.get('name') or r['ticker']} \u00b7 "
+                                           f"{r['datum']} \u00b7 "
+                                           f"{r.get('quartal') or ''} "
                                            f"{r.get('jahr') or ''}").strip(),
                     key="ec_wahl")
+
+                # Direkt zur Einzelanalyse springen (Ticker uebergeben)
+                if st.button(f"\U0001f50e Analyse zu "
+                             f"{_wahl.get('name') or _wahl['ticker']} \u00f6ffnen",
+                             key="ec_analyse"):
+                    st.session_state["pending_search"] = _wahl["ticker"]
+                    st.session_state["pending_nav"] = "Einzelanalyse"
+                    st.rerun()
 
                 @st.cache_data(ttl=86400, show_spinner=False)
                 def _ec_text(t, jahr, quartal):

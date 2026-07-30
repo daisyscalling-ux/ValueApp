@@ -108,16 +108,12 @@ section[data-testid="stSidebar"] .stButton>button{
   font-weight:600; letter-spacing:.3px;}
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);}
-/* Caret-Button (Auf-/Zuklappen): schmal, zentriert, dezent, kein Rahmen */
-div[class*="st-key-navcar_"] .stButton>button{
-  text-align:center; justify-content:center; border:none;
-  background:transparent; padding:10px 0; margin:2px 0;
-  color:#B8860B; font-size:13px; min-width:0;}
-div[class*="st-key-navcar_"] .stButton>button:hover{
-  color:var(--amber); background:rgba(255,176,0,.06);}
-/* Ueberpunkt-Label (Rubrik): Grossbuchstaben-Anmutung, etwas kraeftiger */
+/* Ueberpunkt-Box (Rubrik mit Pfeil links IN der Box): kraeftiger, der Pfeil
+   sitzt als erstes Zeichen im Label und ist damit Teil derselben Box. */
 div[class*="st-key-navgrp_"] .stButton>button{
-  font-weight:800; letter-spacing:.5px;}
+  font-weight:800; letter-spacing:.4px;}
+div[class*="st-key-navgrp_"] .stButton>button:hover{
+  border-color:var(--amber); color:var(--amber);}
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{
   font-weight:800; color:var(--amber); background:transparent;
@@ -2182,9 +2178,8 @@ with _mnav:
     for _pg, _icon in MOBILE_NAV.items():
         if st.button(_icon, key=f"mnav_{_pg}", use_container_width=True,
                      help=_pg, type=("primary" if _pg == nav else "secondary")):
-            if _pg != nav:
-                st.session_state["nav"] = _pg
-                st.rerun()
+            # Kein explizites st.rerun() - der Klick loest schon einen aus.
+            st.session_state["nav"] = _pg
 
 try:
     from assets_logo import LGI_LOGO_B64
@@ -2227,11 +2222,12 @@ with st.sidebar:
     def _nav_button(_key, _label, _icon, _active, _indent=False):
         btype = "primary" if _active else "secondary"
         _pre = "\u2003" if _indent else ""      # Einrueckung fuer Unterpunkte
+        # KEIN explizites st.rerun(): der Button-Klick loest bei Streamlit
+        # ohnehin genau einen Rerun aus. Ein zusaetzliches st.rerun() erzwingt
+        # einen ZWEITEN Durchlauf - das war die Ursache des Flackerns.
         if st.button(f"{_pre}{_icon}  {_label}", key=f"navbtn_{_key}",
                      use_container_width=True, type=btype):
-            if not _active:
-                st.session_state["nav"] = _key
-                st.rerun()
+            st.session_state["nav"] = _key
 
     for grp in NAV_GROUPS:
         kinder = grp.get("children") or []
@@ -2240,32 +2236,29 @@ with st.sidebar:
             _nav_button(grp["key"], grp["label"], grp["icon"], grp["key"] == nav)
             continue
 
-        # Ueberpunkt MIT Kindern: schmaler Caret-Button + breiter Label-Button.
+        # Ueberpunkt MIT Kindern: EIN Button, Pfeil links IN der Box. Klick auf
+        # die ganze Box klappt auf/zu. Navigiert wird ueber die Unterpunkte.
         offen = grp["key"] in _open_groups
-        # aktiv, wenn die Gruppenseite selbst oder eines ihrer Kinder offen ist
         kind_keys = [k for k, _, _ in kinder]
         grp_aktiv = (nav == grp["key"]) or (nav in kind_keys)
-        _ck, _lk = st.columns([1, 5], gap="small")
-        with _ck:
-            # Gefuellter Caret, gedreht wenn offen (per Label-Zeichen).
-            _car = "\u23f7" if offen else "\u23f5"   # ⏷ offen / ⏵ zu
-            if st.button(_car, key=f"navcar_{grp['key']}",
-                         use_container_width=True,
-                         help=("zuklappen" if offen else "aufklappen")):
-                if offen:
-                    _open_groups.discard(grp["key"])
-                else:
-                    _open_groups.add(grp["key"])
-                st.session_state["_nav_open"] = _open_groups
-                st.rerun()
-        with _lk:
-            btype = "primary" if grp_aktiv else "secondary"
-            if st.button(f"{grp['icon']}  {grp['label']}",
-                         key=f"navgrp_{grp['key']}",
-                         use_container_width=True, type=btype):
-                if nav != grp["key"]:
+        _car = "\u23f7" if offen else "\u23f5"       # ⏷ offen / ⏵ zu
+        btype = "primary" if grp_aktiv else "secondary"
+        if st.button(f"{_car}  {grp['icon']}  {grp['label']}",
+                     key=f"navgrp_{grp['key']}",
+                     use_container_width=True, type=btype,
+                     help=("zuklappen" if offen else "aufklappen")):
+            # Aufklapp-Zustand umschalten - KEIN st.rerun() (siehe oben).
+            if offen:
+                _open_groups.discard(grp["key"])
+            else:
+                _open_groups.add(grp["key"])
+                # Beim AUFKLAPPEN zusaetzlich die Landeseite des Ueberpunkts
+                # oeffnen (Aktien&Markt zeigt die Index-Maerkte, My Value App
+                # die Portfolios). So bleibt die eigene Seite ohne zweiten
+                # Klick erreichbar.
+                if grp["key"] in NAV_GROUP_SEITEN:
                     st.session_state["nav"] = grp["key"]
-                    st.rerun()
+            st.session_state["_nav_open"] = _open_groups
         # Unterpunkte nur zeigen, wenn aufgeklappt
         if offen:
             for _ckey, _clabel, _cicon in kinder:

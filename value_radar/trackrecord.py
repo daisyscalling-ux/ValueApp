@@ -188,6 +188,7 @@ def record(signals):
             "merkmal": s.get("merkmal", ""),
             "firing": s.get("firing"),
             "codever": s.get("codever", ""),
+            "isin": s.get("isin", ""),   # fuer zuverlaessige Entdopplung
             # Momentum-Zusatzfelder (fuer die Trefferbilanz-Spalten)
             "vkey": s.get("vkey", ""),
             "mom_12_1": s.get("mom_12_1"),
@@ -509,10 +510,16 @@ def bereinige_dubletten():
             raus.append(t)
             continue
         n = _norm(e.get("name"))
-        if not n:                           # ohne Namen nicht zuordenbar
+        # Gruppenschluessel: ISIN bevorzugen (stabilster Firmenschluessel -
+        # faengt FRES.L vs FNLPF, die dieselbe ISIN GB00B2QPKJ12 tragen, aber
+        # verschieden geschriebene Namen und verschiedene Boersen haben).
+        # Ohne ISIN Rueckfall auf den normalisierten Namen.
+        _isin = (e.get("isin") or "").strip().upper()
+        schluessel = (_isin or n, e.get("quelle"))
+        if not _isin and not n:             # weder ISIN noch Name -> nicht zuordenbar
             behalten.append(e)
             continue
-        gruppen.setdefault((n, e.get("quelle")), []).append(e)
+        gruppen.setdefault(schluessel, []).append(e)
 
     for (_n, _q), gruppe in gruppen.items():
         if len(gruppe) == 1:
@@ -521,17 +528,33 @@ def bereinige_dubletten():
         # Auswahl der zu behaltenden Gattung/Notierung:
         #  1) echte Notierung ohne A/B-Klassenzusatz bevorzugen
         #  2) GOOGL vor GOOG (Stimmrecht)
-        #  3) Heimatboerse (suffixlos)
+        #  3) HEIMATBOERSE passend zur ISIN-Nationalitaet - NICHT einfach
+        #     "suffixlos". Bei einer GB-Firma (FRES.L/FNLPF) ist die .L-
+        #     Notierung die Heimat, nicht die suffixlose US-OTC-Notierung
+        #     FNLPF. Nur bei US-ISIN ist suffixlos = Heimat.
         #  4) dann aelteste (laengste Historie)
+        _suffix_land = {"L": "GB", "IL": "GB", "DE": "DE", "F": "DE",
+                        "PA": "FR", "AS": "NL", "MI": "IT", "MC": "ES",
+                        "SW": "CH", "ST": "SE", "TO": "CA", "HK": "HK",
+                        "AX": "AU", "T": "JP"}
+
         def _wahl(e):
             t = (e.get("ticker") or "").upper()
             base = t.split(".")[0]
             hat_klasse = "-" in base
             ist_goog_c = (base == "GOOG")
-            suffixlos = "." not in t
+            isin = (e.get("isin") or "").upper()
+            isin_land = isin[:2] if len(isin) >= 2 else ""
+            suffix = t.rsplit(".", 1)[-1] if "." in t else ""
+            ticker_land = _suffix_land.get(suffix, "US" if not suffix else "?")
+            # Heimat = Boersen-Land passt zur ISIN-Nationalitaet
+            ist_heimat = (isin_land and ticker_land == isin_land)
+            # ohne ISIN: alte Regel (suffixlos = Heimat)
+            if not isin_land:
+                ist_heimat = ("." not in t)
             return (1 if hat_klasse else 0,
                     1 if ist_goog_c else 0,
-                    0 if suffixlos else 1,
+                    0 if ist_heimat else 1,
                     e.get("ts") or 0,                 # aeltere zuerst
                     _base(t)[1])
         gruppe.sort(key=_wahl)

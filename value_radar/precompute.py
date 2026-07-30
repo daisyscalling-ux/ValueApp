@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-27-c"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-27-f"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -663,14 +663,23 @@ def _analyse(t):
         s = scoring.score_stock(f, None, preset=ep)
         v = valuation.fair_value(f, None, ep)
         hist = providers.get_price_history(t, period="1y", interval="1d")
+        # ZWEI verschiedene extras-Quellen - genau wie die Einzelanalyse:
+        #  * get_signal_extras: Umsatzreihen/Revisionen fuer die Matrix-Signale
+        #  * get_screen_extras: above_sma200/rsi fuer das SMA200-Gate der Scorecard
+        # Frueher bekam die Scorecard hier nur get_signal_extras - das enthaelt
+        # KEIN above_sma200. Dadurch fiel das Pflicht-Gate "Kurs > SMA200" mit
+        # "keine Technik-Daten" aus, und aus einem Kaufkandidaten wurde
+        # faelschlich "Knapp - Watchlist". Genau die Abweichung App vs. Nachtlauf.
         extras = providers.get_signal_extras(t)
-        sig = _mx.build_signals(f, hist, None, extras)
-        # WICHTIG: Insider- und Analystendaten mitladen. Ohne sie fehlten dem
-        # Nachtlauf alle insider/analyst-Bonuspunkte - und da ein Kaufkandidat
-        # ALLE Pflicht-Gates PLUS mindestens 1 Bonus braucht, konnte der
-        # Nachtlauf gar keinen Kaufkandidaten erzeugen (Bonus blieb 0). Die
-        # Einzelanalyse uebergab diese Daten laengst; deshalb wich ihr Urteil
-        # ab (HSBC: dort Kaufkandidat, im Nachtlauf "Verwerfen").
+        try:
+            screen_extras = providers.get_screen_extras(t) or {}
+        except Exception:
+            screen_extras = {}
+        # Insider- und Analystendaten VOR build_signals laden, damit der
+        # Nachtlauf exakt denselben Pfad wie die Einzelanalyse nutzt: die
+        # Analyse gibt intel.get("analyst") an build_signals weiter (fuer die
+        # Matrix-2-Signale) UND an die Scorecard. Wenn hier None statt der
+        # Analystendaten steht, weichen Matrix-2-Total und damit das Urteil ab.
         try:
             _insider = providers.get_insider_activity(t)
         except Exception:
@@ -679,10 +688,12 @@ def _analyse(t):
             _analyst = providers.get_analyst_ratings(t)
         except Exception:
             _analyst = None
+        sig = _mx.build_signals(f, hist, _analyst, extras)
         res = _sc.evaluate(f, v, s.get("composite"),
                            _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
-                           extras, _insider, _analyst)
+                           screen_extras, _insider, _analyst)
         out["verdict"] = res.get("verdict", "")
+        out["isin"] = f.get("isin")     # fuer die ISIN-Entdopplung der Signale
         # Welche Screener-Vorlage passt? Bei mehreren: die mit der
         # besseren Soft-Quote. Keine Treffer -> "keine".
         try:
@@ -895,6 +906,7 @@ def run():
                 continue
             _a = _analyse(tk)
             sig_new.append({"ticker": tk, "quelle": "Screener", "name": r.get("name"),
+                            "isin": _a.get("isin"),
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "verdict": _a.get("verdict", ""), "price": r.get("price")})
@@ -906,6 +918,7 @@ def run():
             # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
             _a = _analyse(tk)
             sig_new.append({"ticker": tk, "quelle": "Radar", "name": r.get("name"),
+                            "isin": _a.get("isin"),
                             "score": (_a.get("radar_score")
                                       if _a.get("radar_score") is not None
                                       else (r.get("quantum")

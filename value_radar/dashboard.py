@@ -3593,7 +3593,11 @@ if nav == "Einzelanalyse":
     # Gemeinsame Signal-Vorbereitung fuer beide Matrizen
     # ===========================================================================
     def _prep_for_matrix(t):
-        f = load_fundamentals(t)
+        # WICHTIG: deep=True wie in der Einzelanalyse (Zeile ~2544). Sonst
+        # laedt die Scorecard flachere Daten und der Composite weicht ab
+        # (z.B. 68 statt 70) - der Nutzer sieht zwei verschiedene Scores fuer
+        # dieselbe Aktie.
+        f = load_fundamentals_deep(t)
         if not f.get("price"):
             return None
         intel = load_intel(t, f.get("name"))

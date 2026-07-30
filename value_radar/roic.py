@@ -36,7 +36,7 @@ try:
 except Exception:                                   # pragma: no cover
     config = None
 
-BASE = "https://api.roic.ai/v2"
+BASE = "https://api.roic.ai/v3.0.0"
 
 # ---------------------------------------------------------------- Rate-Limit
 # 300 Abrufe/Minute laut Plan. Wir bleiben bewusst bei 240 (80 %):
@@ -97,18 +97,20 @@ def covers(t: str) -> bool:
     Siehe multiples_ok()."""
     if not enabled():
         return False
-    if is_pence_market(t):
-        return eu_enabled()          # London erst nach bestandenem v3-Test
+    # UK/Pence FREIGESCHALTET: Der v3-Test hat bewiesen, dass roic die
+    # Multiples fuer London selbst sauber in GBP umrechnet (fx_applied=True,
+    # KGV plausibel - SHEL.L 12,2, HSBA.L 12,4, BARC.L 9,4). Der alte
+    # Pence-x100-Fehler existiert unter v3 nicht mehr.
     return True
 
 
 def multiples_ok(t: str) -> bool:
     """Duerfen KGV/KUV/EV-EBITDA von roic uebernommen werden?
 
-    Nur fuer US-Titel. Ausserhalb der USA hatten wir sie nicht geprueft,
-    und genau dort lag der Fehler. Margen und Wachstum bleiben erlaubt -
-    die sind einheitenlos."""
-    return enabled() and (is_us_ticker(t) or eu_enabled())
+    Unter v3 JA - auch fuer UK: roic liefert die Multiples mit fx_applied
+    in Handelswaehrung (GBP), nicht als Pence/Pfund-Mischung. Der frueher
+    hier gesperrte Fehler ist behoben."""
+    return enabled()
 
 
 def _throttle():
@@ -175,16 +177,205 @@ def _pct(x):
     return v / 100.0 if v is not None else None
 
 
+# ---------------------------------------------------------------------------
+# v3-TICKER-AUFLOESUNG: aus "AAPL" das noetige "NASDAQ:AAPL" machen
+# ---------------------------------------------------------------------------
+# v3 verlangt bei JEDEM Abruf EXCHANGE:TICKER. Das Tool hat aber nur den
+# nackten Ticker. Die Ticker-Suche (tickers/search) liefert pro Firma alle
+# Notierungen mit exchange/symbol/isin/is_primary/listing_country_code -
+# daraus bauen wir das v3-Symbol UND bekommen ISIN + Heimatboerse gratis.
+#
+# Wir cachen das Ergebnis je nacktem Ticker, damit nicht bei jedem der ~8
+# Bundle-Abrufe erneut gesucht wird.
+
+# Yahoo-Boersensuffix -> roic-Boersenkuerzel (aus Sonde 2 bestaetigt:
+# roic nutzt XETR/FRA fuer DE, LSE fuer UK - NICHT XETRA/LON).
+_SUFFIX_ROIC_EXCH = {
+    "DE": ("XETR", "FRA"), "F": ("FRA", "XETR"), "MU": ("MUN",),
+    "BE": ("BER",), "SG": ("STU",), "DU": ("DUS",), "HM": ("HAM",),
+    "HA": ("HAN",), "L": ("LSE",), "IL": ("LSE",), "PA": ("EPA",),
+    "AS": ("AMS",), "BR": ("EBR",), "MI": ("MIL",), "MC": ("BME",),
+    "SW": ("SIX",), "VX": ("SIX",), "ST": ("STO",), "HE": ("HEL",),
+    "OL": ("OSL",), "CO": ("CPH",), "VI": ("VIE",), "LS": ("ELI",),
+    "TO": ("TSX",), "T": ("TSE",), "HK": ("HKEX",), "AX": ("ASX",),
+}
+
+_RESOLVE_CACHE: dict[str, dict | None] = {}
+
+# Yahoo-Suffix -> erwartetes Land (fuer die harte Filterung bei der Auflösung)
+_SUFFIX_LAND = {
+    "L": "GB", "IL": "GB", "DE": "DE", "F": "DE", "MU": "DE", "BE": "DE",
+    "SG": "DE", "DU": "DE", "HM": "DE", "HA": "DE", "PA": "FR", "AS": "NL",
+    "BR": "BE", "MI": "IT", "MC": "ES", "SW": "CH", "VX": "CH", "ST": "SE",
+    "HE": "FI", "OL": "NO", "CO": "DK", "VI": "AT", "LS": "PT", "TO": "CA",
+    "T": "JP", "HK": "HK", "AX": "AU",
+}
+
+# roic-Boersenkuerzel -> Land. Noetig, weil roic nicht immer ein
+# listing_country_code mitliefert - dann leiten wir das Land aus der Boerse
+# ab (SIX=Schweiz, CSE=Kanada, LSE=UK ...), um falsche Treffer zu sperren.
+_EXCH_LAND = {
+    "NASDAQ": "US", "NYSE": "US", "NYSEAMERICAN": "US", "AMEX": "US",
+    "OTC": "US", "BATS": "US", "IEX": "US",
+    "LSE": "GB", "IOB": "GB",
+    "XETR": "DE", "FRA": "DE", "MUN": "DE", "BER": "DE", "STU": "DE",
+    "DUS": "DE", "HAM": "DE", "HAN": "DE", "GETTEX": "DE", "TG": "DE",
+    "EPA": "FR", "AMS": "NL", "EBR": "BE", "MIL": "IT", "BME": "ES",
+    "SIX": "CH", "BX": "CH", "STO": "SE", "HEL": "FI", "OSL": "NO",
+    "CPH": "DK", "VIE": "AT", "ELI": "PT",
+    "TSX": "CA", "TSXV": "CA", "CSE": "CA", "NEO": "CA",
+    "TSE": "JP", "HKEX": "HK", "ASX": "AU", "SGX": "SG",
+    "B3": "BR", "BMV": "MX", "BYMA": "AR", "GPW": "PL",
+}
+
+
+def _such_roh(query: str):
+    """Ticker-Suche (v3). Rueckgabe: Liste von Treffer-dicts oder []."""
+    d = _get("tickers/search", {"query": query})
+    if isinstance(d, list):
+        return d
+    if isinstance(d, dict):
+        for k in ("data", "results", "tickers"):
+            v = d.get(k)
+            if isinstance(v, list):
+                return v
+    return []
+
+
+def aufloesen(t: str) -> dict | None:
+    """Nackten Ticker -> {"symbol": "NASDAQ:AAPL", "isin":..., "exchange":...,
+    "is_primary":..., "country":...} oder None. Ergebnis wird gecacht.
+
+    Bei Suffix-Tickern (.L/.DE) MUSS die Boerse zum Suffix-Land passen -
+    sonst landet man bei einer voellig anderen Firma gleicher Basis
+    (RR.L Rolls-Royce vs CSE:RR Kanada) oder an der falschen Boerse
+    (BP.L -> SIX statt LSE). Wichtig: roic liefert nicht immer ein
+    listing_country_code, deshalb leiten wir das Land NOTFALLS aus dem
+    Boersenkuerzel ab (SIX=CH, CSE=CA, LSE=GB ...).
+    """
+    if not t:
+        return None
+    schluessel = t.upper()
+    if schluessel in _RESOLVE_CACHE:
+        return _RESOLVE_CACHE[schluessel]
+
+    basis = schluessel.split(".")[0]
+    suffix = schluessel.rsplit(".", 1)[-1].upper() if "." in schluessel else ""
+    ziel_exch = _SUFFIX_ROIC_EXCH.get(suffix)          # bevorzugte roic-Boerse(n)
+    ziel_land = _SUFFIX_LAND.get(suffix)               # erwartetes Land
+
+    treffer = _such_roh(basis)
+    if not treffer:
+        _RESOLVE_CACHE[schluessel] = None
+        return None
+
+    def _land_von(tr):
+        """Land des Treffers: erst das gemeldete, sonst aus der Boerse."""
+        land = (tr.get("listing_country_code") or "").upper()
+        if land:
+            return land
+        ex = (tr.get("exchange") or "").upper()
+        return _EXCH_LAND.get(ex, "")
+
+    kandidaten = []
+    for tr in treffer:
+        sym = tr.get("symbol") or ""
+        sym_basis = sym.split(":")[-1].upper()
+        if sym_basis != basis:                 # Basis muss exakt passen
+            continue
+        ex = (sym.split(":")[0] or "").upper()
+        land = _land_von(tr)
+        prim = bool(tr.get("is_primary"))
+
+        if suffix:
+            # Harte Sperre: Land muss passen. Kennen wir das Land nicht UND
+            # die Boerse ist nicht die erwartete -> verwerfen (kein Raten).
+            if ziel_land:
+                if land and land != ziel_land:
+                    continue
+                if not land and ziel_exch and ex not in ziel_exch:
+                    continue
+            exch_ok = bool(ziel_exch and ex in ziel_exch)
+        else:
+            # nackter Ticker = US-Heimatnotierung
+            if ex not in ("NASDAQ", "NYSE", "NYSEAMERICAN", "AMEX"):
+                # nur akzeptieren, wenn Land US oder unbekannt
+                if land and land != "US":
+                    continue
+            exch_ok = ex in ("NASDAQ", "NYSE", "NYSEAMERICAN", "AMEX")
+
+        # Rang: erwartete Boerse zuerst, dann is_primary
+        rang = (0 if exch_ok else 1, 0 if prim else 1)
+        kandidaten.append((rang, tr))
+
+    if not kandidaten and not suffix:
+        # Rueckfall NUR fuer nackte Ticker: den is_primary-Treffer nehmen.
+        for tr in treffer:
+            if tr.get("is_primary"):
+                kandidaten.append(((2, 0), tr))
+                break
+
+    if not kandidaten and suffix and ziel_land:
+        # ISIN-LAND-RUECKFALL: roic listet fuer manche Titel KEINE Notierung
+        # im Heimatland (BP.L -> nur SIX:BP/Schweiz; RR.L -> nur CSE:RR/Kanada).
+        # Aber die ISIN verraet die wahre Nationalitaet: GB0007980591 = GB.
+        # Ein Treffer mit passender ISIN-Nationalitaet ist DIESELBE Firma -
+        # die Fundamentaldaten sind ISIN-gebunden, egal an welcher Boerse die
+        # einzelne Notierung haengt. Wir bevorzugen dabei is_primary.
+        passende = []
+        for tr in treffer:
+            sym = tr.get("symbol") or ""
+            if sym.split(":")[-1].upper() != basis:
+                continue
+            isin = (tr.get("isin") or "").upper()
+            if isin[:2] == ziel_land:                  # ISIN-Land == Suffix-Land
+                passende.append(tr)
+        # is_primary zuerst, damit wir die "Hauptnotierung" der Firma treffen
+        passende.sort(key=lambda tr: 0 if tr.get("is_primary") else 1)
+        if passende:
+            kandidaten.append(((3, 0), passende[0]))
+
+    if not kandidaten:
+        _RESOLVE_CACHE[schluessel] = None
+        return None
+
+    kandidaten.sort(key=lambda x: x[0])
+    beste = kandidaten[0][1]
+    erg = {
+        "symbol": beste.get("symbol"),
+        "isin": beste.get("isin"),
+        "exchange": beste.get("exchange"),
+        "is_primary": bool(beste.get("is_primary")),
+        "country": _land_von(beste),
+    }
+    _RESOLVE_CACHE[schluessel] = erg if erg.get("symbol") else None
+    return _RESOLVE_CACHE[schluessel]
+
+
+def _v3(t: str) -> str | None:
+    """Kurzform: nackter Ticker -> 'EXCHANGE:TICKER' (oder None)."""
+    r = aufloesen(t)
+    return r.get("symbol") if r else None
+
+
+def _sym(t: str) -> str:
+    """v3-Symbol fuer den Pfad. Faellt auf den Original-Ticker zurueck,
+    wenn die Aufloesung nichts findet (ergibt dann sauberen 400/404,
+    keinen Crash). URL-Kodierung des ':' uebernimmt urlencode NICHT im
+    Pfad - der Doppelpunkt ist in v3-Pfaden erlaubt."""
+    return _v3(t) or t
+
+
 # ---------------------------------------------------------------- Endpunkte
 def profile(t: str):
-    return _first(_get(f"company/profile/{t}"))
+    return _first(_get(f"company/profile/{_sym(t)}"))
 
 
 def quote(t: str):
     """Letzter Kurs. Pfad laut Doku: stock-prices/latest/{ticker}.
     (Mein erster Versuch 'prices/latest/' war falsch - daher die
     Notloesung ueber das Profil, die jetzt nur noch Rueckfall ist.)"""
-    d = _get(f"stock-prices/latest/{t}")
+    d = _get(f"stock-prices/latest/{_sym(t)}")
     z = d if isinstance(d, dict) else _first(d)
     if z:
         return {"price": _num(_g(z, "close", "adj_close")),
@@ -196,49 +387,49 @@ def quote(t: str):
 
 
 def ratios_profitability(t: str):
-    return _first(_get(f"fundamental/ratios/profitability/{t}"))
+    return _first(_get(f"fundamental/ratios/profitability/{_sym(t)}"))
 
 
 def ratios_credit(t: str):
-    return _first(_get(f"fundamental/ratios/credit/{t}"))
+    return _first(_get(f"fundamental/ratios/credit/{_sym(t)}"))
 
 
 def ratios_liquidity(t: str):
-    return _first(_get(f"fundamental/ratios/liquidity/{t}"))
+    return _first(_get(f"fundamental/ratios/liquidity/{_sym(t)}"))
 
 
 def per_share(t: str):
-    return _first(_get(f"fundamental/per-share/{t}"))
+    return _first(_get(f"fundamental/per-share/{_sym(t)}"))
 
 
 def enterprise_value(t: str):
-    return _first(_get(f"fundamental/enterprise-value/{t}"))
+    return _first(_get(f"fundamental/enterprise-value/{_sym(t)}"))
 
 
 def multiples(t: str):
-    return _first(_get(f"fundamental/multiples/{t}"))
+    return _first(_get(f"fundamental/multiples/{_sym(t)}"))
 
 
 def income_quarterly(t: str, limit: int = 20):
-    d = _get(f"fundamental/income-statement/{t}",
+    d = _get(f"fundamental/income-statement/{_sym(t)}",
              {"period": "quarter", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
 def income_annual(t: str, limit: int = 12):
-    d = _get(f"fundamental/income-statement/{t}",
+    d = _get(f"fundamental/income-statement/{_sym(t)}",
              {"period": "annual", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
 def balance_annual(t: str, limit: int = 2):
-    d = _get(f"fundamental/balance-sheet/{t}",
+    d = _get(f"fundamental/balance-sheet/{_sym(t)}",
              {"period": "annual", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
 def cashflow_annual(t: str, limit: int = 2):
-    d = _get(f"fundamental/cash-flow/{t}",
+    d = _get(f"fundamental/cash-flow/{_sym(t)}",
              {"period": "annual", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
@@ -256,7 +447,7 @@ def prices_history(t: str, von: str = None, bis: str = None,
         p["date_start"] = von
     if bis:
         p["date_end"] = bis
-    d = _get(f"stock-prices/{t}", p)
+    d = _get(f"stock-prices/{_sym(t)}", p)
     reihen = d if isinstance(d, list) else (d or {}).get("data")
     return reihen if isinstance(reihen, list) else []
 
@@ -347,21 +538,21 @@ def bundle(t: str) -> dict:
     rl = ratios_liquidity(t)
     mu = multiples(t) if multiples_ok(t) else None
     inc = income_annual(t, limit=2) or []
-    bs = _first(_get(f"fundamental/balance-sheet/{t}",
+    bs = _first(_get(f"fundamental/balance-sheet/{_sym(t)}",
                      {"period": "annual", "limit": 1}))
 
     out = {
         "_src": "roic",
         # --- Stammdaten (Profil liefert auch den AKTUELLEN Kurs -
         #     prices/latest gibt es im Plan nicht)
-        "name": _g(prof, "company_name"),
+        "name": _g(prof, "name", "company_name"),
         "sector": _g(prof, "sector"),
         "industry": _g(prof, "industry"),
-        "country": _g(prof, "country_code"),
+        "country": _g(prof, "country_code") or (aufloesen(t) or {}).get("country"),
         "currency": _g(prof, "currency"),
         "price": _num(_g(prof, "price")),
         "dividend_yield": _num(_g(prof, "dividend_yield")),
-        "isin": _g(prof, "isin"),
+        "isin": _g(prof, "isin") or (aufloesen(t) or {}).get("isin"),
 
         # --- Groesse und Kapitalstruktur
         "market_cap": _num(_g(ev, "market_cap")),
@@ -441,7 +632,7 @@ def pe_history(t: str, jahre: int = 10) -> dict:
     Rueckgabe: {median, werte, jahre, spanne_hoch, spanne_tief} oder {}."""
     if not multiples_ok(t):
         return {}
-    d = _get(f"fundamental/multiples/{t}", {"period": "annual", "limit": jahre})
+    d = _get(f"fundamental/multiples/{_sym(t)}", {"period": "annual", "limit": jahre})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     werte, hochs, tiefs, labels = [], [], [], []
     for z in reihen:
@@ -519,11 +710,11 @@ def ratios_yield(t: str):
     Beim ersten Test antwortete dieser Endpunkt nicht - laut Doku gibt es
     ihn. Deshalb hier vorhanden, aber nirgends vorausgesetzt: Fehlt die
     Antwort, bleibt das Feld leer und nichts bricht."""
-    return _first(_get(f"fundamental/ratios/yield/{t}"))
+    return _first(_get(f"fundamental/ratios/yield/{_sym(t)}"))
 
 
 def ratios_working_capital(t: str):
-    return _first(_get(f"fundamental/ratios/working-capital/{t}"))
+    return _first(_get(f"fundamental/ratios/working-capital/{_sym(t)}"))
 
 
 def ratios_alle(t: str) -> dict:
@@ -552,7 +743,7 @@ def financials(t: str, art="income", period="annual", limit=10) -> list:
         return []
     pfad = {"income": "income-statement", "balance": "balance-sheet",
             "cashflow": "cash-flow"}.get(art, "income-statement")
-    d = _get(f"fundamental/{pfad}/{t}", {"period": period, "limit": limit})
+    d = _get(f"fundamental/{pfad}/{_sym(t)}", {"period": period, "limit": limit})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     return reihen if isinstance(reihen, list) else []
 
@@ -565,7 +756,7 @@ def multiples_historie(t: str, jahre=10) -> list:
     der heutige Wert im historischen Rahmen liegt."""
     if not multiples_ok(t):
         return []
-    d = _get(f"fundamental/multiples/{t}", {"period": "annual", "limit": jahre})
+    d = _get(f"fundamental/multiples/{_sym(t)}", {"period": "annual", "limit": jahre})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     out = []
     for z in reihen:
@@ -592,7 +783,7 @@ def news(t: str, limit=15) -> list:
         return []
     # Pfad laut Doku: company/news/{identifier}, Parameter limit, page,
     # date_start, date_end. Das Raten von drei Varianten entfaellt.
-    d = _get(f"company/news/{t}", {"limit": limit})
+    d = _get(f"company/news/{_sym(t)}", {"limit": limit})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     out = []
     for z in reihen:
@@ -629,7 +820,7 @@ def transcript_liste(t: str, limit=100) -> list:
     """Alle verfuegbaren Earnings-Calls: Jahr, Quartal, Datum (ohne Text)."""
     if not covers(t):
         return []
-    d = _get(f"company/earnings-calls/list/{t}", {"limit": limit})
+    d = _get(f"company/earnings-calls/list/{_sym(t)}", {"limit": limit})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     if isinstance(reihen, dict):
         reihen = [reihen]
@@ -659,10 +850,10 @@ def transcript(t: str, jahr=None, quartal=None) -> dict:
             q = int(str(quartal).upper().replace("Q", "").strip())
         except Exception:
             q = quartal
-        d = _get(f"company/earnings-calls/transcript/{t}",
+        d = _get(f"company/earnings-calls/transcript/{_sym(t)}",
                  {"year": int(jahr), "quarter": q})
     else:
-        d = _get(f"company/earnings-calls/latest/{t}")
+        d = _get(f"company/earnings-calls/latest/{_sym(t)}")
     z = d if isinstance(d, dict) else _first(d)
     if not z or not isinstance(z, dict):
         return {}
@@ -877,6 +1068,16 @@ def bundle_light(t: str) -> dict:
     Damit kostet ein 400-Titel-Scan 1.200 statt 3.200 Abrufe:
     5 Minuten statt 13."""
     if not covers(t):
+        # UK/Pence-Titel: kursabhaengige Multiples bleiben gesperrt (Pence-
+        # Fehler), aber Name/ISIN/Sektor sind waehrungsunabhaengig und fuer
+        # die Entdopplung wichtig. Die holen wir aus der Aufloesung + Profil.
+        _auf = aufloesen(t) or {}
+        if _auf.get("isin"):
+            _p = profile(t)
+            return {"_src": "roic_light_min", "name": _g(_p, "company_name"),
+                    "isin": _auf.get("isin"), "sector": _g(_p, "sector"),
+                    "industry": _g(_p, "industry"),
+                    "country": _auf.get("country")}
         return {}
     prof = profile(t)
     ev = enterprise_value(t)
@@ -885,11 +1086,11 @@ def bundle_light(t: str) -> dict:
 
     out = {
         "_src": "roic_light",
-        "name": _g(prof, "company_name"),
-        "isin": _g(prof, "isin"),
+        "name": _g(prof, "name", "company_name"),
+        "isin": _g(prof, "isin") or (aufloesen(t) or {}).get("isin"),
         "sector": _g(prof, "sector"),
         "industry": _g(prof, "industry"),
-        "country": _g(prof, "country_code"),
+        "country": _g(prof, "country_code") or (aufloesen(t) or {}).get("country"),
         "currency": _g(prof, "currency"),
         "price": _num(_g(prof, "price")),
         "market_cap": _num(_g(ev, "market_cap")),

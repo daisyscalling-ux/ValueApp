@@ -839,10 +839,13 @@ def transcript_liste(t: str, limit=100) -> list:
     if _EC_LIST_PFAD:                       # gemerkter Treffer zuerst
         kandidaten.append(_EC_LIST_PFAD)
     kandidaten += [
+        # v3 (laut offizieller Doku): GET /earnings-calls?identifier=NASDAQ:AAPL
+        # Antwort im Feld "data". Das ist der korrekte Pfad - zuerst probieren.
+        ("earnings-calls",                  {"identifier": sym, "limit": limit}),
+        # Fallbacks (aeltere/andere Varianten), falls sich das wieder aendert:
         ("company/earnings-calls/list/{s}", {"limit": limit}),
         ("earnings-calls/list/{s}",         {"limit": limit}),
         ("earnings-calls/{s}/list",         {"limit": limit}),
-        ("earnings-calls",                  {"symbol": sym, "limit": limit}),
     ]
 
     reihen = []

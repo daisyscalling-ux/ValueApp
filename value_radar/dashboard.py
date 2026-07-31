@@ -142,6 +142,17 @@ div[class*="st-key-navtop_"] .stButton>button[kind="primary"],
 div[class*="st-key-navgrp_"] .stButton>button[kind="primary"],
 section[data-testid="stSidebar"] .stButton>button[kind="primary"]{
   background:var(--amber) !important; border-color:var(--amber);}
+/* Der Button-Text steht (laut DOM) in einem div.stMarkdownContainer, NICHT
+   in einem <p>. Diesen sowie einen evtl. Tooltip-Flex-Wrapper links
+   ausrichten - sonst zentriert Streamlit die Ueberpunkte. */
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-navgrp_"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-navtop_"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-navsub_"] [data-testid="stMarkdownContainer"]{
+  text-align:left !important; width:100% !important;}
+section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"],
+div[class*="st-key-navgrp_"] [data-testid="stTooltipHoverTarget"]{
+  justify-content:flex-start !important; width:100% !important;}
 /* Ueberpunkte (mit Pfeil): kraeftiger, Pfeil etwas groesser */
 div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800 !important; font-size:15px; }
 /* Unterpunkte: leicht eingerueckt */
@@ -2307,11 +2318,14 @@ with st.sidebar:
         # sonst behandelt Streamlit den Button beim Umschalten als neuen und
         # der Klick geht verloren -> das war der Doppelklick.
         _car = "\u25be" if offen else "\u25b8"   # ▾ offen / ▸ zu
-        # Pfeil ganz links, ein Leerzeichen Abstand zum Text. Groesse per CSS.
+        # KEIN help= mehr: der Tooltip erzeugte einen zusaetzlichen Flex-
+        # Wrapper (stTooltipHoverTarget), der den Button-Inhalt ZENTRIERTE -
+        # nur die Ueberpunkte hatten dadurch eine andere DOM-Struktur und
+        # blieben zentriert/ohne Hintergrund. Ohne help= ist die Struktur
+        # identisch zu den Top-Punkten und das CSS greift ueberall gleich.
         if st.button(f"{_car} {grp['label']}",
                      key=f"navgrp_{grp['key']}",
-                     use_container_width=True, type=btype,
-                     help=("zuklappen" if offen else "aufklappen")):
+                     use_container_width=True, type=btype):
             if offen:
                 _open_groups.discard(grp["key"])
             else:

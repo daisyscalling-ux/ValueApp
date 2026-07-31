@@ -102,32 +102,49 @@ html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 .px-chg{font-size:15px;font-weight:700;margin-top:2px;}
 hr{border-color:var(--line);}
 /* Navigation als Boxen: linksbuendig, ganze Zeile klickbar */
+/* ---- NAVIGATION: alle drei Button-Typen (navtop/navsub/navgrp) EXPLIZIT
+   ansprechen, damit Hintergrund UND Linksbuendigkeit ueberall greifen.
+   (Die generische Sidebar-Regel erfasste die Ueberpunkt-Boxen nicht.) ---- */
+div[class*="st-key-navtop_"] .stButton>button,
+div[class*="st-key-navsub_"] .stButton>button,
+div[class*="st-key-navgrp_"] .stButton>button,
 section[data-testid="stSidebar"] .stButton>button{
   text-align:left !important; justify-content:flex-start !important;
   border-radius:8px; border:1px solid rgba(255,255,255,.18);
   padding:10px 12px 10px 16px; margin:2px 0; min-height:46px;
   font-weight:600; letter-spacing:.3px;
   background:rgba(255,255,255,.10) !important;}
-/* Linksbuendigkeit ROBUST erzwingen: Streamlit zentriert ueber den Flex-
-   Container des Buttons UND das innere <p>/<div>. Wir setzen beide sowie
-   den Button selbst auf linksbuendig. */
-section[data-testid="stSidebar"] .stButton>button,
+/* Linksbuendigkeit ROBUST: Button, alle Kinder, p und div. width:100% am
+   p/div, sonst zentriert der Flex-Container das schmale Textelement. */
+div[class*="st-key-navtop_"] .stButton>button *,
+div[class*="st-key-navsub_"] .stButton>button *,
+div[class*="st-key-navgrp_"] .stButton>button *,
 section[data-testid="stSidebar"] .stButton>button *{
   text-align:left !important;}
+div[class*="st-key-navtop_"] .stButton>button p,
+div[class*="st-key-navsub_"] .stButton>button p,
+div[class*="st-key-navgrp_"] .stButton>button p,
+div[class*="st-key-navtop_"] .stButton>button div,
+div[class*="st-key-navsub_"] .stButton>button div,
+div[class*="st-key-navgrp_"] .stButton>button div,
 section[data-testid="stSidebar"] .stButton>button p,
 section[data-testid="stSidebar"] .stButton>button div{
   text-align:left !important; margin:0 !important; width:100% !important;
   justify-content:flex-start !important;}
+div[class*="st-key-navtop_"] .stButton>button:hover,
+div[class*="st-key-navsub_"] .stButton>button:hover,
+div[class*="st-key-navgrp_"] .stButton>button:hover,
 section[data-testid="stSidebar"] .stButton>button:hover{
   border-color:var(--amber); color:var(--amber);
   background:rgba(255,255,255,.16) !important;}
 /* Aktiver (primary) Nav-Button: kraeftiges Amber */
+div[class*="st-key-navtop_"] .stButton>button[kind="primary"],
+div[class*="st-key-navgrp_"] .stButton>button[kind="primary"],
 section[data-testid="stSidebar"] .stButton>button[kind="primary"]{
   background:var(--amber) !important; border-color:var(--amber);}
 /* Ueberpunkte (mit Pfeil): kraeftiger, Pfeil etwas groesser */
-div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; font-size:15px; }
-/* Unterpunkte: eingerueckt ueber padding (nicht ueber Leerzeichen), damit
-   keine sichtbare Extra-Box entsteht. Top-Punkte ohne Pfeil linksbuendig. */
+div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800 !important; font-size:15px; }
+/* Unterpunkte: leicht eingerueckt */
 div[class*="st-key-navsub_"] .stButton>button p{ padding-left:22px; }
 /* Klickbare Ticker-Buttons in Ergebnislisten (Screener/Radar/Peers) */
 .tickcell .stButton>button{

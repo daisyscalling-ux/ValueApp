@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-27-i"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-27-w"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -146,6 +146,8 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "momentum": (s.get("category_scores") or {}).get("momentum"),
         "quality": (s.get("category_scores") or {}).get("quality"),
         "value": (s.get("category_scores") or {}).get("value"),
+        "growth": (s.get("category_scores") or {}).get("growth"),
+        "catalyst": (s.get("category_scores") or {}).get("catalyst"),
         "analyst_count": f.get("analyst_count"),
         "value_trap": s.get("value_trap"),
         "revenue_growth": (round(f["revenue_growth"] * 100, 1)
@@ -621,10 +623,53 @@ def diff_changes(old_snap, new_rows, section):
             continue
         oc = o.get("composite")
         if nc is not None and oc is not None and abs(nc - oc) >= COMP_DELTA:
-            arrow = "\u2197" if nc > oc else "\u2198"
-            changes.append({"ticker": t, "name": r.get("name"), "section": section,
-                            "kind": "composite",
-                            "text": f"{t} Composite {arrow} {oc}\u2192{nc}"})
+            # Der breite Scan laeuft flach - der gemeldete Sprung kann teils
+            # Rechenrauschen sein (flach 52 vs. tief 56). Bevor wir eine so
+            # drastische Aenderung melden, den NEUEN Wert TIEF nachrechnen,
+            # damit die Startseite denselben Composite zeigt wie die
+            # Einzelanalyse. Nur bei tatsaechlichen Spruengen (wenige Titel).
+            nc_tief = nc
+            _neu_kat = {}
+            try:
+                _d = score_ticker(t, deep=True)
+                if _d and _d.get("composite") is not None:
+                    nc_tief = _d["composite"]
+                    _neu_kat = {k: _d.get(k) for k in
+                                ("quality", "value", "growth", "momentum",
+                                 "catalyst", "value_trap")}
+            except Exception:
+                pass
+            # Nach dem tiefen Nachrechnen nur melden, wenn der Sprung bleibt.
+            if abs(nc_tief - oc) >= COMP_DELTA:
+                arrow = "\u2197" if nc_tief > oc else "\u2198"
+                _delta = nc_tief - oc
+                _staerke = ("drastisch" if abs(_delta) >= 15
+                            else "deutlich" if abs(_delta) >= 8 else "leicht")
+                # Welche Kennzahlen haben sich geaendert? (alt aus Snapshot vs neu)
+                _gruende = []
+                _lbl = {"quality": "Qualit\u00e4t", "value": "Bewertung",
+                        "growth": "Wachstum", "momentum": "Momentum",
+                        "catalyst": "Katalysator"}
+                for _k, _name in _lbl.items():
+                    _alt, _neu = o.get(_k), _neu_kat.get(_k)
+                    if _alt is not None and _neu is not None and abs(_neu - _alt) >= 8:
+                        _pf = "\u2197" if _neu > _alt else "\u2198"
+                        _gruende.append(f"{_name} {_pf} {round(_alt)}\u2192{round(_neu)}")
+                # Value-Trap neu ausgeloest?
+                if _neu_kat.get("value_trap") and not o.get("value_trap"):
+                    _gruende.append("Value-Trap-Warnung neu ausgel\u00f6st")
+                _grund_txt = ("; ".join(_gruende[:3]) if _gruende
+                              else "mehrere Faktoren leicht ver\u00e4ndert")
+                changes.append({"ticker": t, "name": r.get("name"), "section": section,
+                                "kind": "composite", "delta": _delta,
+                                "gruende": _gruende,
+                                "text": f"{t} Composite {arrow} {oc}\u2192{nc_tief} "
+                                        f"({_staerke}): {_grund_txt}"})
+                r["composite"] = nc_tief
+                # neue Kategorie-Scores in die Zeile schreiben (fuer Snapshot)
+                for _k, _val in _neu_kat.items():
+                    if _val is not None:
+                        r[_k] = _val
         ou = o.get("upside")
         if UPSIDE_FLIP and up is not None and ou is not None and (up >= 0) != (ou >= 0):
             changes.append({"ticker": t, "name": r.get("name"), "section": section,
@@ -894,7 +939,12 @@ def run():
     new_snap["_breit"] = {
         t: {"composite": r.get("composite"), "upside": r.get("upside"),
             "radar_score": r.get("radar_score"), "name": r.get("name"),
-            "price": r.get("price"), "entry": r.get("entry")}
+            "price": r.get("price"), "entry": r.get("entry"),
+            # Kategorie-Scores fuer den "warum hat sich der Score geaendert"-
+            # Vergleich auf der Startseite
+            "quality": r.get("quality"), "value": r.get("value"),
+            "growth": r.get("growth"), "momentum": r.get("momentum"),
+            "catalyst": r.get("catalyst"), "value_trap": r.get("value_trap")}
         for t, r in _scr_map.items()}
     store.set_snapshot(new_snap)
 

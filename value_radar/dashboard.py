@@ -5474,27 +5474,6 @@ if nav == "Portfoliocheck":
                     st.caption("Orientierung aus deinen Depotdaten \u2013 kein "
                                "Anlagerat.")
 
-                # Freies Kommentarfeld pro Portfolio (wird gespeichert)
-                _pf_name_akt = st.session_state.get("pf_cur_name", "")
-                if _pf_name_akt:
-                    with st.expander("\U0001f4dd Mein Kommentar zu diesem Portfolio",
-                                     expanded=False):
-                        _komm_key = f"pf_komm_{_pf_name_akt}"
-                        if _komm_key not in st.session_state:
-                            st.session_state[_komm_key] = store.get_kommentar(_pf_name_akt)
-                        _komm_txt = st.text_area(
-                            "Notizen, Thesen, To-dos \u2026", key=_komm_key,
-                            height=140, label_visibility="collapsed",
-                            placeholder="Eigene Gedanken zu diesem Depot \u2013 "
-                                        "z.B. warum du Positionen haeltst, was du "
-                                        "beobachtest, geplante Aenderungen \u2026")
-                        if st.button("\U0001f4be Kommentar speichern",
-                                     key=f"pf_komm_save_{_pf_name_akt}"):
-                            if store.set_kommentar(_pf_name_akt, _komm_txt):
-                                st.success("Kommentar gespeichert.")
-                            else:
-                                st.error("Konnte nicht gespeichert werden.")
-
                 ncards = 5 if a["have_pl"] else 4
                 mc = st.columns(ncards)
                 card(mc[0], "\u00d8 Composite (gew.)",
@@ -5531,6 +5510,8 @@ if nav == "Portfoliocheck":
 
                 # Positionsliste (orangenen Ticker anklicken -> Einzelanalyse)
                 prows = sorted(rows, key=lambda r: -r["weight"])
+                _pf_name_tbl = st.session_state.get("pf_cur_name", "")
+                _komm_tbl = store.get_pos_kommentare(_pf_name_tbl) if _pf_name_tbl else {}
                 data = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:18],
                          "Kurs \u20ac": round(r.get("price_eur") or 0, 2),
                          "Comp.": (round(r["composite"])
@@ -5541,6 +5522,7 @@ if nav == "Portfoliocheck":
                          **({"G/V \u20ac": round(r["gain_eur"], 2) if r.get("gain_eur") is not None else None}
                             if a["have_pl"] else {}),
                          "Wert \u20ac": round(r["value_eur"], 2),
+                         "Kommentar": (_komm_tbl.get(str(r["ticker"]).upper(), "") or "")[:40],
                          "\u2013\u2013": r["ticker"]} for r in prows]     # Verkaufs-Button
                 vr_table(data, score_cols=("Comp.",),
                          signed_cols=("Upside %", "Kauf %", "G/V \u20ac"),
@@ -5548,6 +5530,44 @@ if nav == "Portfoliocheck":
                 st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse \u00b7 "
                            "\u2715 rechts = Position verkaufen (mit Best\u00e4tigung, wird ins "
                            "Logbuch \u00fcbernommen).")
+
+                # --- Kommentar-Spalte je Position (editierbar, dauerhaft) ------
+                _pf_name_akt = st.session_state.get("pf_cur_name", "")
+                if _pf_name_akt:
+                    with st.expander("\U0001f4dd Kommentare je Position", expanded=True):
+                        _pk_state = f"pf_poskomm_{_pf_name_akt}"
+                        if _pk_state not in st.session_state:
+                            st.session_state[_pk_state] = store.get_pos_kommentare(_pf_name_akt)
+                        _gespeichert = st.session_state[_pk_state]
+                        st.caption("Eine Notiz je Position \u2013 z.B. warum du sie "
+                                   "h\u00e4ltst, Ziel/Stop, Beobachtungspunkte. "
+                                   "\u00c4nderungen mit \u201eKommentare speichern\u201c sichern.")
+                        _neu = {}
+                        for r in prows:
+                            _tk = str(r["ticker"]).upper()
+                            _c1, _c2 = st.columns([1, 3], gap="small")
+                            with _c1:
+                                st.markdown(
+                                    f'<div style="padding-top:6px;font-weight:700">'
+                                    f'{esc(r["ticker"])}</div>'
+                                    f'<div class="na" style="font-size:11px">'
+                                    f'{esc((r.get("name") or "")[:22])}</div>',
+                                    unsafe_allow_html=True)
+                            with _c2:
+                                _neu[_tk] = st.text_input(
+                                    f"Kommentar {_tk}",
+                                    value=_gespeichert.get(_tk, ""),
+                                    key=f"poskomm_{_pf_name_akt}_{_tk}",
+                                    label_visibility="collapsed",
+                                    placeholder="Notiz \u2026")
+                        if st.button("\U0001f4be Kommentare speichern",
+                                     key=f"poskomm_save_{_pf_name_akt}"):
+                            if store.set_pos_kommentare(_pf_name_akt, _neu):
+                                st.session_state[_pk_state] = {
+                                    k: v for k, v in _neu.items() if str(v).strip()}
+                                st.success("Kommentare gespeichert.")
+                            else:
+                                st.error("Konnte nicht gespeichert werden.")
 
                 # --- Verkauf bestaetigen (ausgeloest vom X-Button in der Tabelle) ---
                 _sell = st.session_state.get("pf_confirm_sell")

@@ -310,3 +310,29 @@ def set_kommentar(name: str, text: str) -> bool:
     komm[name] = (text or "")[:5000]      # Deckel gegen versehentliche Riesen
     d["kommentare"] = komm
     return _save_aux(d)
+
+
+def get_pos_kommentare(portfolio: str) -> dict:
+    """Kommentare je Position eines Portfolios: {ticker_or_raw: text}.
+
+    Wird fuer die Kommentar-Spalte in der Positionstabelle gebraucht. Der
+    Schluessel ist der (grossgeschriebene) Ticker/Eingabewert der Position."""
+    alle = _load_aux().get("pos_kommentare", {})
+    if isinstance(alle, dict):
+        p = alle.get(portfolio, {})
+        return p if isinstance(p, dict) else {}
+    return {}
+
+
+def set_pos_kommentare(portfolio: str, komm: dict) -> bool:
+    """Speichert den kompletten Kommentar-Satz eines Portfolios auf einmal."""
+    d = _load_aux()
+    alle = d.get("pos_kommentare")
+    if not isinstance(alle, dict):
+        alle = {}
+    # Nur nicht-leere Kommentare behalten, Laenge deckeln
+    sauber = {str(k).upper(): str(v)[:2000]
+              for k, v in (komm or {}).items() if str(v or "").strip()}
+    alle[portfolio] = sauber
+    d["pos_kommentare"] = alle
+    return _save_aux(d)

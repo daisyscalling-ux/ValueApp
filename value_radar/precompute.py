@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-27-x"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-27-z"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -996,22 +996,31 @@ def run():
         print(f"[trackrecord] Erfassung mit Code-Version {CODE_VERSION}")
 
         def _in_kaufzone(analyse, row):
-            """True, wenn der Kurs die Einstiegszone erreicht hat (Kurs <=
-            Einstieg). Ohne belastbaren Einstieg (kein Fair Value) wird das
-            Signal NICHT erfasst - lieber kein Signal als ein Fehlkauf weit
-            ueber der Zone (LLY: Kurs 1180 vs Einstieg 868)."""
+            """True, wenn der Kurs die Einstiegszone erreicht hat. Toleranz:
+            bis 5 % ueber dem Einstieg gilt noch als 'knapp in der Zone' -
+            konsistent mit dem Hedgefonds-Modus. So faellt nicht jeder Titel
+            raus, der nur ein paar Prozent ueber dem exakten Einstieg notiert
+            (sonst kamen gar keine Signale mehr, weil die Top-Titel fast nie
+            18-25 % unter Fair Value liegen). Ohne belastbaren Einstieg (kein
+            Fair Value) wird weiterhin NICHT erfasst - lieber kein Signal als
+            ein Fehlkauf weit ueber der Zone.
+            """
             entry = analyse.get("entry")
             price = analyse.get("price") or row.get("price")
             if not entry or not price:
                 return False
-            return price <= entry
+            return price <= entry * 1.05
 
         _uebersprungen = 0
+        _zone_abstand = []       # Diagnose: wie weit ueber der Zone?
         for r in (scr or [])[:10]:
             tk = r.get("ticker")
             if not tk:
                 continue
             _a = _analyse(tk)
+            _entry, _preis = _a.get("entry"), (_a.get("price") or r.get("price"))
+            if _entry and _preis:
+                _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
             if not _in_kaufzone(_a, r):
                 _uebersprungen += 1
                 continue
@@ -1046,6 +1055,13 @@ def run():
         if _uebersprungen:
             print(f"[trackrecord] {_uebersprungen} Titel uebersprungen "
                   f"(Kurs nicht in Einstiegszone).")
+        if _zone_abstand:
+            # Zeigt, wie weit die Screener-Titel ueber (+) oder unter (-) ihrer
+            # Einstiegszone liegen. Wenn hier alle stark positiv sind, ist die
+            # Zone zu eng - dann muss die Toleranz weiter aufgemacht werden.
+            _sortiert = sorted(_zone_abstand, key=lambda x: x[1])
+            print(f"[trackrecord] Abstand zur Zone (Kurs vs Einstieg): "
+                  f"{_sortiert[:8]}")
 
         # Momentum-Signale: der Momentum-Score selbst ist die Kennzahl. Kein
         # Scorecard-Urteil (das misst Substanz, nicht Trend) - stattdessen wird
@@ -1166,6 +1182,7 @@ def run():
         # Nur die Kopfdaten (1 Abruf je Titel, ~560 Titel = gut 2 Minuten).
         # Volltexte holt das Dashboard erst beim Oeffnen - alles andere
         # waeren Megabyte an ungelesenem Text im Speicher.
+        _tr_status = {"stand": "", "roic_aktiv": bool(_ROIC_AKTIV)}
         try:
             if _ROIC_AKTIV:
                 _tk_uni = _roic_mod.index_universum()
@@ -1176,11 +1193,27 @@ def run():
                           "(set_transkripte fehlt) - bitte neu hochladen.")
                     raise RuntimeError("store.py veraltet")
                 store.set_transkripte(_neu)
-                print(f"[transkripte] {len(_neu)} neue Calls gespeichert.")
+                _n_akt = sum(1 for r in _neu if r.get("ist_neu"))
+                print(f"[transkripte] {len(_neu)} Calls gespeichert, "
+                      f"{_n_akt} aktuell.")
+                _tr_status["stand"] = (f"{len(_neu)} Calls erfasst, "
+                                       f"{_n_akt} aktuell (Universum "
+                                       f"{len(_tk_uni)} Titel)")
             else:
-                print("[transkripte] uebersprungen (roic nicht aktiv).")
+                print("[transkripte] uebersprungen (roic nicht aktiv - "
+                      "kein API-Key in dieser Umgebung).")
+                _tr_status["stand"] = ("\u00dcBERSPRUNGEN: roic-Key fehlt im "
+                                       "Nachtlauf (GitHub-Secret ROIC_API_KEY "
+                                       "pruefen). Der Test-Button in der App "
+                                       "nutzt einen anderen Key.")
         except Exception as e:
             print(f"[transkripte] uebersprungen: {e}")
+            _tr_status["stand"] = f"FEHLER: {e}"
+        try:
+            if hasattr(store, "set_transkript_status"):
+                store.set_transkript_status(_tr_status)
+        except Exception:
+            pass
 
         for _s in sig_new:                    # Herkunft des Signals festhalten
             _s["codever"] = CODE_VERSION

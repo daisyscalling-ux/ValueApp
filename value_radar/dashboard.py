@@ -104,24 +104,27 @@ hr{border-color:var(--line);}
 /* Navigation als Boxen: linksbuendig, ganze Zeile klickbar */
 section[data-testid="stSidebar"] .stButton>button{
   text-align:left !important; justify-content:flex-start !important;
-  border-radius:8px; border:1px solid var(--line);
-  padding:10px 12px 10px 16px; margin:2px 0;
+  border-radius:8px; border:1px solid rgba(255,255,255,.18);
+  padding:10px 12px 10px 16px; margin:2px 0; min-height:46px;
   font-weight:600; letter-spacing:.3px;
-  background:transparent !important;}
-/* Text linksbuendig erzwingen (Streamlit zentriert das innere <p>). KEIN
-   width:100% am <p> - das spannte den Hintergrund zu einer sichtbaren
-   Extra-Box auf. */
-section[data-testid="stSidebar"] .stButton>button p{
-  text-align:left !important; margin:0 !important;}
+  background:rgba(255,255,255,.10) !important;}
+/* Linksbuendigkeit ROBUST erzwingen: Streamlit zentriert ueber den Flex-
+   Container des Buttons UND das innere <p>/<div>. Wir setzen beide sowie
+   den Button selbst auf linksbuendig. */
+section[data-testid="stSidebar"] .stButton>button,
+section[data-testid="stSidebar"] .stButton>button *{
+  text-align:left !important;}
+section[data-testid="stSidebar"] .stButton>button p,
+section[data-testid="stSidebar"] .stButton>button div{
+  text-align:left !important; margin:0 !important; width:100% !important;
+  justify-content:flex-start !important;}
 section[data-testid="stSidebar"] .stButton>button:hover{
-  border-color:var(--amber); color:var(--amber);}
-/* Aktiver (primary) Nav-Button bleibt farbig hervorgehoben */
+  border-color:var(--amber); color:var(--amber);
+  background:rgba(255,255,255,.16) !important;}
+/* Aktiver (primary) Nav-Button: kraeftiges Amber */
 section[data-testid="stSidebar"] .stButton>button[kind="primary"]{
   background:var(--amber) !important; border-color:var(--amber);}
-/* Ueberpunkte (mit Pfeil): kraeftiger. Pfeil steht als erstes Zeichen im
-   Label ganz links; wir vergroessern das erste Zeichen NICHT einzeln (geht
-   per CSS nicht zuverlaessig), sondern erhoehen die Schriftgroesse des Labels
-   leicht - der Pfeil waechst mit. */
+/* Ueberpunkte (mit Pfeil): kraeftiger, Pfeil etwas groesser */
 div[class*="st-key-navgrp_"] .stButton>button p{ font-weight:800; font-size:15px; }
 /* Unterpunkte: eingerueckt ueber padding (nicht ueber Leerzeichen), damit
    keine sichtbare Extra-Box entsteht. Top-Punkte ohne Pfeil linksbuendig. */

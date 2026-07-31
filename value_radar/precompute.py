@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-27-z"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-a"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1780,10 +1780,6 @@ def collapse_scored(scored, label=""):
 # muss VORHER definiert sein. Stand er weiter oben, waren spaeter
 # angehaengte Funktionen (z.B. collapse_scored) zur Laufzeit noch
 # unbekannt - genau daran ist der Nachtlauf gescheitert.
-if __name__ == "__main__":
-    run()
-
-
 # ============================================================================
 # ZWEITNOTIERUNGEN GANZ AUSSCHLIESSEN
 # ----------------------------------------------------------------------------
@@ -1855,3 +1851,14 @@ def filter_boersen(tickers):
         print(f"  [Filter] {len(raus)} Zweitnotierung(en) ausgeschlossen: "
               f"{', '.join(raus[:8])}{' ...' if len(raus) > 8 else ''}")
     return [t for t in tickers if not ist_zweitnotierung(t)]
+
+
+# ============================================================================
+# EINSTIEGSPUNKT - MUSS ganz am Ende stehen, damit ALLE Funktionen (auch
+# filter_boersen, ist_zweitnotierung, ersetze_pence_durch_adr weiter oben)
+# bereits definiert sind, wenn run() sie aufruft. Frueher stand dieser Block
+# in der Mitte der Datei - dadurch waren die danach definierten Funktionen
+# zur Laufzeit von run() noch nicht bekannt (NameError: filter_boersen).
+# ============================================================================
+if __name__ == "__main__":
+    run()

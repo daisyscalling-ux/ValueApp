@@ -292,3 +292,21 @@ def set_transkripte(items: list) -> bool:
     d = _load_aux()
     d["transkripte"] = items[:200]
     return _save_aux(d)
+
+
+def get_kommentar(name: str) -> str:
+    """Eigener Notiz-/Kommentartext zu einem Portfolio (frei editierbar)."""
+    komm = _load_aux().get("kommentare", {})
+    if isinstance(komm, dict):
+        return str(komm.get(name, "") or "")
+    return ""
+
+
+def set_kommentar(name: str, text: str) -> bool:
+    d = _load_aux()
+    komm = d.get("kommentare")
+    if not isinstance(komm, dict):
+        komm = {}
+    komm[name] = (text or "")[:5000]      # Deckel gegen versehentliche Riesen
+    d["kommentare"] = komm
+    return _save_aux(d)

@@ -49,6 +49,11 @@ _stamps: list[float] = []
 _CACHE: dict[tuple, tuple[float, object]] = {}
 _CACHE_TTL = 900            # 15 min - innerhalb eines Laufs reicht das
 
+# Gemerkter, funktionierender Listen-Pfad fuer Earnings Calls (siehe
+# transcript_liste). Wird beim ersten Treffer gesetzt, damit nicht jedes Mal
+# alle Varianten durchprobiert werden. None = noch nicht ermittelt.
+_EC_LIST_PFAD = None
+
 
 def _key():
     if config is not None and getattr(config, "ROIC_API_KEY", ""):
@@ -817,13 +822,41 @@ def news(t: str, limit=15) -> list:
 
 
 def transcript_liste(t: str, limit=100) -> list:
-    """Alle verfuegbaren Earnings-Calls: Jahr, Quartal, Datum (ohne Text)."""
+    """Alle verfuegbaren Earnings-Calls: Jahr, Quartal, Datum (ohne Text).
+
+    Robust gegen roic-Endpunkt-Aenderungen: probiert mehrere bekannte
+    Pfad-Varianten durch und nimmt die erste, die Eintraege liefert. Der
+    erfolgreiche Pfad wird pro Prozess gemerkt, damit nicht jedes Mal alle
+    Varianten durchlaufen werden.
+    """
     if not covers(t):
         return []
-    d = _get(f"company/earnings-calls/list/{_sym(t)}", {"limit": limit})
-    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
-    if isinstance(reihen, dict):
-        reihen = [reihen]
+    sym = _sym(t)
+
+    # Kandidaten-Pfade (v2-alt zuerst, dann v3-Varianten). {s}=Symbol.
+    global _EC_LIST_PFAD
+    kandidaten = []
+    if _EC_LIST_PFAD:                       # gemerkter Treffer zuerst
+        kandidaten.append(_EC_LIST_PFAD)
+    kandidaten += [
+        ("company/earnings-calls/list/{s}", {"limit": limit}),
+        ("earnings-calls/list/{s}",         {"limit": limit}),
+        ("earnings-calls/{s}/list",         {"limit": limit}),
+        ("earnings-calls",                  {"symbol": sym, "limit": limit}),
+    ]
+
+    reihen = []
+    for pfad, extra in kandidaten:
+        d = _get(pfad.format(s=sym), extra)
+        r = d if isinstance(d, list) else (d or {}).get("data") \
+            or (d or {}).get("earnings_calls") or []
+        if isinstance(r, dict):
+            r = [r]
+        if r:                               # Treffer -> Pfad merken
+            _EC_LIST_PFAD = (pfad, extra)
+            reihen = r
+            break
+
     out = []
     for z in reihen:
         if not isinstance(z, dict):

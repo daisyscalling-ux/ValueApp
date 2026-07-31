@@ -6191,6 +6191,38 @@ if nav == "Earnings Calls":
                     "Titel (etwa 2 Minuten) und h\u00e4lt fest, wer in den letzten "
                     "drei Wochen ver\u00f6ffentlicht hat. Starte den Workflow in "
                     "GitHub oder warte den n\u00e4chsten Lauf ab.")
+
+            # --- Live-Selbsttest: prueft die Earnings-Call-Kette sofort,
+            #     ohne auf den Nachtlauf zu warten. Zeigt genau, wo es hakt.
+            with st.expander("\U0001f527 Verbindung jetzt testen "
+                             "(ohne Nachtlauf)", expanded=False):
+                st.caption("Pr\u00fcft direkt bei roic.ai, ob Earnings Calls "
+                           "abrufbar sind \u2013 mit Apple als Beispiel.")
+                if st.button("\U0001f50d Test starten", key="ec_selftest"):
+                    with st.spinner("Frage roic.ai ab \u2026"):
+                        try:
+                            _tl = _rt.transcript_liste("AAPL", limit=5)
+                        except Exception as _e:
+                            _tl = None
+                            st.error(f"transcript_liste warf einen Fehler: {_e}")
+                        if _tl:
+                            st.success(f"\u2705 Verbindung ok \u2013 "
+                                       f"{len(_tl)} Calls f\u00fcr AAPL gefunden.")
+                            st.write("Neueste Eintr\u00e4ge:")
+                            for _z in _tl[:3]:
+                                st.write(f"\u2022 {_z.get('jahr')} Q{_z.get('quartal')} "
+                                         f"\u00b7 {_z.get('datum')}")
+                            st.caption("Der Abruf funktioniert. Wenn oben trotzdem "
+                                       "nichts steht, muss nur der Nachtlauf einmal "
+                                       "durchlaufen (GitHub-Workflow starten).")
+                        elif _tl is not None:
+                            st.warning("\u26a0\ufe0f Verbindung steht, aber roic "
+                                       "liefert keine Calls f\u00fcr AAPL zur\u00fcck. "
+                                       "M\u00f6glich: Der API-Key hat kein "
+                                       "Earnings-Call-Paket, oder der Endpunkt "
+                                       "hat sich erneut ge\u00e4ndert. Bitte das "
+                                       "Diagnose-Skript roic_ec_diagnose.py "
+                                       "ausf\u00fchren und die Ausgabe schicken.")
         else:
             _f1, _f2 = st.columns(2)
             _zeit = _f1.selectbox("Zeitraum", [7, 14, 21],
@@ -6215,24 +6247,47 @@ if nav == "Earnings Calls":
                 except Exception:
                     pass
 
-            _sicht = [r for r in _liste if (r.get("tage_her") or 99) <= _zeit]
+            # Zwei Gruppen: aktuelle Saison (im Zeitfenster) zuerst, aeltere
+            # darunter. So bleibt der Tab auch zwischen den Earnings-Saisons
+            # nuetzlich, statt leer zu sein.
+            _basis = _liste
             if _nur_pf:
-                _sicht = [r for r in _sicht if r["ticker"] in _meine]
+                _basis = [r for r in _basis if r["ticker"] in _meine]
 
-            st.caption(f"{len(_sicht)} von {len(_liste)} erfassten Calls")
+            _aktuell = [r for r in _basis if (r.get("tage_her") or 99) <= _zeit]
+            _aktuell.sort(key=lambda r: r.get("tage_her") or 999)
+            _aelter = [r for r in _basis if (r.get("tage_her") or 99) > _zeit]
+            _aelter.sort(key=lambda r: r.get("tage_her") or 999)
+            _sicht = _aktuell + _aelter          # fuer Dropdown/Protokoll
+
+            if _aktuell:
+                st.caption(f"{len(_aktuell)} aktuelle Calls (\u2264 {_zeit} Tage)"
+                           + (f" \u00b7 {len(_aelter)} \u00e4ltere darunter"
+                              if _aelter else ""))
+            else:
+                st.info(f"Aktuell keine Calls in den letzten {_zeit} Tagen \u2013 "
+                        "zwischen den Earnings-Saisons ist das normal. Unten "
+                        "siehst du die zuletzt erschienenen Calls."
+                        + (" (Nur deine Titel.)" if _nur_pf else ""))
+
             if not _sicht:
                 st.info("Keine Calls im gew\u00e4hlten Filter."
-                        + (" Deine Titel haben in diesem Zeitraum nicht "
-                           "berichtet." if _nur_pf else ""))
+                        + (" Deine Titel wurden noch nicht erfasst."
+                           if _nur_pf else ""))
             else:
-                vr_table([{
-                    "Firma": (r.get("name") or r["ticker"]),
-                    "Datum": r["datum"],
-                    "vor Tagen": r.get("tage_her"),
-                    "Quartal": (f"{r.get('quartal') or ''} "
-                                f"{r.get('jahr') or ''}").strip() or "\u2014",
-                } for r in _sicht],
-                    height=min(len(_sicht) * 40 + 46, 420))
+                def _tabellenzeile(r, gruppe):
+                    return {
+                        "": gruppe,
+                        "Firma": (r.get("name") or r["ticker"]),
+                        "Datum": r["datum"],
+                        "vor Tagen": r.get("tage_her"),
+                        "Quartal": (f"{r.get('quartal') or ''} "
+                                    f"{r.get('jahr') or ''}").strip() or "\u2014",
+                    }
+                _tabelle = ([_tabellenzeile(r, "\U0001f195") for r in _aktuell]
+                            + [_tabellenzeile(r, "") for r in _aelter[:30]])
+                vr_table(_tabelle,
+                         height=min(len(_tabelle) * 40 + 46, 420))
 
                 st.markdown('<div class="sec-title" style="margin-top:16px">'
                             'PROTOKOLL \u00d6FFNEN</div>', unsafe_allow_html=True)

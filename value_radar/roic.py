@@ -1002,16 +1002,24 @@ def index_universum(mit_dax=True) -> list:
 
 
 def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> list:
-    """Welche Firmen haben SEIT KURZEM einen Earnings Call veroeffentlicht?
+    """Neueste Earnings Calls je Titel - mit Alter (tage_her).
 
     Holt bewusst nur die Kopfdaten (Ticker, Datum, Quartal) - ein Abruf je
-    Titel. Der Volltext kommt erst, wenn jemand ihn oeffnet: 60 Transkripte
-    vorab zu speichern waeren rund 5 MB, die niemand liest.
+    Titel. Der Volltext kommt erst, wenn jemand ihn oeffnet.
 
-    tage: wie weit zurueck gilt ein Call als 'neu'."""
+    WICHTIG: Es wird NICHT mehr hart nach 'tage' gefiltert. Zurueckgegeben
+    wird der neueste Call jedes Titels samt 'tage_her' und 'ist_neu' (ob er
+    innerhalb des 'tage'-Fensters liegt). So kann der Tab aktuelle Calls
+    priorisieren, aber ausserhalb der Saison trotzdem die zuletzt
+    erschienenen zeigen, statt leer zu bleiben.
+
+    tage: ab wann ein Call als 'aktuell/neu' markiert wird (nicht mehr als
+    harter Filter).
+    """
     import datetime as _dt
     tickers = tickers or index_universum()
-    grenze = _dt.date.today() - _dt.timedelta(days=tage)
+    heute = _dt.date.today()
+    grenze = heute - _dt.timedelta(days=tage)
     out = []
     for i, t in enumerate(tickers[:deckel]):
         if not covers(t):
@@ -1028,15 +1036,16 @@ def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> lis
                 tag = _dt.date.fromisoformat(d)
             except Exception:
                 continue
-            if tag >= grenze:
-                out.append({"ticker": t, "datum": d,
-                            "quartal": z.get("quartal"), "jahr": z.get("jahr"),
-                            "tage_her": (_dt.date.today() - tag).days})
+            out.append({"ticker": t, "datum": d,
+                        "quartal": z.get("quartal"), "jahr": z.get("jahr"),
+                        "tage_her": (heute - tag).days,
+                        "ist_neu": tag >= grenze})
         if fortschritt and (i + 1) % 50 == 0:
             fortschritt(i + 1, min(len(tickers), deckel), len(out))
     out.sort(key=lambda r: r["datum"], reverse=True)
-    print(f"  [Transkripte] {len(out)} neue Calls in {tage} Tagen "
-          f"(aus {min(len(tickers), deckel)} Titeln).")
+    _n_neu = sum(1 for r in out if r.get("ist_neu"))
+    print(f"  [Transkripte] {len(out)} Calls erfasst, davon {_n_neu} aktuell "
+          f"(<= {tage} Tage), aus {min(len(tickers), deckel)} Titeln.")
     return out
 
 

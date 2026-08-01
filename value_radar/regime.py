@@ -262,6 +262,183 @@ def market_state(years=3):
     return {"lage": lage, "drawdown": round(dd, 1), "hinweis": hinweis}
 
 
+def bewertungs_kontext(fund, fair_value=None):
+    """MARKTKONTEXT-EBENE 2+3: Ordnet die Bewertung einer EINZELNEN Aktie in
+    ihre eigene Historie ein - der entscheidende Punkt, damit '30 % ueber Fair
+    Value' richtig gelesen wird.
+
+    Zwei Einordnungen:
+      A) Fair-Value-Abstand: Kurs vs. uebergebener Fair Value (die Marktmeinung
+         relativ zu den Fundamentaldaten). NICHT im Fair Value verrechnet -
+         reine Gegenueberstellung.
+      B) Historische Bewertung: Wo steht das aktuelle KGV in der eigenen
+         Spanne der letzten Jahre? (Perzentil-Naeherung ueber hist_pe_*.)
+         So wird '+30 %' relativiert: liegt die Aktie IMMER hoch, ist es
+         normal; liegt sie ungewoehnlich hoch, ist es ein echtes Signal.
+
+    Rueckgabe: {fv_abstand, fv_text, pe_perzentil, pe_lage, pe_text, gesamt}
+    Ohne Vermischung mit dem Fair Value.
+    """
+    price = fund.get("price")
+    out = {"fv_abstand": None, "fv_text": "", "pe_perzentil": None,
+           "pe_lage": None, "pe_text": "", "gesamt": ""}
+
+    # --- A) Fair-Value-Abstand (Markt vs. Fundamentaldaten) ---
+    if fair_value and price:
+        ab = (price / fair_value - 1) * 100
+        out["fv_abstand"] = round(ab, 1)
+        if ab <= -20:
+            out["fv_text"] = (f"Kurs {ab:.0f} % UNTER Fair Value - Markt "
+                              f"deutlich pessimistischer als die Fundamentaldaten")
+        elif ab <= -5:
+            out["fv_text"] = f"Kurs {ab:.0f} % unter Fair Value - leicht guenstig"
+        elif ab < 5:
+            out["fv_text"] = "Kurs nahe Fair Value - fair bewertet"
+        elif ab < 20:
+            out["fv_text"] = f"Kurs {ab:+.0f} % ueber Fair Value - leicht teuer"
+        else:
+            out["fv_text"] = (f"Kurs {ab:+.0f} % ueber Fair Value - Markt "
+                              f"deutlich optimistischer als die Fundamentaldaten")
+
+    # --- B) Historische Bewertung (KGV-Perzentil in eigener Spanne) ---
+    pe_akt = fund.get("pe_ttm") or fund.get("trailing_pe")
+    werte = fund.get("hist_pe_values")
+    lo, hi = fund.get("hist_pe_tief"), fund.get("hist_pe_hoch")
+    if pe_akt and pe_akt > 0:
+        perzentil = None
+        if werte and len(werte) >= 5:
+            unter = sum(1 for w in werte if w <= pe_akt)
+            perzentil = round(unter / len(werte) * 100)
+        elif lo and hi and hi > lo:
+            perzentil = round(max(0, min(100, (pe_akt - lo) / (hi - lo) * 100)))
+        if perzentil is not None:
+            out["pe_perzentil"] = perzentil
+            if perzentil >= 80:
+                out["pe_lage"] = "teuer"
+                out["pe_text"] = (f"KGV im {perzentil}. Perzentil der eigenen "
+                                  f"Historie - teurer als sonst fast immer")
+            elif perzentil >= 60:
+                out["pe_lage"] = "leicht teuer"
+                out["pe_text"] = (f"KGV im {perzentil}. Perzentil - etwas ueber "
+                                  f"dem eigenen Schnitt")
+            elif perzentil >= 40:
+                out["pe_lage"] = "normal"
+                out["pe_text"] = (f"KGV im {perzentil}. Perzentil - im eigenen "
+                                  f"Normbereich")
+            elif perzentil >= 20:
+                out["pe_lage"] = "leicht guenstig"
+                out["pe_text"] = (f"KGV im {perzentil}. Perzentil - unter dem "
+                                  f"eigenen Schnitt")
+            else:
+                out["pe_lage"] = "guenstig"
+                out["pe_text"] = (f"KGV im {perzentil}. Perzentil - guenstiger "
+                                  f"als sonst fast immer")
+
+    # --- Gesamteinordnung (verbindet A und B in Worten, NICHT als Zahl) ---
+    teile = []
+    if out["fv_text"]:
+        teile.append(out["fv_text"])
+    if out["pe_text"]:
+        teile.append(out["pe_text"])
+    if teile:
+        if (out.get("fv_abstand") or 0) >= 20 and (out.get("pe_perzentil") or 0) >= 80:
+            out["gesamt"] = ("Teuer auf beiden Ebenen: ueber Fair Value UND am "
+                             "oberen Rand der eigenen Bewertungshistorie.")
+        elif (out.get("fv_abstand") or 0) <= -15 and (out.get("pe_perzentil") or 100) <= 25:
+            out["gesamt"] = ("Guenstig auf beiden Ebenen: unter Fair Value UND "
+                             "am unteren Rand der eigenen Historie.")
+        else:
+            out["gesamt"] = " \u00b7 ".join(teile)
+    return out
+
+
+def markt_regime():
+    """MARKTKONTEXT-EBENE 1: Zustand des Gesamtmarkts aus HARTEN, messbaren
+    Indikatoren - keine Geopolitik-Raterei, sondern deren messbare Wirkung.
+
+    Kombiniert:
+      - Trend: steht der breite Markt (SPY) ueber/unter seinem 200-Tage-Schnitt?
+      - Angst: wo steht der VIX relativ zu seinem ueblichen Niveau (~19)?
+      - Drawdown: Abstand zum 12-Monats-Hoch (aus market_state).
+
+    Rueckgabe: {ampel, punkte, trend, vix, vix_level, drawdown, faktoren, text}
+    ampel: 'gruen' | 'gelb' | 'rot' - fuer die schnelle Einordnung.
+    Bewusst KEINE Vermischung mit dem Fair Value - reine Umfeld-Info.
+    """
+    faktoren = []
+    punkte = 0          # >0 = stuetzend, <0 = riskant
+
+    # --- Trend: SPY vs. eigener SMA200 (Tagesbasis) ---
+    trend = None
+    try:
+        tag = _reihe(BENCH, period="2y", interval="1d")
+        if tag and len(tag) >= 200:
+            closes = [p for _d, p in tag]
+            sma200 = sum(closes[-200:]) / 200
+            akt = closes[-1]
+            abstand = (akt / sma200 - 1) * 100 if sma200 else 0.0
+            if akt >= sma200:
+                trend = {"lage": "ueber SMA200", "abstand": round(abstand, 1)}
+                punkte += 1
+                faktoren.append(f"Markt ueber 200-Tage-Schnitt "
+                                f"({abstand:+.1f} %) - Aufwaertsregime")
+            else:
+                trend = {"lage": "unter SMA200", "abstand": round(abstand, 1)}
+                punkte -= 1
+                faktoren.append(f"Markt UNTER 200-Tage-Schnitt "
+                                f"({abstand:+.1f} %) - fragiles Regime")
+    except Exception:
+        pass
+
+    # --- Angst: VIX-Level ---
+    vix = None
+    vix_level = None
+    try:
+        vrows = _reihe("^VIX", period="6mo", interval="1d")
+        if vrows:
+            vix = round(vrows[-1][1], 1)
+            if vix < 15:
+                vix_level = "niedrig"
+                punkte += 1
+                faktoren.append(f"VIX {vix} - niedrige Angst, ruhiger Markt")
+            elif vix < 22:
+                vix_level = "normal"
+                faktoren.append(f"VIX {vix} - normales Schwankungsniveau")
+            elif vix < 30:
+                vix_level = "erhoeht"
+                punkte -= 1
+                faktoren.append(f"VIX {vix} - erhoehte Nervositaet")
+            else:
+                vix_level = "hoch"
+                punkte -= 2
+                faktoren.append(f"VIX {vix} - hohe Angst/Stress am Markt")
+    except Exception:
+        pass
+
+    # --- Drawdown vom 12-Monats-Hoch (bestehende Logik) ---
+    ms = market_state()
+    drawdown = None
+    if ms:
+        drawdown = ms["drawdown"]
+        if drawdown <= -20:
+            punkte -= 2
+        elif drawdown <= -10:
+            punkte -= 1
+        faktoren.append(f"{ms['drawdown']:+.1f} % vom 12-Monats-Hoch ({ms['lage']})")
+
+    # --- Ampel aus der Summe ---
+    if punkte >= 2:
+        ampel, text = "gruen", "stuetzendes Marktumfeld"
+    elif punkte <= -2:
+        ampel, text = "rot", "riskantes Marktumfeld - erhoehte Vorsicht"
+    else:
+        ampel, text = "gelb", "gemischtes Marktumfeld"
+
+    return {"ampel": ampel, "punkte": punkte, "trend": trend,
+            "vix": vix, "vix_level": vix_level, "drawdown": drawdown,
+            "faktoren": faktoren, "text": text}
+
+
 # -------------------------------------------------- Reaktion auf Quartalszahlen
 def earnings_reactions(ticker, max_quartale=8):
     """Wie hat die Aktie auf vergangene Quartalszahlen reagiert?

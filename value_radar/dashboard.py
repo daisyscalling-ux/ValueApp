@@ -2871,6 +2871,50 @@ if nav == "Einzelanalyse":
                     st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
                                + "  \u00b7  ".join(f"{k} {x}" for k, x in q["parts"].items()))
 
+                # ============================================================
+                # MARKTKONTEXT-EBENE - getrennt vom Fair Value. Ordnet den
+                # Fair Value gegen Marktstimmung und die eigene Bewertungs-
+                # historie ein, OHNE beides zu einer Zahl zu vermengen.
+                # ============================================================
+                try:
+                    import regime as _reg
+                    _bk = _reg.bewertungs_kontext(f, fair_value=v.get("fair_value"))
+                    _mr = _reg.markt_regime()
+                except Exception:
+                    _bk, _mr = None, None
+
+                if _bk or _mr:
+                    with st.expander("\U0001f9ed Marktkontext \u2013 Fair Value "
+                                     "gegen Markt & Historie", expanded=True):
+                        st.caption("Der Fair Value oben bleibt unber\u00fchrt. Hier "
+                                   "wird er nur EINGEORDNET \u2013 gegen die "
+                                   "Marktstimmung (im Kurs enthalten) und gegen "
+                                   "die eigene Bewertungshistorie der Aktie.")
+                        # Bewertungs-Einordnung der Aktie
+                        if _bk and _bk.get("gesamt"):
+                            _fv_ab = _bk.get("fv_abstand")
+                            _farbe = ("var(--green)" if (_fv_ab or 0) < -5
+                                      else "var(--red)" if (_fv_ab or 0) > 20
+                                      else "var(--muted)")
+                            st.markdown(
+                                f'<div class="news-box"><b>Bewertung dieser Aktie</b>'
+                                f'<div style="color:{_farbe};margin-top:4px">'
+                                f'{esc(_bk["gesamt"])}</div></div>',
+                                unsafe_allow_html=True)
+                        # Marktregime (Gesamtmarkt)
+                        if _mr:
+                            _amp = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
+                                    "rot": "\U0001f534"}.get(_mr["ampel"], "\u26aa")
+                            st.markdown(
+                                f'<div class="news-box"><b>{_amp} Marktumfeld: '
+                                f'{esc(_mr["text"])}</b>'
+                                + "".join(f'<div class="meta">\u2022 {esc(x)}</div>'
+                                          for x in _mr.get("faktoren", []))
+                                + '</div>', unsafe_allow_html=True)
+                        st.caption("Einordnung, kein Anlagerat. Marktumfeld aus "
+                                   "harten Indikatoren (Trend, VIX, Drawdown) \u2013 "
+                                   "keine Geopolitik-Sch\u00e4tzung.")
+
                 dv = v.get("model_vs_analyst_pct")
                 if dv is not None and abs(dv) >= 25:
                     acnt = v.get("analyst_count")
@@ -6191,6 +6235,18 @@ if nav == "Earnings Calls":
                     "Titel (etwa 2 Minuten) und h\u00e4lt fest, wer in den letzten "
                     "drei Wochen ver\u00f6ffentlicht hat. Starte den Workflow in "
                     "GitHub oder warte den n\u00e4chsten Lauf ab.")
+
+            # Diagnose: was hat der letzte Nachtlauf beim Transkript-Scan getan?
+            try:
+                _st = store.get_transkript_status() if hasattr(
+                    store, "get_transkript_status") else {}
+            except Exception:
+                _st = {}
+            if _st.get("stand"):
+                if not _st.get("roic_aktiv"):
+                    st.error("\u26a0\ufe0f Letzter Nachtlauf: " + _st["stand"])
+                else:
+                    st.warning("Letzter Nachtlauf-Status: " + _st["stand"])
 
             # --- Live-Selbsttest: prueft die Earnings-Call-Kette sofort,
             #     ohne auf den Nachtlauf zu warten. Zeigt genau, wo es hakt.

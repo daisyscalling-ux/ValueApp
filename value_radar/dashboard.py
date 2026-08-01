@@ -818,6 +818,50 @@ def render_trackrecord():
                 "h\u00e4lt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig wird das "
                 "erst nach einigen Wochen und vielen F\u00e4llen.")
 
+    # --- Live-Diagnose: warum kommen (keine) Signale? Ohne Nachtlauf. ---
+    with st.expander("\U0001f527 Signal-Erfassung jetzt testen (ohne Nachtlauf)",
+                     expanded=not rows):
+        st.caption("F\u00fchrt Screener und Radar sofort aus und zeigt, wie viele "
+                   "Kandidaten sie liefern und wie viele davon in der Kaufzone "
+                   "liegen. So sehen wir, wo es klemmt.")
+        if st.button("\U0001f50d Test starten", key="tb_selftest"):
+            import io as _io
+            import contextlib as _cl
+            _buf = _io.StringIO()
+            try:
+                import precompute as _pc
+                with st.spinner("Screener l\u00e4uft \u2026"):
+                    with _cl.redirect_stdout(_buf):
+                        _scr = _pc.screener_scan()
+                st.write(f"**Screener:** {len(_scr or [])} Kandidaten")
+                if _scr:
+                    _top = sorted(_scr, key=lambda r: -(r.get('composite') or 0))[:5]
+                    for _r in _top:
+                        st.write(f"  \u2022 {_r.get('ticker')} \u00b7 Composite "
+                                 f"{_r.get('composite')} \u00b7 Kurs {_r.get('price')} "
+                                 f"\u00b7 Einstieg {_r.get('entry')}")
+                with st.spinner("Radar l\u00e4uft \u2026"):
+                    with _cl.redirect_stdout(_buf):
+                        _rad = _pc.radar_scan()
+                st.write(f"**Radar:** {len(_rad or [])} Kandidaten")
+                # Konsolenausgabe (enthaelt evtl. Fehlermeldungen)
+                _log = _buf.getvalue()
+                if _log.strip():
+                    with st.expander("Konsolen-Ausgabe (Details/Fehler)"):
+                        st.code(_log[-3000:])
+                if not _scr and not _rad:
+                    st.error("Beide Scans liefern 0 Kandidaten. Die Konsolen-"
+                             "Ausgabe oben zeigt, ob ein Fehler auftrat (z.B. "
+                             "fehlender API-Key oder ein Absturz im Scan).")
+                else:
+                    st.success("Scans liefern Kandidaten. Wenn die Trefferbilanz "
+                               "trotzdem leer ist, liegt es an der Kaufzonen-Pr\u00fcfung "
+                               "oder daran, dass der Nachtlauf mit alter Version lief.")
+            except Exception as _e:
+                import traceback
+                st.error(f"Test fehlgeschlagen: {_e}")
+                st.code(traceback.format_exc()[-2000:])
+
     if not rows:
         return
 
@@ -1036,10 +1080,16 @@ def render_trackrecord():
                    "\u00c4nderungen an der Bewertung bleiben Alt-Eintr\u00e4ge daher mit "
                    "ihren veralteten Zahlen stehen. Hier kannst du eine Gruppe "
                    "l\u00f6schen, damit sie beim n\u00e4chsten Lauf frisch erfasst wird.")
+        st.caption("\u2139\ufe0f **Momentum einmal zur\u00fccksetzen empfohlen:** Ein "
+                   "Fehler hatte den Einstiegskurs von Momentum-Signalen in "
+                   "Euro statt Handelsw\u00e4hrung gespeichert (z.B. 382 statt 440) "
+                   "\u2013 das ergab einen erfundenen Gewinn. Ab jetzt korrekt; "
+                   "die alten Momentum-Eintr\u00e4ge einmal l\u00f6schen, dann erfasst "
+                   "der n\u00e4chste Lauf sie sauber.")
         _zc1, _zc2 = st.columns([1, 1])
         _welche = _zc1.selectbox("Welche Gruppe?",
-                                 ["Screener", "Radar", "Negativ", "Contrarian",
-                                  "Earnings+", "Earnings-", "ALLE"],
+                                 ["Screener", "Radar", "Momentum", "Negativ",
+                                  "Contrarian", "Earnings+", "Earnings-", "ALLE"],
                                  key="tr_clear_pick")
         _anz = len([r for r in rows
                     if _welche == "ALLE" or r.get("quelle") == _welche])
@@ -6314,9 +6364,38 @@ if nav == "Earnings Calls":
                             for _z in _tl[:3]:
                                 st.write(f"\u2022 {_z.get('jahr')} Q{_z.get('quartal')} "
                                          f"\u00b7 {_z.get('datum')}")
-                            st.caption("Der Abruf funktioniert. Wenn oben trotzdem "
-                                       "nichts steht, muss nur der Nachtlauf einmal "
-                                       "durchlaufen (GitHub-Workflow starten).")
+                            # Zusatz: erkennt neue_transkripte aktuelle Calls?
+                            st.write("---")
+                            st.write("**Test: werden aktuelle Calls erkannt?**")
+                            try:
+                                _testtitel = ["META", "GOOGL", "MSFT", "V", "MA",
+                                              "AMZN", "AAPL"]
+                                _nt = _rt.neue_transkripte(_testtitel, tage=21,
+                                                           deckel=10)
+                                _akt = [x for x in _nt if x.get("ist_neu")]
+                                if _akt:
+                                    st.success(f"\u2705 {len(_akt)} aktuelle Calls "
+                                               f"(\u2264 21 Tage) erkannt:")
+                                    for _x in _akt[:6]:
+                                        st.write(f"\u2022 {_x['ticker']} \u00b7 "
+                                                 f"{_x['datum']} "
+                                                 f"({_x['tage_her']} Tage her)")
+                                    st.caption("Die Erkennung funktioniert. Wenn "
+                                               "der Tab leer bleibt, l\u00e4uft der "
+                                               "Nachtlauf mit ALTER Version \u2013 "
+                                               "neuen Code ins Repo + Workflow "
+                                               "starten.")
+                                else:
+                                    st.warning(f"\u26a0\ufe0f {len(_nt)} Calls gefunden, "
+                                               "aber KEINER als aktuell markiert. "
+                                               "Zeigt die Datums-Logik. Neueste "
+                                               "gefundene:")
+                                    for _x in _nt[:5]:
+                                        st.write(f"\u2022 {_x['ticker']} \u00b7 "
+                                                 f"{_x.get('datum')} "
+                                                 f"({_x.get('tage_her')} Tage)")
+                            except Exception as _e2:
+                                st.error(f"neue_transkripte-Fehler: {_e2}")
                         elif _tl is not None:
                             st.warning("\u26a0\ufe0f Verbindung steht, aber roic "
                                        "liefert keine Calls f\u00fcr AAPL zur\u00fcck. "

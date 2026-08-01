@@ -336,3 +336,15 @@ def set_pos_kommentare(portfolio: str, komm: dict) -> bool:
     alle[portfolio] = sauber
     d["pos_kommentare"] = alle
     return _save_aux(d)
+
+
+def get_transkript_status() -> dict:
+    """Diagnose-Status des letzten Transkript-Scans (fuer den Earnings-Tab)."""
+    s = _load_aux().get("transkript_status", {})
+    return s if isinstance(s, dict) else {}
+
+
+def set_transkript_status(status: dict) -> bool:
+    d = _load_aux()
+    d["transkript_status"] = status or {}
+    return _save_aux(d)

@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-a"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-g"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1081,7 +1081,14 @@ def run():
                 "strategie": "Momentum",
                 "mom_12_1": r.get("mom_12_1"),
                 "rel_staerke": r.get("rel_staerke"),
-                "price": (r.get("price") or 0) * (r.get("_fx") or 1.0)})
+                # Rohen Kurs in Handelswaehrung durchreichen - NICHT mit _fx in
+                # EUR umrechnen. Die Trefferbilanz haelt den Wechselkurs separat
+                # fest (entry_fx) und rechnet selbst um. Frueher wurde hier
+                # bereits * _fx multipliziert -> Einstieg landete in EUR (440 USD
+                # * 0,87 = 383), waehrend der Vergleichskurs in USD kam. Ergebnis
+                # war ein erfundener Upside (~15%), obwohl der Titel heute
+                # eingestiegen ist. Jetzt konsistent zu Screener/Radar.
+                "price": r.get("price")})
 
         # KONTROLLGRUPPE: die schwaechsten Titel aus denselben Scans.
         # Ohne sie kann man nicht unterscheiden, ob die Scorecard trennt

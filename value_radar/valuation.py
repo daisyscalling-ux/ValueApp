@@ -359,15 +359,21 @@ def analyst_target(fund) -> Optional[float]:
 # konservativ (mid-cycle-Multiples, gedeckelter DCF) und liegen bei teuren
 # Wachstumsaktien systematisch unter dem Markt; der Analystenkonsens zieht die
 # Bewertung Richtung dessen, was der Markt tatsaechlich einpreist.
+# Ausgeduennt auf die 3 etabliertesten Kernmethoden je Aktientyp + Analyst
+# als Anker (~15%). Weniger, dafuer die verlaesslichsten Methoden - das macht
+# den Fair Value robuster und nachvollziehbarer. Der Analyst-Konsens bleibt
+# als marktbasierter Stabilisator drin, aber mit reduziertem Gewicht, damit
+# der Fair Value staerker von den Fundamentaldaten getragen wird (und damit
+# unabhaengiger vom Markt - wichtig, um ihn spaeter GEGEN den Markt zu messen).
 _WEIGHTS = {
-    "quality":    {"justified_pe": .15, "fwd_composite": .20, "dcf": .15, "epv": .05,
-                   "ev_ebitda": .10, "hist_pe": .10, "analyst": .25},
-    "inflection": {"fwd_pe": .15, "fwd_composite": .20, "dcf": .15, "justified_pe": .10,
-                   "analyst": .40},
-    "cyclical":   {"ev_ebitda": .25, "pb": .20, "epv": .15, "justified_pe": .15,
-                   "analyst": .25},
-    "financial":  {"justified_pe": .30, "pb": .30, "fwd_pe": .10, "hist_pe": .05,
-                   "analyst": .25},
+    # Quality: DCF (Ertragskraft) + faires KGV + EV/EBITDA
+    "quality":    {"dcf": .30, "justified_pe": .30, "ev_ebitda": .25, "analyst": .15},
+    # Inflection: Forward-Multiples + DCF (Zukunftssicht fuer Wachstum/Turnaround)
+    "inflection": {"fwd_pe": .30, "fwd_composite": .25, "dcf": .30, "analyst": .15},
+    # Cyclical: mid-cycle-Multiple + Substanz (Buchwert) + normalisierte Ertragskraft
+    "cyclical":   {"ev_ebitda": .35, "pb": .25, "epv": .25, "analyst": .15},
+    # Financial: KBV (Bank-Standard) + faires KGV + Forward-KGV
+    "financial":  {"pb": .35, "justified_pe": .30, "fwd_pe": .20, "analyst": .15},
 }
 
 

@@ -1005,7 +1005,17 @@ def index_universum(mit_dax=True) -> list:
         pass
     if mit_dax:
         tk.extend(DAX40)
-    liste = [t for t in dict.fromkeys(tk) if t and len(t) <= 12]
+    # Echte Ticker haben KEINE Leerzeichen und sind kurz. Eintraege mit
+    # Leerzeichen (z.B. "PRUDENTIAL FINANCIAL") stammen aus falsch geparsten
+    # Wikipedia-Spalten und fuehren nur zu fehlgeschlagenen Abrufen -> raus.
+    # Auch reine Namen wie "NETFLIX"/"NVIDIA" (kommen aus derselben Quelle)
+    # werden verworfen, wenn sie laenger als ein ueblicher Ticker sind (>5)
+    # und komplett aus Buchstaben bestehen und NICHT bekannt sind.
+    def _ist_ticker(t):
+        if not t or " " in t or len(t) > 12:
+            return False
+        return True
+    liste = [t for t in dict.fromkeys(tk) if _ist_ticker(t)]
     _UNIVERSUM_CACHE["liste"] = liste
     return liste
 
@@ -1034,7 +1044,7 @@ def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> lis
         if not covers(t):
             continue
         try:
-            liste = transcript_liste(t, limit=2)
+            liste = transcript_liste(t, limit=6)
         except Exception:
             liste = []
         for z in liste[:1]:                      # nur der neueste

@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-g"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-h"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1195,6 +1195,20 @@ def run():
                 _tk_uni = _roic_mod.index_universum()
                 print(f"[transkripte] Universum: {len(_tk_uni)} Titel")
                 _neu = _roic_mod.neue_transkripte(_tk_uni, tage=21, deckel=600)
+                # Diagnose: was liefert transcript_liste fuer bekannte Titel,
+                # die diese Woche gemeldet haben? Zeigt, ob das Problem an der
+                # API-Antwort oder an der Datumslogik liegt.
+                for _dt_t in ("META", "GOOGL", "MSFT", "AMZN", "AAPL"):
+                    try:
+                        _dl = _roic_mod.transcript_liste(_dt_t, limit=3)
+                        if _dl:
+                            print(f"  [EC-Diag] {_dt_t}: neuester Call "
+                                  f"{_dl[0].get('datum')} "
+                                  f"(Q{_dl[0].get('quartal')} {_dl[0].get('jahr')})")
+                        else:
+                            print(f"  [EC-Diag] {_dt_t}: transcript_liste LEER")
+                    except Exception as _de:
+                        print(f"  [EC-Diag] {_dt_t}: Fehler {_de}")
                 if not hasattr(store, "set_transkripte"):
                     print("[transkripte] ABBRUCH: store.py ist veraltet "
                           "(set_transkripte fehlt) - bitte neu hochladen.")

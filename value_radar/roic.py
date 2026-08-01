@@ -871,7 +871,16 @@ def transcript_liste(t: str, limit=100) -> list:
             "quartal": int(_q) if _q else None,
             "datum": str(_g(z, "date") or "")[:10],
         })
-    return [z for z in out if z.get("datum") or z.get("jahr")]
+    out = [z for z in out if z.get("datum") or z.get("jahr")]
+    # WICHTIG: explizit neueste zuerst sortieren. Frueher wurde die Reihenfolge
+    # der API uebernommen - wenn die nicht desc war, griff neue_transkripte()
+    # mit liste[:1] den FALSCHEN (alten) Call, und aktuelle Calls (z.B. Meta
+    # 29.07) wurden als 'alt' eingestuft. Sortierschluessel: Datum, sonst
+    # Jahr+Quartal als Rueckfall, wenn ein Datum fehlt.
+    out.sort(key=lambda z: (z.get("datum") or "",
+                            z.get("jahr") or 0,
+                            z.get("quartal") or 0), reverse=True)
+    return out
 
 
 def transcript(t: str, jahr=None, quartal=None) -> dict:

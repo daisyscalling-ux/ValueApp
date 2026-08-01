@@ -377,6 +377,95 @@ _WEIGHTS = {
 }
 
 
+def eigenes_ziel(fund, fair_value, preset="quality", regime_ampel=None,
+                 pe_perzentil=None, analyst_target=None):
+    """Eigenes, ausgewogenes 12-Monats-Kursziel - der 'eigene Analyst'.
+
+    Projiziert den FAIR VALUE 12 Monate voraus, mit drei transparenten,
+    datenbasierten Anpassungen. Ausgewogen = bester Schaetzwert, keine
+    kuenstliche Marge nach oben oder unten. Gibt neben dem Ziel eine
+    vollstaendige Herleitung zurueck, damit nachvollziehbar bleibt, WIE es
+    entstand und wie es zum Analystenkonsens steht.
+
+    Bewusst KEINE Auftragsbestaende/News (stehen nicht in den strukturierten
+    Daten) - nur was das Tool belastbar weiss: Wachstum, Qualitaet, Bewertungs-
+    historie, Marktregime.
+
+    Rueckgabe: {ziel, upside_pct, herleitung: [...], vs_analyst, basis}
+    """
+    if not fair_value or fair_value <= 0:
+        return None
+    schritte = []
+    ziel = float(fair_value)
+    schritte.append(f"Basis: Fair Value {fair_value:.2f}")
+
+    # --- 1) Wachstums-Projektion, qualitaetsgewichtet ---
+    g = fund.get("revenue_growth")
+    if g is None:
+        g = fund.get("earnings_growth")
+    if g is None:
+        g = 0.0
+    g = max(min(g, 0.25), -0.10)          # roh auf [-10%, +25%] begrenzen
+
+    # Qualitaet bestimmen (0..1): hohe Qualitaet -> Wachstum zaehlt voll
+    roic = fund.get("roic")
+    opm = fund.get("operating_margin")
+    q_faktor = 0.6                         # neutraler Default
+    if roic is not None:
+        # ROIC 5% -> 0.4, 15% -> 0.85, 25%+ -> 1.0
+        q_faktor = max(0.4, min(1.0, 0.4 + (roic - 0.05) * 3.0))
+    elif opm is not None:
+        q_faktor = max(0.4, min(1.0, 0.4 + opm * 2.0))
+
+    g_eff = g * q_faktor
+    g_eff = max(min(g_eff, 0.12), -0.10)   # Deckel gegen Fantasie: max +12%
+    ziel_nach_g = ziel * (1 + g_eff)
+    schritte.append(
+        f"Wachstum {g*100:+.1f}% \u00d7 Qualitaet {q_faktor:.2f} "
+        f"= {g_eff*100:+.1f}% wirksam \u2192 {ziel_nach_g:.2f}")
+    ziel = ziel_nach_g
+
+    # --- 2) Bewertungs-Rueckkehr (mean reversion ueber KGV-Perzentil) ---
+    if pe_perzentil is not None:
+        # 80.+ Perzentil (teuer) -> bis -6% daempfen; 20- (guenstig) -> bis +6%
+        if pe_perzentil >= 80:
+            adj = -0.06 * ((pe_perzentil - 80) / 20.0 + 0.5)
+        elif pe_perzentil <= 20:
+            adj = 0.06 * ((20 - pe_perzentil) / 20.0 + 0.5)
+        else:
+            adj = 0.0
+        adj = max(min(adj, 0.06), -0.06)
+        if abs(adj) >= 0.005:
+            ziel_nach_b = ziel * (1 + adj)
+            lage = "historisch teuer" if adj < 0 else "historisch guenstig"
+            schritte.append(
+                f"Bewertungs-Ruckkehr ({lage}, KGV-Perzentil "
+                f"{pe_perzentil}) \u2192 {adj*100:+.1f}% \u2192 {ziel_nach_b:.2f}")
+            ziel = ziel_nach_b
+
+    # --- 3) Marktregime-Daempfung (klein, max -5%) ---
+    if regime_ampel == "rot":
+        ziel_nach_r = ziel * 0.95
+        schritte.append(f"Marktregime rot \u2192 -5% Vorsicht \u2192 {ziel_nach_r:.2f}")
+        ziel = ziel_nach_r
+    elif regime_ampel == "gelb":
+        ziel_nach_r = ziel * 0.98
+        schritte.append(f"Marktregime gelb \u2192 -2% \u2192 {ziel_nach_r:.2f}")
+        ziel = ziel_nach_r
+
+    ziel = round(ziel, 2)
+    price = fund.get("price")
+    upside = round((ziel / price - 1) * 100, 1) if price else None
+
+    # Vergleich zum Analystenkonsens
+    vs_analyst = None
+    if analyst_target and analyst_target > 0:
+        vs_analyst = round((ziel / analyst_target - 1) * 100, 1)
+
+    return {"ziel": ziel, "upside_pct": upside, "herleitung": schritte,
+            "vs_analyst": vs_analyst, "basis": round(float(fair_value), 2)}
+
+
 def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     methods = {
         "justified_pe": justified_pe(fund, preset),

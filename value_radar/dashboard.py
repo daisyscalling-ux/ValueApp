@@ -2915,6 +2915,52 @@ if nav == "Einzelanalyse":
                                    "harten Indikatoren (Trend, VIX, Drawdown) \u2013 "
                                    "keine Geopolitik-Sch\u00e4tzung.")
 
+                # ============================================================
+                # EIGENES 12-MONATS-ZIEL - der 'eigene Analyst'. Verdichtet
+                # Fair Value + Wachstum(qualitaetsgewichtet) + Bewertungs-
+                # historie + Marktregime zu EINEM eigenstaendigen Ziel, das
+                # bewusst vom Analystenkonsens abweichen darf - transparent.
+                # ============================================================
+                try:
+                    _ez = valuation.eigenes_ziel(
+                        f, fair_value=v.get("fair_value"), preset=ep,
+                        regime_ampel=(_mr or {}).get("ampel"),
+                        pe_perzentil=(_bk or {}).get("pe_perzentil"),
+                        analyst_target=v.get("analyst_target"))
+                except Exception:
+                    _ez = None
+
+                if _ez and _ez.get("ziel"):
+                    with st.expander("\U0001f3af Eigenes 12-Monats-Ziel "
+                                     "(dein Analyst)", expanded=True):
+                        _zc = st.columns(3)
+                        card(_zc[0], "Eigenes Ziel", m(_ez["ziel"]),
+                             f"Upside {de(_ez['upside_pct'],1)}%"
+                             if _ez.get("upside_pct") is not None else "\u2014",
+                             "var(--green)" if (_ez.get("upside_pct") or 0) > 0
+                             else "var(--red)")
+                        card(_zc[1], "Analysten-Ziel", m(v.get("analyst_target")),
+                             (f"wir {'+' if (_ez.get('vs_analyst') or 0) >= 0 else ''}"
+                              f"{de(_ez['vs_analyst'],1)}% ggu."
+                              if _ez.get("vs_analyst") is not None else "\u2014"))
+                        card(_zc[2], "Fair Value (heute)", m(v.get("fair_value")),
+                             "Basis des Ziels", "var(--muted)")
+                        st.caption("So entstand das Ziel (nachvollziehbar):")
+                        for _s in _ez.get("herleitung", []):
+                            st.markdown(f'<div class="meta">\u2022 {esc(_s)}</div>',
+                                        unsafe_allow_html=True)
+                        _vsa = _ez.get("vs_analyst")
+                        if _vsa is not None and abs(_vsa) >= 10:
+                            _ri = "optimistischer" if _vsa > 0 else "vorsichtiger"
+                            st.caption(f"\u2192 Wir sind {abs(_vsa):.0f}% {_ri} als "
+                                       f"der Analystenkonsens \u2013 auf Basis von "
+                                       f"Wachstumsqualitaet, Bewertungshistorie und "
+                                       f"Marktregime, nicht aus Kontakten/News.")
+                        st.caption("Ausgewogener Sch\u00e4tzwert aus vorhandenen "
+                                   "Zahlen \u2013 kein Anlagerat. Auftragsbest\u00e4nde/"
+                                   "Ank\u00fcndigungen flie\u00dfen NICHT ein (nicht in den "
+                                   "strukturierten Daten enthalten).")
+
                 dv = v.get("model_vs_analyst_pct")
                 if dv is not None and abs(dv) >= 25:
                     acnt = v.get("analyst_count")

@@ -211,7 +211,72 @@ def dcf_two_stage(fund, preset="quality") -> Optional[float]:
     return equity / shares if equity > 0 else None
 
 
-# --- 3b) KBV (Cyclical) -----------------------------------------------------
+def _dcf_parametrisiert(fund, preset, g_shift, r_shift) -> Optional[float]:
+    """Wie dcf_two_stage, aber mit verschobenem Anfangswachstum (g_shift) und
+    Diskontsatz (r_shift). Basis fuer die Bear/Base/Bull-Szenarien - die groesste
+    Bewertungsunsicherheit steckt genau in diesen zwei Annahmen (Damodaran:
+    'die groesste Intangible ist zukuenftiges Wachstum'). Statt einer
+    Punktschaetzung zeigt das eine ehrliche Bandbreite."""
+    if preset == "cyclical":
+        return None
+    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    if not fcf or not shares or fcf <= 0:
+        return None
+    years = max(int(V.get("projection_years", 10)), 2)
+    g_term = V["terminal_growth"]
+    g1 = fund.get("revenue_growth")
+    if g1 is None:
+        g1 = fund.get("earnings_growth") or 0.06
+    cap = 0.25 if preset == "inflection" else 0.16
+    g1 = max(min(g1, cap), -0.03)
+    # Szenario-Verschiebung des Wachstums, danach erneut hart deckeln, damit
+    # das Bull-Szenario nicht ins Unrealistische laeuft.
+    g1 = max(min(g1 + g_shift, cap + 0.05), -0.06)
+    r = wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt"))
+    r = r + r_shift
+    if r - g_term < 0.045:
+        r = g_term + 0.045
+    pv, cf = 0.0, fcf
+    for t in range(1, years + 1):
+        g_t = g1 + (g_term - g1) * (t - 1) / (years - 1)
+        cf *= (1 + g_t)
+        pv += cf / ((1 + r) ** t)
+    terminal = cf * (1 + g_term) / (r - g_term) / ((1 + r) ** years)
+    equity = pv + terminal - (fund.get("net_debt") or 0.0)
+    return equity / shares if equity > 0 else None
+
+
+def szenario_werte(fund, preset="quality") -> Optional[dict]:
+    """Bear / Base / Bull als ehrliche Bandbreite statt einer Punktschaetzung.
+    Die Verschiebung des Wachstums skaliert mit dem erwarteten Wachstum selbst:
+    schneller wachsende Firmen sind unsicherer (Damodaran), also breitere
+    Spanne. Der Diskontsatz wird fix verschoben (Risiko-Neubewertung).
+    Gibt None zurueck, wenn der DCF fuer diesen Titel nicht traegt (z.B.
+    zyklisch oder negativer Free Cashflow) - dann gibt es bewusst keine
+    Scheingenauigkeit."""
+    base = dcf_two_stage(fund, preset)
+    if base is None:
+        return None
+    # Wachstums-Unsicherheit: mindestens 3 Pp., mehr bei hoeherem Wachstum.
+    g = fund.get("revenue_growth")
+    if g is None:
+        g = fund.get("earnings_growth") or 0.06
+    g_unsicher = max(0.03, abs(g) * 0.5)     # z.B. g=20% -> +/-10 Pp.
+    bear = _dcf_parametrisiert(fund, preset, g_shift=-g_unsicher, r_shift=+0.015)
+    bull = _dcf_parametrisiert(fund, preset, g_shift=+g_unsicher, r_shift=-0.010)
+    if bear is None or bull is None:
+        return None
+    lo, hi = min(bear, base, bull), max(bear, base, bull)
+    price = fund.get("price")
+    return {
+        "bear": round(bear, 2),
+        "base": round(base, 2),
+        "bull": round(bull, 2),
+        "spanne_pct": round((hi - lo) / base * 100, 0) if base else None,
+        "preis": price,
+        "kurs_position": (round((price - lo) / (hi - lo) * 100, 0)
+                          if price and hi > lo else None),
+    }
 def multiple_pb(fund, preset="quality") -> Optional[float]:
     bvps = fund.get("book_value_ps")
     if not bvps or bvps <= 0:
@@ -638,6 +703,7 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "upside_pct": round(upside, 1) if upside is not None else None,
         "reverse_dcf_implied_growth": reverse_dcf_implied_growth(fund),
         "wacc": round(wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt")), 4),
+        "szenarien": szenario_werte(fund, preset),
     }
 
 

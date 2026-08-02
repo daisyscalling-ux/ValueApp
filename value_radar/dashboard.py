@@ -3761,6 +3761,37 @@ if nav == "Einzelanalyse":
                     rg = v["reverse_dcf_implied_growth"]
                     st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
                                f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
+                    # --- Bear / Base / Bull: ehrliche Bandbreite statt einer Zahl ---
+                    _sz = v.get("szenarien")
+                    if _sz:
+                        _sc = st.columns(3)
+                        _sc[0].metric("\U0001f43b Bear", m(_sz["bear"]),
+                                      help="Vorsichtig: niedrigeres Wachstum, "
+                                           "hoeherer Diskontsatz")
+                        _sc[1].metric("\u2696\ufe0f Base", m(_sz["base"]),
+                                      help="Aktuelle Annahmen (Basis-DCF)")
+                        _sc[2].metric("\U0001f402 Bull", m(_sz["bull"]),
+                                      help="Optimistisch: hoeheres Wachstum, "
+                                           "niedrigerer Diskontsatz")
+                        _kp = _sz.get("kurs_position")
+                        if _kp is not None:
+                            if _kp < 0:
+                                _lage = ("unter dem Bear-Szenario \u2013 selbst "
+                                         "pessimistisch g\u00fcnstig")
+                            elif _kp > 100:
+                                _lage = ("\u00fcber dem Bull-Szenario \u2013 selbst "
+                                         "optimistisch teuer")
+                            elif _kp <= 35:
+                                _lage = "im unteren (g\u00fcnstigen) Drittel der Spanne"
+                            elif _kp >= 65:
+                                _lage = "im oberen (teuren) Drittel der Spanne"
+                            else:
+                                _lage = "im mittleren Bereich der Spanne"
+                            st.caption(
+                                f"Spanne {_sz['spanne_pct']:.0f}% \u00b7 aktueller Kurs "
+                                f"liegt {_lage}. Je breiter die Spanne, desto "
+                                f"unsicherer die Bewertung (viel Wert steckt in "
+                                f"unsicheren Zukunftsannahmen).")
                     conf = v.get("confidence")
                     cmap = {"hoch": "var(--green)", "mittel": "var(--amber)",
                             "niedrig": "var(--red)"}.get(conf, "var(--muted)")

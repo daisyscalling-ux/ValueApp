@@ -101,6 +101,11 @@ def score_stock(fund: dict[str, Any], peer_funds: list[dict] | None,
     hi, lo = fund.get("52w_high"), fund.get("52w_low")
     if price and hi and lo and hi > lo:
         pos = (price - lo) / (hi - lo) * 100
+        # Deckel 0..100: bei fehlerhaften Kursen (z.B. OTC-Titel wie SSNLF, wo
+        # der aktuelle Kurs ueber dem 52W-Hoch liegt) wuerde pos sonst weit
+        # ueber 100 schiessen (404 gesehen) und den Composite faelschlich
+        # hochziehen. Der Deckel gilt generell fuer alle Titel.
+        pos = max(0.0, min(100.0, pos))
         cat_scores["momentum"] = pos
         breakdown["price_position_52w"] = round(pos, 1)
     else:
@@ -180,8 +185,12 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
 
     q_mom = radar if radar is not None else momentum
     if q_mom is not None:
-        comps.append(float(q_mom)); wts.append(0.20)
-        parts["Momentum" + ("/Radar" if radar is not None else "")] = round(float(q_mom))
+        # Generell 0..100 deckeln - schuetzt gegen fehlerhafte Roh-Scores
+        # (z.B. ein Momentum-Wert von 404 durch verzerrte OTC-Kurse), die den
+        # Quantum/Composite sonst faelschlich nach oben ziehen.
+        q_mom = max(0.0, min(100.0, float(q_mom)))
+        comps.append(q_mom); wts.append(0.20)
+        parts["Momentum" + ("/Radar" if radar is not None else "")] = round(q_mom)
 
     if not comps:
         return {"score": None, "parts": {}, "n": 0}

@@ -2330,7 +2330,7 @@ else:
         "if(!m){return;}"
         # gespeicherte Position wiederherstellen
         "var y=parseInt(d.sessionStorage.getItem('vr_scroll')||'0',10);"
-        "if(y>0){setTimeout(function(){m.scrollTo({top:y,left:0,behavior:'auto'});},50);}"
+        "if(y>0){[50,150,300,500].forEach(function(t){setTimeout(function(){try{m.scrollTo({top:y,left:0,behavior:'auto'});}catch(e){}},t);});}"
         # laufend die aktuelle Position speichern
         "if(!m._vrScrollHook){m._vrScrollHook=true;"
         "m.addEventListener('scroll',function(){"
@@ -5467,27 +5467,32 @@ if nav == "Portfoliocheck":
 
         saved = store.names()
 
-        # --- Gespeichertes Portfolio laden (Dropdown statt Buttonliste) ---
+        # --- Gespeichertes Portfolio laden (direkt bei Auswahl im Dropdown) ---
         if saved:
             st.markdown('<div class="vr-th">Gespeichertes Portfolio laden</div>',
                         unsafe_allow_html=True)
             _cur = st.session_state.get("pf_cur_name")
-            # Aktuell geladenes Portfolio in der Auswahl vorwaehlen
             _idx = saved.index(_cur) if _cur in saved else 0
+
+            def _pf_on_select():
+                # Direkt laden, sobald im Dropdown etwas Neues gewaehlt wird -
+                # kein zusaetzlicher Button noetig. Nur laden, wenn sich die
+                # Auswahl tatsaechlich vom aktuell geladenen Portfolio
+                # unterscheidet (sonst unnoetiges Neuladen).
+                _sel = st.session_state.get("pf_select")
+                if _sel and _sel != st.session_state.get("pf_cur_name"):
+                    _pf_load(_sel)
+
             _wahl = st.selectbox(
                 "Portfolio", saved, index=_idx, key="pf_select",
-                format_func=lambda n: (("\u2705 " if n == _cur else "")
-                                       + n),
+                on_change=_pf_on_select,
+                format_func=lambda n: (("\u2705 " if n == _cur else "") + n),
                 label_visibility="collapsed")
+            # Nur noch der Loesch-Button daneben (Laden passiert automatisch)
             _pc = st.columns([3, 1])
             _aktiv = (_wahl == _cur)
-            if _pc[0].button(("\u2705 Geladen: " if _aktiv else "\U0001f4c2 Laden: ")
-                             + _wahl, key="pf_load_sel",
-                             use_container_width=True,
-                             type="secondary" if _aktiv else "primary",
-                             disabled=_aktiv):
-                _pf_load(_wahl)
-                st.rerun()
+            _pc[0].caption("\u2705 Geladen" if _aktiv
+                           else "Wird beim Ausw\u00e4hlen geladen \u2026")
             if _pc[1].button("\U0001f5d1\ufe0f", key="pf_del_sel",
                              use_container_width=True,
                              help=f"{_wahl} l\u00f6schen"):

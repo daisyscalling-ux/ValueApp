@@ -453,6 +453,18 @@ def load_intraday_quote(t, cur): return providers.get_intraday_quote(t, cur)
 def load_analyst(t): return providers.get_analyst_ratings(t)
 @st.cache_data(ttl=600, show_spinner=False)
 def search_symbols(q): return providers.search_symbol(q)
+@st.cache_data(ttl=86400, show_spinner=False)
+def load_firmenname(t):
+    """Leichtgewichtige Ticker->Firmenname-Aufloesung, 24h gecacht. Nur fuer
+    die Anzeige (Earnings-Liste), damit dort echte Namen statt Ticker stehen.
+    Nutzt die vorhandene Fundamentaldaten-Aufloesung, faellt auf den Ticker
+    zurueck, wenn nichts gefunden wird."""
+    try:
+        f = providers.get_fundamentals(t, deep=False)
+        nm = (f or {}).get("name")
+        return nm if nm else t
+    except Exception:
+        return t
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_history_full(t):
     h = providers.get_price_history(t, period="1y", interval="1d")
@@ -6461,10 +6473,19 @@ if nav == "Earnings Calls":
                         + (" Deine Titel wurden noch nicht erfasst."
                            if _nur_pf else ""))
             else:
+                # Namen nur fuer die ersten ~40 Zeilen aufloesen (Performance:
+                # jeder Lookup kann beim ersten Mal einen Abruf ausloesen, ist
+                # aber 24h gecacht). Danach bleibt der Ticker stehen.
+                _name_budget = [40]
+
                 def _tabellenzeile(r, gruppe):
+                    _nm = r.get("name")
+                    if (not _nm or _nm == r["ticker"]) and _name_budget[0] > 0:
+                        _name_budget[0] -= 1
+                        _nm = load_firmenname(r["ticker"])
                     return {
                         "": gruppe,
-                        "Firma": (r.get("name") or r["ticker"]),
+                        "Firma": _nm or r["ticker"],
                         "Datum": r["datum"],
                         "vor Tagen": r.get("tage_her"),
                         "Quartal": (f"{r.get('quartal') or ''} "

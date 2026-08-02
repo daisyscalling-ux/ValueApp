@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-n"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-o"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -64,6 +64,12 @@ except Exception:
 if _ROIC_AKTIV:
     SCREENER_TOP = 30       # mehr Top-Ideen speichern
     RADAR_TOP = 30
+    # Wie viele Kandidaten die Signal-Erfassung pruefen darf (Kaufzone). Die
+    # Raenge 31-100 kommen mit flachen Scan-Werten (entry/price vorhanden), nur
+    # die Top 30 werden teuer tief nachgerechnet. So werden auch guenstige
+    # Titel mit mittlerem Score (z.B. Morgan Stanley, Composite 60, Rang ~40)
+    # als Kaufkandidat erfasst, ohne 100 Tiefabrufe je Scan.
+    SIGNAL_KANDIDATEN = 100
     # Mit der Sparfassung (3 Abrufe je Titel in der Vorauswahl) kostet ein
     # 600er-Universum rund 7,5 Minuten statt 20. Das ist der eigentliche
     # Gewinn der bezahlten Anbindung: Breite statt Rationierung.
@@ -84,6 +90,7 @@ if _ROIC_AKTIV:
 else:
     SCREENER_TOP = 15       # so viele Screener-Top-Ideen speichern
     RADAR_TOP = 15
+    SIGNAL_KANDIDATEN = 40  # ohne roic engeres Feld (API-Limits)
     UNIVERSE_SIZE = 90      # bounded: schont FMP-Tageslimit & Laufzeit
     SCAN_DEEP = False
     EARNINGS_DEEP_LIMIT = 60
@@ -527,8 +534,18 @@ def screener_scan() -> list:
          and (r.get("upside") or -999) >= 5],
         key=lambda r: (r.get("composite") or 0) + min((r.get("upside") or 0) * 0.3, 15),
         reverse=True)
-    # Top-Treffer tief nachrechnen -> gespeicherte Upside = Einzelanalyse-Upside
-    top = _rescore_deep(ranked[:SCREENER_TOP], "Screener")
+    # Top-Treffer tief nachrechnen -> gespeicherte Upside = Einzelanalyse-Upside.
+    # NUR die Top 30 werden tief nachgerechnet (teuer: 8 Abrufe je Titel). Die
+    # Raenge 31-100 kommen mit ihren flachen Scan-Werten mit - die enthalten
+    # bereits entry/price/vs_52w (score_ticker berechnet sie fuer jeden Titel),
+    # also genug fuer die Kaufzonen-Pruefung der Signal-Erfassung. So sieht die
+    # Signal-Erfassung bis zu 100 Kandidaten (z.B. Morgan Stanley auf Rang ~40),
+    # ohne dass 100 teure Tiefabrufe den Nachtlauf sprengen.
+    _deep = _rescore_deep(ranked[:SCREENER_TOP], "Screener")
+    _deep_ticker = {r.get("ticker") for r in _deep}
+    _flach_rest = [r for r in ranked[SCREENER_TOP:SIGNAL_KANDIDATEN]
+                   if r.get("ticker") not in _deep_ticker]
+    top = _deep + _flach_rest
     # nach dem Nachrechnen neu sortieren, die Zahlen koennen sich geaendert haben
     return sorted(top, key=lambda r: (r.get("composite") or 0)
                   + min((r.get("upside") or 0) * 0.3, 15), reverse=True)
@@ -592,7 +609,11 @@ def radar_scan() -> list:
         [r for r in scored.values() if (r.get("composite") or 0) >= 55],
         key=lambda r: (r.get("composite") or 0) + min((r.get("upside") or 0) * 0.3, 15),
         reverse=True)
-    top = _rescore_deep(ranked[:RADAR_TOP], "Radar")
+    _deep = _rescore_deep(ranked[:RADAR_TOP], "Radar")
+    _deep_ticker = {r.get("ticker") for r in _deep}
+    _flach_rest = [r for r in ranked[RADAR_TOP:SIGNAL_KANDIDATEN]
+                   if r.get("ticker") not in _deep_ticker]
+    top = _deep + _flach_rest
     return sorted(top, key=lambda r: (r.get("composite") or 0)
                   + min((r.get("upside") or 0) * 0.3, 15), reverse=True)
 
@@ -1036,7 +1057,7 @@ def run():
         _kein_entry = 0          # Diagnose: wie viele ohne Einstiegskurs?
         _kein_daten = 0          # Diagnose: wie viele ganz ohne Analyse?
         _kurs_kaputt = 0         # Diagnose: wie viele mit kaputtem Kurs raus?
-        for r in (scr or [])[:30]:
+        for r in (scr or [])[:SIGNAL_KANDIDATEN]:
             tk = r.get("ticker")
             if not tk:
                 continue
@@ -1045,52 +1066,56 @@ def run():
             if not _kurs_plausibel(r, {}):
                 _kurs_kaputt += 1
                 continue
-            _a = _analyse(tk)
-            # Einstiegskurs und Preis: bevorzugt aus der frischen Analyse,
-            # aber MIT Rueckfall auf die Werte, die der Screener-Scan schon
-            # berechnet hat (r["entry"]/r["price"]). Ohne diesen Rueckfall
-            # scheiterte die Kaufzonen-Pruefung, sobald der zweite tiefe Abruf
-            # in _analyse an einem API-Limit scheiterte - dann fehlte der
-            # Einstiegskurs bei ALLEN Titeln, und es kam nie ein Signal.
-            _entry = _a.get("entry") or r.get("entry")
-            _preis = _a.get("price") or r.get("price")
+            # Kaufzone ZUERST billig mit den Scan-Werten pruefen (entry/price
+            # stehen schon im Row). Erst wenn ein Titel in der Zone liegt, den
+            # teuren _analyse-Tiefabruf machen. So koennen wir bis zu 100
+            # Kandidaten pruefen, ohne 100 Tiefabrufe - nur die wenigen echten
+            # Kaufkandidaten kosten einen Abruf.
+            _entry = r.get("entry")
+            _preis = r.get("price")
             if not _preis:
                 _kein_daten += 1
-            elif not _entry:
+                continue
+            if not _entry:
                 _kein_entry += 1
-            if _entry and _preis:
-                _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
-            # Kaufzone mit den (evtl. aus r ergaenzten) Werten pruefen
-            _zone_ok = bool(_entry and _preis and _preis <= _entry * 1.05)
-            if not _zone_ok:
+                continue
+            _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
+            if not (_preis <= _entry * 1.05):
                 _uebersprungen += 1
                 continue
+            # In der Zone -> jetzt Tiefanalyse fuer die Zusatzfelder
+            _a = _analyse(tk)
+            _entry = _a.get("entry") or _entry
+            _preis = _a.get("price") or _preis
             sig_new.append({"ticker": tk, "quelle": "Screener", "name": r.get("name"),
                             "isin": _a.get("isin"),
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "entry": _entry,
                             "verdict": _a.get("verdict", ""), "price": _preis})
-        for r in (rad or [])[:30]:
+        for r in (rad or [])[:SIGNAL_KANDIDATEN]:
             tk = r.get("ticker")
             if not tk:
                 continue
             if not _kurs_plausibel(r, {}):
                 _kurs_kaputt += 1
                 continue
-            # BUG: r.get("radar") gibt es in score_ticker nicht -> Score war immer
-            # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
-            _a = _analyse(tk)
-            # Gleicher Rueckfall wie beim Screener: Einstieg/Preis aus r, wenn
-            # der tiefe Abruf in _analyse nichts liefert (API-Limit).
-            _entry = _a.get("entry") or r.get("entry")
-            _preis = _a.get("price") or r.get("price")
-            if _entry and _preis:
-                _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
-            _zone_ok = bool(_entry and _preis and _preis <= _entry * 1.05)
-            if not _zone_ok:
+            # Kaufzone zuerst billig mit Scan-Werten pruefen, _analyse nur fuer
+            # Titel in der Zone (wie beim Screener - erlaubt Top 100 ohne 100
+            # Tiefabrufe).
+            _entry = r.get("entry")
+            _preis = r.get("price")
+            if not _entry or not _preis:
                 _uebersprungen += 1
                 continue
+            _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
+            if not (_preis <= _entry * 1.05):
+                _uebersprungen += 1
+                continue
+            # In der Zone -> Tiefanalyse fuer Score/Zusatzfelder
+            _a = _analyse(tk)
+            _entry = _a.get("entry") or _entry
+            _preis = _a.get("price") or _preis
             sig_new.append({"ticker": tk, "quelle": "Radar", "name": r.get("name"),
                             "isin": _a.get("isin"),
                             "score": (_a.get("radar_score")

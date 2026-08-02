@@ -272,6 +272,15 @@ def evaluate(limit=120):
         # markiert und aus allen Statistiken herausgehalten, statt sie still zu
         # "korrigieren" (eine stille Korrektur wuerde echte Ausreisser verschleiern).
         suspekt = abs(ret) > 500 or ret < -85
+        # NEU: Ein Signal, das am ERSTEN Tag (frisch erfasst) schon einen
+        # groesseren Gewinn/Verlust zeigt, kann nicht echt sein - der Einstieg
+        # war ja der Tageskurs. Solche Faelle deuten auf eine Einheiten- oder
+        # Kursquellen-Differenz zwischen Erfassung (entry_px) und Anzeige
+        # (px_now). Als suspekt markieren, damit sie die Trefferbilanz nicht
+        # mit erfundenen ~10 %-Gewinnen verfaelschen.
+        _days_roh = int((time.time() - (e.get("ts") or time.time())) / 86400)
+        if _days_roh <= 0 and abs(ret) > 4:
+            suspekt = True
         bret = None
         if bp_now and e.get("bench_entry"):
             bret = (bp_now / e["bench_entry"] - 1) * 100

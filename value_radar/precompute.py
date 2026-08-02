@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-m"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-n"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -995,6 +995,26 @@ def run():
         sig_new = []
         print(f"[trackrecord] Erfassung mit Code-Version {CODE_VERSION}")
 
+        def _kurs_plausibel(row, analyse):
+            """False, wenn der Kurs unzuverlaessig ist (Datenfehler). Kriterium:
+            Kurs liegt deutlich AUSSERHALB der eigenen 52-Wochen-Spanne - das
+            ist physikalisch unmoeglich bei sauberen Daten und deutet auf einen
+            kaputten Kurs hin (typisch bei duenn gehandelten OTC-Titeln wie
+            SSNLF, wo der Momentum-Score auf 404 schoss). Solche Titel duerfen
+            NICHT als Kaufkandidat erfasst werden - ihr 'guenstig' beruht auf
+            Datenmuell, nicht auf echter Unterbewertung.
+
+            Nutzt vs_52w_high/vs_52w_low (prozentualer Abstand, im Screener-Row
+            vorhanden). Kleine Toleranz (8 %), damit ein legitimes neues
+            52W-Hoch/-Tief nicht faelschlich als kaputt gilt."""
+            vs_hoch = row.get("vs_52w_high")   # >0 => Kurs UEBER 52W-Hoch
+            vs_tief = row.get("vs_52w_low")    # <0 => Kurs UNTER 52W-Tief
+            if vs_hoch is not None and vs_hoch > 8:
+                return False
+            if vs_tief is not None and vs_tief < -8:
+                return False
+            return True
+
         def _in_kaufzone(analyse, row):
             """True, wenn der Kurs die Einstiegszone erreicht hat. Toleranz:
             bis 5 % ueber dem Einstieg gilt noch als 'knapp in der Zone' -
@@ -1015,9 +1035,15 @@ def run():
         _zone_abstand = []       # Diagnose: wie weit ueber der Zone?
         _kein_entry = 0          # Diagnose: wie viele ohne Einstiegskurs?
         _kein_daten = 0          # Diagnose: wie viele ganz ohne Analyse?
+        _kurs_kaputt = 0         # Diagnose: wie viele mit kaputtem Kurs raus?
         for r in (scr or [])[:30]:
             tk = r.get("ticker")
             if not tk:
+                continue
+            # Kaputte Kurse (ausserhalb 52W-Spanne) gar nicht erst als Kandidat
+            # behandeln - ihr "guenstig" beruht auf Datenmuell (z.B. SSNLF).
+            if not _kurs_plausibel(r, {}):
+                _kurs_kaputt += 1
                 continue
             _a = _analyse(tk)
             # Einstiegskurs und Preis: bevorzugt aus der frischen Analyse,
@@ -1048,6 +1074,9 @@ def run():
         for r in (rad or [])[:30]:
             tk = r.get("ticker")
             if not tk:
+                continue
+            if not _kurs_plausibel(r, {}):
+                _kurs_kaputt += 1
                 continue
             # BUG: r.get("radar") gibt es in score_ticker nicht -> Score war immer
             # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
@@ -1082,7 +1111,8 @@ def run():
         # Fair-Value-Problem von einem echten "alles zu teuer".
         print(f"[trackrecord] Diagnose Screener: {_kein_daten} ohne Kurs-Daten, "
               f"{_kein_entry} ohne Einstiegskurs (kein Fair Value), "
-              f"{len(_zone_abstand)} mit berechenbarer Zone.")
+              f"{len(_zone_abstand)} mit berechenbarer Zone, "
+              f"{_kurs_kaputt} mit kaputtem Kurs aussortiert.")
         if _zone_abstand:
             _sortiert = sorted(_zone_abstand, key=lambda x: x[1])
             print(f"[trackrecord] Abstand zur Zone (Kurs vs Einstieg): "

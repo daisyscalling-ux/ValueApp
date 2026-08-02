@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-l"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-m"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1013,23 +1013,38 @@ def run():
 
         _uebersprungen = 0
         _zone_abstand = []       # Diagnose: wie weit ueber der Zone?
+        _kein_entry = 0          # Diagnose: wie viele ohne Einstiegskurs?
+        _kein_daten = 0          # Diagnose: wie viele ganz ohne Analyse?
         for r in (scr or [])[:30]:
             tk = r.get("ticker")
             if not tk:
                 continue
             _a = _analyse(tk)
-            _entry, _preis = _a.get("entry"), (_a.get("price") or r.get("price"))
+            # Einstiegskurs und Preis: bevorzugt aus der frischen Analyse,
+            # aber MIT Rueckfall auf die Werte, die der Screener-Scan schon
+            # berechnet hat (r["entry"]/r["price"]). Ohne diesen Rueckfall
+            # scheiterte die Kaufzonen-Pruefung, sobald der zweite tiefe Abruf
+            # in _analyse an einem API-Limit scheiterte - dann fehlte der
+            # Einstiegskurs bei ALLEN Titeln, und es kam nie ein Signal.
+            _entry = _a.get("entry") or r.get("entry")
+            _preis = _a.get("price") or r.get("price")
+            if not _preis:
+                _kein_daten += 1
+            elif not _entry:
+                _kein_entry += 1
             if _entry and _preis:
                 _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
-            if not _in_kaufzone(_a, r):
+            # Kaufzone mit den (evtl. aus r ergaenzten) Werten pruefen
+            _zone_ok = bool(_entry and _preis and _preis <= _entry * 1.05)
+            if not _zone_ok:
                 _uebersprungen += 1
                 continue
             sig_new.append({"ticker": tk, "quelle": "Screener", "name": r.get("name"),
                             "isin": _a.get("isin"),
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
-                            "entry": _a.get("entry"),
-                            "verdict": _a.get("verdict", ""), "price": _a.get("price") or r.get("price")})
+                            "entry": _entry,
+                            "verdict": _a.get("verdict", ""), "price": _preis})
         for r in (rad or [])[:30]:
             tk = r.get("ticker")
             if not tk:
@@ -1037,7 +1052,14 @@ def run():
             # BUG: r.get("radar") gibt es in score_ticker nicht -> Score war immer
             # None. Der Radar-Score ist "quantum" (Q-Score), Rueckfall composite.
             _a = _analyse(tk)
-            if not _in_kaufzone(_a, r):
+            # Gleicher Rueckfall wie beim Screener: Einstieg/Preis aus r, wenn
+            # der tiefe Abruf in _analyse nichts liefert (API-Limit).
+            _entry = _a.get("entry") or r.get("entry")
+            _preis = _a.get("price") or r.get("price")
+            if _entry and _preis:
+                _zone_abstand.append((tk, round((_preis / _entry - 1) * 100, 1)))
+            _zone_ok = bool(_entry and _preis and _preis <= _entry * 1.05)
+            if not _zone_ok:
                 _uebersprungen += 1
                 continue
             sig_new.append({"ticker": tk, "quelle": "Radar", "name": r.get("name"),
@@ -1050,15 +1072,18 @@ def run():
                             "firing": _a.get("radar_firing"),
                             "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
-                            "entry": _a.get("entry"),
-                            "verdict": _a.get("verdict", ""), "price": _a.get("price") or r.get("price")})
+                            "entry": _entry,
+                            "verdict": _a.get("verdict", ""), "price": _preis})
         if _uebersprungen:
             print(f"[trackrecord] {_uebersprungen} Titel uebersprungen "
                   f"(Kurs nicht in Einstiegszone).")
+        # NEU: Warum wurde uebersprungen? Fehlt der Einstiegskurs oder liegen
+        # die Titel wirklich ueber der Zone? Das unterscheidet ein Daten-/
+        # Fair-Value-Problem von einem echten "alles zu teuer".
+        print(f"[trackrecord] Diagnose Screener: {_kein_daten} ohne Kurs-Daten, "
+              f"{_kein_entry} ohne Einstiegskurs (kein Fair Value), "
+              f"{len(_zone_abstand)} mit berechenbarer Zone.")
         if _zone_abstand:
-            # Zeigt, wie weit die Screener-Titel ueber (+) oder unter (-) ihrer
-            # Einstiegszone liegen. Wenn hier alle stark positiv sind, ist die
-            # Zone zu eng - dann muss die Toleranz weiter aufgemacht werden.
             _sortiert = sorted(_zone_abstand, key=lambda x: x[1])
             print(f"[trackrecord] Abstand zur Zone (Kurs vs Einstieg): "
                   f"{_sortiert[:8]}")

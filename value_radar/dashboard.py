@@ -830,49 +830,43 @@ def render_trackrecord():
                 "h\u00e4lt jedes Screener-/Radar-Signal fest. Aussagekr\u00e4ftig wird das "
                 "erst nach einigen Wochen und vielen F\u00e4llen.")
 
-    # --- Live-Diagnose: warum kommen (keine) Signale? Ohne Nachtlauf. ---
-    with st.expander("\U0001f527 Signal-Erfassung jetzt testen (ohne Nachtlauf)",
-                     expanded=not rows):
-        st.caption("F\u00fchrt Screener und Radar sofort aus und zeigt, wie viele "
-                   "Kandidaten sie liefern und wie viele davon in der Kaufzone "
-                   "liegen. So sehen wir, wo es klemmt.")
-        if st.button("\U0001f50d Test starten", key="tb_selftest"):
-            import io as _io
-            import contextlib as _cl
-            _buf = _io.StringIO()
-            try:
-                import precompute as _pc
-                with st.spinner("Screener l\u00e4uft \u2026"):
-                    with _cl.redirect_stdout(_buf):
-                        _scr = _pc.screener_scan()
-                st.write(f"**Screener:** {len(_scr or [])} Kandidaten")
-                if _scr:
-                    _top = sorted(_scr, key=lambda r: -(r.get('composite') or 0))[:5]
-                    for _r in _top:
-                        st.write(f"  \u2022 {_r.get('ticker')} \u00b7 Composite "
-                                 f"{_r.get('composite')} \u00b7 Kurs {_r.get('price')} "
-                                 f"\u00b7 Einstieg {_r.get('entry')}")
-                with st.spinner("Radar l\u00e4uft \u2026"):
-                    with _cl.redirect_stdout(_buf):
-                        _rad = _pc.radar_scan()
-                st.write(f"**Radar:** {len(_rad or [])} Kandidaten")
-                # Konsolenausgabe (enthaelt evtl. Fehlermeldungen)
-                _log = _buf.getvalue()
-                if _log.strip():
-                    with st.expander("Konsolen-Ausgabe (Details/Fehler)"):
-                        st.code(_log[-3000:])
-                if not _scr and not _rad:
-                    st.error("Beide Scans liefern 0 Kandidaten. Die Konsolen-"
-                             "Ausgabe oben zeigt, ob ein Fehler auftrat (z.B. "
-                             "fehlender API-Key oder ein Absturz im Scan).")
-                else:
-                    st.success("Scans liefern Kandidaten. Wenn die Trefferbilanz "
-                               "trotzdem leer ist, liegt es an der Kaufzonen-Pr\u00fcfung "
-                               "oder daran, dass der Nachtlauf mit alter Version lief.")
-            except Exception as _e:
-                import traceback
-                st.error(f"Test fehlgeschlagen: {_e}")
-                st.code(traceback.format_exc()[-2000:])
+    # --- Diagnose: liest NUR die gespeicherten Nachtlauf-Ergebnisse. Fuehrt
+    #     KEINEN Live-Scan aus - der wuerde in der App-Umgebung nach einigen
+    #     Minuten abbrechen (Screener/Radar scannen hunderte Titel; das gehoert
+    #     in den Nachtlauf auf GitHub, nicht in den Browser).
+    with st.expander("\U0001f527 Warum (keine) Signale? Diagnose", expanded=not rows):
+        try:
+            import trackrecord as _trd
+            _sig = _trd.store.get_signals() or []
+        except Exception:
+            _sig = []
+        _quellen = {}
+        for _s in _sig:
+            _q = _s.get("quelle", "?")
+            _quellen[_q] = _quellen.get(_q, 0) + 1
+        st.write(f"**Gespeicherte Signale gesamt:** {len(_sig)}")
+        if _quellen:
+            st.write("Nach Quelle: " + " \u00b7 ".join(
+                f"{k}: {v}" for k, v in sorted(_quellen.items())))
+        # Status des letzten Nachtlaufs, falls verfuegbar
+        try:
+            _tstat = _trd.store.get_transkript_status() if hasattr(
+                _trd.store, "get_transkript_status") else {}
+        except Exception:
+            _tstat = {}
+        st.caption(
+            "Diese Liste f\u00fcllt der **Nachtlauf** (GitHub), nicht die App. "
+            "Der Live-Scan von Screener/Radar l\u00e4uft NICHT im Browser \u2013 er "
+            "scannt hunderte Titel und w\u00fcrde hier nach einigen Minuten "
+            "abbrechen (das war die Ursache f\u00fcr das ewige Laden + Sprung zur "
+            "Startseite). Wenn hier 0 Screener-/Radar-Signale stehen, im "
+            "GitHub-Actions-Log des letzten Laufs nach der Zeile "
+            "\u201eSignal-Erfassung startet\u201c und \u201eAbstand zur Zone\u201c schauen \u2013 "
+            "die zeigen, ob die Scans Kandidaten fanden und ob die Kaufzone "
+            "griff.")
+        if not _sig:
+            st.warning("Noch keine Signale gespeichert. Starte den "
+                       "GitHub-Actions-Workflow und pr\u00fcfe danach das Log.")
 
     if not rows:
         return

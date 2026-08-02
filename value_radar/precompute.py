@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-h"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-28-l"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -1013,7 +1013,7 @@ def run():
 
         _uebersprungen = 0
         _zone_abstand = []       # Diagnose: wie weit ueber der Zone?
-        for r in (scr or [])[:10]:
+        for r in (scr or [])[:30]:
             tk = r.get("ticker")
             if not tk:
                 continue
@@ -1030,7 +1030,7 @@ def run():
                             "strategie": _a.get("strategie", ""),
                             "entry": _a.get("entry"),
                             "verdict": _a.get("verdict", ""), "price": _a.get("price") or r.get("price")})
-        for r in (rad or [])[:10]:
+        for r in (rad or [])[:30]:
             tk = r.get("ticker")
             if not tk:
                 continue

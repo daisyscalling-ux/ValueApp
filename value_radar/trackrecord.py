@@ -20,11 +20,27 @@ BENCHMARK = "^GSPC"          # S&P 500 als Vergleichsmassstab
 HORIZONS = (30, 90, 180)     # Tage, nach denen bewertet wird
 
 
+_PRICE_CACHE = {}
+
+
 def _price(t):
     """Aktueller Kurs - moeglichst leichtgewichtig und robust. Erst der schnelle
     Intraday-Quote (falls vorhanden), dann die Kurshistorie (zuverlaessiger als ein
     voller Fundamentaldaten-Abruf), zuletzt Fundamentaldaten. So scheitert der Kurs
-    nicht schon an einem einzelnen ausgelasteten Endpoint."""
+    nicht schon an einem einzelnen ausgelasteten Endpoint.
+
+    Ergebnis wird pro Prozess gecacht: evaluate() ruft _price fuer JEDES Signal
+    auf - ohne Cache waeren das bei 40+ Signalen 100+ sequentielle Netz-Abrufe,
+    was die Trefferbilanz minutenlang haengen laesst (und bei einem haengenden
+    Abruf die Seite abstuerzen/zur Startseite springen laesst)."""
+    if t in _PRICE_CACHE:
+        return _PRICE_CACHE[t]
+    px = _price_uncached(t)
+    _PRICE_CACHE[t] = px
+    return px
+
+
+def _price_uncached(t):
     # 1) schneller Quote, falls der Provider ihn hat
     for fn in ("get_quote", "get_intraday_quote"):
         f = getattr(providers, fn, None)

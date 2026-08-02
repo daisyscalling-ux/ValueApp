@@ -52,7 +52,7 @@ _CACHE_TTL = 900            # 15 min - innerhalb eines Laufs reicht das
 # Gemerkter, funktionierender Listen-Pfad fuer Earnings Calls (siehe
 # transcript_liste). Wird beim ersten Treffer gesetzt, damit nicht jedes Mal
 # alle Varianten durchprobiert werden. None = noch nicht ermittelt.
-_EC_LIST_PFAD = None
+_EC_LIST_IDX = None
 
 
 def _key():
@@ -833,30 +833,36 @@ def transcript_liste(t: str, limit=100) -> list:
         return []
     sym = _sym(t)
 
-    # Kandidaten-Pfade (v2-alt zuerst, dann v3-Varianten). {s}=Symbol.
-    global _EC_LIST_PFAD
-    kandidaten = []
-    if _EC_LIST_PFAD:                       # gemerkter Treffer zuerst
-        kandidaten.append(_EC_LIST_PFAD)
-    kandidaten += [
-        # v3 (laut offizieller Doku): GET /earnings-calls?identifier=NASDAQ:AAPL
-        # Antwort im Feld "data". Das ist der korrekte Pfad - zuerst probieren.
-        ("earnings-calls",                  {"identifier": sym, "limit": limit}),
-        # Fallbacks (aeltere/andere Varianten), falls sich das wieder aendert:
-        ("company/earnings-calls/list/{s}", {"limit": limit}),
-        ("earnings-calls/list/{s}",         {"limit": limit}),
-        ("earnings-calls/{s}/list",         {"limit": limit}),
+    # Kandidaten-Pfad-VORLAGEN. Wichtig: der Wechsel-Parameter (identifier
+    # bzw. {s} im Pfad) wird bei JEDEM Aufruf frisch aus 'sym' gebaut. Frueher
+    # wurde das komplette extra-Dict inkl. identifier der ERSTEN Firma gemerkt
+    # und fuer alle folgenden wiederverwendet -> jede Firma bekam die Calls der
+    # ersten (alle 540 zeigten dasselbe Datum). Jetzt merken wir nur, WELCHE
+    # Vorlage funktioniert (Index), und fuellen sym jedes Mal neu ein.
+    global _EC_LIST_IDX
+    vorlagen = [
+        # v3 laut Doku: GET /earnings-calls?identifier=NASDAQ:AAPL, Feld "data"
+        ("earnings-calls",                  lambda: {"identifier": sym, "limit": limit}),
+        ("company/earnings-calls/list/{s}", lambda: {"limit": limit}),
+        ("earnings-calls/list/{s}",         lambda: {"limit": limit}),
+        ("earnings-calls/{s}/list",         lambda: {"limit": limit}),
     ]
+    # Reihenfolge: gemerkte funktionierende Vorlage zuerst, dann der Rest.
+    reihenfolge = list(range(len(vorlagen)))
+    if _EC_LIST_IDX is not None and 0 <= _EC_LIST_IDX < len(vorlagen):
+        reihenfolge.remove(_EC_LIST_IDX)
+        reihenfolge.insert(0, _EC_LIST_IDX)
 
     reihen = []
-    for pfad, extra in kandidaten:
-        d = _get(pfad.format(s=sym), extra)
+    for idx in reihenfolge:
+        pfad, extra_fn = vorlagen[idx]
+        d = _get(pfad.format(s=sym), extra_fn())
         r = d if isinstance(d, list) else (d or {}).get("data") \
             or (d or {}).get("earnings_calls") or []
         if isinstance(r, dict):
             r = [r]
-        if r:                               # Treffer -> Pfad merken
-            _EC_LIST_PFAD = (pfad, extra)
+        if r:                               # Treffer -> Vorlagen-Index merken
+            _EC_LIST_IDX = idx
             reihen = r
             break
 

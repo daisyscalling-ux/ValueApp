@@ -320,19 +320,84 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
             triggers.append(trig)
     accumulation = min(ac, 100)
 
+    # ---- 5) QUALITAET (fundamentaler Grundsockel) ----
+    # Damit gute Aktien auch OHNE frisches Ereignis sichtbar werden, nicht nur
+    # am Meldungstag. Beruht auf harten Kennzahlen - kein Ereignis noetig.
+    ql = 0
+    _roe = fund.get("roe")
+    if _roe is not None:
+        if _roe > 0.20:
+            ql += 28; triggers.append(f"Hohe Eigenkapitalrendite {_roe*100:.0f}%")
+        elif _roe > 0.12:
+            ql += 18
+        elif _roe > 0.05:
+            ql += 8
+    _opm = fund.get("operating_margin")
+    if _opm is not None:
+        if _opm > 0.25:
+            ql += 24; triggers.append(f"Starke operative Marge {_opm*100:.0f}%")
+        elif _opm > 0.15:
+            ql += 15
+        elif _opm > 0.05:
+            ql += 6
+    _fcfy = fund.get("fcf_yield")
+    if _fcfy is not None:
+        if _fcfy > 0.06:
+            ql += 24; triggers.append(f"Hohe Free-Cashflow-Rendite {_fcfy*100:.1f}%")
+        elif _fcfy > 0.03:
+            ql += 14
+        elif _fcfy > 0:
+            ql += 6
+    _dte = fund.get("debt_to_equity")
+    if _dte is not None:
+        # niedrige Verschuldung = solide (yfinance liefert D/E teils in %)
+        _dte_n = _dte / 100.0 if _dte > 5 else _dte
+        if _dte_n < 0.5:
+            ql += 14
+        elif _dte_n < 1.0:
+            ql += 8
+    _gm = fund.get("gross_margin")
+    if _gm and _gm > 0.5:
+        ql += 10
+    quality = min(ql, 100)
+
     # ---- Frischer Katalysator (News/Ausbruch, zeitlich frisch) ----
     cat_pts, cat_trig, cat_info = _catalyst(closes, events, spike)
     if cat_trig:
         triggers.insert(0, cat_trig)
 
-    # ---- Gewichteter Score + Koinzidenz-Bonus ----
-    score = (0.30 * events + 0.20 * fundamental + 0.25 * estimates + 0.25 * accumulation)
-    score = min(100, score + cat_pts)          # frischer Katalysator als Bonus obendrauf
-    firing = sum(1 for x in (events, fundamental, estimates, accumulation) if x >= 40)
+    # ---- Gewichteter Score + Qualitaets-Grundsockel ----
+    # Zwei Bestandteile, die kombiniert werden:
+    #  (A) Ereignis-/Momentum-Score wie bisher (belohnt frische Signale)
+    #  (B) Qualitaets-Grundsockel: gute Fundamentaldaten geben einen soliden
+    #      Basiswert, damit hochwertige Aktien auch OHNE Ereignis sichtbar sind.
+    # Der Score ist das Maximum aus beiden PLUS ein Teil des jeweils anderen -
+    # so dominiert weder Qualitaet die Ereignisse noch umgekehrt.
+    # (A) Ereignis-/Momentum-Score. WICHTIG: auf die tatsaechlich aktiven
+    # Ebenen normalisiert - eine fehlende Ebene (z.B. kein 8-K an diesem Tag)
+    # soll den Score nicht kuenstlich nach unten ziehen. So zaehlt, wie stark
+    # die vorhandenen Signale sind, nicht wie viele zufaellig fehlen.
+    _ev_ebenen = [(events, 0.34), (fundamental, 0.20),
+                  (estimates, 0.26), (accumulation, 0.20)]
+    _aktiv = [(v, w) for v, w in _ev_ebenen if v > 0]
+    _wsum = sum(w for _v, w in _aktiv)
+    ereignis_score = (sum(v * w for v, w in _aktiv) / _wsum) if _wsum else 0.0
+    # Qualitaets-Sockel: bis zu ~65 Punkte allein aus Fundamentalqualitaet
+    quality_sockel = 0.65 * quality
+    # Kombination: der hoehere Wert traegt, der niedrigere haelbt sich dazu.
+    # Der reine Ereignis-Score bleibt aber immer voll erhalten (Untergrenze),
+    # damit Momentum-Plays ohne Qualitaet nicht verschwinden.
+    if ereignis_score >= quality_sockel:
+        score = ereignis_score + 0.35 * quality_sockel
+    else:
+        score = max(ereignis_score, quality_sockel + 0.45 * ereignis_score)
+    score = min(100, score + cat_pts)          # frischer Katalysator obendrauf
+    firing = sum(1 for x in (events, fundamental, estimates, accumulation, quality)
+                 if x >= 40)
     if firing >= 4:
-        score = min(100, score * 1.25); triggers.insert(0, "\u26a1 Mehrfach-Signal (4 Ebenen)")
+        score = min(100, score * 1.22); triggers.insert(0, "\u26a1 Mehrfach-Signal (4+ Ebenen)")
     elif firing >= 3:
-        score = min(100, score * 1.15); triggers.insert(0, "\u26a1 Mehrfach-Signal (3 Ebenen)")
+        score = min(100, score * 1.12); triggers.insert(0, "\u26a1 Mehrfach-Signal (3 Ebenen)")
 
     return {
         "ticker": fund.get("ticker"),
@@ -340,7 +405,8 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
         "sector": fund.get("sector"),
         "score": round(score, 1),
         "layers": {"events": round(events), "fundamental": round(fundamental),
-                   "estimates": round(estimates), "accumulation": round(accumulation)},
+                   "estimates": round(estimates), "accumulation": round(accumulation),
+                   "quality": round(quality)},
         "firing": firing,
         "catalyst": cat_info,
         "triggers": triggers,

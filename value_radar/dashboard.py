@@ -4322,8 +4322,9 @@ if nav == "Radar":
         elif "0,1" in _sc_label:
             rmcap = max(rmcap or 0.0, 0.1)
 
-        rmax = st.number_input("Max. Titel scannen", value=40, min_value=10, max_value=150,
-                               step=10, help="Mehr = mehr Treffer, aber langsamer "
+        rmax = st.number_input("Max. Titel scannen", value=40, min_value=10, max_value=300,
+                               step=10, key="radar_rmax",
+                               help="Mehr = mehr Treffer, aber langsamer "
                                "(Events werden je Titel geladen).")
         if not config.FINNHUB_API_KEY:
             st.caption("\u2139 Ohne Finnhub-Key: Insider via yfinance (l\u00fcckenhaft), "
@@ -4432,7 +4433,8 @@ if nav == "Radar":
                 return round(v / 1e9, 1)
 
             rows = [{"Ticker": r["ticker"], "Name": (r["name"] or "")[:22],
-                     "Radar-Score": r["score"], "Ereignisse": r["layers"]["events"],
+                     "Radar-Score": r["score"], "Qualit\u00e4t": r["layers"].get("quality", 0),
+                     "Ereignisse": r["layers"]["events"],
                      "Fundamental": r["layers"]["fundamental"],
                      "Sch\u00e4tzungen": r["layers"]["estimates"],
                      "Akkumulation": r["layers"]["accumulation"],
@@ -4442,12 +4444,15 @@ if nav == "Radar":
                      "Preis \u20ac": round((r["_price"] or 0) * r["_fx"], 2),
                      "Sektor": (r["sector"] or "")[:14]} for r in _shown]
             df = pd.DataFrame(rows)
-            vr_table(rows, score_cols=("Radar-Score", "Ereignisse", "Fundamental",
-                                       "Sch\u00e4tzungen", "Akkumulation"), height=460)
-            st.caption("Werte 0\u2013100. Ereignisse = 8-K/News (\u00dcbernahmen, Auftr\u00e4ge) \u00b7 "
-                       "Fundamental = Wachstum/Backlog \u00b7 Sch\u00e4tzungen = Analysten heben "
-                       "Gewinnsch\u00e4tzungen \u00b7 Akkumulation = Insiderk\u00e4ufe/Volumen/Chart \u00b7 "
-                       "Aktive Ebenen = Koinzidenz der 4 Ebenen.")
+            vr_table(rows, score_cols=("Radar-Score", "Qualit\u00e4t", "Ereignisse",
+                                       "Fundamental", "Sch\u00e4tzungen", "Akkumulation"),
+                     height=460)
+            st.caption("Werte 0\u2013100. Qualit\u00e4t = Fundamentalsockel (ROE, Marge, "
+                       "Cashflow, Verschuldung) \u2013 macht gute Aktien auch OHNE "
+                       "frisches Ereignis sichtbar \u00b7 Ereignisse = 8-K/News \u00b7 "
+                       "Fundamental = Wachstum/Backlog \u00b7 Sch\u00e4tzungen = Analysten "
+                       "heben Gewinnsch\u00e4tzungen \u00b7 Akkumulation = Insiderk\u00e4ufe/"
+                       "Volumen/Chart \u00b7 Aktive Ebenen = Koinzidenz.")
             st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet die Einzelanalyse.")
 
             st.markdown('<div class="sec-title" style="margin-top:14px">'

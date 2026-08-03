@@ -279,6 +279,15 @@ def szenario_werte(fund, preset="quality") -> Optional[dict]:
     }
 def multiple_pb(fund, preset="quality") -> Optional[float]:
     bvps = fund.get("book_value_ps")
+    # Fallback: Buchwert je Aktie aus Kurs und KBV rekonstruieren, wenn das
+    # direkte Feld fehlt (bei manchen Banken wie JPM/Citi liefert die Quelle
+    # book_value_ps nicht, aber pb schon). Ohne diesen Fallback bekamen genau
+    # diese Titel keinen Fair Value, weil bei Finanzwerten pb die Hauptmethode
+    # ist.
+    if (not bvps or bvps <= 0):
+        _price, _pb = fund.get("price"), fund.get("pb")
+        if _price and _pb and _pb > 0:
+            bvps = _price / _pb
     if not bvps or bvps <= 0:
         return None
     target_pb = 1.8 if preset == "cyclical" else _sector(fund, _SECTOR_PB)

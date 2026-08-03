@@ -2941,6 +2941,72 @@ if nav == "Aktienvergleich":
                 ("Sektor", "sector", lambda x: str(x)[:20] if x else "\u2014", None),
             ]
 
+            # Kurzbeschreibungen je Kennzahl fuer das Info-Icon (Hover-Tooltip).
+            # Max. zwei Saetze - erklaert die Kennzahl und, wo relevant, warum
+            # sie bei manchen Firmen (z.B. Banken) fehlt.
+            _info = {
+                "quantum": "Gesamtnote des Tools (0\u2013100), die Qualit\u00e4t, "
+                           "Bewertung und Momentum b\u00fcndelt. H\u00f6her ist besser.",
+                "composite": "Fundamentaler Gesamtscore aus Qualit\u00e4t, Bewertung, "
+                             "Wachstum und Momentum (0\u2013100).",
+                "quality": "Bilanz- und Ertragsqualit\u00e4t: Rendite, Margen, "
+                           "Verschuldung. H\u00f6her = solider.",
+                "value": "Wie g\u00fcnstig die Aktie relativ zu ihren Fundamentaldaten "
+                         "ist. H\u00f6her = g\u00fcnstiger bewertet.",
+                "growth": "Wachstumsdynamik bei Umsatz und Gewinn. H\u00f6her = "
+                          "st\u00e4rkeres Wachstum.",
+                "momentum": "Kursst\u00e4rke relativ zur eigenen 52-Wochen-Spanne. "
+                            "H\u00f6her = n\u00e4her am Jahreshoch.",
+                "price": "Aktueller Kurs in Handelsw\u00e4hrung.",
+                "fair_value": "Modellbasierter fairer Wert aus mehreren "
+                              "Bewertungsmethoden. Bei Banken KBV/KGV-basiert, "
+                              "sonst inkl. DCF.",
+                "upside": "Abstand des Kurses zum Fair Value in Prozent. Positiv "
+                          "= Kurs unter dem fairen Wert (Luft nach oben).",
+                "playbook": "Automatisch gew\u00e4hltes Bewertungsprofil (quality, "
+                            "financial, cyclical, inflection) je nach Firmentyp.",
+                "pe": "Kurs-Gewinn-Verh\u00e4ltnis: Kurs geteilt durch Gewinn je "
+                      "Aktie. Niedriger = g\u00fcnstiger, aber branchenabh\u00e4ngig.",
+                "pb": "Kurs-Buchwert-Verh\u00e4ltnis: Kurs relativ zum bilanziellen "
+                      "Eigenkapital. Wichtig vor allem bei Banken.",
+                "ev_ebitda": "Unternehmenswert relativ zum operativen Gewinn "
+                             "(EBITDA). Bei Banken/Versicherern nicht "
+                             "aussagekr\u00e4ftig \u2013 fehlt dort bewusst.",
+                "roe": "Eigenkapitalrendite: Gewinn relativ zum Eigenkapital. "
+                       "H\u00f6her = effizienter Kapitaleinsatz.",
+                "roa": "Gesamtkapitalrendite: Gewinn relativ zur Bilanzsumme. "
+                       "H\u00f6her = besser, bei Banken naturgem\u00e4\u00df niedrig.",
+                "operating_margin": "Operative Marge: operativer Gewinn je Euro "
+                                     "Umsatz. H\u00f6her = profitabler.",
+                "gross_margin": "Bruttomarge: Umsatz minus Herstellkosten. Bei "
+                                "Banken kaum definiert \u2013 fehlt dort oft.",
+                "fcf_yield": "Free-Cashflow-Rendite: frei verf\u00fcgbarer Cashflow "
+                             "relativ zum Unternehmenswert. Bei Banken nicht "
+                             "sinnvoll berechenbar \u2013 fehlt dort.",
+                "revenue_growth": "Umsatzwachstum gegen\u00fcber dem Vorjahr. "
+                                  "H\u00f6her = st\u00e4rkeres Wachstum.",
+                "debt_to_equity": "Verschuldungsgrad: Fremd- zu Eigenkapital. "
+                                  "Niedriger = solider; bei Banken strukturell "
+                                  "hoch und nur bedingt vergleichbar.",
+                "dividend_yield": "Dividendenrendite: Dividende relativ zum "
+                                  "Kurs. H\u00f6her = mehr Aussch\u00fcttung, aber auf "
+                                  "Nachhaltigkeit achten.",
+                "beta": "Schwankung relativ zum Markt. \u00dcber 1 = schwankungs"
+                        "freudiger als der Markt, unter 1 = ruhiger.",
+                "market_cap": "B\u00f6rsenwert: Kurs mal Anzahl Aktien.",
+                "sector": "Branche/Sektor der Firma.",
+            }
+
+            def _label_mit_info(label, key):
+                """Label + kleines eingekreistes i mit Hover-Tooltip (title=)."""
+                txt = _info.get(key)
+                if not txt:
+                    return esc(label)
+                return (f'{esc(label)} <span title="{esc(txt)}" '
+                        f'style="cursor:help;color:var(--muted);font-size:0.85em;'
+                        f'border:1px solid var(--muted);border-radius:50%;'
+                        f'padding:0 4px;margin-left:4px">i</span>')
+
             # HTML-Tabelle bauen (eine Spalte je Aktie)
             _html = ['<table style="width:100%;border-collapse:collapse;'
                      'font-size:0.9em">']
@@ -2987,7 +3053,7 @@ if nav == "Aktienvergleich":
                 _html.append(
                     f'<tr><td style="padding:4px 8px;color:var(--fg);'
                     f'border-bottom:1px solid rgba(255,255,255,0.05)">'
-                    f'{esc(label)}</td>')
+                    f'{_label_mit_info(label, key)}</td>')
                 for i, d in enumerate(_daten):
                     _v = fmt(d.get(key)) if fmt else "\u2014"
                     _stil = ("color:var(--green);font-weight:600"

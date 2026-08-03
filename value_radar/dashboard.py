@@ -453,6 +453,24 @@ def load_intraday_quote(t, cur): return providers.get_intraday_quote(t, cur)
 def load_analyst(t): return providers.get_analyst_ratings(t)
 @st.cache_data(ttl=600, show_spinner=False)
 def search_symbols(q): return providers.search_symbol(q)
+
+
+def search_to_ticker(roh):
+    """Name oder Ticker -> sauberer Ticker. Nutzt dieselbe Suchlogik wie die
+    Einzelanalyse: exakter Symbol-Treffer bevorzugt, sonst der erste Treffer,
+    sonst die Eingabe selbst in Grossbuchstaben."""
+    qv = (roh or "").strip()
+    if not qv:
+        return None
+    try:
+        mm = search_symbols(qv)
+        if mm:
+            exact = next((m for m in mm
+                          if m.get("symbol", "").upper() == qv.upper()), None)
+            return (exact or mm[0])["symbol"].upper()
+    except Exception:
+        pass
+    return qv.upper()
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_firmenname(t):
     """Leichtgewichtige Ticker->Firmenname-Aufloesung, 24h gecacht. Nur fuer
@@ -2180,7 +2198,8 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
-PAGES = ["Start", "News", "Einzelanalyse", "Radar", "Screener", "Momentum",
+PAGES = ["Start", "News", "Einzelanalyse", "Aktienvergleich", "Radar",
+         "Screener", "Momentum",
          "Watchlist", "Long/Short", "Portfoliocheck", "Trefferbilanz",
          "Earnings Calls", "Umfeld"]
 
@@ -2196,6 +2215,7 @@ NAV_GROUPS = [
     {"key": "AktienMarkt", "label": "Aktien und Markt Analyse",
      "icon": "\U0001f4ca", "children": [
         ("Einzelanalyse", "Einzelanalyse", "\U0001f4c8"),
+        ("Aktienvergleich", "Aktienvergleich", "\u2696\ufe0f"),
         ("Radar", "Radar", "\U0001f3af"),
         ("Screener", "Screener", "\U0001f50d"),
         ("Momentum", "Momentum", "\U0001f680"),
@@ -2746,6 +2766,168 @@ if nav == "StrategieStatistik":
 # ===========================================================================
 # EINZELANALYSE (Tabs: Analyse, Scorecard, Matrix 1, Matrix 2)
 # ===========================================================================
+if nav == "Aktienvergleich":
+    st.markdown('<div class="sec-title">\u2696\ufe0f AKTIENVERGLEICH</div>',
+                unsafe_allow_html=True)
+    st.caption("Zwei oder drei Aktien nebeneinander \u2013 Scores, Kurse, Fair "
+               "Value und Finanzkennzahlen im direkten Vergleich. Name oder "
+               "Ticker eingeben. Kein Anlagerat.")
+
+    _vc = st.columns(3)
+    _t1 = _vc[0].text_input("Aktie 1", key="vgl_t1",
+                            placeholder="z.B. NVDA")
+    _t2 = _vc[1].text_input("Aktie 2", key="vgl_t2",
+                            placeholder="z.B. AMD")
+    _t3 = _vc[2].text_input("Aktie 3 (optional)", key="vgl_t3",
+                            placeholder="z.B. AVGO")
+
+    def _vgl_daten(roh):
+        """Sammelt alle Vergleichswerte fuer einen Ticker. Nutzt exakt dieselbe
+        Kette wie die Einzelanalyse (deep-Fundamentaldaten, Playbook, Score,
+        Fair Value), damit die Zahlen konsistent sind."""
+        tk = search_to_ticker(roh) if roh else None
+        if not tk:
+            return None
+        try:
+            f = load_fundamentals_deep(tk)
+            if not f or not f.get("price"):
+                return None
+            ep = valuation.classify_playbook(f)
+            sc = scoring.score_stock(f, None, preset=ep)
+            v = valuation.fair_value(f, None, ep)
+            cats = sc.get("category_scores", {})
+            fv = v.get("fair_value_capped") or v.get("fair_value")
+            price = f.get("price")
+            return {
+                "ticker": tk, "name": f.get("name") or tk,
+                "playbook": ep,
+                "composite": sc.get("composite"),
+                "quality": cats.get("quality"), "value": cats.get("value"),
+                "growth": cats.get("growth"), "momentum": cats.get("momentum"),
+                "price": price, "fair_value": fv,
+                "upside": (round((fv / price - 1) * 100, 1)
+                           if fv and price else None),
+                "pe": f.get("pe"), "pb": f.get("pb"),
+                "ev_ebitda": f.get("ev_ebitda"),
+                "roe": f.get("roe"), "roa": f.get("roa"),
+                "operating_margin": f.get("operating_margin"),
+                "gross_margin": f.get("gross_margin"),
+                "fcf_yield": f.get("fcf_yield"),
+                "revenue_growth": f.get("revenue_growth"),
+                "debt_to_equity": f.get("debt_to_equity"),
+                "dividend_yield": f.get("dividend_yield"),
+                "beta": f.get("beta"),
+                "market_cap": f.get("market_cap"),
+                "sector": f.get("sector"), "country": f.get("country"),
+            }
+        except Exception:
+            return None
+
+    _eingaben = [x for x in (_t1, _t2, _t3) if x and x.strip()]
+    if len(_eingaben) < 2:
+        st.info("Mindestens zwei Aktien eingeben, um den Vergleich zu starten.")
+    else:
+        with st.spinner("Analysiere \u2026"):
+            _daten = [d for d in (_vgl_daten(x) for x in _eingaben) if d]
+        if len(_daten) < 2:
+            st.warning("Konnte nicht genug Aktien laden \u2013 bitte Ticker/Namen "
+                       "pr\u00fcfen (mind. zwei m\u00fcssen gefunden werden).")
+        else:
+            def _pct(x): return f"{x*100:.1f} %" if isinstance(x, (int, float)) else "\u2014"
+            def _num(x, d=2): return f"{x:.{d}f}" if isinstance(x, (int, float)) else "\u2014"
+            def _mc(x):
+                if not isinstance(x, (int, float)):
+                    return "\u2014"
+                return f"{x/1e9:.1f} Mrd" if x < 1e12 else f"{x/1e12:.2f} Bio"
+
+            # Zeilen: (Label, key, Formatierer, hoeher-ist-besser|None)
+            _zeilen = [
+                ("__H__", "Bewertung / Scores", None, None),
+                ("Composite", "composite", lambda x: _num(x, 0), True),
+                ("Qualit\u00e4t", "quality", lambda x: _num(x, 0), True),
+                ("Value", "value", lambda x: _num(x, 0), True),
+                ("Growth", "growth", lambda x: _num(x, 0), True),
+                ("Momentum", "momentum", lambda x: _num(x, 0), True),
+                ("__H__", "Kurs & Fair Value", None, None),
+                ("Kurs", "price", lambda x: _num(x, 2), None),
+                ("Fair Value", "fair_value", lambda x: _num(x, 2), None),
+                ("Upside", "upside", lambda x: (f"{x:+.1f} %"
+                          if isinstance(x, (int, float)) else "\u2014"), True),
+                ("Playbook", "playbook", lambda x: str(x), None),
+                ("__H__", "Bewertungskennzahlen", None, None),
+                ("KGV (P/E)", "pe", lambda x: _num(x, 1), False),
+                ("KBV (P/B)", "pb", lambda x: _num(x, 2), False),
+                ("EV/EBITDA", "ev_ebitda", lambda x: _num(x, 1), False),
+                ("__H__", "Profitabilit\u00e4t", None, None),
+                ("Eigenkapitalrendite", "roe", _pct, True),
+                ("Gesamtkapitalrendite", "roa", _pct, True),
+                ("Operative Marge", "operating_margin", _pct, True),
+                ("Bruttomarge", "gross_margin", _pct, True),
+                ("Free-Cashflow-Rendite", "fcf_yield", _pct, True),
+                ("__H__", "Wachstum & Bilanz", None, None),
+                ("Umsatzwachstum", "revenue_growth", _pct, True),
+                ("Verschuldung (D/E)", "debt_to_equity",
+                 lambda x: _num(x, 2), False),
+                ("Dividendenrendite", "dividend_yield", _pct, True),
+                ("Beta", "beta", lambda x: _num(x, 2), None),
+                ("Marktkap.", "market_cap", _mc, None),
+                ("Sektor", "sector", lambda x: str(x)[:20] if x else "\u2014", None),
+            ]
+
+            # HTML-Tabelle bauen (eine Spalte je Aktie)
+            _html = ['<table style="width:100%;border-collapse:collapse;'
+                     'font-size:0.9em">']
+            # Kopfzeile
+            _html.append('<tr><th style="text-align:left;padding:6px 8px;'
+                         'border-bottom:2px solid var(--amber)">Kennzahl</th>')
+            for d in _daten:
+                _html.append(
+                    f'<th style="text-align:right;padding:6px 8px;'
+                    f'border-bottom:2px solid var(--amber)">'
+                    f'{esc(d["name"][:18])}<br>'
+                    f'<span style="color:var(--muted);font-size:0.85em">'
+                    f'{esc(d["ticker"])}</span></th>')
+            _html.append('</tr>')
+
+            for label, key, fmt, hib in _zeilen:
+                if label == "__H__":
+                    _html.append(
+                        f'<tr><td colspan="{len(_daten)+1}" '
+                        f'style="padding:10px 8px 4px;color:var(--amber);'
+                        f'font-weight:600;font-size:0.82em;'
+                        f'text-transform:uppercase;letter-spacing:0.05em">'
+                        f'{esc(key)}</td></tr>')
+                    continue
+                # Werte holen, besten markieren
+                _werte = [d.get(key) for d in _daten]
+                _num_werte = [(i, w) for i, w in enumerate(_werte)
+                              if isinstance(w, (int, float))]
+                _best_idx = None
+                if hib is not None and len(_num_werte) >= 2:
+                    _best_idx = (max(_num_werte, key=lambda p: p[1])[0] if hib
+                                 else min(_num_werte, key=lambda p: p[1])[0])
+                _html.append(
+                    f'<tr><td style="padding:4px 8px;color:var(--fg);'
+                    f'border-bottom:1px solid rgba(255,255,255,0.05)">'
+                    f'{esc(label)}</td>')
+                for i, d in enumerate(_daten):
+                    _v = fmt(d.get(key)) if fmt else "\u2014"
+                    _stil = ("color:var(--green);font-weight:600"
+                             if i == _best_idx else "color:var(--fg)")
+                    _html.append(
+                        f'<td style="text-align:right;padding:4px 8px;{_stil};'
+                        f'border-bottom:1px solid rgba(255,255,255,0.05)">'
+                        f'{_v}</td>')
+                _html.append('</tr>')
+            _html.append('</table>')
+            st.markdown("".join(_html), unsafe_allow_html=True)
+            st.caption("\U0001f7e2 Gr\u00fcn = der bessere Wert im direkten Vergleich "
+                       "(bei Kennzahlen, wo eine Richtung eindeutig besser ist). "
+                       "Bei KGV/KBV/EV-EBITDA/Verschuldung gilt: niedriger = "
+                       "g\u00fcnstiger. Fair Value und Upside sind modellbasiert und "
+                       "keine Garantie. Kein Anlagerat.")
+
+
 if nav == "Einzelanalyse":
     # Beim ERSTEN Betreten wird bewusst nichts geladen (frueher startete hier MU).
     # Sobald eine Aktie analysiert wurde, bleibt sie fuer die Sitzung stehen -
@@ -5985,6 +6167,10 @@ if nav == "Umfeld":
     def _rg_lead():
         return rg.leadership()
 
+    @st.cache_data(ttl=21600, show_spinner=False)
+    def _rg_themen():
+        return rg.themen_momentum()
+
     @st.cache_data(ttl=86400, show_spinner=False)
     def _rg_season(sektor, jahre):
         return rg.sector_seasonality(sektor, jahre)
@@ -6000,7 +6186,8 @@ if nav == "Umfeld":
 
     _uv = st.radio("Ansicht",
                    ["\U0001f4c5 Anstehende Zahlen", "\U0001f4ca Sektorf\u00fchrung",
-                    "\U0001f5d3\ufe0f Saisonalit\u00e4t", "\U0001f4e2 Reaktion auf Zahlen"],
+                    "\U0001f680 Themen", "\U0001f5d3\ufe0f Saisonalit\u00e4t",
+                    "\U0001f4e2 Reaktion auf Zahlen"],
                    horizontal=True, label_visibility="collapsed", key="uv_view")
 
     # ---------------------------------------------------------- Sektorfuehrung
@@ -6024,10 +6211,24 @@ if nav == "Umfeld":
             vr_table([{"Sektor": r["sektor"], "ETF": r["etf"],
                        "3M": r["rel_3m"], "6M": r["rel_6m"], "12M": r["rel_12m"],
                        "Schnitt": r["schnitt"],
+                       "Trend": ("\u2197\ufe0f anziehend"
+                                 if (r["rel_3m"] is not None and r["rel_12m"] is not None
+                                     and r["rel_3m"] > r["rel_12m"])
+                                 else "\u2198\ufe0f abflauend"
+                                 if (r["rel_3m"] is not None and r["rel_12m"] is not None)
+                                 else "\u2014"),
                        "Anhaltend": "\u2713" if r["anhaltend"] else ""}
                       for r in _ld],
                      signed_cols=("3M", "6M", "12M", "Schnitt"),
                      height=min(len(_ld) * 40 + 46, 520))
+            # Sektoren die anhaltend UND anziehend sind = die interessantesten
+            _hot = [r["sektor"] for r in _ld if r["anhaltend"]
+                    and r["rel_3m"] is not None and r["rel_12m"] is not None
+                    and r["rel_3m"] > r["rel_12m"]]
+            if _hot:
+                st.success("**Anhaltend vorn UND anziehend** (3M-St\u00e4rke gr\u00f6\u00dfer "
+                           "als 12M \u2013 der Trend beschleunigt sich): "
+                           + ", ".join(_hot))
             _an = [r["sektor"] for r in _ld if r["anhaltend"]]
             if _an:
                 st.success("**Anhaltend vorn** (\u00fcber 3, 6 **und** 12 Monate): "
@@ -6038,6 +6239,50 @@ if nav == "Umfeld":
                        "m\u00fcsste man st\u00e4ndig pflegen. **Aber:** Relative St\u00e4rke sagt, "
                        "was gelaufen IST. Sie kann kurz vor dem Wendepunkt am "
                        "st\u00e4rksten aussehen.")
+
+    # ----------------------------------------------------------------- Themen
+    if _uv.endswith("Themen"):
+        st.markdown('<div class="vr-th">\U0001f680 Themen im Aufschwung</div>',
+                    unsafe_allow_html=True)
+        st.caption("Kuratierte Themen-K\u00f6rbe quer durch Branchen \u2013 gemessen "
+                   "wie die Sektorf\u00fchrung (relative St\u00e4rke ggü. Markt \u00fcber "
+                   "3/6/12 Monate). **Wichtig:** Diese Themen sind **von Hand "
+                   "gepflegt**, nicht automatisch entdeckt \u2013 das System misst "
+                   "nur die hier definierten K\u00f6rbe, es findet keine neuen "
+                   "Trends von selbst. Beschreibend (was war), kein Anlagerat.")
+        _th = _rg_themen()
+        if not _th:
+            st.info("Themen-Daten noch nicht verf\u00fcgbar (Kursreihen laden).")
+        else:
+            for _t in _th:
+                _pfeil = ("\u2197\ufe0f beschleunigt" if _t.get("beschleunigt")
+                          else "\u2198\ufe0f flaut ab" if _t.get("beschleunigt") is False
+                          else "")
+                _stark = "\U0001f7e2" if _t.get("anhaltend") else "\u26aa"
+                with st.container():
+                    _c = st.columns([3, 1, 1, 1])
+                    _c[0].markdown(
+                        f"**{_stark} {_t['label']}**  \n"
+                        f"<span style='color:var(--muted);font-size:0.85em'>"
+                        f"{_t['beschreibung']} \u00b7 {_t['n_titel']}/"
+                        f"{_t['n_gesamt']} Titel mit Daten</span>",
+                        unsafe_allow_html=True)
+                    _c[1].metric("3M", f"{_t['rel_3m']:+.0f}%"
+                                 if _t['rel_3m'] is not None else "\u2014")
+                    _c[2].metric("6M", f"{_t['rel_6m']:+.0f}%"
+                                 if _t['rel_6m'] is not None else "\u2014")
+                    _c[3].metric("12M", f"{_t['rel_12m']:+.0f}%"
+                                 if _t['rel_12m'] is not None else "\u2014")
+                    if _pfeil:
+                        st.caption(f"{_pfeil} \u00b7 Titel: {', '.join(_t['ticker'])}")
+                    else:
+                        st.caption(f"Titel: {', '.join(_t['ticker'])}")
+                    st.markdown("<hr style='margin:0.3em 0;border-color:"
+                                "rgba(255,255,255,0.06)'>", unsafe_allow_html=True)
+            st.caption("\U0001f7e2 = \u00fcber alle drei Zeitr\u00e4ume vorn (anhaltend) \u00b7 "
+                       "\u26aa = gemischt. Relative St\u00e4rke zeigt, was gelaufen IST \u2013 "
+                       "ein hei\u00dfes Thema kann kurz vor dem Wendepunkt am st\u00e4rksten "
+                       "aussehen. Die K\u00f6rbe sind gleichgewichtet und handgepflegt.")
 
     # ---------------------------------------------------------- Saisonalitaet
     if _uv.endswith("Saisonalit\u00e4t"):

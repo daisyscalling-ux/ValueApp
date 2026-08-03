@@ -243,6 +243,117 @@ def leadership(years=3):
     return out
 
 
+# ---------------------------------------------------------------------------
+# KURATIERTE THEMEN-KOERBE
+# ---------------------------------------------------------------------------
+# WICHTIG: Diese Liste ist von Hand gepflegt, NICHT automatisch entdeckt. Das
+# System misst nur das Momentum der hier definierten Themen - es findet keine
+# NEUEN Trends von selbst. Die breite Sektor-Auswertung (leadership) bleibt der
+# datengetriebene Teil; diese Koerbe sind die gezielte Ergaenzung fuer
+# Sub-Themen, die quer durch mehrere Sektoren laufen (z.B. Datacenter-Kuehlung:
+# Industrie + Versorger + Spezialtitel) und die kein sauberer Sektor-ETF
+# abbildet. Titel gelegentlich pruefen/aktualisieren.
+THEMEN_KOERBE = {
+    "datacenter_kuehlung": {
+        "label": "Datacenter-K\u00fchlung & Power",
+        "beschreibung": "Strom-, K\u00fchl- und Infrastruktur f\u00fcr KI-Rechenzentren",
+        "ticker": ["ETN", "VRT", "JCI", "PWR", "NVT"],
+    },
+    "ai_infrastruktur": {
+        "label": "KI-Infrastruktur (Chips & Netz)",
+        "beschreibung": "Halbleiter und Netzwerk-Hardware f\u00fcr KI-Training",
+        "ticker": ["NVDA", "AVGO", "AMD", "ANET", "TSM"],
+    },
+    "elektrifizierung": {
+        "label": "Elektrifizierung & Netz",
+        "beschreibung": "Stromnetze, Kabel, Transformatoren, Netzausbau",
+        "ticker": ["ETN", "PWR", "GEV", "PRY.MI", "NEXANS.PA"],
+    },
+    "verteidigung": {
+        "label": "Verteidigung & R\u00fcstung",
+        "beschreibung": "Steigende Wehretats in USA und Europa",
+        "ticker": ["LMT", "RTX", "NOC", "RHM.DE", "BA.L"],
+    },
+    "onshoring": {
+        "label": "Onshoring & Automatisierung",
+        "beschreibung": "R\u00fcckverlagerung der Produktion, Fabrikautomation",
+        "ticker": ["ROK", "EMR", "ABBN.SW", "FANUY", "PH"],
+    },
+    "energie_infra": {
+        "label": "Energie-Infrastruktur",
+        "beschreibung": "Erdgas, Pipelines, LNG, Kraftwerksbau",
+        "ticker": ["WMB", "KMI", "GEV", "VST", "CEG"],
+    },
+}
+
+
+def _korb_rendite(ticker_liste, monate, years=3):
+    """Mittlere Rendite eines Titelkorbs ueber 'monate' Monate. Ein Korb ist
+    gleichgewichtet - jeder Titel zaehlt gleich. Titel ohne genug Historie
+    werden ausgelassen (mit Fallzahl, damit ein duenner Korb sichtbar ist)."""
+    rets, n_ok = [], 0
+    for t in ticker_liste:
+        rows = _reihe(t, period=f"{years}y", interval="1mo")
+        if len(rows) < monate + 1:
+            continue
+        r = _ret_over(rows, monate)
+        if r is not None:
+            rets.append(r)
+            n_ok += 1
+    if not rets:
+        return None, 0
+    return sum(rets) / len(rets), n_ok
+
+
+def themen_momentum(years=3):
+    """Momentum der kuratierten Themen-Koerbe gegen den Gesamtmarkt.
+
+    Gleiche Methode wie leadership(): relative Staerke ueber 3/6/12 Monate,
+    'anhaltend' wenn ueber alle drei Zeitraeume vorn. Der Unterschied ist nur,
+    dass ein Korb aus mehreren Aktien gemittelt wird statt eines Sektor-ETF.
+
+    Jeder Eintrag nennt seine Fallzahl (wie viele Titel echte Daten hatten) -
+    ein Korb, bei dem nur 2 von 5 Titeln Daten liefern, ist mit Vorsicht zu
+    lesen. Das Ergebnis ist beschreibend (was war), keine Prognose."""
+    bench = _reihe(BENCH, period=f"{years}y", interval="1mo")
+    if len(bench) < 13:
+        return None
+    b3, b6, b12 = (_ret_over(bench, 3), _ret_over(bench, 6), _ret_over(bench, 12))
+    out = []
+    for key, korb in THEMEN_KOERBE.items():
+        r3, n3 = _korb_rendite(korb["ticker"], 3, years)
+        r6, _ = _korb_rendite(korb["ticker"], 6, years)
+        r12, n12 = _korb_rendite(korb["ticker"], 12, years)
+        if r12 is None or b12 is None:
+            continue
+        eintrag = {
+            "key": key,
+            "label": korb["label"],
+            "beschreibung": korb["beschreibung"],
+            "n_titel": n12,
+            "n_gesamt": len(korb["ticker"]),
+            "ticker": korb["ticker"],
+            "rel_3m": round(r3 - b3, 1) if (r3 is not None and b3 is not None) else None,
+            "rel_6m": round(r6 - b6, 1) if (r6 is not None and b6 is not None) else None,
+            "rel_12m": round(r12 - b12, 1),
+        }
+        vals = [v for v in (eintrag["rel_3m"], eintrag["rel_6m"], eintrag["rel_12m"])
+                if v is not None]
+        eintrag["schnitt"] = round(sum(vals) / len(vals), 1) if vals else None
+        eintrag["anhaltend"] = all(v is not None and v > 0 for v in
+                                   (eintrag["rel_3m"], eintrag["rel_6m"],
+                                    eintrag["rel_12m"]))
+        # Beschleunigt sich der Trend? (3M-Staerke > 12M-Staerke = frisch,
+        # 3M < 12M = flaut ab). Hilft zu sehen, ob ein Thema gerade anzieht.
+        if eintrag["rel_3m"] is not None and eintrag["rel_12m"] is not None:
+            eintrag["beschleunigt"] = eintrag["rel_3m"] > eintrag["rel_12m"]
+        else:
+            eintrag["beschleunigt"] = None
+        out.append(eintrag)
+    out.sort(key=lambda r: -(r["schnitt"] or -999))
+    return out
+
+
 def market_state(years=3):
     """Zustand des Gesamtmarkts: Abstand zum Hoch der letzten 12 Monate."""
     rows = _reihe(BENCH, period=f"{years}y", interval="1mo")
@@ -397,7 +508,7 @@ def markt_regime():
         vrows = _reihe("^VIX", period="6mo", interval="1d")
         if vrows:
             vix = round(vrows[-1][1], 1)
-            if vix < 15:
+            if vix < 17:
                 vix_level = "niedrig"
                 punkte += 1
                 faktoren.append(f"VIX {vix} - niedrige Angst, ruhiger Markt")
@@ -424,6 +535,10 @@ def markt_regime():
             punkte -= 2
         elif drawdown <= -10:
             punkte -= 1
+        elif drawdown >= -3:
+            # Markt nahe am 12-Monats-Hoch = Staerke, nicht neutral. Ohne das
+            # landete selbst ein Markt direkt unter seinem Hoch auf "gemischt".
+            punkte += 1
         faktoren.append(f"{ms['drawdown']:+.1f} % vom 12-Monats-Hoch ({ms['lage']})")
 
     # --- Ampel aus der Summe ---

@@ -2798,16 +2798,24 @@ if nav == "Aktienvergleich":
             cats = sc.get("category_scores", {})
             fv = v.get("fair_value_capped") or v.get("fair_value")
             price = f.get("price")
+            # Quantum-Score wie in der Einzelanalyse (buendelt alle Sichten)
+            try:
+                _q = scoring.quantum_score(sc.get("composite"), v, None,
+                                           momentum=cats.get("momentum"))
+                _quantum = _q.get("score")
+            except Exception:
+                _quantum = None
             return {
                 "ticker": tk, "name": f.get("name") or tk,
                 "playbook": ep,
+                "quantum": _quantum,
                 "composite": sc.get("composite"),
                 "quality": cats.get("quality"), "value": cats.get("value"),
                 "growth": cats.get("growth"), "momentum": cats.get("momentum"),
                 "price": price, "fair_value": fv,
                 "upside": (round((fv / price - 1) * 100, 1)
                            if fv and price else None),
-                "pe": f.get("pe"), "pb": f.get("pb"),
+                "pe": f.get("pe_trailing"), "pb": f.get("pb"),
                 "ev_ebitda": f.get("ev_ebitda"),
                 "roe": f.get("roe"), "roa": f.get("roa"),
                 "operating_margin": f.get("operating_margin"),
@@ -2833,6 +2841,64 @@ if nav == "Aktienvergleich":
             st.warning("Konnte nicht genug Aktien laden \u2013 bitte Ticker/Namen "
                        "pr\u00fcfen (mind. zwei m\u00fcssen gefunden werden).")
         else:
+            # Ampel-Bewertung je Kennzahl: gibt "gruen"/"gelb"/"rot"/None.
+            # Schwellen bewusst einfach und transparent - eine grobe Einordnung,
+            # kein Ersatz fuer die volle Scorecard der Einzelanalyse.
+            def _ampel_kennzahl(key, wert):
+                if not isinstance(wert, (int, float)):
+                    return None
+                # (gut_ab, mittel_ab) - je nach Richtung. hib=True: hoeher besser
+                schwellen = {
+                    "pe": (15, 25, False), "pb": (2, 4, False),
+                    "ev_ebitda": (10, 16, False),
+                    "roe": (0.15, 0.08, True), "roa": (0.07, 0.03, True),
+                    "operating_margin": (0.18, 0.10, True),
+                    "gross_margin": (0.40, 0.25, True),
+                    "fcf_yield": (0.05, 0.02, True),
+                    "revenue_growth": (0.10, 0.03, True),
+                    "debt_to_equity": (0.6, 1.5, False),
+                    "dividend_yield": (0.03, 0.01, True),
+                }
+                if key not in schwellen:
+                    return None
+                gut, mittel, hib = schwellen[key]
+                # debt_to_equity kommt teils in % (yfinance) -> normalisieren
+                if key == "debt_to_equity" and wert > 5:
+                    wert = wert / 100.0
+                if hib:
+                    return ("gruen" if wert >= gut else
+                            "gelb" if wert >= mittel else "rot")
+                else:
+                    return ("gruen" if wert <= gut else
+                            "gelb" if wert <= mittel else "rot")
+
+            def _kategorie_ampel(daten_eintrag, keys):
+                """Aggregiert die Einzel-Ampeln einer Kategorie zu einer
+                Gesamt-Ampel: ueberwiegend gruen -> gruen, ueberwiegend rot ->
+                rot, sonst gelb."""
+                amps = [_ampel_kennzahl(k, daten_eintrag.get(k)) for k in keys]
+                amps = [a for a in amps if a]
+                if not amps:
+                    return None
+                g = amps.count("gruen")
+                r = amps.count("rot")
+                if g > r and g >= len(amps) / 2:
+                    return "gruen"
+                if r > g and r >= len(amps) / 2:
+                    return "rot"
+                return "gelb"
+
+            _amp_symbol = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
+                           "rot": "\U0001f534"}
+            # welche keys gehoeren zu welcher Kategorie-Ueberschrift
+            _kat_keys = {
+                "Bewertungskennzahlen": ["pe", "pb", "ev_ebitda"],
+                "Profitabilit\u00e4t": ["roe", "roa", "operating_margin",
+                                        "gross_margin", "fcf_yield"],
+                "Wachstum & Bilanz": ["revenue_growth", "debt_to_equity",
+                                       "dividend_yield"],
+            }
+
             def _pct(x): return f"{x*100:.1f} %" if isinstance(x, (int, float)) else "\u2014"
             def _num(x, d=2): return f"{x:.{d}f}" if isinstance(x, (int, float)) else "\u2014"
             def _mc(x):
@@ -2843,6 +2909,7 @@ if nav == "Aktienvergleich":
             # Zeilen: (Label, key, Formatierer, hoeher-ist-besser|None)
             _zeilen = [
                 ("__H__", "Bewertung / Scores", None, None),
+                ("Quantum-Score", "quantum", lambda x: _num(x, 0), True),
                 ("Composite", "composite", lambda x: _num(x, 0), True),
                 ("Qualit\u00e4t", "quality", lambda x: _num(x, 0), True),
                 ("Value", "value", lambda x: _num(x, 0), True),
@@ -2891,12 +2958,23 @@ if nav == "Aktienvergleich":
 
             for label, key, fmt, hib in _zeilen:
                 if label == "__H__":
+                    # Kategorie-Ueberschrift: falls es fuer diese Kategorie
+                    # Ampel-Kennzahlen gibt, je Aktie eine Status-Ampel zeigen.
+                    _keys = _kat_keys.get(key)
+                    _amp_zellen = ""
+                    if _keys:
+                        for d in _daten:
+                            _a = _kategorie_ampel(d, _keys)
+                            _amp_zellen += (
+                                f'<td style="text-align:right;padding:10px 8px 4px">'
+                                f'{_amp_symbol.get(_a, "") if _a else ""}</td>')
+                    else:
+                        _amp_zellen = ('<td></td>' * len(_daten))
                     _html.append(
-                        f'<tr><td colspan="{len(_daten)+1}" '
-                        f'style="padding:10px 8px 4px;color:var(--amber);'
+                        f'<tr><td style="padding:10px 8px 4px;color:var(--amber);'
                         f'font-weight:600;font-size:0.82em;'
                         f'text-transform:uppercase;letter-spacing:0.05em">'
-                        f'{esc(key)}</td></tr>')
+                        f'{esc(key)}</td>{_amp_zellen}</tr>')
                     continue
                 # Werte holen, besten markieren
                 _werte = [d.get(key) for d in _daten]
@@ -2924,8 +3002,68 @@ if nav == "Aktienvergleich":
             st.caption("\U0001f7e2 Gr\u00fcn = der bessere Wert im direkten Vergleich "
                        "(bei Kennzahlen, wo eine Richtung eindeutig besser ist). "
                        "Bei KGV/KBV/EV-EBITDA/Verschuldung gilt: niedriger = "
-                       "g\u00fcnstiger. Fair Value und Upside sind modellbasiert und "
-                       "keine Garantie. Kein Anlagerat.")
+                       "g\u00fcnstiger. Die Ampel je Kategorie fasst deren Kennzahlen "
+                       "grob zusammen (\U0001f7e2 gut \u00b7 \U0001f7e1 gemischt \u00b7 "
+                       "\U0001f534 schwach). Fair Value und Upside sind "
+                       "modellbasiert. Kein Anlagerat.")
+
+            # --- Weitere Firmen aus der Branche vorschlagen ---
+            _peers = {
+                # Grossbanken / Investmentbanken
+                "JPM": ["GS", "MS", "BAC", "C", "WFC"],
+                "MS": ["GS", "JPM", "BAC", "C"],
+                "GS": ["MS", "JPM", "BAC", "C"],
+                "BAC": ["JPM", "WFC", "C", "MS"],
+                "C": ["JPM", "BAC", "WFC", "GS"],
+                "WFC": ["JPM", "BAC", "C", "USB"],
+                # Halbleiter
+                "NVDA": ["AMD", "AVGO", "TSM", "INTC", "QCOM"],
+                "AMD": ["NVDA", "INTC", "AVGO", "TSM"],
+                "INTC": ["AMD", "NVDA", "TSM", "TXN"],
+                "AVGO": ["NVDA", "QCOM", "TXN", "AMD"],
+                # Datacenter / Kuehlung / Power
+                "ETN": ["VRT", "JCI", "PWR", "EMR", "PH"],
+                "VRT": ["ETN", "JCI", "PWR", "NVT"],
+                # Big Tech
+                "AAPL": ["MSFT", "GOOGL", "META", "AMZN"],
+                "MSFT": ["AAPL", "GOOGL", "AMZN", "ORCL"],
+                "GOOGL": ["META", "MSFT", "AMZN", "AAPL"],
+                "META": ["GOOGL", "SNAP", "PINS", "MSFT"],
+                # Pharma
+                "LLY": ["NVO", "PFE", "MRK", "ABBV"],
+                "PFE": ["MRK", "JNJ", "ABBV", "BMY"],
+                # Auto
+                "TSLA": ["GM", "F", "RIVN", "BYDDY"],
+            }
+            _vgl_ticker = {d["ticker"] for d in _daten}
+            # Sektor der verglichenen Titel (fuer den Fallback)
+            _vgl_sektoren = {d.get("sector") for d in _daten if d.get("sector")}
+            # Kandidaten sammeln: Peers aller verglichenen Titel, die selbst
+            # nicht schon im Vergleich stehen
+            _kandidaten = {}
+            for d in _daten:
+                for p in _peers.get(d["ticker"], []):
+                    if p not in _vgl_ticker:
+                        _kandidaten[p] = _kandidaten.get(p, 0) + 1
+            # nach Haeufigkeit sortieren (Peer mehrerer Titel = relevanter)
+            _vorschlaege = sorted(_kandidaten, key=lambda p: -_kandidaten[p])[:4]
+            if _vorschlaege:
+                st.markdown('<div class="vr-th" style="margin-top:16px">'
+                            'Weitere Firmen aus der Branche</div>',
+                            unsafe_allow_html=True)
+                st.caption("Zum direkt Danebenstellen \u2013 einfach oben eintragen.")
+                _pcols = st.columns(len(_vorschlaege))
+                for _i, _pt in enumerate(_vorschlaege):
+                    if _pcols[_i].button(f"+ {_pt}", key=f"vgl_add_{_pt}",
+                                         use_container_width=True):
+                        # in das erste freie Eingabefeld setzen
+                        if not st.session_state.get("vgl_t2"):
+                            st.session_state["vgl_t2"] = _pt
+                        elif not st.session_state.get("vgl_t3"):
+                            st.session_state["vgl_t3"] = _pt
+                        else:
+                            st.session_state["vgl_t3"] = _pt
+                        st.rerun()
 
 
 if nav == "Einzelanalyse":

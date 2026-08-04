@@ -3189,6 +3189,57 @@ if nav == "Aktienvergleich":
                            "nicht ab \u2013 dann h\u00e4ngt alles an yfinance, das gerade "
                            "bei Banken l\u00fcckenhaft ist.")
 
+                # --- roic-Direkttest: warum liefert bundle() nichts? ---
+                st.markdown("---")
+                st.caption("**roic-Direkttest:** pr\u00fcft die einzelnen "
+                           "roic-Endpunkte f\u00fcr den ersten Titel. Zeigt, ob der "
+                           "Abruf klappt (Key/Endpunkt/Symbol) oder leer bleibt.")
+                if st.button("\U0001f50c roic-Endpunkte testen", key="vgl_roic_test"):
+                    try:
+                        import roic as _rt
+                        _tt = _daten[0]["ticker"]
+                        st.write(f"Test-Titel: **{_tt}**")
+                        st.write(f"roic aktiviert (Key vorhanden): "
+                                 f"**{_rt.enabled()}**")
+                        st.write(f"covers({_tt}): **{_rt.covers(_tt)}**")
+                        try:
+                            _symn = _rt._sym(_tt)
+                            st.write(f"roic-Symbol: **{_symn}**")
+                        except Exception as _se:
+                            st.write(f"Symbol-Aufl\u00f6sung Fehler: {_se}")
+                        # einzelne Endpunkte
+                        for _lbl, _fn in [("profile", _rt.profile),
+                                          ("enterprise_value", _rt.enterprise_value),
+                                          ("ratios_profitability",
+                                           _rt.ratios_profitability),
+                                          ("multiples", _rt.multiples)]:
+                            try:
+                                _r = _fn(_tt)
+                                if _r:
+                                    _keys = list(_r.keys())[:6] if isinstance(_r, dict) else _r
+                                    st.write(f"\u2705 {_lbl}: liefert Daten "
+                                             f"({len(_r) if hasattr(_r,'__len__') else '?'} "
+                                             f"Felder) z.B. {_keys}")
+                                else:
+                                    st.write(f"\u274c {_lbl}: LEER (None/leer)")
+                            except Exception as _fe:
+                                st.write(f"\u274c {_lbl}: Fehler {_fe}")
+                        # kompletter bundle
+                        try:
+                            _b = _rt.bundle(_tt)
+                            _gefuellt = {k: v for k, v in (_b or {}).items()
+                                         if v is not None and not k.startswith("_")}
+                            st.write(f"**bundle():** {len(_gefuellt)} gef\u00fcllte "
+                                     f"Felder von {len(_b or {})} gesamt")
+                            if _gefuellt:
+                                st.code(", ".join(sorted(_gefuellt.keys())))
+                        except Exception as _be:
+                            st.write(f"bundle() Fehler: {_be}")
+                    except Exception as _e:
+                        import traceback
+                        st.error(f"Test fehlgeschlagen: {_e}")
+                        st.code(traceback.format_exc()[-1500:])
+
 
 if nav == "Einzelanalyse":
     # Beim ERSTEN Betreten wird bewusst nichts geladen (frueher startete hier MU).

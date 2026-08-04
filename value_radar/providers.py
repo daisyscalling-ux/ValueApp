@@ -591,6 +591,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             if 0.2 <= _q <= 5.0 and abs(_q - 1.0) > 0.02:
                 _faktor = _q          # verschiedene Waehrungen/Einheiten
                 merged["_roic_fx"] = round(_q, 4)
+        _roic_felder = []
         for k, v in R.items():
             if k in ("price", "currency", "_src") or v is None:
                 continue
@@ -600,7 +601,11 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
                 except Exception:
                     continue
             merged[k] = v
+            _roic_felder.append(k)
         merged["_roic"] = True
+        # Diagnose: welche Felder kamen tatsaechlich von roic? (fuer die
+        # Quellenanzeige im Aktienvergleich - aendert keine Berechnung)
+        merged["_roic_felder"] = sorted(_roic_felder)
         # Historisches KGV-Band: bisher bei ALLEN Titeln leer (FMP-Quote),
         # dadurch lief relval.py ins Leere. roic liefert es aus Jahres-EPS
         # plus Jahresschlusskursen - nur bei deep, kostet 2 Extra-Abrufe.

@@ -2827,6 +2827,10 @@ if nav == "Aktienvergleich":
                 "beta": f.get("beta"),
                 "market_cap": f.get("market_cap"),
                 "sector": f.get("sector"), "country": f.get("country"),
+                # Diagnose: Datenquellen-Herkunft (aendert keine Berechnung)
+                "_roic_aktiv": bool(f.get("_roic")),
+                "_roic_felder": f.get("_roic_felder") or [],
+                "_data_sources": f.get("data_sources") or "",
             }
         except Exception:
             return None
@@ -3130,6 +3134,60 @@ if nav == "Aktienvergleich":
                         else:
                             st.session_state["vgl_t3"] = _pt
                         st.rerun()
+
+            # --- Diagnose: Datenquellen je Titel (aendert keine Berechnung) ---
+            with st.expander("\U0001f50e Datenquellen-Diagnose (woher kommen die "
+                             "Werte?)"):
+                st.caption("Zeigt, ob roic.ai den Titel abdeckt und welche "
+                           "bewertungskritischen Felder vorhanden sind. So sehen "
+                           "wir, ob eine fehlende Kennzahl an roic, an yfinance "
+                           "oder an der Datenlage selbst liegt.")
+                # bewertungskritische Felder + Klartext-Label
+                _krit = [
+                    ("book_value_ps", "Buchwert/Aktie (fuer KBV-Fair-Value)"),
+                    ("eps_forward", "Forward-EPS (fuer faires KGV)"),
+                    ("free_cashflow", "Free Cashflow (fuer DCF)"),
+                    ("ebitda", "EBITDA (fuer EV/EBITDA)"),
+                    ("pb", "KBV"), ("pe_trailing", "KGV"),
+                    ("target_mean", "Analysten-Kursziel"),
+                    ("roe", "Eigenkapitalrendite"),
+                    ("net_debt", "Nettoverschuldung"),
+                ]
+                for d in _daten:
+                    _rf = set(d.get("_roic_felder") or [])
+                    _cov = "\U0001f7e2 roic deckt ab" if d.get("_roic_aktiv") \
+                        else "\U0001f7e1 kein roic \u2013 nur yfinance/FMP"
+                    st.markdown(f"**{d['name']} ({d['ticker']})** \u00b7 {_cov} \u00b7 "
+                                f"Quellen: {d.get('_data_sources') or '\u2014'}")
+                    # Welche kritischen Felder fehlen ganz (im Vergleichsdatensatz)?
+                    _zeilen_diag = []
+                    for _fk, _flabel in _krit:
+                        # der Vergleich speichert manche Felder umbenannt (pe)
+                        _vorhanden = None
+                        if _fk == "pe_trailing":
+                            _vorhanden = d.get("pe") is not None
+                        elif _fk == "target_mean":
+                            _vorhanden = None  # nicht im Vergleichsdatensatz
+                        else:
+                            _vorhanden = d.get(_fk) is not None
+                        _von_roic = _fk in _rf
+                        if _vorhanden is True:
+                            _sym = "\U0001f7e2 roic" if _von_roic else "\u2713"
+                        elif _vorhanden is False:
+                            _sym = "\u2717 fehlt"
+                        else:
+                            _sym = "\u2013"
+                        _zeilen_diag.append(f"{_sym}  {_flabel}")
+                    st.markdown("<div style='font-size:0.85em;color:var(--muted);"
+                                "margin:2px 0 10px 12px'>"
+                                + "<br>".join(esc(z) for z in _zeilen_diag)
+                                + "</div>", unsafe_allow_html=True)
+                st.caption("\U0001f7e2 roic = Wert kam von roic.ai \u00b7 \u2713 = vorhanden "
+                           "(andere Quelle) \u00b7 \u2717 fehlt = Feld nicht verf\u00fcgbar "
+                           "(dann kann die zugeh\u00f6rige Berechnung nicht laufen). "
+                           "Wenn ein Titel \u201ekein roic\u201c zeigt, deckt roic.ai ihn "
+                           "nicht ab \u2013 dann h\u00e4ngt alles an yfinance, das gerade "
+                           "bei Banken l\u00fcckenhaft ist.")
 
 
 if nav == "Einzelanalyse":

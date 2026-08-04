@@ -279,12 +279,14 @@ def szenario_werte(fund, preset="quality") -> Optional[dict]:
     }
 def multiple_pb(fund, preset="quality") -> Optional[float]:
     bvps = fund.get("book_value_ps")
-    # Fallback: Buchwert je Aktie aus Kurs und KBV rekonstruieren, wenn das
-    # direkte Feld fehlt (bei manchen Banken wie JPM/Citi liefert die Quelle
-    # book_value_ps nicht, aber pb schon). Ohne diesen Fallback bekamen genau
-    # diese Titel keinen Fair Value, weil bei Finanzwerten pb die Hauptmethode
-    # ist.
-    if (not bvps or bvps <= 0):
+    # Fallback NUR fuer Finanzwerte: Buchwert je Aktie aus Kurs und KBV
+    # rekonstruieren, wenn das direkte Feld fehlt (bei manchen Banken wie
+    # JPM/Citi liefert die Quelle book_value_ps nicht, aber pb schon). Bei
+    # Finanzwerten ist pb die Hauptmethode, ohne sie gibt es keinen Fair Value.
+    # WICHTIG: Nur bei preset=="financial", sonst verzerrt der Fallback bei
+    # Wachstumstiteln (hohes pb) den Fair Value massiv nach unten - das hatte
+    # z.B. NVIDIA faelschlich von +20% auf tief negativen Upside gedreht.
+    if (not bvps or bvps <= 0) and preset == "financial":
         _price, _pb = fund.get("price"), fund.get("pb")
         if _price and _pb and _pb > 0:
             bvps = _price / _pb

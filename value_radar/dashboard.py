@@ -363,8 +363,30 @@ def parse_eur(s):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_fundamentals(t): return providers.get_fundamentals(t)
-@st.cache_data(ttl=3600, show_spinner=False)
-def load_fundamentals_deep(t): return providers.get_fundamentals(t, deep=True)
+
+
+# Manueller Cache fuer tiefe Fundamentaldaten: {ticker: (zeit, daten)}. Anders
+# als st.cache_data speichert er UNVOLLSTAENDIGE roic-Ergebnisse nur ganz kurz
+# (60 s), vollstaendige lange (1 h). So repariert sich eine roic-Luecke beim
+# naechsten Aufruf selbst, statt eine Stunde zu kleben (Grund fuer den frueher
+# noetigen App-Neustart). Pro Titel getrennt - kein gegenseitiges Leeren.
+_DEEP_CACHE = {}
+_DEEP_TTL_OK = 3600
+_DEEP_TTL_LUECKE = 60
+
+
+def load_fundamentals_deep(t):
+    import time as _t
+    _hit = _DEEP_CACHE.get(t)
+    if _hit:
+        _zeit, _daten, _voll = _hit
+        _ttl = _DEEP_TTL_OK if _voll else _DEEP_TTL_LUECKE
+        if _t.time() - _zeit < _ttl:
+            return _daten
+    _daten = providers.get_fundamentals(t, deep=True)
+    _voll = bool(_daten and _daten.get("_vollstaendig", True))
+    _DEEP_CACHE[t] = (_t.time(), _daten, _voll)
+    return _daten
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_intel(t, name=None): return intel_mod.gather(t, name=name)
 @st.cache_data(ttl=900, show_spinner=False)
@@ -3194,7 +3216,18 @@ if nav == "Aktienvergleich":
                 st.caption("**roic-Direkttest:** pr\u00fcft die einzelnen "
                            "roic-Endpunkte f\u00fcr den ersten Titel. Zeigt, ob der "
                            "Abruf klappt (Key/Endpunkt/Symbol) oder leer bleibt.")
-                if st.button("\U0001f50c roic-Endpunkte testen", key="vgl_roic_test"):
+                _dt_c = st.columns(2)
+                if _dt_c[1].button("\U0001f5d1\ufe0f Cache leeren + neu laden",
+                                   key="vgl_cache_clear",
+                                   use_container_width=True):
+                    # Wenn nach dem Leeren die roic-Felder da sind, war es ein
+                    # veralteter Cache-Eintrag (von vor der roic-Verfuegbarkeit).
+                    st.cache_data.clear()
+                    st.success("Cache geleert \u2013 Vergleich wird neu berechnet.")
+                    st.rerun()
+                if _dt_c[0].button("\U0001f50c roic-Endpunkte testen",
+                                   key="vgl_roic_test",
+                                   use_container_width=True):
                     try:
                         import roic as _rt
                         _tt = _daten[0]["ticker"]

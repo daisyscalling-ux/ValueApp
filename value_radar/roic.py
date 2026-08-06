@@ -143,14 +143,27 @@ def _get(path: str, params: dict | None = None):
     if hit and time.time() - hit[0] < _CACHE_TTL:
         return hit[1]
     _throttle()
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "value-radar"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = json.loads(r.read().decode("utf-8", "replace"))
-        _CACHE[ck] = (time.time(), data)
-        return data
-    except Exception:
-        return None
+    # Ein Retry bei transientem Fehler (Rate-Limit 429, kurzer Netz-Aussetzer).
+    # Ohne den fuehrte EIN fehlgeschlagener von 8 bundle-Abrufen dazu, dass ein
+    # Feld fehlte und - schlimmer - das lueckenhafte Ergebnis gecacht wurde.
+    for _versuch in range(2):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "value-radar"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                data = json.loads(r.read().decode("utf-8", "replace"))
+            _CACHE[ck] = (time.time(), data)
+            return data
+        except Exception as _e:
+            # bei HTTP 429 / transientem Fehler kurz warten und einmal neu
+            if _versuch == 0:
+                try:
+                    _code = getattr(_e, "code", None)
+                except Exception:
+                    _code = None
+                time.sleep(1.5 if _code == 429 else 0.4)
+                continue
+            return None
+    return None
 
 
 def _first(data):

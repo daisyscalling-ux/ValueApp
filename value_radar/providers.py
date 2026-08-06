@@ -659,6 +659,21 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         _e = merged.get("eps_trailing")
         if _e and _e > 0 and merged.get("price"):
             merged["pe_trailing"] = merged["price"] / _e
+    # Vollstaendigkeits-Flag fuer die Cache-Entscheidung. Bei einem deep-Abruf
+    # SOLL roic die Kernfelder liefern. Fehlen sie (roic hatte einen
+    # Schluckauf: Rate-Limit, Netz-Aussetzer), ist das Ergebnis unvollstaendig
+    # und darf NICHT lange gecacht werden - sonst klebt die Luecke stundenlang,
+    # obwohl roic laengst wieder liefert. Genau das war der Grund, warum ein
+    # App-Neustart "geholfen" hat.
+    if deep:
+        _kernfelder = ("free_cashflow", "ebitda", "book_value_ps",
+                       "market_cap", "revenue")
+        _roic_aktiv = bool(merged.get("_roic"))
+        _kern_da = sum(1 for k in _kernfelder if merged.get(k) is not None)
+        # vollstaendig, wenn roic aktiv war UND die Mehrheit der Kernfelder da ist
+        merged["_vollstaendig"] = bool(_roic_aktiv and _kern_da >= 3)
+    else:
+        merged["_vollstaendig"] = True     # flache Abrufe: kein roic-Anspruch
     return merged
 
 

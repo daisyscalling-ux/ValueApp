@@ -1595,14 +1595,14 @@ def render_pf_logbook():
 
 
 def read_url(url, access=""):
-    """Leitet Artikel hinter einer Paywall ueber removepaywalls.com um.
-    Format: https://removepaywalls.com/<vollstaendige Original-URL>.
+    """Leitet Artikel hinter einer Paywall ueber removepaywall.com um.
+    Format: https://removepaywall.com/<vollstaendige Original-URL>.
     Frei lesbare Artikel bleiben unveraendert (kein Umweg noetig)."""
     u = (url or "").strip()
     if not u or not u.startswith("http"):
         return u or "#"
     if str(access).lower() in ("paywall", "metered"):
-        return "https://removepaywalls.com/" + u
+        return "https://removepaywall.com/" + u
     return u
 
 
@@ -4737,12 +4737,12 @@ if nav == "News":
             if True:
                 # WSJ ist komplett hinter einer Paywall - der "nur frei lesbar"-Filter
                 # wuerde den Bereich leer machen. Hier greift stattdessen die
-                # Weiterleitung ueber removepaywalls.com (siehe read_url).
+                # Weiterleitung ueber removepaywall.com (siehe read_url).
                 _fo = False if section.startswith("WSJ") else free_only
                 if section.startswith("WSJ"):
                     st.caption("\U0001f512 Alle WSJ-Artikel liegen hinter der Paywall. "
                                "Jede Headline wird automatisch \u00fcber "
-                               "**removepaywalls.com** ge\u00f6ffnet. Klappt nur, wenn "
+                               "**removepaywall.com** ge\u00f6ffnet. Klappt nur, wenn "
                                "dort eine Archiv-Version des Artikels existiert.")
                 with st.spinner(f"Lade {section} ..."
                                 + (" + \u00fcbersetze ..." if (de_on and section != 'DAX') else "")):
@@ -4788,9 +4788,9 @@ if nav == "News":
                     _acc = n.get("access", "frei")
                     acc_badge = ({"frei": '<span style="color:#3FB950">\U0001f513 frei</span>',
                                   "metered": '<span style="color:#FFB000">\U0001f513\u26a0 metered '
-                                             '\u2192 removepaywalls</span>',
+                                             '\u2192 removepaywall</span>',
                                   "paywall": '<span style="color:#F85149">\U0001f512 Paywall '
-                                             '\u2192 removepaywalls</span>'}
+                                             '\u2192 removepaywall</span>'}
                                  .get(_acc, "")) + " \u00b7 "
                     if brief_on:
                         chips = bfg.tags_for(head_raw, summ_raw)

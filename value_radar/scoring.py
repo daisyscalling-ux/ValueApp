@@ -153,12 +153,17 @@ def _value_trap(fund: dict) -> bool:
 def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> dict:
     """Buendelt alle Sichten des Tools in EINEN erklaerbaren Score (0-100):
 
-      Q-Qualitaet  (35%): Composite (fundamentale Qualitaet + rel. Bewertung)
-      Q-Bewertung  (25%): Fair-Value-Upside inkl. Analysten-Anker; je geringer
+      Q-Qualitaet  (30%): Composite (fundamentale Qualitaet + rel. Bewertung)
+      Q-Bewertung  (40%): Fair-Value-Upside inkl. Analysten-Anker; je geringer
                           die Konfidenz des Fair Value, desto staerker zieht
                           die Komponente Richtung neutral (50)
-      Q-Analysten  (20%): Konviktion aus Buy/Hold/Sell-Verteilung
-      Q-Momentum   (20%): Radar-Score, falls gescannt; sonst 52W-Positionsscore
+      Q-Analysten  (15%): Konviktion aus Buy/Hold/Sell-Verteilung
+      Q-Momentum   (15%): Radar-Score, falls gescannt; sonst 52W-Positionsscore
+
+    Zusaetzlich: ein Ueberbewertungs-Malus zieht den Score gezielt nach unten,
+    wenn ein Titel deutlich UEBER seinem Fair Value notiert (typisch bei
+    teuren Qualitaetstiteln wie NVIDIA/Google, die sonst allein durch
+    Qualitaet + Momentum + Analysten hoch scoren, obwohl sie teuer sind).
 
     Fehlende Dimensionen werden nicht neutral gefuellt, sondern die Gewichte
     werden auf die vorhandenen renormalisiert (kein kuenstlicher 50er-Ballast).
@@ -166,7 +171,7 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
     comps, wts, parts = [], [], {}
 
     if composite is not None:
-        comps.append(float(composite)); wts.append(0.35)
+        comps.append(float(composite)); wts.append(0.30)
         parts["Qualit\u00e4t"] = round(float(composite))
 
     up = (valu or {}).get("upside_pct")
@@ -174,7 +179,7 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
         conf = (valu or {}).get("confidence")
         pull = {"hoch": 1.0, "mittel": 0.75, "niedrig": 0.45}.get(conf, 0.6)
         q_val = 50.0 + max(min(up, 40.0), -40.0) * 0.8 * pull
-        comps.append(q_val); wts.append(0.25)
+        comps.append(q_val); wts.append(0.40)
         parts["Bewertung"] = round(q_val)
 
     a = analyst or {}
@@ -183,7 +188,7 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
     if tot >= 3:                                   # erst ab 3 Ratings aussagekraeftig
         net = (b - se) / tot
         q_anl = 50.0 + net * 45.0
-        comps.append(q_anl); wts.append(0.20)
+        comps.append(q_anl); wts.append(0.15)
         parts["Analysten"] = round(q_anl)
 
     q_mom = radar if radar is not None else momentum
@@ -192,11 +197,31 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
         # (z.B. ein Momentum-Wert von 404 durch verzerrte OTC-Kurse), die den
         # Quantum/Composite sonst faelschlich nach oben ziehen.
         q_mom = max(0.0, min(100.0, float(q_mom)))
-        comps.append(q_mom); wts.append(0.20)
+        comps.append(q_mom); wts.append(0.15)
         parts["Momentum" + ("/Radar" if radar is not None else "")] = round(q_mom)
 
     if not comps:
         return {"score": None, "parts": {}, "n": 0}
     wsum = sum(wts)
     score = sum(c * w for c, w in zip(comps, wts)) / wsum
-    return {"score": round(max(0.0, min(100.0, score)), 1), "parts": parts, "n": len(comps)}
+
+    # UEBERBEWERTUNGS-MALUS: Ein Titel, der deutlich UEBER seinem Fair Value
+    # notiert (negativer Upside), wird gezielt gedaempft - zusaetzlich zur
+    # ohnehin schwachen Bewertungskomponente. Das trifft teure Qualitaetstitel
+    # (NVIDIA/Google), die sonst allein durch Qualitaet + Momentum + Analysten
+    # hoch scoren. Ein fair oder guenstig bewerteter Titel bleibt unberuehrt.
+    #   Upside  -10 %  -> -2 Punkte
+    #   Upside  -20 %  -> -5 Punkte
+    #   Upside  -30 %  -> -8 Punkte
+    #   Upside <=-40 % -> -11 Punkte (Deckel)
+    up = (valu or {}).get("upside_pct")
+    malus = 0.0
+    if up is not None and up < -5:
+        # linear ab -5 %, ca. 0,3 Punkte je Prozentpunkt Ueberbewertung
+        malus = min((abs(up) - 5) * 0.3, 11.0)
+        score -= malus
+        if malus >= 1:
+            parts["\u00dcberbewertungs-Malus"] = -round(malus)
+
+    return {"score": round(max(0.0, min(100.0, score)), 1),
+            "parts": parts, "n": len(comps)}

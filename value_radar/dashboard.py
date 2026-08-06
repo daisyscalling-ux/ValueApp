@@ -4289,6 +4289,46 @@ if nav == "Einzelanalyse":
                     rg = v["reverse_dcf_implied_growth"]
                     st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
                                f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
+                    # --- Annahmen-Transparenz: WORAUF beruht der Fair Value? ---
+                    _an = v.get("annahmen")
+                    if _an:
+                        with st.expander("\U0001f9ee Annahmen hinter dem Fair Value "
+                                         "(zum Nachvollziehen)"):
+                            st.caption("Diese Eingaben gehen in den DCF ein. Wenn "
+                                       "eine Zahl unplausibel aussieht (z.B. ein "
+                                       "WACC weit weg von 6\u201312 %), beruht der Fair "
+                                       "Value auf schlechten Daten \u2013 dann ist das "
+                                       "Ergebnis mit Vorsicht zu lesen.")
+                            _ac = st.columns(2)
+                            _fcf = _an["free_cashflow"]
+                            _ac[0].markdown(
+                                f"**Free Cashflow:** {_eur(_fcf) if _fcf else '\u2014'}  \n"
+                                f"**Aktienzahl:** {_an['shares_out']/1e6:.0f} Mio  \n"
+                                f"**Nettoverschuldung:** {_eur(_an['net_debt'])}  \n"
+                                f"**Projektionsjahre:** {_an['jahre']}")
+                            _wtext = (f"**Startwachstum:** {_an['wachstum_start']*100:.1f} %")
+                            if _an["wachstum_gedeckelt"]:
+                                _wtext += (f" (gedeckelt von "
+                                           f"{_an['wachstum_start_roh']*100:.1f} % auf "
+                                           f"max. {_an['wachstum_cap']*100:.0f} %)")
+                            _wtext += f"  \n<small>Quelle: {_an['wachstum_quelle']}</small>"
+                            _wacc_txt = f"**WACC (Diskontsatz):** {_an['wacc']*100:.2f} %"
+                            if _an["wacc_angehoben"]:
+                                _wacc_txt += " (auf Mindestabstand angehoben)"
+                            _plausibel = 0.04 <= _an["wacc"] <= 0.16
+                            _wacc_warn = ("" if _plausibel else
+                                          "  \u26a0\ufe0f ungew\u00f6hnlich \u2013 Datenlage pr\u00fcfen")
+                            _ac[1].markdown(
+                                f"{_wtext}  \n"
+                                f"**Terminal-Wachstum:** {_an['terminal_growth']*100:.1f} %  \n"
+                                f"{_wacc_txt}{_wacc_warn}  \n"
+                                f"<small>Beta: {_an['beta'] if _an['beta'] else '\u2014'}</small>",
+                                unsafe_allow_html=True)
+                            st.caption("Der DCF projiziert den Free Cashflow \u00fcber "
+                                       f"{_an['jahre']} Jahre (Wachstum verjuengt sich "
+                                       "linear vom Start- zum Terminal-Wert), "
+                                       "diskontiert mit dem WACC und zieht die "
+                                       "Nettoverschuldung ab. Kein Anlagerat.")
                     # --- Bear / Base / Bull: ehrliche Bandbreite statt einer Zahl ---
                     _sz = v.get("szenarien")
                     if _sz:

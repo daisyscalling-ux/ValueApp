@@ -185,6 +185,51 @@ def multiple_ev_ebitda(fund, peer_funds, preset="quality") -> Optional[float]:
 
 
 # --- 3a) DCF (Quality/Inflection) ------------------------------------------
+def dcf_annahmen(fund, preset="quality") -> Optional[dict]:
+    """Legt die Annahmen offen, die in den DCF eingehen - fuer die
+    Nachvollziehbarkeit in der Einzelanalyse. Rechnet NICHTS neu, sondern
+    spiegelt exakt die Schritte aus dcf_two_stage wider, damit der Nutzer
+    sieht, WORAUF der Fair Value beruht (und unplausible Eingaben wie einen
+    kaputten WACC sofort erkennt). Gibt None zurueck, wenn der DCF fuer diesen
+    Titel nicht traegt."""
+    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    if not fcf or not shares or fcf <= 0 or preset == "cyclical":
+        return None
+    years = max(int(V.get("projection_years", 10)), 2)
+    g_term = V["terminal_growth"]
+    g1_roh = fund.get("revenue_growth")
+    _quelle_g = "Umsatzwachstum"
+    if g1_roh is None:
+        g1_roh = fund.get("earnings_growth")
+        _quelle_g = "Gewinnwachstum"
+    if g1_roh is None:
+        g1_roh = 0.06
+        _quelle_g = "Standardannahme (keine Wachstumsdaten)"
+    cap = 0.25 if preset == "inflection" else 0.16
+    g1 = max(min(g1_roh, cap), -0.03)
+    _gedeckelt = (g1 != g1_roh)
+    r = wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt"))
+    _r_angehoben = False
+    if r - g_term < 0.045:
+        r = g_term + 0.045
+        _r_angehoben = True
+    return {
+        "free_cashflow": fcf,
+        "shares_out": shares,
+        "jahre": years,
+        "wachstum_start": g1,
+        "wachstum_start_roh": g1_roh,
+        "wachstum_quelle": _quelle_g,
+        "wachstum_gedeckelt": _gedeckelt,
+        "wachstum_cap": cap,
+        "terminal_growth": g_term,
+        "wacc": r,
+        "wacc_angehoben": _r_angehoben,
+        "net_debt": fund.get("net_debt") or 0.0,
+        "beta": fund.get("beta"),
+    }
+
+
 def dcf_two_stage(fund, preset="quality") -> Optional[float]:
     if preset == "cyclical":
         return None
@@ -715,6 +760,7 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "reverse_dcf_implied_growth": reverse_dcf_implied_growth(fund),
         "wacc": round(wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt")), 4),
         "szenarien": szenario_werte(fund, preset),
+        "annahmen": dcf_annahmen(fund, preset),
     }
 
 

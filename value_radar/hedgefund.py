@@ -302,6 +302,15 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
     revalidate = bestehende Aktien-Longs erneut gegen die Scorecard pruefen."""
     now = time.time()
     held = {p["ticker"] for p in state["positions"]}
+    # Sperrfrist (Cooldown): ein gerade geschlossener Titel darf nicht sofort
+    # wieder gekauft werden. Ohne das drehte das Tool denselben Titel (z.B.
+    # NWG.L) staendig hin und her - Verkauf, dann Minuten spaeter Rueckkauf,
+    # fuer Cent-Betraege. state["cooldown"] = {ticker: zeit_bis}.
+    _COOLDOWN_TAGE = 5
+    cooldown = state.setdefault("cooldown", {})
+    # abgelaufene Sperren aufraeumen
+    for _tk in [k for k, v in cooldown.items() if v <= now]:
+        cooldown.pop(_tk, None)
     # 1) Exits
     keep = []
     for p in state["positions"]:
@@ -340,18 +349,28 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
         # Bestehende AKTIEN-Longs erneut gegen die Scorecard pruefen: faellt ein Titel
         # inzwischen durch (Signal erloschen), wird er geschlossen - sonst bliebe er
         # bis zum Stop-Loss liegen (so hing BP im Depot).
+        # HYSTERESE: Nur schliessen, wenn der Titel DEUTLICH durchfaellt, nicht
+        # schon bei haarscharfem Verfehlen. Sonst wird ein Titel, dessen
+        # Kennzahlen um die Schwelle herum schwanken, staendig raus- und wieder
+        # reingekauft (NWG.L-Effekt). Ein Titel muss erst durchfallen UND darf
+        # nicht nur knapp daneben liegen.
         if (exit_why is None and p["dir"] == "long" and p.get("type") != "ko"
                 and revalidate):
             try:
                 _f = providers.get_fundamentals(p["ticker"], deep=True)
-                _ep = valuation.classify_playbook(_f)
-                _s = scoring.score_stock(_f, None, preset=_ep)
-                _v = valuation.fair_value(_f, None, _ep)
-                _ok, _verd, _miss, _ev = scorecard_ok(p["ticker"], _f, _s, _v)
-                if _ev and not _ok:      # nur schliessen, wenn wirklich geprueft wurde
-                    exit_why = "Signal erloschen (Scorecard)"
-                    print(f"[hedgefund] {p['ticker']} geschlossen: Scorecard "
-                          f"\"{_verd}\" - offen: {_miss}")
+                # Nur bei belastbaren Daten neu bewerten - sonst schliesst ein
+                # roic-Aussetzer faelschlich eine gute Position.
+                if _f and _f.get("_vollstaendig", True):
+                    _ep = valuation.classify_playbook(_f)
+                    _s = scoring.score_stock(_f, None, preset=_ep)
+                    _v = valuation.fair_value(_f, None, _ep)
+                    _ok, _verd, _miss, _ev = scorecard_ok(p["ticker"], _f, _s, _v)
+                    # deutlich durchgefallen = mehr als 1 Pflichtkriterium offen
+                    _klar_raus = _ev and not _ok and len(_miss or []) >= 2
+                    if _klar_raus:
+                        exit_why = "Signal erloschen (Scorecard)"
+                        print(f"[hedgefund] {p['ticker']} geschlossen: Scorecard "
+                              f"\"{_verd}\" - offen: {_miss}")
             except Exception:
                 pass
         if exit_why:
@@ -366,6 +385,12 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
                 "einsatz_eur": round(cost, 2),
                 "why": exit_why})
             held.discard(p["ticker"])
+            # Sperrfrist setzen, wenn wegen "Signal erloschen" geschlossen wurde -
+            # damit derselbe Titel nicht im naechsten Lauf sofort zurueckgekauft
+            # wird. Take-Profit/Stop-Loss/Knock-out lösen KEINE Sperre aus, das
+            # sind gewollte Exits.
+            if "erloschen" in exit_why:
+                cooldown[p["ticker"]] = now + _COOLDOWN_TAGE * 86400
         else:
             p["last_eur"] = round(pe, 2)
             p["pl_pct"] = round(pl, 1) if pl is not None else None
@@ -408,11 +433,12 @@ def rebalance(state, longs_cand, shorts_cand, put_cand=None, revalidate=True):
         # statt dass durch 8 geteilt wird und 70 % Cash liegen bleiben.
         # Deckel je Titel: normal POS_CAP (15 %); bei Knappheit bis max. 30 %
         # (darueber waere das Klumpenrisiko zu gross - dann bleibt bewusst Cash).
-        n_fillable = min(len([t for t in cands if t not in held]), free_slots)
+        n_fillable = min(len([t for t in cands
+                              if t not in held and t not in cooldown]), free_slots)
         per_slot = invest_budget / max(n_fillable, 1)
         per_slot = min(per_slot, 0.30 * state["start_capital"])
         for t in cands:
-            if len(cur) >= n_max or t in held:
+            if len(cur) >= n_max or t in held or t in cooldown:
                 continue
             pe, _ = _price_eur(t)
             if not pe:

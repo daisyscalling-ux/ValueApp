@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-28-o"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-b"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -155,6 +155,7 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "value": (s.get("category_scores") or {}).get("value"),
         "growth": (s.get("category_scores") or {}).get("growth"),
         "catalyst": (s.get("category_scores") or {}).get("catalyst"),
+        "cat_neutral": s.get("cat_neutral") or {},
         "analyst_count": f.get("analyst_count"),
         "value_trap": s.get("value_trap"),
         "revenue_growth": (round(f["revenue_growth"] * 100, 1)
@@ -662,6 +663,33 @@ def diff_changes(old_snap, new_rows, section):
                 pass
             # Nach dem tiefen Nachrechnen nur melden, wenn der Sprung bleibt.
             if abs(nc_tief - oc) >= COMP_DELTA:
+                # SCHEIN-AENDERUNG ABFANGEN: Wenn eine Kategorie nur deshalb
+                # springt, weil in einem Lauf die Daten fehlten (Score fiel auf
+                # den Neutralwert 50 zurueck) und im anderen wieder da waren,
+                # ist das KEINE echte fundamentale Aenderung, sondern
+                # schwankende Datenverfuegbarkeit (typisch bei .L-Titeln mit
+                # roic-Aussetzern - genau der Fall III.L Wachstum 0<->50). Solche
+                # Titel NICHT melden, sonst pendelt die Startseite taeglich.
+                _neu_neutral = (_d.get("cat_neutral") if _d else {}) or {}
+                _alt_neutral = o.get("cat_neutral") or {}
+                _daten_flip = False
+                for _k in ("quality", "value", "growth", "momentum"):
+                    _alt, _neu = o.get(_k), _neu_kat.get(_k)
+                    if _alt is None or _neu is None:
+                        continue
+                    if abs(_neu - _alt) >= 8:
+                        # war eine der beiden Seiten ein Neutral-Rueckfall?
+                        if _neu_neutral.get(_k) or _alt_neutral.get(_k):
+                            _daten_flip = True
+                            break
+                if _daten_flip:
+                    # Datenlage schwankte - Snapshot still aktualisieren, aber
+                    # KEINE Aenderungsmeldung erzeugen.
+                    r["composite"] = nc_tief
+                    for _k, _val in _neu_kat.items():
+                        if _val is not None:
+                            r[_k] = _val
+                    continue
                 arrow = "\u2197" if nc_tief > oc else "\u2198"
                 _delta = nc_tief - oc
                 _staerke = ("drastisch" if abs(_delta) >= 15

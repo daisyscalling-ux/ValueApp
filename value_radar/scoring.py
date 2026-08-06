@@ -92,9 +92,11 @@ def score_stock(fund: dict[str, Any], peer_funds: list[dict] | None,
 
     # Kategorie-Scores (Mittel); 'momentum' & 'catalyst' separat (s.u.)
     cat_scores = {}
+    cat_neutral = {}       # welche Kategorie fiel mangels Daten auf 50 zurueck?
     for cat in weights:
         vals = cat_values.get(cat, [])
         cat_scores[cat] = sum(vals) / len(vals) if vals else 50.0
+        cat_neutral[cat] = (not vals)     # True = kein echter Wert, nur Neutral
 
     # Momentum: relativer Abstand zu 52W-Hoch/-Tief als grobe Proxy
     price = fund.get("price")
@@ -127,6 +129,7 @@ def score_stock(fund: dict[str, Any], peer_funds: list[dict] | None,
         "name": fund.get("name"),
         "sector": fund.get("sector"),
         "category_scores": {k: round(v, 1) for k, v in cat_scores.items()},
+        "cat_neutral": cat_neutral,     # welche Kategorien sind nur Neutral (50)?
         "composite": round(composite, 1),
         "value_trap": vt,
         "breakdown": breakdown,

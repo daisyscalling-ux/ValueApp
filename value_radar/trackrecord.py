@@ -41,35 +41,51 @@ def _price(t):
 
 
 def _price_uncached(t):
-    # 1) schneller Quote, falls der Provider ihn hat
+    _n = getattr(providers, "normalise_price", None)
+    # Zwei Quellen holen und gegeneinander pruefen: den schnellen Quote UND
+    # den letzten Schlusskurs aus der Historie. Weichen sie stark voneinander
+    # ab (>25 %), ist eine Quelle fehlerhaft (das erzeugte die Phantom-Rendite
+    # bei BAC: -35 %, obwohl die Aktie real stabil war). In dem Fall nehmen wir
+    # den Historien-Schlusskurs, der verlaesslicher ist als ein evtl. veralteter
+    # oder aus einer Nebennotierung stammender Quote.
+    quote_px = None
     for fn in ("get_quote", "get_intraday_quote"):
         f = getattr(providers, fn, None)
         if f:
             try:
                 q = f(t)
                 if isinstance(q, dict):
-                    px = q.get("price")
+                    _p = q.get("price")
                 elif isinstance(q, (tuple, list)) and q:
-                    px = q[0]                      # (preis, waehrung)
+                    _p = q[0]
                 else:
-                    px = q
-                if px:
-                    # auf dieselbe Einheit bringen wie der Einstiegskurs
-                    n = getattr(providers, "normalise_price", None)
-                    return float(n(t, px)) if n else float(px)
+                    _p = q
+                if _p:
+                    quote_px = float(_n(t, _p)) if _n else float(_p)
+                    break
             except Exception:
                 pass
-    _n = getattr(providers, "normalise_price", None)
-    # 2) letzter Schlusskurs aus der Historie - AUCH normalisieren, sonst
-    #    liefert ein Pence-Titel hier den rohen Pence-Kurs (FRES.L: 710
-    #    statt 7,10) und die Rendite explodiert -> als "suspekt" verworfen.
+    hist_px = None
     try:
         h = providers.get_price_history(t, period="5d", interval="1d")
         if h is not None and not h.empty:
-            _px = float(h["Close"].dropna().iloc[-1])
-            return float(_n(t, _px)) if _n else _px
+            _hp = float(h["Close"].dropna().iloc[-1])
+            hist_px = float(_n(t, _hp)) if _n else _hp
     except Exception:
         pass
+
+    # Beide da -> auf Plausibilitaet pruefen
+    if quote_px and hist_px:
+        if quote_px > 0 and hist_px > 0:
+            verh = quote_px / hist_px
+            if 0.75 <= verh <= 1.25:
+                return quote_px          # stimmen ueberein -> Quote (aktueller)
+            # starke Abweichung -> Historien-Schluss ist verlaesslicher
+            return hist_px
+    if quote_px:
+        return quote_px
+    if hist_px:
+        return hist_px
     # 3) Fundamentaldaten als letzte Option (price ist dort bereits normalisiert)
     try:
         return providers.get_fundamentals(t).get("price")
@@ -266,6 +282,18 @@ def evaluate(limit=120):
             pass
 
         ret = (px_now / entry - 1) * 100
+        # DIAGNOSE: bei frischen Signalen (heute erfasst) mit auffaelligem
+        # Gewinn die Rohwerte protokollieren. So sehen wir, ob entry_px und
+        # px_now in verschiedenen Waehrungen stehen (Faktor ~0,87 = USD/EUR).
+        try:
+            _d_roh = int((time.time() - (e.get("ts") or time.time())) / 86400)
+            if _d_roh <= 1 and abs(ret) > 6:
+                print(f"[trackrecord-DIAG] {e['ticker']} ({e.get('quelle')}): "
+                      f"entry_px={entry} px_now={px_now} "
+                      f"ccy={e.get('entry_ccy')} fx={e.get('entry_fx')} "
+                      f"ret={ret:.1f}% -> Faktor px_now/entry={px_now/entry:.4f}")
+        except Exception:
+            pass
         # SICHERHEITSNETZ gegen verbleibenden Einheiten-Mischmasch. Greift in
         # BEIDE Richtungen: +9900 % (Pence/Pfund) genauso wie -99 % (Pfund/Pence).
         # Solche Werte sind keine Rendite, sondern ein Datenfehler - sie werden

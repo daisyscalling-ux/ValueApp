@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-b"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-h"   # bei jeder Aenderung hochzaehlen
 
 import time
 import datetime as dt
@@ -802,6 +802,7 @@ def _analyse(t):
                            _mx.auto_m1_total(sig), _mx.auto_m2_total(sig),
                            screen_extras, _insider, _analyst)
         out["verdict"] = res.get("verdict", "")
+        out["vkey"] = res.get("vkey", "")     # "buy"/"watch"/"drop" - robuster Filter
         out["isin"] = f.get("isin")     # fuer die ISIN-Entdopplung der Signale
         # Einstiegskurs und aktueller Kurs - fuer die Kaufzonen-Pruefung.
         # Ein Signal darf NUR erfasst werden, wenn der Kurs die Einstiegszone
@@ -1120,7 +1121,8 @@ def run():
                             "score": r.get("composite"), "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "entry": _entry,
-                            "verdict": _a.get("verdict", ""), "price": _preis})
+                            "verdict": _a.get("verdict", ""),
+                            "vkey": _a.get("vkey", ""), "price": _preis})
         for r in (rad or [])[:SIGNAL_KANDIDATEN]:
             tk = r.get("ticker")
             if not tk:
@@ -1155,7 +1157,8 @@ def run():
                             "upside": r.get("upside"),
                             "strategie": _a.get("strategie", ""),
                             "entry": _entry,
-                            "verdict": _a.get("verdict", ""), "price": _preis})
+                            "verdict": _a.get("verdict", ""),
+                            "vkey": _a.get("vkey", ""), "price": _preis})
         if _uebersprungen:
             print(f"[trackrecord] {_uebersprungen} Titel uebersprungen "
                   f"(Kurs nicht in Einstiegszone).")
@@ -1346,6 +1349,16 @@ def run():
 
         for _s in sig_new:                    # Herkunft des Signals festhalten
             _s["codever"] = CODE_VERSION
+        # Diagnose: wie viele der erfassten Signale sind echte KAUFKANDIDATEN
+        # (Scorecard-Urteil "Kaufkandidat" / vkey "buy")? Wenn hier 0 steht,
+        # erfuellt gerade kein Titel ALLE Pflichtkriterien - dann ist die leere
+        # Kaufkandidaten-Liste korrekt und kein Bug. Steht hier >0, aber die
+        # Bilanz zeigt nichts, liegt es an der Anzeige.
+        _n_kauf = sum(1 for _s in sig_new
+                      if _s.get("vkey") == "buy"
+                      or str(_s.get("verdict", "")).strip() == "Kaufkandidat")
+        print(f"[trackrecord] davon echte Kaufkandidaten (Scorecard erfuellt): "
+              f"{_n_kauf} von {len(sig_new)}")
         if not sig_new:
             print("[trackrecord] WARNUNG: keine Kandidaten aus Screener/Radar - "
                   "es gibt nichts zu erfassen. Laufen die Scans durch?")

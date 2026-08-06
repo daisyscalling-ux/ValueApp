@@ -1404,7 +1404,8 @@ def render_hf_logbook():
     except Exception:
         hf = {}
     names = {"marktneutral": "Marktneutral", "130/30": "130/30",
-             "quality_long": "Qualit\u00e4ts-Long", "core_ko": "Aktien + KO 3x"}
+             "quality_long": "Qualit\u00e4ts-Long", "core_ko": "Aktien + KO 3x",
+             "screener_long": "Screener-Test"}
     entries = []
     for k, s in hf.items():
         for t in s.get("trades", []):
@@ -2477,7 +2478,8 @@ if nav == "Start":
     except Exception:
         _hfs = {}
     _sname = {"marktneutral": "Marktneutral", "130/30": "130/30",
-              "quality_long": "Qualit\u00e4ts-Long", "core_ko": "Aktien + KO 3x"}
+              "quality_long": "Qualit\u00e4ts-Long", "core_ko": "Aktien + KO 3x",
+             "screener_long": "Screener-Test"}
     _cut = time.time() - 48 * 3600
     _newtr = []
     for _k, _s in _hfs.items():
@@ -5679,7 +5681,8 @@ if nav == "Long/Short":
                     "automatisch angelegt und gef\u00fchrt \u2013 oder hier per Knopf gestartet.")
         _sn = {"marktneutral": "Marktneutral (L100/S100)", "130/30": "130/30",
                "quality_long": "Qualit\u00e4ts-Long",
-               "core_ko": "Aktien + KO-Hebel 3x (8\u201315 % Beimischung)"}
+               "core_ko": "Aktien + KO-Hebel 3x (8\u201315 % Beimischung)",
+               "screener_long": "Screener-Test (nur Long/Short-Screener)"}
         for _k, _s in (_hf or {}).items():
             _v, _c0 = _s.get("value_eur", 0), _s.get("start_capital", 10000)
             _ret = (_v / _c0 - 1) * 100 if _c0 else 0

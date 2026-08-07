@@ -223,5 +223,35 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
         if malus >= 1:
             parts["\u00dcberbewertungs-Malus"] = -round(malus)
 
+    # VALUE-TRAP-MALUS (mild): "zu guenstig" ist oft eine Falle, kein Geschenk.
+    # Drei Signale, die zusammen das Risiko eines Value Traps anzeigen:
+    #   1) Extrem hoher Upside (>80 %): meist ein Datenfehler oder eine Falle,
+    #      keine echte Gelegenheit (z.B. HSBC mit 134 % - der Fair Value ist
+    #      wahrscheinlich falsch, nicht die Aktie 134 % zu billig).
+    #   2) Fallendes Messer: hoher Upside UND schwaches Momentum (<40) - der
+    #      Kurs faellt weiter, obwohl der Titel schon guenstig aussieht
+    #      (Adobe/Accenture/Salesforce-Fall).
+    #   3) Unsichere Bewertung: die Methoden streuen stark (spread_pct hoch) -
+    #      ein hoher Upside auf wackliger Basis ist besonders riskant.
+    # BEWUSST MILD: Der Titel bleibt im Screener (Ideenquelle), wird nur im
+    # Score gedaempft und mit einer Warnung markiert. Keine Ausfilterung.
+    vt_signale = []
+    vt_malus = 0.0
+    _spread = (valu or {}).get("spread_pct")
+    if up is not None and up > 80:
+        vt_malus += min((up - 80) * 0.15, 8.0)
+        vt_signale.append(f"extrem hoher Upside ({up:.0f} %) - Fair Value pr\u00fcfen")
+    if up is not None and up > 25 and momentum is not None and momentum < 40:
+        vt_malus += 5.0
+        vt_signale.append("g\u00fcnstig, aber fallender Kurs (m\u00f6gliches fallendes Messer)")
+    if up is not None and up > 40 and _spread is not None and _spread > 60:
+        vt_malus += 4.0
+        vt_signale.append("hoher Upside auf unsicherer Bewertungsbasis")
+    if vt_malus > 0:
+        vt_malus = min(vt_malus, 12.0)     # Deckel: mild bleiben
+        score -= vt_malus
+        parts["Value-Trap-Malus"] = -round(vt_malus)
+
     return {"score": round(max(0.0, min(100.0, score)), 1),
-            "parts": parts, "n": len(comps)}
+            "parts": parts, "n": len(comps),
+            "value_trap_warnung": vt_signale}

@@ -3457,6 +3457,20 @@ if nav == "Einzelanalyse":
                     st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
                                + "  \u00b7  ".join(f"{k} {x}" for k, x in q["parts"].items()))
 
+                # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
+                # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
+                _vtw = q.get("value_trap_warnung") or []
+                if _vtw:
+                    st.warning("\u26a0\ufe0f **M\u00f6gliche Value-Trap** \u2013 selbst pr\u00fcfen, "
+                               "bevor du kaufst:\n\n" +
+                               "\n".join(f"\u2022 {w}" for w in _vtw) +
+                               "\n\n<small>\u201eZu g\u00fcnstig\u201c bedeutet oft, dass der "
+                               "Markt etwas wei\u00df, das die Kennzahlen noch nicht "
+                               "zeigen \u2013 oder dass der Fair Value auf fehlerhaften "
+                               "Daten beruht. Der Titel bleibt als Idee im Screener, "
+                               "der Score ist nur leicht ged\u00e4mpft.</small>",
+                               icon="\u26a0\ufe0f")
+
                 # ============================================================
                 # MARKTKONTEXT-EBENE - getrennt vom Fair Value. Ordnet den
                 # Fair Value gegen Marktstimmung und die eigene Bewertungs-

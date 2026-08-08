@@ -4316,11 +4316,23 @@ if nav == "Einzelanalyse":
                                        "Value auf schlechten Daten \u2013 dann ist das "
                                        "Ergebnis mit Vorsicht zu lesen.")
                             _ac = st.columns(2)
+                            def _geld(v):
+                                # grosse Betraege lesbar: Mrd / Mio / Tsd
+                                if v is None:
+                                    return "\u2014"
+                                _a = abs(v)
+                                if _a >= 1e9:
+                                    return f"{v/1e9:.1f} Mrd \u20ac"
+                                if _a >= 1e6:
+                                    return f"{v/1e6:.0f} Mio \u20ac"
+                                if _a >= 1e3:
+                                    return f"{v/1e3:.0f} Tsd \u20ac"
+                                return f"{v:.0f} \u20ac"
                             _fcf = _an["free_cashflow"]
                             _ac[0].markdown(
-                                f"**Free Cashflow:** {_eur(_fcf) if _fcf else '\u2014'}  \n"
+                                f"**Free Cashflow:** {_geld(_fcf) if _fcf else '\u2014'}  \n"
                                 f"**Aktienzahl:** {_an['shares_out']/1e6:.0f} Mio  \n"
-                                f"**Nettoverschuldung:** {_eur(_an['net_debt'])}  \n"
+                                f"**Nettoverschuldung:** {_geld(_an['net_debt'])}  \n"
                                 f"**Projektionsjahre:** {_an['jahre']}")
                             _wtext = (f"**Startwachstum:** {_an['wachstum_start']*100:.1f} %")
                             if _an["wachstum_gedeckelt"]:

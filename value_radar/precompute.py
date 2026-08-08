@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-j"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-k"   # bei jeder Aenderung hochzaehlen
 
 # Analysten-Historie fuer die Value-Trap-Trenderkennung. In run() aus dem
 # Speicher geladen, waehrend des Laufs von score_ticker fortgeschrieben, am
@@ -765,12 +765,34 @@ def diff_changes(old_snap, new_rows, section):
                     if _val is not None:
                         r[_k] = _val
         ou = o.get("upside")
+        # Plausibilitaet: Ein Upside-Sprung sollte zum Kursverlauf passen. Faellt
+        # der Kurs, steigt der Upside (und umgekehrt) - das ist echt. Aendert
+        # sich der Upside STARK, obwohl der Kurs kaum bewegt ist, stammt die
+        # Aenderung aus der Fair-Value-BASIS (andere Daten) - dann ist es oft
+        # ein Dateneffekt, kein echtes Signal. Genau der ALV.DE-Fall: Composite
+        # runter (Wachstum weg), Upside gleichzeitig rauf - widerspruechlich,
+        # weil beides aus derselben Datenaenderung kommt.
+        _op = o.get("price")
+        _kurs_erklaert_upside = True
+        if (ou is not None and up is not None and _op and price
+                and abs(up - ou) >= UPSIDE_DELTA):
+            _kurs_delta = (price / _op - 1) * 100 if _op else 0
+            _upside_delta = up - ou
+            # Wenn Kurs faellt, sollte Upside steigen: die Vorzeichen von
+            # Kursaenderung und Upside-Aenderung sind dann GEGENLAEUFIG.
+            # Passt die Richtung nicht ODER ist die Kursbewegung viel zu klein
+            # fuer den Upside-Sprung, ist es ein Basis-Effekt.
+            if abs(_kurs_delta) < abs(_upside_delta) * 0.4:
+                # Kurs bewegte sich viel weniger als der Upside - Basis-Effekt
+                _kurs_erklaert_upside = False
         if UPSIDE_FLIP and up is not None and ou is not None and (up >= 0) != (ou >= 0):
-            changes.append({"ticker": t, "name": r.get("name"), "section": section,
-                            "kind": "upside_flip",
-                            "text": f"{t} Upside dreht {ou:+.0f}%\u2192{up:+.0f}%"})
+            if _kurs_erklaert_upside:
+                changes.append({"ticker": t, "name": r.get("name"), "section": section,
+                                "kind": "upside_flip",
+                                "text": f"{t} Upside dreht {ou:+.0f}%\u2192{up:+.0f}%"})
         # Deutlicher Upside-Sprung (auch ohne Vorzeichenwechsel)
-        elif up is not None and ou is not None and abs(up - ou) >= UPSIDE_DELTA:
+        elif (up is not None and ou is not None and abs(up - ou) >= UPSIDE_DELTA
+              and _kurs_erklaert_upside):
             arrow = "\u2197" if up > ou else "\u2198"
             changes.append({"ticker": t, "name": r.get("name"), "section": section,
                             "kind": "upside_jump",

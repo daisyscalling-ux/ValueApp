@@ -5228,8 +5228,9 @@ if nav == "Screener":
             _extra = st.session_state.get("live_spalten", [])
             _zeilen = []
             for r in _erg_gefiltert:
+                _vt = "\u26a0\ufe0f " if r.get("vt_warnung") else ""
                 _z = {"Ticker": r.get("ticker"),
-                      "Name": (r.get("name") or "")[:22],
+                      "Name": (_vt + (r.get("name") or ""))[:24],
                       "Comp": r.get("composite"),
                       "Quantum": r.get("quantum"),
                       "Radar": r.get("radar_score"),

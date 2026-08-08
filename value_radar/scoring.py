@@ -150,7 +150,53 @@ def _value_trap(fund: dict) -> bool:
 # ---------------------------------------------------------------------------
 # QUANTUM SCORE — Meta-Score ueber vier Dimensionen ("Quanten")
 # ---------------------------------------------------------------------------
-def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> dict:
+def analyst_trend_update(hist: dict, ticker: str, target_mean, eps_forward,
+                         count, now_ts=None, max_punkte=12):
+    """Schreibt die Analysten-Schaetzungen eines Titels fort und gibt den Trend
+    zurueck. hist wird in-place ergaenzt (der Aufrufer speichert es via
+    store.set_analyst_hist). Nur ~alle 3 Tage ein neuer Punkt, damit sich ueber
+    Wochen ein echter Verlauf bildet statt vieler fast-gleicher Werte.
+
+    Rueckgabe: dict mit
+      richtung   : "steigend" | "fallend" | "stabil" | None (zu wenig Daten)
+      target_delta_pct : Veraenderung des Kursziels seit dem aeltesten Punkt (%)
+      punkte     : Anzahl gespeicherter Messpunkte
+    So laesst sich erkennen, ob die Analysten ihre Ziele SENKEN - das staerkste
+    Value-Trap-Signal."""
+    import time as _t
+    now_ts = now_ts or _t.time()
+    if target_mean is None or target_mean <= 0:
+        return {"richtung": None, "target_delta_pct": None, "punkte": 0}
+    reihe = hist.get(ticker) or []
+    # neuen Punkt nur, wenn der letzte >= ~2,5 Tage her ist (oder noch keiner
+    # da). Etwas unter 3 Tagen, damit ein Lauf am 3-Tage-Raster nicht knapp
+    # verpasst wird und trotzdem ~2 Punkte pro Woche entstehen.
+    if not reihe or (now_ts - reihe[-1].get("ts", 0)) >= 2.5 * 86400:
+        reihe.append({"ts": round(now_ts), "target_mean": round(float(target_mean), 2),
+                      "eps_forward": (round(float(eps_forward), 3)
+                                      if eps_forward is not None else None),
+                      "count": count})
+        reihe = reihe[-max_punkte:]      # nur die letzten N behalten
+        hist[ticker] = reihe
+    if len(reihe) < 2:
+        return {"richtung": None, "target_delta_pct": None, "punkte": len(reihe)}
+    alt = reihe[0]["target_mean"]
+    neu = reihe[-1]["target_mean"]
+    if not alt or alt <= 0:
+        return {"richtung": None, "target_delta_pct": None, "punkte": len(reihe)}
+    delta = (neu / alt - 1) * 100
+    if delta <= -5:
+        richtung = "fallend"
+    elif delta >= 5:
+        richtung = "steigend"
+    else:
+        richtung = "stabil"
+    return {"richtung": richtung, "target_delta_pct": round(delta, 1),
+            "punkte": len(reihe)}
+
+
+def quantum_score(composite, valu, analyst=None, momentum=None, radar=None,
+                  analyst_skepsis=None, analyst_trend=None) -> dict:
     """Buendelt alle Sichten des Tools in EINEN erklaerbaren Score (0-100):
 
       Q-Qualitaet  (30%): Composite (fundamentale Qualitaet + rel. Bewertung)
@@ -247,6 +293,25 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None) -> d
     if up is not None and up > 40 and _spread is not None and _spread > 60:
         vt_malus += 4.0
         vt_signale.append("hoher Upside auf unsicherer Bewertungsbasis")
+    # NEU: Analysten-Skepsis - unser Fair Value verspricht viel Upside, aber die
+    # Analysten trauen dem nicht (ihr Kursziel liegt deutlich darunter). Wenn die
+    # Profis skeptischer sind als unsere Rechnung, ist Vorsicht geboten.
+    if analyst_skepsis is not None and up is not None and up > 25:
+        # analyst_skepsis = (analyst_target/fair_value - 1)*100, also negativ,
+        # wenn die Analysten unter unserem Fair Value liegen
+        if analyst_skepsis < -20:
+            vt_malus += 4.0
+            vt_signale.append("Analysten deutlich vorsichtiger als unser Fair Value")
+    # NEU: fallende Analysten-Schaetzungen ueber die Zeit - das staerkste
+    # Value-Trap-Signal. "Billig" ist eine Illusion, wenn die erwarteten Gewinne
+    # gerade nach unten revidiert werden.
+    if analyst_trend and analyst_trend.get("richtung") == "fallend":
+        _d = analyst_trend.get("target_delta_pct")
+        vt_malus += 6.0
+        _txt = "Analysten SENKEN ihre Kursziele"
+        if _d is not None:
+            _txt += f" ({_d:.0f} % seit Beobachtungsbeginn)"
+        vt_signale.append(_txt)
     if vt_malus > 0:
         vt_malus = min(vt_malus, 12.0)     # Deckel: mild bleiben
         score -= vt_malus

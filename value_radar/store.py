@@ -207,6 +207,21 @@ def set_snapshot(snap: dict) -> bool:
     return _save_aux(d)
 
 
+def get_analyst_hist() -> dict:
+    """Historie der Analysten-Schaetzungen je Titel, fuer die Value-Trap-
+    Erkennung. Struktur: {ticker: [{ts, target_mean, eps_forward, count}, ...]}.
+    So laesst sich ueber Wochen erkennen, ob die Analysten ihre Kursziele/
+    Gewinnschaetzungen SENKEN - das staerkste Value-Trap-Signal ueberhaupt."""
+    h = _load_aux().get("analyst_hist", {})
+    return h if isinstance(h, dict) else {}
+
+
+def set_analyst_hist(hist: dict) -> bool:
+    d = _load_aux()
+    d["analyst_hist"] = hist
+    return _save_aux(d)
+
+
 def get_briefing() -> str:
     """KI-Nacht-Briefing (Text) fuer die Startseite."""
     b = _load_aux().get("briefing", "")

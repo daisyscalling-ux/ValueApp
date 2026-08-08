@@ -25,7 +25,13 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-h"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-j"   # bei jeder Aenderung hochzaehlen
+
+# Analysten-Historie fuer die Value-Trap-Trenderkennung. In run() aus dem
+# Speicher geladen, waehrend des Laufs von score_ticker fortgeschrieben, am
+# Ende zurueckgespeichert. _SEEN verhindert Mehrfach-Fortschreibung pro Lauf.
+_ANALYST_HIST = {}
+_ANALYST_SEEN = set()
 
 import time
 import datetime as dt
@@ -115,6 +121,32 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         return None
     if not f or not f.get("price"):
         return None
+    # Analysten-Schaetzungen mitschneiden (nur bei deep, nur 1x pro Titel/Lauf).
+    # Daraus entsteht ueber Wochen der Trend, der fallende Kursziele als
+    # Value-Trap-Signal erkennt. _ANALYST_HIST wird in run() geladen+gespeichert.
+    if deep and f.get("target_mean") and t not in _ANALYST_SEEN:
+        try:
+            _tr = scoring.analyst_trend_update(
+                _ANALYST_HIST, t, f.get("target_mean"),
+                f.get("eps_forward"), f.get("analyst_count"))
+            f["_analyst_trend"] = _tr
+            _ANALYST_SEEN.add(t)
+        except Exception:
+            pass
+    elif _ANALYST_HIST.get(t):
+        # schon in diesem Lauf erfasst ODER kein Ziel: vorhandenen Trend nutzen
+        try:
+            _reihe = _ANALYST_HIST.get(t) or []
+            if len(_reihe) >= 2:
+                _alt, _neu = _reihe[0]["target_mean"], _reihe[-1]["target_mean"]
+                if _alt and _alt > 0:
+                    _d = (_neu / _alt - 1) * 100
+                    f["_analyst_trend"] = {
+                        "richtung": ("fallend" if _d <= -5 else
+                                     "steigend" if _d >= 5 else "stabil"),
+                        "target_delta_pct": round(_d, 1), "punkte": len(_reihe)}
+        except Exception:
+            pass
     preset = valuation.classify_playbook(f)
     s = scoring.score_stock(f, None, preset=preset)
     comp = s.get("composite")
@@ -133,7 +165,18 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         except Exception:
             analyst = None
     mom = (s.get("category_scores") or {}).get("momentum")
-    q = scoring.quantum_score(comp, v, analyst, momentum=mom)
+    # Analysten-Skepsis: liegt das Analysten-Kursziel unter unserem Fair Value?
+    # (negativ = Analysten vorsichtiger als unsere Rechnung). Kostet nichts,
+    # die Werte stehen schon in v/f.
+    _askep = None
+    _atgt, _fv = v.get("analyst_target"), v.get("fair_value")
+    if _atgt and _fv and _fv > 0:
+        _askep = (_atgt / _fv - 1) * 100
+    # Analysten-Trend (fallende Kursziele) wird vom Aufrufer reingereicht, weil
+    # er die persistente Historie verwaltet.
+    _atrend = f.get("_analyst_trend")
+    q = scoring.quantum_score(comp, v, analyst, momentum=mom,
+                              analyst_skepsis=_askep, analyst_trend=_atrend)
     return {
         "ticker": t,
         "name": (f.get("name") or "")[:40],
@@ -158,6 +201,8 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "cat_neutral": s.get("cat_neutral") or {},
         "analyst_count": f.get("analyst_count"),
         "value_trap": s.get("value_trap"),
+        # Value-Trap-Warnungen aus dem Quantum Score (fuer das Symbol in Listen)
+        "vt_warnung": q.get("value_trap_warnung") or [],
         "revenue_growth": (round(f["revenue_growth"] * 100, 1)
                            if f.get("revenue_growth") is not None else None),
     }
@@ -869,6 +914,14 @@ def _analyse(t):
 
 def run():
     started = _berlin_now()
+    # Analysten-Historie laden (fuer die Value-Trap-Trenderkennung). Wird
+    # waehrend des Laufs fortgeschrieben und am Ende zurueckgespeichert.
+    global _ANALYST_HIST, _ANALYST_SEEN
+    try:
+        _ANALYST_HIST = store.get_analyst_hist() or {}
+    except Exception:
+        _ANALYST_HIST = {}
+    _ANALYST_SEEN = set()
     # Versionsstempel GANZ nach vorn. Ohne ihn ist im Log nicht erkennbar,
     # welcher Stand tatsaechlich laeuft - genau daran haben wir mehrfach Zeit
     # verloren: Der Job scheiterte an Code, der im Repo laengst korrigiert war.
@@ -997,6 +1050,14 @@ def run():
             "catalyst": r.get("catalyst"), "value_trap": r.get("value_trap")}
         for t, r in _scr_map.items()}
     store.set_snapshot(new_snap)
+    # Analysten-Historie zurueckspeichern (fortgeschrieben in score_ticker).
+    try:
+        store.set_analyst_hist(_ANALYST_HIST)
+        _mit_trend = sum(1 for r in _ANALYST_HIST.values() if len(r) >= 2)
+        print(f"[value-trap] Analysten-Historie: {len(_ANALYST_HIST)} Titel, "
+              f"{_mit_trend} mit auswertbarem Trend (>=2 Messpunkte).")
+    except Exception as _e:
+        print(f"[value-trap] Analysten-Historie speichern fehlgeschlagen: {_e}")
 
     # 5) Aenderungs-Feed fortschreiben (neueste zuerst, gekappt)
     feed = changes + (store.get_changes() or [])

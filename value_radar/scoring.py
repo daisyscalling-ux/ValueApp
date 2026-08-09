@@ -292,7 +292,11 @@ def quantum_score(composite, valu, analyst=None, momentum=None, radar=None,
         vt_signale.append("g\u00fcnstig, aber fallender Kurs (m\u00f6gliches fallendes Messer)")
     if up is not None and up > 40 and _spread is not None and _spread > 60:
         vt_malus += 4.0
-        vt_signale.append("hoher Upside auf unsicherer Bewertungsbasis")
+        vt_signale.append(
+            f"hoher Upside auf unsicherer Bewertungsbasis: die einzelnen "
+            f"Bewertungsmethoden (DCF, KGV, KBV \u2026) weichen um {_spread:.0f} % "
+            f"voneinander ab \u2013 je gr\u00f6\u00dfer die Streuung, desto unsicherer der "
+            f"Fair Value, weil viel Wert in unsicheren Zukunftsannahmen steckt")
     # NEU: Analysten-Skepsis - unser Fair Value verspricht viel Upside, aber die
     # Analysten trauen dem nicht (ihr Kursziel liegt deutlich darunter). Wenn die
     # Profis skeptischer sind als unsere Rechnung, ist Vorsicht geboten.

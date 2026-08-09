@@ -695,6 +695,103 @@ def svg_sparkline(vals, color, height=44):
             f'stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>')
 
 
+def interactive_price_chart(prices, pcts, labels, sym="\u20ac", height=260):
+    """Interaktiver Kursverlauf wie bei Broker-Apps: beim Hovern erscheint eine
+    vertikale Linie mit Kurs und Uhrzeit/Datum an der Mausposition. Die Linie
+    ist gruen ueber dem Startkurs, rot darunter - der Startpunkt ist die
+    gestrichelte 0-Linie. Rendert als eigenstaendiges HTML/JS (components.html)."""
+    prices = [float(p) for p in prices if p is not None]
+    pcts = [float(p) for p in pcts if p is not None]
+    if len(prices) < 2:
+        return None
+    import json as _json
+    _p = _json.dumps([round(x, 4) for x in prices])
+    _pc = _json.dumps([round(x, 3) for x in pcts])
+    _lb = _json.dumps([str(x) for x in labels][:len(prices)])
+    _sym = _json.dumps(sym)
+    # HTML/JS: Canvas-Chart mit Hover. Farbe segmentweise (gruen ueber 0, rot
+    # drunter). Tooltip zeigt Kurs + Label an der Mausposition.
+    return f"""
+<div style="width:100%;font-family:monospace">
+  <div id="vrtip" style="height:20px;color:#9aa4b2;font-size:12px;margin-bottom:2px"></div>
+  <canvas id="vrcanvas" style="width:100%;height:{height}px;display:block"></canvas>
+</div>
+<script>
+(function(){{
+  const prices = {_p}, pcts = {_pc}, labels = {_lb}, sym = {_sym};
+  const cv = document.getElementById('vrcanvas');
+  const tip = document.getElementById('vrtip');
+  const dpr = window.devicePixelRatio || 1;
+  function resize(){{
+    cv.width = cv.clientWidth * dpr;
+    cv.height = {height} * dpr;
+  }}
+  resize();
+  const ctx = cv.getContext('2d');
+  const GREEN = '#3FB950', RED = '#F85149', GREY = '#6B7686';
+  const lastPct = pcts[pcts.length-1];
+  const mainColor = lastPct >= 0 ? GREEN : RED;
+  const lo = Math.min(...pcts, 0), hi = Math.max(...pcts, 0);
+  const rng = (hi - lo) || 1;
+  const pad = 12 * dpr;
+  function X(i){{ return i/(prices.length-1) * cv.width; }}
+  function Y(p){{ return pad + (hi - p)/rng * (cv.height - 2*pad); }}
+  function draw(hoverIdx){{
+    ctx.clearRect(0,0,cv.width,cv.height);
+    // 0-Linie (Startkurs)
+    const zy = Y(0);
+    ctx.strokeStyle = GREY; ctx.lineWidth = 1*dpr;
+    ctx.setLineDash([4*dpr,4*dpr]);
+    ctx.beginPath(); ctx.moveTo(0,zy); ctx.lineTo(cv.width,zy); ctx.stroke();
+    ctx.setLineDash([]);
+    // Flaeche
+    ctx.beginPath();
+    ctx.moveTo(0, Y(pcts[0]));
+    for(let i=1;i<pcts.length;i++) ctx.lineTo(X(i), Y(pcts[i]));
+    ctx.lineTo(cv.width, zy); ctx.lineTo(0, zy); ctx.closePath();
+    ctx.fillStyle = mainColor; ctx.globalAlpha = 0.10; ctx.fill();
+    ctx.globalAlpha = 1;
+    // Linie segmentweise gruen/rot je nach Vorzeichen
+    ctx.lineWidth = 1.8*dpr;
+    for(let i=1;i<pcts.length;i++){{
+      ctx.strokeStyle = (pcts[i] >= 0 ? GREEN : RED);
+      ctx.beginPath();
+      ctx.moveTo(X(i-1), Y(pcts[i-1]));
+      ctx.lineTo(X(i), Y(pcts[i]));
+      ctx.stroke();
+    }}
+    // Hover: vertikale Linie + Punkt
+    if(hoverIdx !== null){{
+      const hx = X(hoverIdx), hy = Y(pcts[hoverIdx]);
+      ctx.strokeStyle = GREY; ctx.lineWidth = 1*dpr;
+      ctx.beginPath(); ctx.moveTo(hx,0); ctx.lineTo(hx,cv.height); ctx.stroke();
+      ctx.fillStyle = (pcts[hoverIdx] >= 0 ? GREEN : RED);
+      ctx.beginPath(); ctx.arc(hx,hy,4*dpr,0,2*Math.PI); ctx.fill();
+    }}
+  }}
+  function onMove(ev){{
+    const r = cv.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / r.width;
+    let idx = Math.round(x * (prices.length-1));
+    idx = Math.max(0, Math.min(prices.length-1, idx));
+    const pc = pcts[idx];
+    const col = pc >= 0 ? '#3FB950' : '#F85149';
+    tip.innerHTML = '<b style="color:#e6e6e6">' + sym + ' ' +
+      prices[idx].toLocaleString('de-DE',{{minimumFractionDigits:2,maximumFractionDigits:2}}) +
+      '</b> <span style="color:'+col+'">(' + (pc>=0?'+':'') + pc.toFixed(2) + ' %)</span>' +
+      ' <span style="color:#6B7686">\u00b7 ' + (labels[idx]||'') + '</span>';
+    draw(idx);
+  }}
+  function onLeave(){{ tip.innerHTML=''; draw(null); }}
+  cv.addEventListener('mousemove', onMove);
+  cv.addEventListener('mouseleave', onLeave);
+  window.addEventListener('resize', function(){{ resize(); draw(null); }});
+  draw(null);
+}})();
+</script>
+"""
+
+
 def svg_area_chart(pcts, color, height=250):
     """Flaechen-/Linienchart der prozentualen Entwicklung, mit Nulllinie."""
     pcts = [float(p) for p in pcts if p is not None]
@@ -3552,14 +3649,14 @@ if nav == "Einzelanalyse":
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
                 _vtw = q.get("value_trap_warnung") or []
                 if _vtw:
-                    st.warning("\u26a0\ufe0f **M\u00f6gliche Value-Trap** \u2013 selbst pr\u00fcfen, "
+                    st.warning("**M\u00f6gliche Value-Trap** \u2013 selbst pr\u00fcfen, "
                                "bevor du kaufst:\n\n" +
                                "\n".join(f"\u2022 {w}" for w in _vtw) +
-                               "\n\n<small>\u201eZu g\u00fcnstig\u201c bedeutet oft, dass der "
+                               "\n\n\u201eZu g\u00fcnstig\u201c bedeutet oft, dass der "
                                "Markt etwas wei\u00df, das die Kennzahlen noch nicht "
                                "zeigen \u2013 oder dass der Fair Value auf fehlerhaften "
                                "Daten beruht. Der Titel bleibt als Idee im Screener, "
-                               "der Score ist nur leicht ged\u00e4mpft.</small>",
+                               "der Score ist nur leicht ged\u00e4mpft.",
                                icon="\u26a0\ufe0f")
 
                 st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
@@ -3630,10 +3727,28 @@ if nav == "Einzelanalyse":
                             unsafe_allow_html=True)
 
                         hexcol = "#3FB950" if p_pct >= 0 else "#F85149"
-                        st.markdown(svg_area_chart(list(hist["pct"]), hexcol, height=250),
-                                    unsafe_allow_html=True)
-                        st.caption(f"Zeitraum {tf} \u00b7 Achse: % seit Start "
-                                   f"(0-Linie gestrichelt).")
+                        # Zeitlabels je nach Zeitraum: Intraday -> Uhrzeit,
+                        # laengere -> Datum. Fuer den Hover-Tooltip.
+                        try:
+                            _dt = pd.to_datetime(hist["Datum"])
+                            if tf in ("1T", "1W"):
+                                _labels = [d.strftime("%H:%M, %d.%m.") for d in _dt]
+                            else:
+                                _labels = [d.strftime("%d.%m.%Y") for d in _dt]
+                        except Exception:
+                            _labels = [str(x) for x in hist["Datum"]]
+                        _chart_html = interactive_price_chart(
+                            list(hist["Preis"]), list(hist["pct"]), _labels,
+                            sym=sym, height=260)
+                        if _chart_html:
+                            components.html(_chart_html, height=300)
+                        else:
+                            st.markdown(svg_area_chart(list(hist["pct"]), hexcol,
+                                                       height=250),
+                                        unsafe_allow_html=True)
+                        st.caption(f"Zeitraum {tf} \u00b7 \u00fcber den Chart fahren zeigt "
+                                   f"Kurs und Zeitpunkt \u00b7 gr\u00fcn \u00fcber, rot unter "
+                                   f"dem Startkurs (0-Linie gestrichelt).")
                     else:
                         st.markdown(f'<span class="na">Kein Kursverlauf f\u00fcr "{tf}" '
                                     'verf\u00fcgbar (Intraday/1W nur an Handelstagen).</span>',

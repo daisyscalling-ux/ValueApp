@@ -4544,6 +4544,40 @@ if nav == "Einzelanalyse":
                      f"{an.get('buy','\u2014')}B / {an.get('hold','\u2014')}H / {an.get('sell','\u2014')}S"
                      if an else "n/a")
 
+                # --- TEST: Liefert der Finnhub-Zugang Rating-Changes je Bank? ---
+                # roic bietet KEINE Analysten-Meinungsdaten, daher nur Finnhub.
+                # Dieser Test zeigt, ob dein Zugang die Upgrade/Downgrade-Events
+                # liefert (Plan-abhaengig), bevor wir ein Feature darauf bauen.
+                with st.expander("\U0001f9ea Test: Rating-Changes (Upgrade/Downgrade) "
+                                 "verf\u00fcgbar?"):
+                    st.caption("Pr\u00fcft, ob dein Finnhub-Zugang einzelne "
+                               "Rating-\u00c4nderungen je Bank mit Datum liefert "
+                               "(z.B. \u201eBarclays: Overweight \u2192 Buy\u201c). roic hat "
+                               "solche Meinungsdaten nicht \u2013 daher nur Finnhub.")
+                    if st.button("\U0001f52c Rating-Changes abrufen",
+                                 key=f"rc_test_{ticker}"):
+                        try:
+                            _rc = providers.get_rating_changes(ticker)
+                            if _rc:
+                                st.success(f"\u2705 Finnhub liefert Rating-Changes "
+                                           f"\u2013 {len(_rc)} Eintr\u00e4ge f\u00fcr {ticker}:")
+                                _rows = [{"Datum": r["datum"], "Firma": r["firma"],
+                                          "Von": r["von"] or "\u2014",
+                                          "Auf": r["zu"] or "\u2014",
+                                          "Aktion": r["aktion"]} for r in _rc]
+                                vr_table(_rows)
+                                st.caption("\u2705 Der Zugang funktioniert \u2013 wir "
+                                           "k\u00f6nnen daraus ein festes Feature bauen.")
+                            else:
+                                st.warning("\u274c Keine Rating-Changes zur\u00fcck. "
+                                           "Entweder liefert dein Finnhub-Plan diesen "
+                                           "Endpunkt nicht (oft nur in kostenpflichtigen "
+                                           "Tarifen), oder es gibt f\u00fcr diesen Titel "
+                                           "gerade keine. Probier einen gro\u00dfen "
+                                           "US-Titel wie NVDA oder AAPL.")
+                        except Exception as _e:
+                            st.error(f"Test fehlgeschlagen: {_e}")
+
                 # (Der zweite Nachrichten-Block an dieser Stelle wurde
                 #  entfernt - die Meldungen stehen jetzt oben unter
                 #  'Profil, Nachrichten, Peers & Earnings Call'.)

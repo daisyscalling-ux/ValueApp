@@ -1001,6 +1001,34 @@ def get_performance(ticker: str) -> dict:
         return {}
 
 
+def get_rating_changes(ticker: str, limit: int = 8):
+    """Analysten-Rating-Aenderungen (Upgrade/Downgrade) je Bank mit Datum.
+    Quelle: Finnhub 'stock/upgrade-downgrade' - roic bietet diese
+    Meinungs-Daten NICHT an, daher zwingend Finnhub. Gibt eine Liste von
+    {datum, firma, von, zu, aktion} zurueck (neueste zuerst) oder None, wenn
+    der Finnhub-Zugang das nicht liefert (Plan-abhaengig)."""
+    d = _fh("stock/upgrade-downgrade", {"symbol": ticker})
+    if not isinstance(d, list) or not d:
+        return None
+    out = []
+    for e in d[:limit]:
+        try:
+            _ts = e.get("gradeTime")
+            _datum = ""
+            if _ts:
+                import datetime as _dt
+                _datum = _dt.datetime.utcfromtimestamp(int(_ts)).strftime("%d.%m.%Y")
+            out.append({
+                "datum": _datum,
+                "firma": e.get("company") or "",
+                "von": e.get("fromGrade") or "",
+                "zu": e.get("toGrade") or "",
+                "aktion": e.get("action") or ""})     # up/down/init/maintain
+        except Exception:
+            continue
+    return out or None
+
+
 def get_analyst_ratings(ticker: str):
     """Analystenrating als {buy, hold, sell}. Finnhub bevorzugt, sonst yfinance."""
     rev = get_estimate_revisions(ticker)

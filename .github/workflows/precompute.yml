@@ -7,13 +7,19 @@ name: value-radar-update
 # und bleibt klar innerhalb der GitHub-Freiminuten.
 on:
   schedule:
-    - cron: "15 5,14 * * *"
+    # Alle 4 Stunden. GitHub Actions laeuft in UTC, die Ziel-Zeiten sind
+    # deutsche Zeit: 4, 8, 12, 16, 20, 24 Uhr. Im SOMMER (MESZ = UTC+2)
+    # entspricht das 2,6,10,14,18,22 UTC. Im WINTER (MEZ = UTC+1) waeren
+    # es 3,7,11,15,19,23 UTC - dann verschieben sich die deutschen Zeiten
+    # um eine Stunde (5,9,13,17,21,1 Uhr). Cron kann keine Zeitzone, daher
+    # ist hier die Sommerzeit fest hinterlegt.
+    - cron: "0 2,6,10,14,18,22 * * *"
   workflow_dispatch: {}          # erlaubt manuellen Start per Knopf
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -33,8 +39,6 @@ jobs:
           # --- Pflicht: Datenquellen ---
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
-          
           # --- Optional ---
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

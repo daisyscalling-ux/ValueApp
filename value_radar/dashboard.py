@@ -3540,55 +3540,19 @@ if nav == "Einzelanalyse":
                                icon="\u26a0\ufe0f")
 
                 # ============================================================
-                # MARKTKONTEXT-EBENE - getrennt vom Fair Value. Ordnet den
-                # Fair Value gegen Marktstimmung und die eigene Bewertungs-
-                # historie ein, OHNE beides zu einer Zahl zu vermengen.
+                # EIGENES 12-MONATS-ZIEL - der 'eigene Analyst'. Verdichtet
+                # Fair Value + Wachstum(qualitaetsgewichtet) + Bewertungs-
+                # historie + Marktregime zu EINEM eigenstaendigen Ziel, das
+                # bewusst vom Analystenkonsens abweichen darf - transparent.
                 # ============================================================
+                # Marktregime + Bewertungskontext werden fuer das eigene Ziel
+                # noch gebraucht (nur als Rechengroesse, nicht mehr angezeigt).
                 try:
                     import regime as _reg
                     _bk = _reg.bewertungs_kontext(f, fair_value=v.get("fair_value"))
                     _mr = _reg.markt_regime()
                 except Exception:
                     _bk, _mr = None, None
-
-                if _bk or _mr:
-                    with st.expander("\U0001f9ed Marktkontext \u2013 Fair Value "
-                                     "gegen Markt & Historie", expanded=True):
-                        st.caption("Der Fair Value oben bleibt unber\u00fchrt. Hier "
-                                   "wird er nur EINGEORDNET \u2013 gegen die "
-                                   "Marktstimmung (im Kurs enthalten) und gegen "
-                                   "die eigene Bewertungshistorie der Aktie.")
-                        # Bewertungs-Einordnung der Aktie
-                        if _bk and _bk.get("gesamt"):
-                            _fv_ab = _bk.get("fv_abstand")
-                            _farbe = ("var(--green)" if (_fv_ab or 0) < -5
-                                      else "var(--red)" if (_fv_ab or 0) > 20
-                                      else "var(--muted)")
-                            st.markdown(
-                                f'<div class="news-box"><b>Bewertung dieser Aktie</b>'
-                                f'<div style="color:{_farbe};margin-top:4px">'
-                                f'{esc(_bk["gesamt"])}</div></div>',
-                                unsafe_allow_html=True)
-                        # Marktregime (Gesamtmarkt)
-                        if _mr:
-                            _amp = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
-                                    "rot": "\U0001f534"}.get(_mr["ampel"], "\u26aa")
-                            st.markdown(
-                                f'<div class="news-box"><b>{_amp} Marktumfeld: '
-                                f'{esc(_mr["text"])}</b>'
-                                + "".join(f'<div class="meta">\u2022 {esc(x)}</div>'
-                                          for x in _mr.get("faktoren", []))
-                                + '</div>', unsafe_allow_html=True)
-                        st.caption("Einordnung, kein Anlagerat. Marktumfeld aus "
-                                   "harten Indikatoren (Trend, VIX, Drawdown) \u2013 "
-                                   "keine Geopolitik-Sch\u00e4tzung.")
-
-                # ============================================================
-                # EIGENES 12-MONATS-ZIEL - der 'eigene Analyst'. Verdichtet
-                # Fair Value + Wachstum(qualitaetsgewichtet) + Bewertungs-
-                # historie + Marktregime zu EINEM eigenstaendigen Ziel, das
-                # bewusst vom Analystenkonsens abweichen darf - transparent.
-                # ============================================================
                 try:
                     _ez = valuation.eigenes_ziel(
                         f, fair_value=v.get("fair_value"), preset=ep,

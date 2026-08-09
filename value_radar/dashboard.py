@@ -1561,16 +1561,37 @@ def render_pf_logbook():
                 "eintragen.")
         return
 
+    # --- Filter nach Portfolio / Strategie ---
+    _pf_vorhanden = sorted({(e.get("portfolio") or "").strip()
+                            for e in log if (e.get("portfolio") or "").strip()})
+    _log_gefiltert = log
+    if _pf_vorhanden:
+        _filter_opts = ["Alle"] + _pf_vorhanden + ["\u2014 ohne Zuordnung \u2014"]
+        _f_pf = st.selectbox("Nach Portfolio filtern", _filter_opts,
+                             key="pfl_filter")
+        if _f_pf == "\u2014 ohne Zuordnung \u2014":
+            _log_gefiltert = [e for e in log
+                              if not (e.get("portfolio") or "").strip()]
+        elif _f_pf != "Alle":
+            _log_gefiltert = [e for e in log
+                              if (e.get("portfolio") or "").strip() == _f_pf]
+
     data = [{"Datum": e.get("datum", ""), "Typ": e.get("typ", ""),
              "Ticker": e.get("ticker", ""), "Anzahl": e.get("anzahl"),
              "Kurs \u20ac": e.get("kurs_eur"), "Betrag \u20ac": e.get("betrag_eur"),
              "G/V \u20ac": e.get("gv_eur"), "Portfolio": e.get("portfolio", ""),
              "Quelle": e.get("quelle", ""), "Notiz": (e.get("notiz") or "")[:30]}
-            for e in log]
+            for e in _log_gefiltert]
+    if not data:
+        st.info("Keine Eintr\u00e4ge f\u00fcr dieses Portfolio.")
+        return
     vr_table(data, signed_cols=("G/V \u20ac",), height=min(len(data) * 40 + 46, 620))
 
-    realized = sum(e.get("gv_eur") or 0 for e in log if e.get("typ") == "Verkauf")
-    st.caption(f"Realisiertes Ergebnis aus protokollierten Verk\u00e4ufen: "
+    realized = sum(e.get("gv_eur") or 0 for e in _log_gefiltert
+                   if e.get("typ") == "Verkauf")
+    _hinweis = ("" if _log_gefiltert is log
+                else " (gefiltert auf das gew\u00e4hlte Portfolio)")
+    st.caption(f"Realisiertes Ergebnis aus protokollierten Verk\u00e4ufen{_hinweis}: "
                f"{'+' if realized >= 0 else '\u2212'}{sym_eur(abs(realized))} "
                "(nur aus den hier eingetragenen G/V-Werten \u2013 unvollst\u00e4ndig, wenn "
                "du Eintr\u00e4ge ohne G/V erfasst hast).")
@@ -1593,6 +1614,29 @@ def render_pf_logbook():
             log.pop(idx)
             store.set_pf_log(log)
             st.rerun()
+
+
+def positions_status(upside, ret_pct):
+    """Ordnet eine Position in eines von vier Feldern ein - aus dem Zusammenspiel
+    von Upside (lohnt der Kauf HEUTE noch?) und Position-Rendite (bin ich im
+    Plus/Minus?). Gibt (symbol, kurztext) zurueck. KEIN Anlagerat - nur eine
+    Sortierhilfe fuer die eigene Pruefung.
+
+    Die Leitfrage bleibt immer: 'Wuerde ich zum heutigen Kurs neu kaufen?'
+      Upside +, egal ob Position +/- : Tool sieht noch Potenzial -> These pruefen
+      Upside -, Position +           : nicht mehr billig, aber im Gewinn
+      Upside -, Position -           : beide Signale negativ -> genau pruefen
+    """
+    if upside is None:
+        return ("", "")
+    im_plus = (ret_pct is None) or (ret_pct >= 0)
+    if upside >= 0 and im_plus:
+        return ("\U0001f7e2", "Upside + / im Plus \u2013 laeuft")
+    if upside >= 0 and not im_plus:
+        return ("\U0001f535", "Upside + / im Minus \u2013 These pr\u00fcfen")
+    if upside < 0 and im_plus:
+        return ("\U0001f7e1", "Upside \u2212 / im Plus \u2013 nicht nachkaufen")
+    return ("\U0001f534", "Upside \u2212 / im Minus \u2013 genau pr\u00fcfen")
 
 
 def read_url(url, access=""):
@@ -2658,7 +2702,10 @@ if nav == "Start":
                                         if r.get("composite") is not None else None),
                               "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                               **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
-                                 if an["have_pl"] else {})}
+                                 if an["have_pl"] else {}),
+                              "Status": positions_status(
+                                  r.get("upside"),
+                                  r.get("ret_pct") if an["have_pl"] else None)[0]}
                              for r in prsort]
                     vr_table(pdata, score_cols=("Comp.",),
                              signed_cols=("Upside %", "Kauf %"),
@@ -2762,7 +2809,10 @@ if nav == "MyValueApp":
                                     if r.get("composite") is not None else None),
                           "Upside %": round(r["upside"], 2) if r.get("upside") is not None else None,
                           **({"Kauf %": round(r["ret_pct"], 2) if r.get("ret_pct") is not None else None}
-                             if an["have_pl"] else {})}
+                             if an["have_pl"] else {}),
+                          "Status": positions_status(
+                              r.get("upside"),
+                              r.get("ret_pct") if an["have_pl"] else None)[0]}
                          for r in prsort]
                 vr_table(pdata, score_cols=("Comp.",),
                          signed_cols=("Upside %", "Kauf %"),
@@ -6307,6 +6357,9 @@ if nav == "Portfoliocheck":
                          **({"G/V \u20ac": round(r["gain_eur"], 2) if r.get("gain_eur") is not None else None}
                             if a["have_pl"] else {}),
                          "Wert \u20ac": round(r["value_eur"], 2),
+                         "Status": positions_status(
+                             r.get("upside"),
+                             r.get("ret_pct") if a["have_pl"] else None)[0],
                          "Kommentar": (_komm_tbl.get(str(r["ticker"]).upper(), "") or "")[:40],
                          "\u2013\u2013": r["ticker"]} for r in prows]     # Verkaufs-Button
                 vr_table(data, score_cols=("Comp.",),
@@ -6315,6 +6368,14 @@ if nav == "Portfoliocheck":
                 st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 Einzelanalyse \u00b7 "
                            "\u2715 rechts = Position verkaufen (mit Best\u00e4tigung, wird ins "
                            "Logbuch \u00fcbernommen).")
+                st.caption(
+                    "**Status** (Leitfrage: *W\u00fcrde ich zum heutigen Kurs neu "
+                    "kaufen?*) \u2013 \U0001f7e2 Upside + / im Plus: l\u00e4uft \u00b7 "
+                    "\U0001f535 Upside + / im Minus: These pr\u00fcfen \u00b7 "
+                    "\U0001f7e1 Upside \u2212 / im Plus: nicht nachkaufen \u00b7 "
+                    "\U0001f534 Upside \u2212 / im Minus: genau pr\u00fcfen "
+                    "(Value-Trap-Gefahr). Kein Anlagerat \u2013 nur eine Sortierhilfe "
+                    "f\u00fcr deine eigene Pr\u00fcfung.")
 
                 # --- Kommentar-Spalte je Position (editierbar, dauerhaft) ------
                 _pf_name_akt = st.session_state.get("pf_cur_name", "")

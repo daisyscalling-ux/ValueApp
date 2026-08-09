@@ -7237,11 +7237,51 @@ if nav == "Earnings Calls":
                          or "\u2014", _tr.get("datum") or "", "var(--amber)")
 
                     _av = st.radio("Ansicht",
-                                   ["\U0001f4cc Kernstellen", "\U0001f4c4 Volltext"],
+                                   ["\U0001f4dd Zusammenfassung",
+                                    "\U0001f4cc Kernstellen", "\U0001f4c4 Volltext"],
                                    horizontal=True, label_visibility="collapsed",
                                    key="ec_ansicht")
 
-                    if _av.endswith("Kernstellen"):
+                    if _av.endswith("Zusammenfassung"):
+                        _zf = _kt.zusammenfassung_call(_txt)
+                        st.caption("**Faktenorientierte \u00dcbersicht \u2013 keine "
+                                   "Stimmungsdeutung.** W\u00f6rtliche Fundstellen aus "
+                                   "dem Protokoll, nach Art geordnet. Kein Anlagerat.")
+                        if _zf.get("themen"):
+                            _tt = " \u00b7 ".join(f"{t['thema']} ({t['nennungen']})"
+                                                 for t in _zf["themen"][:5])
+                            st.markdown(f"**Worum es ging:** {_tt}")
+                        if _zf.get("fakten"):
+                            st.markdown('<div class="sec-title" '
+                                        'style="margin-top:12px">\U0001f4ca '
+                                        'GENANNTE ZAHLEN</div>',
+                                        unsafe_allow_html=True)
+                            for _f in _zf["fakten"]:
+                                st.markdown(f"> {esc(_f)}")
+                        if _zf.get("ausblick"):
+                            st.markdown('<div class="sec-title" '
+                                        'style="margin-top:12px">\U0001f52d '
+                                        'AUSBLICK (Management)</div>',
+                                        unsafe_allow_html=True)
+                            st.caption("Was die Leitung f\u00fcr die Zukunft sagt \u2013 "
+                                       "erfahrungsgem\u00e4\u00df optimistisch, mit Vorsicht "
+                                       "zu lesen.")
+                            for _a in _zf["ausblick"]:
+                                st.markdown(f"> {esc(_a)}")
+                        if _zf.get("nachfragen"):
+                            st.markdown('<div class="sec-title" '
+                                        'style="margin-top:12px">\U0001f5e3\ufe0f '
+                                        'WORAN ANALYSTEN NACHHAKTEN</div>',
+                                        unsafe_allow_html=True)
+                            st.caption("Das Aufschlussreichste am Call: Hier wird "
+                                       "kritisch nachgefragt, oft zu wunden Punkten.")
+                            for _n in _zf["nachfragen"]:
+                                st.markdown(f"> {esc(_n)}")
+                        if not any([_zf.get("fakten"), _zf.get("ausblick"),
+                                    _zf.get("nachfragen")]):
+                            st.info("Keine strukturierten Fundstellen gefunden \u2013 "
+                                    "sieh dir die Kernstellen oder den Volltext an.")
+                    elif _av.endswith("Kernstellen"):
                         _bl = _kt.kernstellen(_txt, max_je_thema=4)
                         if not _bl:
                             st.info("Keine Kernstellen gefunden \u2013 das "

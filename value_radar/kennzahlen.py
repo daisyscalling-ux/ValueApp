@@ -24,6 +24,7 @@ EINHEITEN (aus der echten roic-Antwort abgeleitet)
   net_debt_to_ebitda, cur_ratio, quick_ratio sind ROHE Verhaeltnisse
 """
 from __future__ import annotations
+import re
 
 # ---------------------------------------------------------------------------
 # Schwellen. Aufbau je Eintrag:
@@ -318,7 +319,88 @@ def kernstellen(text: str, max_je_thema: int = 4) -> list:
     return out
 
 
-def transkript_kennzahlen(text: str) -> dict:
+def zusammenfassung_call(text: str, max_fakten=6, max_fragen=4) -> dict:
+    """Faktenorientierte Zusammenfassung eines Earnings Calls - bewusst OHNE
+    Stimmungsdeutung. Das Management klingt fast immer zuversichtlich; eine
+    Stimmungsauswertung wuerde nur die PR messen. Stattdessen extrahieren wir:
+
+      fakten   : Saetze mit nachpruefbaren Zahlen (Umsatz, Gewinn, Wachstum,
+                 Guidance-Prozente) - das Konkrete, nicht das Gefuehlte.
+      ausblick : Saetze mit klaren Zukunftsaussagen (guidance, we expect ...).
+      nachfragen: die kritischen Analystenfragen aus dem Q&A - dort steht das
+                 Ungeschoente, hier wird nachgehakt.
+      themen   : die haeufigsten Themen (woran sich der Call abarbeitet).
+
+    Alles woertliche Fundstellen, keine Deutung. Kein Anlagerat."""
+    if not text:
+        return {"fakten": [], "ausblick": [], "nachfragen": [], "themen": []}
+    t = teile_transkript(text)
+    vortrag, fragen = t["vortrag"], t["fragen"]
+
+    # 1) Fakten: Saetze mit harten Zahlen (%, Mrd/Mio, "revenue of", "EPS of")
+    _zahl = re.compile(
+        r"(\$?\d[\d.,]*\s?(?:%|percent|billion|million|bps|basis points)"
+        r"|revenue of|net income of|eps of|earnings per share of|grew \d"
+        r"|increased \d|decreased \d|up \d|down \d|margin of)",
+        re.IGNORECASE)
+    fakten = []
+    _gesehen = set()
+    for s in _saetze(vortrag):
+        if _zahl.search(s) and 40 <= len(s) <= 320:
+            _k = s.lower()[:60]
+            if _k not in _gesehen:
+                _gesehen.add(_k)
+                fakten.append(s.strip())
+        if len(fakten) >= max_fakten:
+            break
+
+    # 2) Ausblick: Saetze mit klaren Zukunftsaussagen
+    _aus_marker = ("guidance", "we expect", "we anticipate", "we now see",
+                   "full year", "next quarter", "raising our", "lowering our",
+                   "we forecast", "for fiscal", "going forward", "we project")
+    ausblick = []
+    _gesehen2 = set()
+    for s in _saetze(vortrag):
+        sl = s.lower()
+        if any(m in sl for m in _aus_marker) and 40 <= len(s) <= 320:
+            _k = sl[:60]
+            if _k not in _gesehen2:
+                _gesehen2.add(_k)
+                ausblick.append(s.strip())
+        if len(ausblick) >= 4:
+            break
+
+    # 3) Nachfragen: die Analystenfragen aus dem Q&A. Fragen an Fragezeichen
+    #    trennen (der normale Satz-Splitter teilt nur an Punkten).
+    nachfragen = []
+    if fragen:
+        _frage_ein = ("could you", "can you", "how do you", "what about",
+                      "i wanted to ask", "i'm curious", "wondering if",
+                      "help us understand", "walk us through", "clarify")
+        # an ? UND . aufsplitten, damit einzelne Fragen entstehen
+        _roh = re.split(r"(?<=[?.])\s+", fragen.replace("\n", " "))
+        _gesehen3 = set()
+        for s in _roh:
+            s = s.strip()
+            sl = s.lower()
+            ist_frage = s.endswith("?") or any(e in sl for e in _frage_ein)
+            if ist_frage and 30 <= len(s) <= 300:
+                _k = sl[:50]
+                if _k not in _gesehen3:
+                    _gesehen3.add(_k)
+                    nachfragen.append(s)
+            if len(nachfragen) >= max_fragen:
+                break
+
+    # 4) Themen nach Haeufigkeit (worum kreist der Call?)
+    low = text.lower()
+    _themen_zaehler = [(thema, sum(low.count(b) for b in begriffe))
+                       for thema, begriffe in THEMEN]
+    _themen_zaehler.sort(key=lambda x: -x[1])
+    themen = [{"thema": th, "nennungen": n} for th, n in _themen_zaehler if n > 0]
+
+    return {"fakten": fakten, "ausblick": ausblick,
+            "nachfragen": nachfragen, "themen": themen}
     """Wenige nachpruefbare Masszahlen - ausdruecklich KEINE Stimmungsanalyse.
 
     Der Anteil des Frageteils ist die interessanteste davon: Ein sehr

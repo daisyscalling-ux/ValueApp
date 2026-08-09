@@ -601,6 +601,19 @@ def card(col, label, value, sub="", color="var(--fg)"):
                  f'<div class="sub">{sub}</div></div>', unsafe_allow_html=True)
 
 
+def info_icon(text):
+    """Dezentes, schoenes Info-Icon mit Hover-Tooltip (title=). Kleiner
+    gefuellter Kreis mit i statt der frueheren duennen Umrandung - passt
+    besser ins dunkle Terminal-Design."""
+    if not text:
+        return ""
+    return (f'<span title="{esc(text)}" style="cursor:help;display:inline-flex;'
+            f'align-items:center;justify-content:center;width:14px;height:14px;'
+            f'font-size:10px;font-style:italic;font-weight:600;line-height:1;'
+            f'color:var(--bg,#0A0E14);background:var(--muted);border-radius:50%;'
+            f'margin-left:5px;vertical-align:middle;opacity:0.75">i</span>')
+
+
 # --- Eigene SVG-Charts (kein altair -> immun gegen Python/altair-Versionsbrueche) ---
 def _svg_esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
@@ -3503,13 +3516,23 @@ if nav == "Einzelanalyse":
                                           momentum=s["category_scores"].get("momentum"))
 
                 c = st.columns(6)
+                _q_info = info_icon(
+                    "Gesamtnote des Tools (0\u2013100): b\u00fcndelt Qualit\u00e4t, "
+                    "Bewertung, Analysten und Momentum und zieht teure Titel "
+                    "(negativer Upside) sowie m\u00f6gliche Value-Traps ab. "
+                    "H\u00f6her ist besser.")
+                _comp_info = info_icon(
+                    "Fundamentaler Gesamtscore (0\u2013100) aus sechs Kategorien: "
+                    "Bewertung, Qualit\u00e4t, Wachstum, Bilanzgesundheit, Momentum "
+                    "und Katalysator \u2013 jeweils Durchschnitt der zugeh\u00f6rigen "
+                    "Kennzahlen. Misst die Substanz, nicht den Kaufzeitpunkt.")
                 if q["score"] is not None:
-                    card(c[0], "\u269b\ufe0f Quantum Score", f"{q['score']:.0f}",
+                    card(c[0], "\u269b\ufe0f Quantum Score" + _q_info, f"{q['score']:.0f}",
                          "/ 100", score_color(q["score"]))
                 else:
-                    card(c[0], "\u269b\ufe0f Quantum Score", "\u2014")
+                    card(c[0], "\u269b\ufe0f Quantum Score" + _q_info, "\u2014")
                 comp = s["composite"]
-                card(c[1], "Composite Score", f"{comp:.0f}",
+                card(c[1], "Composite Score" + _comp_info, f"{comp:.0f}",
                      "Value-Trap!" if s["value_trap"] else "/ 100", score_color(comp))
                 card(c[2], "Kurs", m(v["price"]), "aktuell")
                 up = display_upside(v, f.get("price"))   # identisch zum Portfolio
@@ -3538,6 +3561,170 @@ if nav == "Einzelanalyse":
                                "Daten beruht. Der Titel bleibt als Idee im Screener, "
                                "der Score ist nur leicht ged\u00e4mpft.</small>",
                                icon="\u26a0\ufe0f")
+
+                st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
+                left, right = st.columns([1, 1])
+
+                with left:
+                    st.markdown('<div class="sec-title">SCORING-MATRIX</div>', unsafe_allow_html=True)
+                    rows = ""
+                    for k, val in s["category_scores"].items():
+                        rows += (f'<div class="row"><span class="lbl">{k}</span>'
+                                 f'<div class="track"><div class="fill" '
+                                 f'style="width:{val}%;background:{score_color(val)}"></div></div>'
+                                 f'<span class="val">{val:.0f}</span></div>')
+                    st.markdown(rows, unsafe_allow_html=True)
+                    rg = v["reverse_dcf_implied_growth"]
+                    st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
+                               f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
+                    # --- Annahmen-Transparenz: WORAUF beruht der Fair Value? ---
+                    _an = v.get("annahmen")
+                    if _an:
+                        with st.expander("\U0001f9ee Annahmen hinter dem Fair Value "
+                                         "(zum Nachvollziehen)"):
+                            st.caption("Diese Eingaben gehen in den DCF ein. Wenn "
+                                       "eine Zahl unplausibel aussieht (z.B. ein "
+                                       "WACC weit weg von 6\u201312 %), beruht der Fair "
+                                       "Value auf schlechten Daten \u2013 dann ist das "
+                                       "Ergebnis mit Vorsicht zu lesen.")
+                            _ac = st.columns(2)
+                            def _geld(v):
+                                # grosse Betraege lesbar: Mrd / Mio / Tsd
+                                if v is None:
+                                    return "\u2014"
+                                _a = abs(v)
+                                if _a >= 1e9:
+                                    return f"{v/1e9:.1f} Mrd \u20ac"
+                                if _a >= 1e6:
+                                    return f"{v/1e6:.0f} Mio \u20ac"
+                                if _a >= 1e3:
+                                    return f"{v/1e3:.0f} Tsd \u20ac"
+                                return f"{v:.0f} \u20ac"
+                            _fcf = _an["free_cashflow"]
+                            _ac[0].markdown(
+                                f"**Free Cashflow:** {_geld(_fcf) if _fcf else '\u2014'}  \n"
+                                f"**Aktienzahl:** {_an['shares_out']/1e6:.0f} Mio  \n"
+                                f"**Nettoverschuldung:** {_geld(_an['net_debt'])}  \n"
+                                f"**Projektionsjahre:** {_an['jahre']}")
+                            _wtext = (f"**Startwachstum:** {_an['wachstum_start']*100:.1f} %")
+                            if _an["wachstum_gedeckelt"]:
+                                _wtext += (f" (gedeckelt von "
+                                           f"{_an['wachstum_start_roh']*100:.1f} % auf "
+                                           f"max. {_an['wachstum_cap']*100:.0f} %)")
+                            _wtext += f"  \n<small>Quelle: {_an['wachstum_quelle']}</small>"
+                            _wacc_txt = f"**WACC (Diskontsatz):** {_an['wacc']*100:.2f} %"
+                            if _an["wacc_angehoben"]:
+                                _wacc_txt += " (auf Mindestabstand angehoben)"
+                            _plausibel = 0.04 <= _an["wacc"] <= 0.16
+                            _wacc_warn = ("" if _plausibel else
+                                          "  \u26a0\ufe0f ungew\u00f6hnlich \u2013 Datenlage pr\u00fcfen")
+                            _ac[1].markdown(
+                                f"{_wtext}  \n"
+                                f"**Terminal-Wachstum:** {_an['terminal_growth']*100:.1f} %  \n"
+                                f"{_wacc_txt}{_wacc_warn}  \n"
+                                f"<small>Beta: {_an['beta'] if _an['beta'] else '\u2014'}</small>",
+                                unsafe_allow_html=True)
+                            st.caption("Der DCF projiziert den Free Cashflow \u00fcber "
+                                       f"{_an['jahre']} Jahre (Wachstum verjuengt sich "
+                                       "linear vom Start- zum Terminal-Wert), "
+                                       "diskontiert mit dem WACC und zieht die "
+                                       "Nettoverschuldung ab. Kein Anlagerat.")
+                    # --- Bear / Base / Bull: ehrliche Bandbreite statt einer Zahl ---
+                    _sz = v.get("szenarien")
+                    if _sz:
+                        _sc = st.columns(3)
+                        _sc[0].metric("\U0001f43b Bear", m(_sz["bear"]),
+                                      help="Vorsichtig: niedrigeres Wachstum, "
+                                           "hoeherer Diskontsatz")
+                        _sc[1].metric("\u2696\ufe0f Base", m(_sz["base"]),
+                                      help="Aktuelle Annahmen (Basis-DCF)")
+                        _sc[2].metric("\U0001f402 Bull", m(_sz["bull"]),
+                                      help="Optimistisch: hoeheres Wachstum, "
+                                           "niedrigerer Diskontsatz")
+                        _kp = _sz.get("kurs_position")
+                        if _kp is not None:
+                            if _kp < 0:
+                                _lage = ("unter dem Bear-Szenario \u2013 selbst "
+                                         "pessimistisch g\u00fcnstig")
+                            elif _kp > 100:
+                                _lage = ("\u00fcber dem Bull-Szenario \u2013 selbst "
+                                         "optimistisch teuer")
+                            elif _kp <= 35:
+                                _lage = "im unteren (g\u00fcnstigen) Drittel der Spanne"
+                            elif _kp >= 65:
+                                _lage = "im oberen (teuren) Drittel der Spanne"
+                            else:
+                                _lage = "im mittleren Bereich der Spanne"
+                            st.caption(
+                                f"Spanne {_sz['spanne_pct']:.0f}% \u00b7 aktueller Kurs "
+                                f"liegt {_lage}. Je breiter die Spanne, desto "
+                                f"unsicherer die Bewertung (viel Wert steckt in "
+                                f"unsicheren Zukunftsannahmen).")
+                    conf = v.get("confidence")
+                    cmap = {"hoch": "var(--green)", "mittel": "var(--amber)",
+                            "niedrig": "var(--red)"}.get(conf, "var(--muted)")
+                    st.markdown(f'<div class="meta">Verl\u00e4sslichkeit Fair Value: '
+                                f'<b style="color:{cmap}">{esc(conf or "?")}</b> '
+                                f'({v.get("n_methods", 0)} Methoden)</div>',
+                                unsafe_allow_html=True)
+                    if v.get("fair_value_capped"):
+                        st.caption("\u26a0 Fair Value durch Sicherheits-Deckel begrenzt "
+                                   "(Methoden weit auseinander \u2013 vorsichtig interpretieren).")
+                    if not v.get("reliable"):
+                        st.caption("\u26a0 Niedrige Verl\u00e4sslichkeit \u2013 Upside hier nur grob. "
+                                   "Dieser Titel wird nicht als Vorschlag verwendet.")
+
+                with right:
+                    st.markdown('<div id="vr-chart-anchor"></div>'
+                                '<div class="sec-title">KURSVERLAUF</div>',
+                                unsafe_allow_html=True)
+                    tf = st.radio("Zeitraum", list(TIMEFRAMES.keys()), index=0,
+                                  horizontal=True, label_visibility="collapsed",
+                                  key="ea_tf")
+                    # Beim Zeitraum-Wechsel NICHT ans Seitenende springen, sondern
+                    # sanft zum Chart zuruecksetzen.
+                    if st.session_state.get("_ea_tf_seen") not in (None, tf):
+                        components.html(
+                            "<script>setTimeout(function(){try{"
+                            "var d=window.parent.document;"
+                            "var e=d.getElementById('vr-chart-anchor');"
+                            "if(e){e.scrollIntoView({block:'start',behavior:'auto'});}"
+                            "}catch(e){}},60);</script>", height=0)
+                    st.session_state["_ea_tf_seen"] = tf
+                    period, interval = TIMEFRAMES[tf]
+                    hist = load_history(ticker, period, interval)
+                    if hist is not None and not hist.empty:
+                        datecol = hist.columns[0]
+                        hist = hist.rename(columns={datecol: "Datum"}).reset_index(drop=True)
+                        hist["_x"] = range(len(hist))
+                        base = float(hist["Close"].iloc[0])
+                        last = float(hist["Close"].iloc[-1])
+                        hist["pct"] = (hist["Close"] / base - 1) * 100
+                        hist["Preis"] = hist["Close"] * mult
+                        p_pct = (last / base - 1) * 100
+                        p_abs = (last - base) * mult
+                        cc = "var(--green)" if p_pct >= 0 else "var(--red)"
+                        arrow = "\u2197" if p_pct >= 0 else "\u2198"
+                        sign = "+" if p_abs >= 0 else ""
+                        st.markdown(
+                            f'<div class="px-big">{m(last)}</div>'
+                            f'<div class="px-chg" style="color:{cc}">{arrow} {sign}{sym}'
+                            f'{de(abs(p_abs))} ({de(p_pct,2)} %)  <span class="na">\u00b7 {tf}</span></div>',
+                            unsafe_allow_html=True)
+
+                        hexcol = "#3FB950" if p_pct >= 0 else "#F85149"
+                        st.markdown(svg_area_chart(list(hist["pct"]), hexcol, height=250),
+                                    unsafe_allow_html=True)
+                        st.caption(f"Zeitraum {tf} \u00b7 Achse: % seit Start "
+                                   f"(0-Linie gestrichelt).")
+                    else:
+                        st.markdown(f'<span class="na">Kein Kursverlauf f\u00fcr "{tf}" '
+                                    'verf\u00fcgbar (Intraday/1W nur an Handelstagen).</span>',
+                                    unsafe_allow_html=True)
+                    lo, hi, pr = f.get("52w_low"), f.get("52w_high"), f.get("price")
+                    if lo and hi and pr:
+                        pos = (pr - lo) / (hi - lo) * 100
+                        st.caption(f"52W: {m(lo)} \u2500\u2500 [{pos:.2f}%] \u2500\u2500 {m(hi)}")
 
                 # ============================================================
                 # EIGENES 12-MONATS-ZIEL - der 'eigene Analyst'. Verdichtet
@@ -4306,185 +4493,6 @@ if nav == "Einzelanalyse":
                           'zum Beobachten und Lernen, kein Anlagerat.</div></div>',
                         unsafe_allow_html=True)
 
-                st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
-                left, right = st.columns([1, 1])
-
-                with left:
-                    st.markdown('<div class="sec-title">SCORING-MATRIX</div>', unsafe_allow_html=True)
-                    rows = ""
-                    for k, val in s["category_scores"].items():
-                        rows += (f'<div class="row"><span class="lbl">{k}</span>'
-                                 f'<div class="track"><div class="fill" '
-                                 f'style="width:{val}%;background:{score_color(val)}"></div></div>'
-                                 f'<span class="val">{val:.0f}</span></div>')
-                    st.markdown(rows, unsafe_allow_html=True)
-                    st.markdown('<div class="sec-title" style="margin-top:18px">'
-                                'BEWERTUNGSMETHODEN</div>', unsafe_allow_html=True)
-                    meth = v.get("methods", {})
-                    if meth:
-                        vr_table([{"Methode": valuation.METHOD_LABELS.get(k, k),
-                                   f"Wert/Aktie ({sym})": round(val * mult, 2)}
-                                  for k, val in meth.items()])
-                        if v.get("method_profile"):
-                            st.caption(f"\U0001f9ed Methodenwahl f\u00fcr diese Aktie: "
-                                       f"{esc(v['method_profile'])}")
-                        if v.get("range_low") and v.get("range_high"):
-                            st.caption(f"Bewertungsspanne: {m(v['range_low'])} \u2013 {m(v['range_high'])}"
-                                       + (f"  \u00b7  Streuung {v['spread_pct']:.2f} %"
-                                          if v.get('spread_pct') is not None else "")
-                                       + ("  \u26a0 Methoden weichen stark ab \u2013 Fair Value mit "
-                                          "Vorsicht lesen" if (v.get('spread_pct') or 0) > 60 else ""))
-                    rg = v["reverse_dcf_implied_growth"]
-                    st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
-                               f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
-                    # --- Annahmen-Transparenz: WORAUF beruht der Fair Value? ---
-                    _an = v.get("annahmen")
-                    if _an:
-                        with st.expander("\U0001f9ee Annahmen hinter dem Fair Value "
-                                         "(zum Nachvollziehen)"):
-                            st.caption("Diese Eingaben gehen in den DCF ein. Wenn "
-                                       "eine Zahl unplausibel aussieht (z.B. ein "
-                                       "WACC weit weg von 6\u201312 %), beruht der Fair "
-                                       "Value auf schlechten Daten \u2013 dann ist das "
-                                       "Ergebnis mit Vorsicht zu lesen.")
-                            _ac = st.columns(2)
-                            def _geld(v):
-                                # grosse Betraege lesbar: Mrd / Mio / Tsd
-                                if v is None:
-                                    return "\u2014"
-                                _a = abs(v)
-                                if _a >= 1e9:
-                                    return f"{v/1e9:.1f} Mrd \u20ac"
-                                if _a >= 1e6:
-                                    return f"{v/1e6:.0f} Mio \u20ac"
-                                if _a >= 1e3:
-                                    return f"{v/1e3:.0f} Tsd \u20ac"
-                                return f"{v:.0f} \u20ac"
-                            _fcf = _an["free_cashflow"]
-                            _ac[0].markdown(
-                                f"**Free Cashflow:** {_geld(_fcf) if _fcf else '\u2014'}  \n"
-                                f"**Aktienzahl:** {_an['shares_out']/1e6:.0f} Mio  \n"
-                                f"**Nettoverschuldung:** {_geld(_an['net_debt'])}  \n"
-                                f"**Projektionsjahre:** {_an['jahre']}")
-                            _wtext = (f"**Startwachstum:** {_an['wachstum_start']*100:.1f} %")
-                            if _an["wachstum_gedeckelt"]:
-                                _wtext += (f" (gedeckelt von "
-                                           f"{_an['wachstum_start_roh']*100:.1f} % auf "
-                                           f"max. {_an['wachstum_cap']*100:.0f} %)")
-                            _wtext += f"  \n<small>Quelle: {_an['wachstum_quelle']}</small>"
-                            _wacc_txt = f"**WACC (Diskontsatz):** {_an['wacc']*100:.2f} %"
-                            if _an["wacc_angehoben"]:
-                                _wacc_txt += " (auf Mindestabstand angehoben)"
-                            _plausibel = 0.04 <= _an["wacc"] <= 0.16
-                            _wacc_warn = ("" if _plausibel else
-                                          "  \u26a0\ufe0f ungew\u00f6hnlich \u2013 Datenlage pr\u00fcfen")
-                            _ac[1].markdown(
-                                f"{_wtext}  \n"
-                                f"**Terminal-Wachstum:** {_an['terminal_growth']*100:.1f} %  \n"
-                                f"{_wacc_txt}{_wacc_warn}  \n"
-                                f"<small>Beta: {_an['beta'] if _an['beta'] else '\u2014'}</small>",
-                                unsafe_allow_html=True)
-                            st.caption("Der DCF projiziert den Free Cashflow \u00fcber "
-                                       f"{_an['jahre']} Jahre (Wachstum verjuengt sich "
-                                       "linear vom Start- zum Terminal-Wert), "
-                                       "diskontiert mit dem WACC und zieht die "
-                                       "Nettoverschuldung ab. Kein Anlagerat.")
-                    # --- Bear / Base / Bull: ehrliche Bandbreite statt einer Zahl ---
-                    _sz = v.get("szenarien")
-                    if _sz:
-                        _sc = st.columns(3)
-                        _sc[0].metric("\U0001f43b Bear", m(_sz["bear"]),
-                                      help="Vorsichtig: niedrigeres Wachstum, "
-                                           "hoeherer Diskontsatz")
-                        _sc[1].metric("\u2696\ufe0f Base", m(_sz["base"]),
-                                      help="Aktuelle Annahmen (Basis-DCF)")
-                        _sc[2].metric("\U0001f402 Bull", m(_sz["bull"]),
-                                      help="Optimistisch: hoeheres Wachstum, "
-                                           "niedrigerer Diskontsatz")
-                        _kp = _sz.get("kurs_position")
-                        if _kp is not None:
-                            if _kp < 0:
-                                _lage = ("unter dem Bear-Szenario \u2013 selbst "
-                                         "pessimistisch g\u00fcnstig")
-                            elif _kp > 100:
-                                _lage = ("\u00fcber dem Bull-Szenario \u2013 selbst "
-                                         "optimistisch teuer")
-                            elif _kp <= 35:
-                                _lage = "im unteren (g\u00fcnstigen) Drittel der Spanne"
-                            elif _kp >= 65:
-                                _lage = "im oberen (teuren) Drittel der Spanne"
-                            else:
-                                _lage = "im mittleren Bereich der Spanne"
-                            st.caption(
-                                f"Spanne {_sz['spanne_pct']:.0f}% \u00b7 aktueller Kurs "
-                                f"liegt {_lage}. Je breiter die Spanne, desto "
-                                f"unsicherer die Bewertung (viel Wert steckt in "
-                                f"unsicheren Zukunftsannahmen).")
-                    conf = v.get("confidence")
-                    cmap = {"hoch": "var(--green)", "mittel": "var(--amber)",
-                            "niedrig": "var(--red)"}.get(conf, "var(--muted)")
-                    st.markdown(f'<div class="meta">Verl\u00e4sslichkeit Fair Value: '
-                                f'<b style="color:{cmap}">{esc(conf or "?")}</b> '
-                                f'({v.get("n_methods", 0)} Methoden)</div>',
-                                unsafe_allow_html=True)
-                    if v.get("fair_value_capped"):
-                        st.caption("\u26a0 Fair Value durch Sicherheits-Deckel begrenzt "
-                                   "(Methoden weit auseinander \u2013 vorsichtig interpretieren).")
-                    if not v.get("reliable"):
-                        st.caption("\u26a0 Niedrige Verl\u00e4sslichkeit \u2013 Upside hier nur grob. "
-                                   "Dieser Titel wird nicht als Vorschlag verwendet.")
-
-                with right:
-                    st.markdown('<div id="vr-chart-anchor"></div>'
-                                '<div class="sec-title">KURSVERLAUF</div>',
-                                unsafe_allow_html=True)
-                    tf = st.radio("Zeitraum", list(TIMEFRAMES.keys()), index=0,
-                                  horizontal=True, label_visibility="collapsed",
-                                  key="ea_tf")
-                    # Beim Zeitraum-Wechsel NICHT ans Seitenende springen, sondern
-                    # sanft zum Chart zuruecksetzen.
-                    if st.session_state.get("_ea_tf_seen") not in (None, tf):
-                        components.html(
-                            "<script>setTimeout(function(){try{"
-                            "var d=window.parent.document;"
-                            "var e=d.getElementById('vr-chart-anchor');"
-                            "if(e){e.scrollIntoView({block:'start',behavior:'auto'});}"
-                            "}catch(e){}},60);</script>", height=0)
-                    st.session_state["_ea_tf_seen"] = tf
-                    period, interval = TIMEFRAMES[tf]
-                    hist = load_history(ticker, period, interval)
-                    if hist is not None and not hist.empty:
-                        datecol = hist.columns[0]
-                        hist = hist.rename(columns={datecol: "Datum"}).reset_index(drop=True)
-                        hist["_x"] = range(len(hist))
-                        base = float(hist["Close"].iloc[0])
-                        last = float(hist["Close"].iloc[-1])
-                        hist["pct"] = (hist["Close"] / base - 1) * 100
-                        hist["Preis"] = hist["Close"] * mult
-                        p_pct = (last / base - 1) * 100
-                        p_abs = (last - base) * mult
-                        cc = "var(--green)" if p_pct >= 0 else "var(--red)"
-                        arrow = "\u2197" if p_pct >= 0 else "\u2198"
-                        sign = "+" if p_abs >= 0 else ""
-                        st.markdown(
-                            f'<div class="px-big">{m(last)}</div>'
-                            f'<div class="px-chg" style="color:{cc}">{arrow} {sign}{sym}'
-                            f'{de(abs(p_abs))} ({de(p_pct,2)} %)  <span class="na">\u00b7 {tf}</span></div>',
-                            unsafe_allow_html=True)
-
-                        hexcol = "#3FB950" if p_pct >= 0 else "#F85149"
-                        st.markdown(svg_area_chart(list(hist["pct"]), hexcol, height=250),
-                                    unsafe_allow_html=True)
-                        st.caption(f"Zeitraum {tf} \u00b7 Achse: % seit Start "
-                                   f"(0-Linie gestrichelt).")
-                    else:
-                        st.markdown(f'<span class="na">Kein Kursverlauf f\u00fcr "{tf}" '
-                                    'verf\u00fcgbar (Intraday/1W nur an Handelstagen).</span>',
-                                    unsafe_allow_html=True)
-                    lo, hi, pr = f.get("52w_low"), f.get("52w_high"), f.get("price")
-                    if lo and hi and pr:
-                        pos = (pr - lo) / (hi - lo) * 100
-                        st.caption(f"52W: {m(lo)} \u2500\u2500 [{pos:.2f}%] \u2500\u2500 {m(hi)}")
 
                 st.markdown('<div class="sec-title" style="margin-top:10px">'
                             'KATALYSATOR \u00b7 INTEL</div>', unsafe_allow_html=True)

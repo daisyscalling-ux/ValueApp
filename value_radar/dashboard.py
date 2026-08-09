@@ -2643,20 +2643,38 @@ if nav == "Start":
         st.caption("Breiter Marktscan \u00fcber alle Branchen und f\u00fcnf L\u00e4nder \u2013 "
                    "starke Spr\u00fcnge in Composite, Radar-Score oder Upside. "
                    "\U0001f4ca Composite \u00b7 \U0001f4e1 Radar \u00b7 \U0001f4c8 Upside \u00b7 "
-                   "\U0001f3af Kaufzone.")
-        for _c in _changes[:20]:
-            _ic = _kind_icon.get(_c.get("kind"), "\u2022")
-            _tk = esc(str(_c.get("ticker") or ""))
-            _txt = esc(str(_c.get("text") or ""))
-            _sec = esc(str(_c.get("section") or ""))
-            _when = fmt_ts(_c.get("ts"))
-            st.markdown(
-                f'<div class="news-box" style="padding:8px 12px">'
-                f'{_ic} <b class="tick">{_tk}</b> \u2013 {_txt}'
-                f'<div class="meta">{_sec}{(" \u00b7 " + _when) if _when else ""}</div></div>',
-                unsafe_allow_html=True)
+                   "\U0001f3af Kaufzone. Nach Quelle gruppiert.")
+        # Nach Quelle (section) gruppieren, damit die vielen Meldungen gestaffelt
+        # und uebersichtlich in eigenen Tabellen erscheinen statt in einer langen
+        # Liste. Reihenfolge: die eigenen Listen zuerst, dann der breite Markt.
+        _sec_reihenfolge = ["Portfolio", "Watchlist", "Markt", "Screener", "Radar"]
+        _sec_titel = {"Portfolio": "\U0001f4bc Portfolio", "Watchlist": "\U0001f440 Watchlist",
+                      "Markt": "\U0001f30d Markt (Screener + Radar)",
+                      "Screener": "\U0001f50d Screener", "Radar": "\U0001f4e1 Radar"}
+        _gruppen = {}
+        for _c in _changes:
+            _gruppen.setdefault(_c.get("section") or "Sonstige", []).append(_c)
+        # bekannte Sections in fester Reihenfolge, danach evtl. unbekannte
+        _sortiert = [s for s in _sec_reihenfolge if s in _gruppen]
+        _sortiert += [s for s in _gruppen if s not in _sec_reihenfolge]
+        for _sec in _sortiert:
+            _eintr = _gruppen[_sec]
+            _titel = _sec_titel.get(_sec, "\U0001f4cc " + _sec)
+            # eigene Portfolio-/Watchlist-Meldungen aufgeklappt, breiter Markt zu
+            _auf = _sec in ("Portfolio", "Watchlist")
+            with st.expander(f"{_titel}  ({len(_eintr)})", expanded=_auf):
+                _rows = []
+                for _c in _eintr:
+                    _ic = _kind_icon.get(_c.get("kind"), "\u2022")
+                    _rows.append({
+                        "": _ic,
+                        "Ticker": str(_c.get("ticker") or ""),
+                        "Name": (str(_c.get("name") or ""))[:22],
+                        "\u00c4nderung": str(_c.get("text") or ""),
+                        "Wann": fmt_ts(_c.get("ts")) or ""})
+                vr_table(_rows, height=min(len(_rows) * 38 + 46, 420))
         st.caption("Automatisch \u00fcber Nacht berechnet \u00b7 kein Anlagerat. "
-                   "Ticker anklicken \u2013 oder in die Einzelanalyse eingeben.")
+                   "Ticker in die Einzelanalyse eingeben f\u00fcr Details.")
         st.markdown("---")
 
     st.markdown("---")

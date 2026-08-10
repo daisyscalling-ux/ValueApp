@@ -2407,6 +2407,7 @@ NAV_GROUPS = [
      "icon": "\U0001f3c6", "children": [
         ("Trefferbilanz", "Trefferbilanz", "\U0001f3c6"),
         ("Long/Short", "Long/Short", "\u2696\ufe0f"),
+        ("Backtest", "Backtest", "\U0001f9ea"),
      ]},
 ]
 # Ueberpunkte, die selbst eine eigene Seite haben (kein reiner Container).
@@ -6113,6 +6114,139 @@ if nav == "Long/Short":
                            "eine Simulation zum Lernen.")
         else:
             pass
+
+
+# ===========================================================================
+# BACKTEST - ehrliche historische Pruefung: trifft der Fair Value, bringt
+# hoher Upside Rendite? Mit Look-ahead-Schutz.
+# ===========================================================================
+if nav == "Backtest":
+    st.markdown('<div class="sec-title">BACKTEST \u2013 FUNKTIONIEREN UNSERE '
+                'SIGNALE?</div>', unsafe_allow_html=True)
+    st.caption("Ehrliche R\u00fcckschau: Wir rekonstruieren f\u00fcr vergangene "
+               "Stichtage, welche Daten damals WIRKLICH bekannt waren (mit "
+               "Puffer f\u00fcr die Berichtsverz\u00f6gerung \u2013 kein Blick in die "
+               "Zukunft), berechnen den damaligen Fair Value mit unserer "
+               "echten Logik und pr\u00fcfen zwei Fragen getrennt: Kam der Kurs "
+               "dem Fair Value n\u00e4her? Und brachte hoher Upside mehr Rendite? "
+               "Kein Anlagerat.")
+
+    try:
+        import backtest as _bt
+    except Exception as _e:
+        st.error(f"backtest.py fehlt oder ist veraltet: {_e}")
+        _bt = None
+
+    if _bt is not None:
+        _std_titel = "AAPL, MSFT, NVDA, JNJ, KO, JPM, PG, WMT"
+        _eingabe = st.text_input(
+            "Titel (Komma-getrennt, am besten langlebige US-Titel)",
+            value=_std_titel, key="bt_ticker")
+        _c1, _c2, _c3 = st.columns(3)
+        _von = _c1.number_input("Von Jahr", min_value=2005, max_value=2024,
+                                value=2015, key="bt_von")
+        _bis = _c2.number_input("Bis Jahr", min_value=2006, max_value=2025,
+                                value=2023, key="bt_bis")
+        _halte = _c3.selectbox("Haltedauer", [12, 24, 36],
+                               format_func=lambda x: f"{x} Monate", key="bt_halte")
+
+        st.caption("\u26a0\ufe0f Der Backtest ruft f\u00fcr jeden Titel die volle "
+                   "roic-Historie ab \u2013 das dauert bei vielen Titeln. "
+                   "Fang mit wenigen an.")
+
+        if st.button("\U0001f9ea Backtest starten", key="bt_start"):
+            _ticker = [t.strip().upper() for t in _eingabe.split(",") if t.strip()]
+            if not _ticker:
+                st.warning("Bitte mindestens einen Titel eingeben.")
+            elif _roic is None or not _roic.enabled():
+                st.error("roic ist nicht aktiv \u2013 der Backtest braucht die "
+                         "historischen roic-Daten.")
+            else:
+                _stichtage = _bt.jahres_stichtage(int(_von), int(_bis))
+                _alle = []
+                _pro_titel = {}
+                _prog = st.progress(0.0)
+                for _i, _tk in enumerate(_ticker):
+                    try:
+                        _z = _bt.einzeltest(_roic, valuation, _tk, _stichtage,
+                                            haltedauer=int(_halte))
+                        _alle.extend(_z)
+                        _pro_titel[_tk] = len(_z)
+                    except Exception as _e:
+                        _pro_titel[_tk] = f"Fehler: {_e}"
+                    _prog.progress((_i + 1) / len(_ticker))
+                _prog.empty()
+
+                if not _alle:
+                    st.warning("Keine auswertbaren Datenpunkte. M\u00f6glich: roic "
+                               "liefert f\u00fcr diese Titel keine tiefe Historie, "
+                               "oder der Zeitraum ist zu kurz.")
+                else:
+                    _a = _bt.auswertung(_alle)
+                    st.markdown("### Ergebnis")
+                    _m1, _m2, _m3 = st.columns(3)
+                    card(_m1, "Datenpunkte", str(_a["n"]),
+                         "Titel \u00d7 Stichtage")
+                    card(_m2, "Fair-Value-Treffer",
+                         f"{_a['fv_treffer_pct']:.0f}%",
+                         "Kurs n\u00e4herte sich dem FV",
+                         score_color(_a['fv_treffer_pct']))
+                    _rg = _a.get("rendite_gesamt")
+                    card(_m3, "\u00d8 Rendite gesamt",
+                         f"{_rg:+.1f}%" if _rg is not None else "\u2014",
+                         f"nach {_halte} Monaten",
+                         "var(--green)" if (_rg or 0) >= 0 else "var(--red)")
+
+                    st.markdown("#### Frage 1: Trifft der Fair Value?")
+                    st.write(f"In **{_a['fv_treffer_pct']:.0f}%** der F\u00e4lle "
+                             f"({_a['fv_treffer_abs']} von {_a['n']}) bewegte sich "
+                             f"der Kurs nach {_halte} Monaten in Richtung des "
+                             f"damals berechneten Fair Value. Ein Wert deutlich "
+                             f"\u00fcber 50% spricht daf\u00fcr, dass der Fair Value "
+                             f"Information tr\u00e4gt; nahe 50% w\u00e4re er so gut wie "
+                             f"ein M\u00fcnzwurf.")
+
+                    st.markdown("#### Frage 2: Bringt hoher Upside mehr Rendite?")
+                    _rh = _a.get("rendite_hoher_upside")
+                    _rn = _a.get("rendite_niedriger_upside")
+                    _tab = [
+                        {"Gruppe": "Hoher Upside (>20%)",
+                         "\u00d8 Rendite": f"{_rh:+.1f}%" if _rh is not None else "\u2014",
+                         "Anzahl": _a.get("n_hoher_upside", 0)},
+                        {"Gruppe": "Niedriger Upside (\u226420%)",
+                         "\u00d8 Rendite": f"{_rn:+.1f}%" if _rn is not None else "\u2014",
+                         "Anzahl": _a.get("n_niedriger_upside", 0)},
+                    ]
+                    vr_table(_tab)
+                    if _rh is not None and _rn is not None:
+                        if _rh > _rn:
+                            st.success(f"\u2705 Titel mit hohem Upside brachten im "
+                                       f"Schnitt {_rh - _rn:+.1f} Prozentpunkte mehr "
+                                       f"Rendite \u2013 das Signal trug in diesem "
+                                       f"Zeitraum Information.")
+                        else:
+                            st.warning(f"\u26a0\ufe0f Titel mit hohem Upside brachten "
+                                       f"NICHT mehr Rendite ({_rh:+.1f}% vs. "
+                                       f"{_rn:+.1f}%). Das Signal hat in diesem "
+                                       f"Zeitraum nicht funktioniert \u2013 ehrlich "
+                                       f"festzuhalten.")
+
+                    with st.expander("Alle Datenpunkte ansehen"):
+                        vr_table([{
+                            "Ticker": z["ticker"], "Stichtag": z["stichtag"],
+                            "Kurs": z["kurs_damals"], "Fair Value": z["fair_value"],
+                            "Upside %": z["upside_pct"],
+                            "Kurs sp\u00e4ter": z["kurs_spaeter"],
+                            "Rendite %": z["rendite_pct"],
+                            "FV genaehert": "\u2713" if z["fv_angenaehert"] else "\u2717",
+                        } for z in _alle], signed_cols=("Upside %", "Rendite %"))
+
+                    st.caption("**Ehrliche Grenzen:** Nur Titel, die roic historisch "
+                               "abdeckt (\u00fcberlebende Firmen \u2013 Pleiten fehlen, "
+                               "Survivorship-Bias). Fair Value nutzt die "
+                               "Jahreszahlen mit Berichtspuffer, aber der "
+                               "Analystenteil fehlt r\u00fcckwirkend. Ein erster "
+                               "Anhaltspunkt, kein endg\u00fcltiges Urteil.")
 
 
 # ===========================================================================

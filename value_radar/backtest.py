@@ -359,25 +359,54 @@ def auswertung(alle_zeilen):
     # Frage 1: Treffsicherheit des Fair Value
     angenaehert = sum(1 for z in alle_zeilen if z["fv_angenaehert"])
 
-    # Frage 2: Bringt hoher Upside mehr Rendite? Titel in zwei Gruppen teilen:
-    # hoher Upside (>20%) vs. niedriger/negativer Upside.
-    hoch = [z for z in alle_zeilen if z["upside_pct"] > 20]
-    niedrig = [z for z in alle_zeilen if z["upside_pct"] <= 20]
+    # Frage 2: Bringt hoher Upside mehr Rendite? RELATIV vergleichen - die obere
+    # Haelfte nach Upside gegen die untere. So ist die Frage IMMER beantwortbar,
+    # auch wenn (wie in einer teuren Marktphase) kein Titel absolut hohen Upside
+    # hat. Zusaetzlich der absolute Schnitt >20% als Referenz.
+    sortiert = sorted(alle_zeilen, key=lambda z: z["upside_pct"], reverse=True)
+    haelfte = max(1, n // 2)
+    obere = sortiert[:haelfte]           # hoechster Upside
+    untere = sortiert[-haelfte:]         # niedrigster Upside
 
     def _schnitt(gruppe):
         if not gruppe:
             return None
         return round(sum(z["rendite_pct"] for z in gruppe) / len(gruppe), 1)
 
+    # absolute Gruppen (Referenz)
+    hoch_abs = [z for z in alle_zeilen if z["upside_pct"] > 20]
+    niedrig_abs = [z for z in alle_zeilen if z["upside_pct"] <= 20]
+
+    # Korrelation Upside <-> Rendite (grober Zusammenhangs-Indikator)
+    ups = [z["upside_pct"] for z in alle_zeilen]
+    rens = [z["rendite_pct"] for z in alle_zeilen]
+    korr = None
+    if n >= 3:
+        mu_u = sum(ups) / n
+        mu_r = sum(rens) / n
+        cov = sum((u - mu_u) * (r - mu_r) for u, r in zip(ups, rens))
+        var_u = sum((u - mu_u) ** 2 for u in ups)
+        var_r = sum((r - mu_r) ** 2 for r in rens)
+        if var_u > 0 and var_r > 0:
+            korr = round(cov / (var_u ** 0.5 * var_r ** 0.5), 2)
+
     return {
         "n": n,
         # Frage 1
         "fv_treffer_pct": round(angenaehert / n * 100, 1),
         "fv_treffer_abs": angenaehert,
-        # Frage 2
-        "rendite_hoher_upside": _schnitt(hoch),
-        "n_hoher_upside": len(hoch),
-        "rendite_niedriger_upside": _schnitt(niedrig),
-        "n_niedriger_upside": len(niedrig),
+        # Frage 2 - relativ (obere vs untere Haelfte nach Upside)
+        "rendite_obere_haelfte": _schnitt(obere),
+        "rendite_untere_haelfte": _schnitt(untere),
+        "n_haelfte": haelfte,
+        "upside_obere_min": round(min(z["upside_pct"] for z in obere), 1),
+        "upside_untere_max": round(max(z["upside_pct"] for z in untere), 1),
+        # Frage 2 - absolut (Referenz)
+        "rendite_hoher_upside": _schnitt(hoch_abs),
+        "n_hoher_upside": len(hoch_abs),
+        "rendite_niedriger_upside": _schnitt(niedrig_abs),
+        "n_niedriger_upside": len(niedrig_abs),
+        # Zusammenhang
+        "korrelation": korr,
         "rendite_gesamt": _schnitt(alle_zeilen),
     }

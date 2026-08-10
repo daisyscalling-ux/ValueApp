@@ -6142,10 +6142,21 @@ if nav == "Backtest":
         _btroic = None
 
     if _bt is not None:
-        _std_titel = "AAPL, MSFT, NVDA, JNJ, KO, JPM, PG, WMT"
+        # Bewusst GEMISCHTES Feld statt nur teurer Tech-Giganten: Zykliker,
+        # Banken, Energie, Substanzwerte - auch Titel, die mal wirklich billig
+        # waren. Nur so ist Frage 2 (bringt hoher Upside Rendite?) beantwortbar.
+        _std_titel = ("F, GM, DAL, DOW, C, WFC, MET, XOM, CVX, "
+                      "PFE, VZ, TGT, INTC, T, BAC")
         _eingabe = st.text_input(
             "Titel (Komma-getrennt, am besten langlebige US-Titel)",
             value=_std_titel, key="bt_ticker")
+        st.caption("Voreingestellt ist ein **bewusst gemischtes Feld**: Zykliker "
+                   "(F, GM, DAL, DOW), Banken (C, WFC, BAC), Versicherung (MET), "
+                   "Energie (XOM, CVX), Substanz (PFE, VZ, T, TGT, INTC) \u2013 also "
+                   "auch Titel, die zwischenzeitlich wirklich g\u00fcnstig waren. "
+                   "Nur so l\u00e4sst sich Frage 2 beantworten, denn ein Feld aus "
+                   "lauter teuren Tech-Giganten hat gar keine 'hoher Upside'-"
+                   "Gruppe. Du kannst die Titel frei \u00e4ndern.")
         _c1, _c2, _c3 = st.columns(3)
         import datetime as _dtn
         _jn = _dtn.date.today().year
@@ -6224,29 +6235,49 @@ if nav == "Backtest":
                              f"ein M\u00fcnzwurf.")
 
                     st.markdown("#### Frage 2: Bringt hoher Upside mehr Rendite?")
-                    _rh = _a.get("rendite_hoher_upside")
-                    _rn = _a.get("rendite_niedriger_upside")
+                    _ro = _a.get("rendite_obere_haelfte")
+                    _ru = _a.get("rendite_untere_haelfte")
                     _tab = [
-                        {"Gruppe": "Hoher Upside (>20%)",
-                         "\u00d8 Rendite": f"{_rh:+.1f}%" if _rh is not None else "\u2014",
-                         "Anzahl": _a.get("n_hoher_upside", 0)},
-                        {"Gruppe": "Niedriger Upside (\u226420%)",
-                         "\u00d8 Rendite": f"{_rn:+.1f}%" if _rn is not None else "\u2014",
-                         "Anzahl": _a.get("n_niedriger_upside", 0)},
+                        {"Gruppe": f"Obere H\u00e4lfte (Upside \u2265 "
+                                   f"{_a.get('upside_obere_min','?')}%)",
+                         "\u00d8 Rendite": f"{_ro:+.1f}%" if _ro is not None else "\u2014",
+                         "Anzahl": _a.get("n_haelfte", 0)},
+                        {"Gruppe": f"Untere H\u00e4lfte (Upside \u2264 "
+                                   f"{_a.get('upside_untere_max','?')}%)",
+                         "\u00d8 Rendite": f"{_ru:+.1f}%" if _ru is not None else "\u2014",
+                         "Anzahl": _a.get("n_haelfte", 0)},
                     ]
                     vr_table(_tab)
-                    if _rh is not None and _rn is not None:
-                        if _rh > _rn:
-                            st.success(f"\u2705 Titel mit hohem Upside brachten im "
-                                       f"Schnitt {_rh - _rn:+.1f} Prozentpunkte mehr "
-                                       f"Rendite \u2013 das Signal trug in diesem "
-                                       f"Zeitraum Information.")
+                    st.caption("Relativer Vergleich: die H\u00e4lfte der Titel mit dem "
+                               "h\u00f6chsten Upside gegen die mit dem niedrigsten. So "
+                               "ist die Frage auch dann beantwortbar, wenn (wie in "
+                               "einer teuren Marktphase) kein Titel absolut hohen "
+                               "Upside hat.")
+                    if _ro is not None and _ru is not None:
+                        if _ro > _ru:
+                            st.success(f"\u2705 Die H\u00e4lfte mit h\u00f6herem Upside "
+                                       f"brachte {_ro - _ru:+.1f} Prozentpunkte mehr "
+                                       f"Rendite ({_ro:+.1f}% vs. {_ru:+.1f}%) \u2013 "
+                                       f"das Signal trug in diesem Zeitraum "
+                                       f"Information.")
                         else:
-                            st.warning(f"\u26a0\ufe0f Titel mit hohem Upside brachten "
-                                       f"NICHT mehr Rendite ({_rh:+.1f}% vs. "
-                                       f"{_rn:+.1f}%). Das Signal hat in diesem "
-                                       f"Zeitraum nicht funktioniert \u2013 ehrlich "
+                            st.warning(f"\u26a0\ufe0f Die H\u00e4lfte mit h\u00f6herem Upside "
+                                       f"brachte NICHT mehr Rendite ({_ro:+.1f}% vs. "
+                                       f"{_ru:+.1f}%). In diesem Zeitraum trug das "
+                                       f"Upside-Signal keine Information \u2013 ehrlich "
                                        f"festzuhalten.")
+                    _kor = _a.get("korrelation")
+                    if _kor is not None:
+                        _kortext = ("deutlich positiv \u2013 h\u00f6herer Upside ging mit "
+                                    "h\u00f6herer Rendite einher" if _kor > 0.3 else
+                                    "leicht positiv" if _kor > 0.1 else
+                                    "praktisch kein Zusammenhang" if _kor > -0.1 else
+                                    "negativ \u2013 h\u00f6herer Upside ging mit "
+                                    "GERINGERER Rendite einher")
+                        st.caption(f"Korrelation Upside \u2194 Rendite: **{_kor:+.2f}** "
+                                   f"({_kortext}). Werte nahe 0 hei\u00dfen: kein "
+                                   f"Zusammenhang. Bei so wenigen Datenpunkten mit "
+                                   f"Vorsicht zu lesen.")
 
                     with st.expander("Alle Datenpunkte ansehen"):
                         vr_table([{

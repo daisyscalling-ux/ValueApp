@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-k"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-x"   # bei jeder Aenderung hochzaehlen
 
 # Analysten-Historie fuer die Value-Trap-Trenderkennung. In run() aus dem
 # Speicher geladen, waehrend des Laufs von score_ticker fortgeschrieben, am
@@ -671,6 +671,27 @@ def _eur(x):
         return "\u2014"
 
 
+def _wahrscheinlich_split(alt_preis, neu_preis):
+    """Erkennt am Kursverhaeltnis, ob zwischen zwei Laeufen wahrscheinlich ein
+    Aktiensplit lag - dann ist ein scheinbarer Kurssturz (oder -sprung) kein
+    echtes Ereignis. Ein 2:1-Split halbiert den Kurs optisch, 3:1 drittelt ihn,
+    ein Reverse-Split verdoppelt/verdreifacht ihn. Wir pruefen, ob das
+    Verhaeltnis nahe an einem gaengigen Split-Faktor liegt.
+
+    Kein API-Abruf - rein aus den zwei Kursen, damit der Nachtlauf schnell
+    bleibt. Liefert True, wenn ein Split die Kursaenderung gut erklaert."""
+    if not alt_preis or not neu_preis or alt_preis <= 0 or neu_preis <= 0:
+        return False
+    q = neu_preis / alt_preis
+    # gaengige Split-Verhaeltnisse (Kurs faellt) und Reverse (Kurs steigt)
+    faktoren = [1/2, 1/3, 1/4, 1/5, 1/6, 1/7, 1/8, 1/10, 1/20,
+                2, 3, 4, 5, 6, 8, 10, 2/3, 3/2, 3/4, 4/3]
+    for f in faktoren:
+        if abs(q - f) / f < 0.04:      # innerhalb 4 % eines Split-Faktors
+            return True
+    return False
+
+
 def diff_changes(old_snap, new_rows, section):
     """Vergleicht neue Werte je Ticker mit dem alten Snapshot -> Aenderungen."""
     changes = []
@@ -681,7 +702,10 @@ def diff_changes(old_snap, new_rows, section):
         # Neue Kaufzone erreicht (Kurs <= Einstieg)
         if entry and price and price <= entry:
             was_in = o and o.get("price") and o.get("entry") and o["price"] <= o["entry"]
-            if not was_in:
+            # Split-Check: fiel der Kurs nur optisch durch einen Split unter den
+            # Einstieg, ist das keine echte Kaufzone. Alten Kurs gegen neuen.
+            _split = o and _wahrscheinlich_split(o.get("price"), price)
+            if not was_in and not _split:
                 changes.append({"ticker": t, "name": r.get("name"), "section": section,
                                 "kind": "buyzone",
                                 "text": f"{t} in Kaufzone: Kurs {_eur(price)} \u2264 "
@@ -774,8 +798,13 @@ def diff_changes(old_snap, new_rows, section):
         # weil beides aus derselben Datenaenderung kommt.
         _op = o.get("price")
         _kurs_erklaert_upside = True
+        # Split-Check: liegt zwischen den Laeufen ein Split, sind Kurs UND
+        # Upside optisch verzerrt - keine dieser Meldungen ist dann echt.
+        _ist_split = _wahrscheinlich_split(_op, price)
+        if _ist_split:
+            _kurs_erklaert_upside = False
         if (ou is not None and up is not None and _op and price
-                and abs(up - ou) >= UPSIDE_DELTA):
+                and abs(up - ou) >= UPSIDE_DELTA and not _ist_split):
             _kurs_delta = (price / _op - 1) * 100 if _op else 0
             _upside_delta = up - ou
             # Wenn Kurs faellt, sollte Upside steigen: die Vorzeichen von

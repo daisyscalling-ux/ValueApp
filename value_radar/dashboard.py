@@ -4220,6 +4220,28 @@ if nav == "Einzelanalyse":
                                                "ausl\u00e4ndische Aktie. Kurs und "
                                                "Kennzahlen k\u00f6nnen vom "
                                                "Heimatmarkt abweichen.")
+                                # Aktiensplits (aus roic): erklaeren scheinbare
+                                # Kurssprunge in der Historie.
+                                try:
+                                    _splits = _rb.stock_splits(ticker, limit=5)
+                                except Exception:
+                                    _splits = []
+                                if _splits:
+                                    st.markdown("**Aktiensplits**")
+                                    _sr = []
+                                    for _sp in _splits:
+                                        _typ = ("Reverse-Split" if _sp.get("ist_reverse")
+                                                else "Split")
+                                        _vz = ""
+                                        if _sp.get("von") and _sp.get("zu"):
+                                            _vz = f" {int(_sp['zu'])}:{int(_sp['von'])}"
+                                        _sr.append({"Datum": _sp.get("datum") or "\u2014",
+                                                    "Art": _typ + _vz})
+                                    vr_table(_sr)
+                                    st.caption("Ein Split \u00e4ndert nur die St\u00fcckzahl, "
+                                               "nicht den Wert deiner Position \u2013 er "
+                                               "erkl\u00e4rt scheinbare Kurssprunge in der "
+                                               "Historie.")
 
                         elif _pv == "Nachrichten":
                             @st.cache_data(ttl=1800, show_spinner=False)

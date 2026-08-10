@@ -850,6 +850,71 @@ def news(t: str, limit=15) -> list:
     return [z for z in out if z.get("titel")]
 
 
+def stock_splits(t: str, limit: int = 10) -> list:
+    """Aktiensplits eines Titels (neueste zuerst). Erklaert scheinbare
+    Kurssprunge: ein 4:1-Split viertelt den Kurs optisch, ohne dass sich
+    am Wert etwas aendert. Ohne diese Info meldet 'Was hat sich geaendert'
+    solche Splits faelschlich als drastischen Absturz.
+
+    Pfad laut Doku: /stock-splits, Filter ueber identifier. Rueckgabe:
+    [{datum, faktor, von, zu, ist_reverse, kurs_vorher, kurs_nachher}]."""
+    if not covers(t):
+        return []
+    d = _get("stock-splits", {"identifier": _sym(t), "limit": limit,
+                              "order": "DESC"})
+    reihen = d if isinstance(d, list) else (d or {}).get("data") or []
+    out = []
+    for z in reihen:
+        if not isinstance(z, dict):
+            continue
+        _von = _num(_g(z, "split_from"))
+        _zu = _num(_g(z, "split_to"))
+        _faktor = _num(_g(z, "factor"))
+        # Faktor selbst ableiten, falls nicht geliefert (zu/von)
+        if _faktor is None and _von and _zu and _von != 0:
+            _faktor = _zu / _von
+        out.append({
+            "datum": str(_g(z, "execution_date", "date") or "")[:10],
+            "faktor": _faktor,
+            "von": _von, "zu": _zu,
+            "ist_reverse": bool(_g(z, "is_reverse")),
+            "kurs_vorher": _num(_g(z, "pre_split_price")),
+            "kurs_nachher": _num(_g(z, "post_split_price")),
+        })
+    return [z for z in out if z.get("datum")]
+
+
+def trading_hours(exchange: str) -> dict | None:
+    """Handelszeiten einer Boerse (z.B. 'NASDAQ'). Erklaert, warum ein
+    Intraday-Chart gerade leer ist (ausserhalb der Handelszeit). Pro Boerse,
+    nicht pro Titel. Pfad laut Doku: /exchanges/trading-hours."""
+    if not enabled() or not exchange:
+        return None
+    d = _get("exchanges/trading-hours", {"exchange": exchange})
+    z = d if isinstance(d, dict) else _first(d)
+    if not z:
+        return None
+    return {
+        "boerse": _g(z, "exchange"),
+        "zeitzone": _g(z, "timezone"),
+        "regulaer": _g(z, "regular"),
+        "erweitert": _g(z, "extended"),
+    }
+
+
+def holidays(exchange: str) -> list:
+    """Feiertagskalender einer Boerse - Tage ohne Handel. Erklaert leere
+    Intraday-Charts an Feiertagen. Pfad laut Doku: /exchanges/holidays."""
+    if not enabled() or not exchange:
+        return []
+    d = _get("exchanges/holidays", {"exchange": exchange})
+    z = d if isinstance(d, dict) else _first(d)
+    if not z:
+        return []
+    hs = _g(z, "holidays") or []
+    return hs if isinstance(hs, list) else []
+
+
 # ---------------------------------------------------------------------------
 # EARNINGS-CALL-TRANSKRIPTE - Pfade aus der offiziellen Doku (24.07.2026):
 #   GET /v2/company/earnings-calls/latest/{ticker}

@@ -6136,6 +6136,10 @@ if nav == "Backtest":
     except Exception as _e:
         st.error(f"backtest.py fehlt oder ist veraltet: {_e}")
         _bt = None
+    try:
+        import roic as _btroic
+    except Exception:
+        _btroic = None
 
     if _bt is not None:
         _std_titel = "AAPL, MSFT, NVDA, JNJ, KO, JPM, PG, WMT"
@@ -6158,7 +6162,7 @@ if nav == "Backtest":
             _ticker = [t.strip().upper() for t in _eingabe.split(",") if t.strip()]
             if not _ticker:
                 st.warning("Bitte mindestens einen Titel eingeben.")
-            elif _roic is None or not _roic.enabled():
+            elif _btroic is None or not _btroic.enabled():
                 st.error("roic ist nicht aktiv \u2013 der Backtest braucht die "
                          "historischen roic-Daten.")
             else:
@@ -6168,7 +6172,7 @@ if nav == "Backtest":
                 _prog = st.progress(0.0)
                 for _i, _tk in enumerate(_ticker):
                     try:
-                        _z = _bt.einzeltest(_roic, valuation, _tk, _stichtage,
+                        _z = _bt.einzeltest(_btroic, valuation, _tk, _stichtage,
                                             haltedauer=int(_halte))
                         _alle.extend(_z)
                         _pro_titel[_tk] = len(_z)

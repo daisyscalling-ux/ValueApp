@@ -3029,6 +3029,15 @@ if nav == "Aktienvergleich":
                 "beta": f.get("beta"),
                 "market_cap": f.get("market_cap"),
                 "sector": f.get("sector"), "country": f.get("country"),
+                # bewertungskritische Felder AUCH mitspeichern, damit die
+                # Datenquellen-Diagnose sie korrekt als vorhanden/roic erkennt
+                # (sonst meldet sie faelschlich "fehlt", obwohl roic sie liefert).
+                "book_value_ps": f.get("book_value_ps"),
+                "eps_forward": f.get("eps_forward"),
+                "free_cashflow": f.get("free_cashflow"),
+                "ebitda": f.get("ebitda"),
+                "net_debt": f.get("net_debt"),
+                "target_mean": f.get("target_mean"),
                 # Diagnose: Datenquellen-Herkunft (aendert keine Berechnung)
                 "_roic_aktiv": bool(f.get("_roic")),
                 "_roic_felder": f.get("_roic_felder") or [],
@@ -3364,12 +3373,9 @@ if nav == "Aktienvergleich":
                     # Welche kritischen Felder fehlen ganz (im Vergleichsdatensatz)?
                     _zeilen_diag = []
                     for _fk, _flabel in _krit:
-                        # der Vergleich speichert manche Felder umbenannt (pe)
-                        _vorhanden = None
+                        # der Vergleich speichert das KGV umbenannt als "pe"
                         if _fk == "pe_trailing":
                             _vorhanden = d.get("pe") is not None
-                        elif _fk == "target_mean":
-                            _vorhanden = None  # nicht im Vergleichsdatensatz
                         else:
                             _vorhanden = d.get(_fk) is not None
                         _von_roic = _fk in _rf

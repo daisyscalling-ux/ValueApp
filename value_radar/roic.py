@@ -554,6 +554,7 @@ def bundle(t: str) -> dict:
     rp = ratios_profitability(t)
     rc = ratios_credit(t)
     rl = ratios_liquidity(t)
+    ry = ratios_yield(t)               # jetzt korrekter Pfad (yield-analysis)
     mu = multiples(t) if multiples_ok(t) else None
     inc = income_annual(t, limit=2) or []
     bs = _first(_get(f"fundamental/balance-sheet/{_sym(t)}",
@@ -566,6 +567,13 @@ def bundle(t: str) -> dict:
         "name": _g(prof, "name", "company_name"),
         "sector": _g(prof, "sector"),
         "industry": _g(prof, "industry"),
+        # NEU: Firmenbeschreibung direkt aus roic (loest yfinance ab).
+        "business_summary": _g(prof, "description", "short_description"),
+        # NEU: weitere Profilfelder, die roic bereitstellt.
+        "ceo": _g(prof, "ceo"),
+        "founded": _g(prof, "founded"),
+        "website": _g(prof, "website"),
+        "employees": _num(_g(prof, "number_of_employees")),
         "country": _g(prof, "country_code") or (aufloesen(t) or {}).get("country"),
         "currency": _g(prof, "currency"),
         "price": _num(_g(prof, "price")),
@@ -632,6 +640,26 @@ def bundle(t: str) -> dict:
         out["pb"] = _num(_g(mu, "pr_to_book_ratio"))
         out["ev_ebitda"] = _num(_g(mu, "ev_to_ttm_ebitda"))
         out["pfcf"] = _num(_g(mu, "pr_to_free_cash_flow"))
+        # NEU: historisches KGV-Band direkt aus roic (Hoch/Tief/Schnitt).
+        # Ersetzt die bisherige yfinance/FMP-Quelle fuer hist_pe_median.
+        _pe_avg = _num(_g(mu, "average_price_earnings_ratio"))
+        _pe_hi = _num(_g(mu, "pe_ratio_with_high_clos_pr"))
+        _pe_lo = _num(_g(mu, "pe_ratio_with_low_clos_pr"))
+        if _pe_avg is not None:
+            out["hist_pe_median"] = _pe_avg      # Durchschnitts-KGV als Median-Proxy
+        if _pe_hi is not None:
+            out["hist_pe_high"] = _pe_hi
+        if _pe_lo is not None:
+            out["hist_pe_low"] = _pe_lo
+
+    # NEU: Yield-Kennzahlen aus roic (jetzt korrekter Endpunkt). Fertig
+    # berechnete FCF-Rendite + Dividendenrendite direkt von der Quelle -
+    # robuster als die Eigenrechnung fcf/ev.
+    if ry:
+        _fcy = _num(_g(ry, "free_cash_flow_yield"))
+        if _fcy is not None:
+            # roic liefert teils als Faktor (0.05), teils als Prozent (5.0)
+            out["fcf_yield"] = _fcy / 100.0 if abs(_fcy) > 1.5 else _fcy
 
     return {k: v for k, v in out.items() if v is not None or k == "_src"}
 
@@ -723,12 +751,12 @@ def status() -> dict:
 # ============================================================================
 
 def ratios_yield(t: str):
-    """Renditekennzahlen: Free-Cashflow-, Shareholder- und Capital-Yield.
+    """Renditekennzahlen: Free-Cashflow-, Shareholder- und Dividenden-Yield.
 
-    Beim ersten Test antwortete dieser Endpunkt nicht - laut Doku gibt es
-    ihn. Deshalb hier vorhanden, aber nirgends vorausgesetzt: Fehlt die
-    Antwort, bleibt das Feld leer und nichts bricht."""
-    return _first(_get(f"fundamental/ratios/yield/{_sym(t)}"))
+    Korrekter v3-Pfad ist 'yield-analysis' (nicht 'yield'). Der fruehere
+    Pfad lief ins Leere - daher antwortete der Endpunkt beim ersten Test
+    nie. Fehlt die Antwort trotzdem, bleibt das Feld leer und nichts bricht."""
+    return _first(_get(f"fundamental/ratios/yield-analysis/{_sym(t)}"))
 
 
 def ratios_working_capital(t: str):

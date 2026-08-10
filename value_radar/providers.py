@@ -621,6 +621,28 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
                     merged["hist_pe_n"] = h.get("n")
             except Exception:
                 pass
+        # NEU: 52-Wochen-Hoch/Tief aus der roic-Kurshistorie ableiten (loest
+        # yfinance ab). Nur bei deep - ein Extra-Abruf, den der breite Scan
+        # nicht rechtfertigt. roic hat die Kurse, also nehmen wir sie von dort.
+        if deep:
+            try:
+                _reihe = _roic.schlusskurse(ticker, tage=260)   # ~1 Handelsjahr
+                _kurse = [k for _, k in _reihe if k]
+                if len(_kurse) >= 30:               # genug Datenpunkte
+                    _r_hi, _r_lo = max(_kurse), min(_kurse)
+                    # roic-Kurse ggf. in anderer Einheit als der Anzeigekurs -
+                    # denselben gemessenen Faktor anwenden wie oben.
+                    if _faktor != 1.0:
+                        _r_hi *= _faktor
+                        _r_lo *= _faktor
+                    merged["52w_high"] = _r_hi
+                    merged["52w_low"] = _r_lo
+                    if "52w_high" not in _roic_felder:
+                        _roic_felder.append("52w_high")
+                        _roic_felder.append("52w_low")
+                        merged["_roic_felder"] = sorted(_roic_felder)
+            except Exception:
+                pass
     if merged.get("price") is None:                 # Quelle: Stooq als letzte Absicherung
         sp = _stooq_last(ticker)
         if sp:

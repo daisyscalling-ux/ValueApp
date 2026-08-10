@@ -4185,19 +4185,26 @@ if nav == "Einzelanalyse":
                                      str(_p.get("industry") or "\u2014")[:22],
                                      str(_p.get("sector") or ""), "var(--amber)")
                                 card(_pc[1], "Mitarbeiter",
-                                     (f"{int(_p['full_time_employees']):,}".replace(",", ".")
-                                      if _p.get("full_time_employees") else "\u2014"),
-                                     str(_p.get("country") or ""), "var(--amber)")
-                                card(_pc[2], "B\u00f6rsengang",
-                                     str(_p.get("ipo_date") or "\u2014")[:10],
-                                     str(_p.get("exchange_short_name") or ""),
+                                     (f"{int(_p.get('number_of_employees') or _p.get('full_time_employees')):,}".replace(",", ".")
+                                      if (_p.get("number_of_employees") or _p.get("full_time_employees")) else "\u2014"),
+                                     str(_p.get("country") or _p.get("listing_country_code") or ""), "var(--amber)")
+                                card(_pc[2], "Gegr\u00fcndet",
+                                     str(_p.get("founded") or _p.get("ipo_date") or "\u2014")[:10],
+                                     str(_p.get("exchange") or _p.get("exchange_short_name") or ""),
                                      "var(--amber)")
-                                if _p.get("ceo"):
-                                    st.caption(f"**Vorstandsvorsitz:** "
-                                               f"{esc(str(_p['ceo']))}"
-                                               + (f" \u00b7 **ISIN:** {esc(str(_p['isin']))}"
-                                                  if _p.get("isin") else ""))
-                                _txt = _p.get("description") or _p.get("ai_description")
+                                _ceo = _p.get("ceo")
+                                _extra = []
+                                if _ceo:
+                                    _extra.append(f"**Vorstandsvorsitz:** {esc(str(_ceo))}")
+                                if _p.get("website"):
+                                    _extra.append(f"**Web:** {esc(str(_p['website']))}")
+                                if _p.get("isin"):
+                                    _extra.append(f"**ISIN:** {esc(str(_p['isin']))}")
+                                if _extra:
+                                    st.caption("  \u00b7  ".join(_extra))
+                                _txt = (_p.get("description")
+                                        or _p.get("short_description")
+                                        or _p.get("ai_description"))
                                 if _txt:
                                     st.markdown("**Gesch\u00e4ftsmodell**")
                                     st.write(str(_txt)[:1800])

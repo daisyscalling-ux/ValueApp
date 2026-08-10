@@ -6189,7 +6189,8 @@ if nav == "Backtest":
                 for _i, _tk in enumerate(_ticker):
                     try:
                         _z = _bt.einzeltest(_btroic, valuation, _tk, _stichtage,
-                                            haltedauer=int(_halte))
+                                            haltedauer=int(_halte),
+                                            scoring_mod=scoring)
                         _alle.extend(_z)
                         _pro_titel[_tk] = len(_z)
                     except Exception as _e:
@@ -6292,11 +6293,73 @@ if nav == "Backtest":
                                    "Bei ~30 Punkten bleibt alles ein Anhaltspunkt, "
                                    "keine Gewissheit.")
 
+                    # Frage 3: die VORAB festgelegte Hypothese
+                    st.markdown("#### Frage 3: Trifft die feste Hypothese "
+                                "(g\u00fcnstig UND stark)?")
+                    if not _a.get("hyp_verfuegbar"):
+                        st.info("Der Composite Score konnte historisch nicht "
+                                "berechnet werden \u2013 die Hypothese ist f\u00fcr "
+                                "diese Titel nicht auswertbar.")
+                    else:
+                        _hmt = _a.get("hyp_median_treffer")
+                        _hmr = _a.get("hyp_median_rest")
+                        st.caption(f"**Vorab festgelegt, nicht optimiert:** Titel mit "
+                                   f"Upside > {_a.get('hyp_upside_min',0):.0f}% UND "
+                                   f"Composite \u2265 {_a.get('hyp_composite_min',55):.0f} "
+                                   f"gegen den Rest. Diese Schwellen wurden vor dem "
+                                   f"Test festgelegt und werden nicht nachjustiert \u2013 "
+                                   f"nur so ist es ehrliche Statistik statt "
+                                   f"Kurvenanpassung.")
+                        _htab = [
+                            {"Gruppe": "G\u00fcnstig UND stark (Hypothese)",
+                             "Median Rendite": f"{_hmt:+.1f}%" if _hmt is not None else "\u2014",
+                             "\u00d8 Rendite": (f"{_a.get('hyp_schnitt_treffer'):+.1f}%"
+                                            if _a.get('hyp_schnitt_treffer') is not None else "\u2014"),
+                             "FV-Treffer": (f"{_a.get('hyp_treffer_fv_quote'):.0f}%"
+                                            if _a.get('hyp_treffer_fv_quote') is not None else "\u2014"),
+                             "Anzahl": _a.get("hyp_n_treffer", 0)},
+                            {"Gruppe": "Rest",
+                             "Median Rendite": f"{_hmr:+.1f}%" if _hmr is not None else "\u2014",
+                             "\u00d8 Rendite": (f"{_a.get('hyp_schnitt_rest'):+.1f}%"
+                                            if _a.get('hyp_schnitt_rest') is not None else "\u2014"),
+                             "FV-Treffer": "\u2014",
+                             "Anzahl": _a.get("hyp_n_rest", 0)},
+                        ]
+                        vr_table(_htab)
+                        if _a.get("hyp_n_treffer", 0) == 0:
+                            st.warning("\u26a0\ufe0f Kein einziger Titel erf\u00fcllte die "
+                                       "Hypothese (g\u00fcnstig UND stark zugleich) in "
+                                       "diesem Zeitraum \u2013 die Engine h\u00e4tte hier "
+                                       "nichts gekauft. Aussage: nicht testbar mit "
+                                       "diesen Titeln.")
+                        elif _hmt is not None and _hmr is not None:
+                            if _hmt > _hmr + 3:
+                                st.success(f"\u2705 Die Hypothese h\u00e4lt (in diesem "
+                                           f"kurzen Zeitraum): g\u00fcnstige UND starke "
+                                           f"Titel brachten im Median {_hmt - _hmr:+.1f} "
+                                           f"Prozentpunkte mehr ({_hmt:+.1f}% vs. "
+                                           f"{_hmr:+.1f}%). Ein ehrliches, weil vorab "
+                                           f"festgelegtes Signal \u2013 aber nur {_a.get('hyp_n_treffer')} "
+                                           f"Treffer, also mit Vorsicht.")
+                            elif abs(_hmt - _hmr) <= 3:
+                                st.info(f"\u2696\ufe0f Die Hypothese-Gruppe lag praktisch "
+                                        f"gleichauf mit dem Rest ({_hmt:+.1f}% vs. "
+                                        f"{_hmr:+.1f}%). Kein klarer Vorteil \u2013 die "
+                                        f"Kombination trug hier wenig.")
+                            else:
+                                st.warning(f"\u26a0\ufe0f Die Hypothese f\u00e4llt durch: "
+                                           f"g\u00fcnstige UND starke Titel brachten NICHT "
+                                           f"mehr ({_hmt:+.1f}% vs. {_hmr:+.1f}%). Ehrlich "
+                                           f"festzuhalten \u2013 und wir justieren die "
+                                           f"Schwelle bewusst NICHT nach.")
+
                     with st.expander("Alle Datenpunkte ansehen"):
                         vr_table([{
                             "Ticker": z["ticker"], "Stichtag": z["stichtag"],
                             "Kurs": z["kurs_damals"], "Fair Value": z["fair_value"],
                             "Upside %": z["upside_pct"],
+                            "Composite": (round(z["composite"]) if z.get("composite")
+                                          is not None else "\u2014"),
                             "Kurs sp\u00e4ter": z["kurs_spaeter"],
                             "Rendite %": z["rendite_pct"],
                             "FV genaehert": "\u2713" if z["fv_angenaehert"] else "\u2717",

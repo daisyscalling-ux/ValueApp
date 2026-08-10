@@ -169,6 +169,19 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
     if eps is None and net_income and shares:
         eps = net_income / shares
 
+    # KENNZAHLEN FUER DEN COMPOSITE SCORE selbst berechnen (aus den Rohdaten,
+    # ohne Extra-Abrufe). So laesst sich der Composite historisch nachbilden.
+    _assets = _num(_g(bal_row, "bs_tot_asset", "bs_total_assets"))
+    roe = (net_income / equity) if (net_income and equity and equity > 0) else None
+    roa = (net_income / _assets) if (net_income and _assets and _assets > 0) else None
+    gross_profit = _num(_g(inc_row, "is_gross_profit"))
+    gross_margin = (gross_profit / revenue) if (gross_profit and revenue and revenue > 0) else None
+    operating_margin = (ebit / revenue) if (ebit and revenue and revenue > 0) else None
+    _cur_assets = _num(_g(bal_row, "bs_cur_asset_report", "bs_total_current_assets"))
+    _cur_liab = _num(_g(bal_row, "bs_cur_liab"))
+    current_ratio = (_cur_assets / _cur_liab) if (_cur_assets and _cur_liab and _cur_liab > 0) else None
+    net_debt_ebitda = (net_debt / ebitda) if (net_debt is not None and ebitda and ebitda > 0) else None
+
     fund = {
         "revenue": revenue, "net_income": net_income,
         "ebit": ebit, "ebitda": ebitda, "shares_out": shares,
@@ -178,6 +191,10 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
         "eps_trailing": eps,
         "revenue_growth": revenue_growth,
         "earnings_growth": earnings_growth,
+        # Composite-Kennzahlen:
+        "roe": roe, "roa": roa,
+        "gross_margin": gross_margin, "operating_margin": operating_margin,
+        "current_ratio": current_ratio, "net_debt_ebitda": net_debt_ebitda,
         "sector": None, "_backtest_fy": fy,
         "_period_end": _g(inc_row, "period_end_date", "date"),
     }
@@ -241,7 +258,7 @@ def kurs_nach_monaten(monatskurse, start: _dt.date, monate: int):
 
 
 def einzeltest(roic_mod, valuation_mod, ticker, stichtage,
-               haltedauer=HALTEDAUER_MONATE):
+               haltedauer=HALTEDAUER_MONATE, scoring_mod=None):
     """Backtest fuer EINEN Titel ueber mehrere Stichtage.
 
     Gibt pro Stichtag eine Zeile zurueck mit: damaliger Fair Value, Upside,
@@ -280,6 +297,27 @@ def einzeltest(roic_mod, valuation_mod, ticker, stichtage,
             continue
         upside_damals = (fair / kurs_damals - 1) * 100
 
+        # Composite Score historisch nachbilden (fuer die feste Hypothese
+        # 'Upside positiv UND Composite hoch'). scoring_mod optional.
+        composite = None
+        if scoring_mod is not None:
+            # 52W-Hoch/-Tief aus der Kurshistorie der letzten 12 Monate vor dem
+            # Stichtag setzen, damit die Momentum-Komponente echte Werte hat.
+            _fenster = []
+            _von_52w = _plus_monate(st, -12)
+            for d, k in monatskurse:
+                dd = _als_datum(d)
+                if dd and _von_52w <= dd <= st and k:
+                    _fenster.append(k)
+            if len(_fenster) >= 3:
+                fund["52w_high"] = max(_fenster)
+                fund["52w_low"] = min(_fenster)
+            try:
+                _s = scoring_mod.score_stock(fund, None, preset=preset)
+                composite = _s.get("composite")
+            except Exception:
+                composite = None
+
         kurs_spaeter = kurs_nach_monaten(monatskurse, st, haltedauer)
         if not kurs_spaeter or kurs_spaeter <= 0:
             continue
@@ -295,6 +333,7 @@ def einzeltest(roic_mod, valuation_mod, ticker, stichtage,
             "kurs_damals": round(kurs_damals, 2),
             "fair_value": round(fair, 2),
             "upside_pct": round(upside_damals, 1),
+            "composite": round(composite, 1) if composite is not None else None,
             "kurs_spaeter": round(kurs_spaeter, 2),
             "rendite_pct": round(rendite, 1),
             "fv_angenaehert": angenaehert,
@@ -446,4 +485,38 @@ def auswertung(alle_zeilen):
         "korrelation_rang": korr_rang,
         "median_gesamt": _median_rendite(alle_zeilen),
         "rendite_gesamt": _schnitt(alle_zeilen),
+        # Frage 3 - die VORAB festgelegte Hypothese:
+        # 'Upside > 0 UND Composite >= 55' schlaegt den Rest (Median).
+        **_hypothese_auswertung(alle_zeilen, _median_rendite, _schnitt),
+    }
+
+
+# Schwelle der festen Hypothese - VORAB festgelegt, wird NICHT nachtraeglich
+# optimiert (das waere Overfitting). Upside positiv UND Composite mindestens 55.
+HYP_UPSIDE_MIN = 0.0
+HYP_COMPOSITE_MIN = 55.0
+
+
+def _hypothese_auswertung(zeilen, median_fn, schnitt_fn):
+    """Testet die EINE vorab festgelegte Hypothese: Titel mit Upside > 0 UND
+    Composite >= 55 bringen im Median mehr Rendite als der Rest. Nur auswertbar,
+    wenn der Composite historisch vorliegt."""
+    mit_comp = [z for z in zeilen if z.get("composite") is not None]
+    if len(mit_comp) < 4:
+        return {"hyp_verfuegbar": False}
+    treffer = [z for z in mit_comp
+               if z["upside_pct"] > HYP_UPSIDE_MIN
+               and z["composite"] >= HYP_COMPOSITE_MIN]
+    rest = [z for z in mit_comp if z not in treffer]
+    return {
+        "hyp_verfuegbar": True,
+        "hyp_median_treffer": median_fn(treffer),
+        "hyp_median_rest": median_fn(rest),
+        "hyp_schnitt_treffer": schnitt_fn(treffer),
+        "hyp_schnitt_rest": schnitt_fn(rest),
+        "hyp_n_treffer": len(treffer),
+        "hyp_n_rest": len(rest),
+        "hyp_treffer_fv_quote": (round(
+            sum(1 for z in treffer if z["fv_angenaehert"]) / len(treffer) * 100, 1)
+            if treffer else None),
     }

@@ -373,6 +373,17 @@ def auswertung(alle_zeilen):
             return None
         return round(sum(z["rendite_pct"] for z in gruppe) / len(gruppe), 1)
 
+    def _median_rendite(gruppe):
+        """Median der Renditen - robust gegen einzelne Ausreisser (z.B. ein
+        +600%-Titel, der den Durchschnitt verzerrt)."""
+        if not gruppe:
+            return None
+        werte = sorted(z["rendite_pct"] for z in gruppe)
+        m = len(werte)
+        if m % 2:
+            return round(werte[m // 2], 1)
+        return round((werte[m // 2 - 1] + werte[m // 2]) / 2, 1)
+
     # absolute Gruppen (Referenz)
     hoch_abs = [z for z in alle_zeilen if z["upside_pct"] > 20]
     niedrig_abs = [z for z in alle_zeilen if z["upside_pct"] <= 20]
@@ -390,12 +401,36 @@ def auswertung(alle_zeilen):
         if var_u > 0 and var_r > 0:
             korr = round(cov / (var_u ** 0.5 * var_r ** 0.5), 2)
 
+    # Rang-Korrelation (Spearman) - robuster gegen Ausreisser, weil sie nur die
+    # REIHENFOLGE zaehlt, nicht die absoluten Werte. Ein +600%-Titel ist dann
+    # einfach "der hoechste", nicht ein 600er-Hebel auf den Schnitt.
+    korr_rang = None
+    if n >= 3:
+        def _raenge(werte):
+            paare = sorted(range(len(werte)), key=lambda i: werte[i])
+            r = [0] * len(werte)
+            for rang, idx in enumerate(paare):
+                r[idx] = rang + 1
+            return r
+        ru = _raenge(ups)
+        rr = _raenge(rens)
+        mu_ru = sum(ru) / n
+        mu_rr = sum(rr) / n
+        cov_r = sum((a - mu_ru) * (b - mu_rr) for a, b in zip(ru, rr))
+        var_ru = sum((a - mu_ru) ** 2 for a in ru)
+        var_rr = sum((b - mu_rr) ** 2 for b in rr)
+        if var_ru > 0 and var_rr > 0:
+            korr_rang = round(cov_r / (var_ru ** 0.5 * var_rr ** 0.5), 2)
+
     return {
         "n": n,
         # Frage 1
         "fv_treffer_pct": round(angenaehert / n * 100, 1),
         "fv_treffer_abs": angenaehert,
         # Frage 2 - relativ (obere vs untere Haelfte nach Upside)
+        # MEDIAN ist der Hauptwert (robust), Durchschnitt als Referenz daneben.
+        "median_obere_haelfte": _median_rendite(obere),
+        "median_untere_haelfte": _median_rendite(untere),
         "rendite_obere_haelfte": _schnitt(obere),
         "rendite_untere_haelfte": _schnitt(untere),
         "n_haelfte": haelfte,
@@ -408,5 +443,7 @@ def auswertung(alle_zeilen):
         "n_niedriger_upside": len(niedrig_abs),
         # Zusammenhang
         "korrelation": korr,
+        "korrelation_rang": korr_rang,
+        "median_gesamt": _median_rendite(alle_zeilen),
         "rendite_gesamt": _schnitt(alle_zeilen),
     }

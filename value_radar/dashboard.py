@@ -6235,49 +6235,62 @@ if nav == "Backtest":
                              f"ein M\u00fcnzwurf.")
 
                     st.markdown("#### Frage 2: Bringt hoher Upside mehr Rendite?")
+                    _mo = _a.get("median_obere_haelfte")
+                    _mu = _a.get("median_untere_haelfte")
                     _ro = _a.get("rendite_obere_haelfte")
                     _ru = _a.get("rendite_untere_haelfte")
                     _tab = [
                         {"Gruppe": f"Obere H\u00e4lfte (Upside \u2265 "
                                    f"{_a.get('upside_obere_min','?')}%)",
+                         "Median Rendite": f"{_mo:+.1f}%" if _mo is not None else "\u2014",
                          "\u00d8 Rendite": f"{_ro:+.1f}%" if _ro is not None else "\u2014",
                          "Anzahl": _a.get("n_haelfte", 0)},
                         {"Gruppe": f"Untere H\u00e4lfte (Upside \u2264 "
                                    f"{_a.get('upside_untere_max','?')}%)",
+                         "Median Rendite": f"{_mu:+.1f}%" if _mu is not None else "\u2014",
                          "\u00d8 Rendite": f"{_ru:+.1f}%" if _ru is not None else "\u2014",
                          "Anzahl": _a.get("n_haelfte", 0)},
                     ]
                     vr_table(_tab)
-                    st.caption("Relativer Vergleich: die H\u00e4lfte der Titel mit dem "
-                               "h\u00f6chsten Upside gegen die mit dem niedrigsten. So "
-                               "ist die Frage auch dann beantwortbar, wenn (wie in "
-                               "einer teuren Marktphase) kein Titel absolut hohen "
-                               "Upside hat.")
-                    if _ro is not None and _ru is not None:
-                        if _ro > _ru:
-                            st.success(f"\u2705 Die H\u00e4lfte mit h\u00f6herem Upside "
-                                       f"brachte {_ro - _ru:+.1f} Prozentpunkte mehr "
-                                       f"Rendite ({_ro:+.1f}% vs. {_ru:+.1f}%) \u2013 "
-                                       f"das Signal trug in diesem Zeitraum "
-                                       f"Information.")
+                    st.caption("**Median ist der belastbare Wert** \u2013 er ist immun "
+                               "gegen einzelne Ausrei\u00dfer (ein +600%-Titel verzerrt "
+                               "den Durchschnitt, nicht aber den Median). Relativer "
+                               "Vergleich: obere gegen untere H\u00e4lfte nach Upside.")
+                    # Urteil auf Basis des MEDIAN (robust)
+                    if _mo is not None and _mu is not None:
+                        if _mo > _mu:
+                            st.success(f"\u2705 Nach Median brachte die H\u00e4lfte mit "
+                                       f"h\u00f6herem Upside {_mo - _mu:+.1f} Prozentpunkte "
+                                       f"mehr Rendite ({_mo:+.1f}% vs. {_mu:+.1f}%) \u2013 "
+                                       f"das Signal trug Information (robust gegen "
+                                       f"Ausrei\u00dfer gemessen).")
+                        elif abs(_mo - _mu) < 3:
+                            st.info(f"\u2696\ufe0f Nach Median lagen beide H\u00e4lften "
+                                    f"praktisch gleichauf ({_mo:+.1f}% vs. "
+                                    f"{_mu:+.1f}%) \u2013 das Upside-Signal trug in "
+                                    f"diesem Zeitraum wenig Information.")
                         else:
-                            st.warning(f"\u26a0\ufe0f Die H\u00e4lfte mit h\u00f6herem Upside "
-                                       f"brachte NICHT mehr Rendite ({_ro:+.1f}% vs. "
-                                       f"{_ru:+.1f}%). In diesem Zeitraum trug das "
-                                       f"Upside-Signal keine Information \u2013 ehrlich "
+                            st.warning(f"\u26a0\ufe0f Nach Median brachte die H\u00e4lfte "
+                                       f"mit h\u00f6herem Upside NICHT mehr Rendite "
+                                       f"({_mo:+.1f}% vs. {_mu:+.1f}%) \u2013 ehrlich "
                                        f"festzuhalten.")
-                    _kor = _a.get("korrelation")
-                    if _kor is not None:
-                        _kortext = ("deutlich positiv \u2013 h\u00f6herer Upside ging mit "
-                                    "h\u00f6herer Rendite einher" if _kor > 0.3 else
-                                    "leicht positiv" if _kor > 0.1 else
-                                    "praktisch kein Zusammenhang" if _kor > -0.1 else
-                                    "negativ \u2013 h\u00f6herer Upside ging mit "
-                                    "GERINGERER Rendite einher")
-                        st.caption(f"Korrelation Upside \u2194 Rendite: **{_kor:+.2f}** "
-                                   f"({_kortext}). Werte nahe 0 hei\u00dfen: kein "
-                                   f"Zusammenhang. Bei so wenigen Datenpunkten mit "
-                                   f"Vorsicht zu lesen.")
+                    # Rang-Korrelation (robust) als Hauptmass, normale daneben
+                    _korr = _a.get("korrelation_rang")
+                    _kornorm = _a.get("korrelation")
+                    if _korr is not None:
+                        _kortext = ("deutlich positiv" if _korr > 0.3 else
+                                    "leicht positiv" if _korr > 0.1 else
+                                    "praktisch kein Zusammenhang" if _korr > -0.1 else
+                                    "leicht negativ" if _korr > -0.3 else
+                                    "deutlich negativ")
+                        st.caption(f"Rang-Korrelation Upside \u2194 Rendite (robust): "
+                                   f"**{_korr:+.2f}** ({_kortext})"
+                                   + (f" \u00b7 klassische Korrelation {_kornorm:+.2f}"
+                                      if _kornorm is not None else "")
+                                   + ". Die Rang-Korrelation z\u00e4hlt nur die "
+                                   "Reihenfolge und ist daher ausrei\u00dfer-fest. "
+                                   "Bei ~30 Punkten bleibt alles ein Anhaltspunkt, "
+                                   "keine Gewissheit.")
 
                     with st.expander("Alle Datenpunkte ansehen"):
                         vr_table([{

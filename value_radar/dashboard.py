@@ -6147,16 +6147,21 @@ if nav == "Backtest":
             "Titel (Komma-getrennt, am besten langlebige US-Titel)",
             value=_std_titel, key="bt_ticker")
         _c1, _c2, _c3 = st.columns(3)
-        _von = _c1.number_input("Von Jahr", min_value=2005, max_value=2024,
-                                value=2015, key="bt_von")
-        _bis = _c2.number_input("Bis Jahr", min_value=2006, max_value=2025,
-                                value=2023, key="bt_bis")
+        import datetime as _dtn
+        _jn = _dtn.date.today().year
+        _von = _c1.number_input("Von Jahr", min_value=_jn - 5, max_value=_jn - 1,
+                                value=_jn - 4, key="bt_von")
+        _bis = _c2.number_input("Bis Jahr", min_value=_jn - 4, max_value=_jn,
+                                value=_jn - 1, key="bt_bis")
         _halte = _c3.selectbox("Haltedauer", [12, 24, 36],
                                format_func=lambda x: f"{x} Monate", key="bt_halte")
 
-        st.caption("\u26a0\ufe0f Der Backtest ruft f\u00fcr jeden Titel die volle "
-                   "roic-Historie ab \u2013 das dauert bei vielen Titeln. "
-                   "Fang mit wenigen an.")
+        st.caption("\u26a0\ufe0f **Dein roic-Tarif (Individual) liefert 5 Jahre "
+                   "Historie.** Ein Backtest reicht also nur ~5 Jahre zur\u00fcck, "
+                   "nicht weiter. Das sind wenige Datenpunkte \u2013 ein erster "
+                   "Anhaltspunkt, keine statistische Gewissheit. Der Backtest "
+                   "ruft die volle Historie ab, das dauert; fang mit wenigen "
+                   "Titeln an.")
 
         if st.button("\U0001f9ea Backtest starten", key="bt_start"):
             _ticker = [t.strip().upper() for t in _eingabe.split(",") if t.strip()]

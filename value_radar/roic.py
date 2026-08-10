@@ -454,20 +454,21 @@ def cashflow_annual(t: str, limit: int = 2):
 
 def prices_history(t: str, von: str = None, bis: str = None,
                    limit: int = 100, order: str = "ASC"):
-    """Tageskurse. Pfad und Parameter laut Doku (24.07.2026):
-        GET /v2/stock-prices/{ticker}?limit=&date_start=&date_end=&order=
+    """Tageskurse. Pfad und Parameter laut Doku (v3.0.0):
+        GET /v3.0.0/stock-prices/{ticker}?limit=&date.gte=&date.lt=&order=
     Felder: date, open, high, low, close, adj_close, volume, change_percent.
 
-    KORREKTUR: Meine erste Fassung nutzte 'prices/historical/{t}' mit
-    from/to - den Pfad gibt es nicht, der Abruf lieferte immer nichts.
-    LIMIT-DECKEL: roic erlaubt max. 1000 Kurse pro Abruf. Ein hoeheres
-    Limit liefert eine leere Antwort - genau das liess den Backtest
-    scheitern. Fuer lange Historien einen Datumsbereich (von/bis) nutzen."""
-    p = {"limit": min(int(limit), 1000), "order": order}
+    KORREKTUREN (aus der offiziellen Doku):
+      * Datumsbereich heisst 'date.gte' / 'date.lt', NICHT date_start/date_end.
+        Die falschen Namen wurden ignoriert -> Backtest bekam keine Kurse.
+      * roic erlaubt max. 1000 Kurse pro Abruf. Ein hoeheres Limit liefert
+        eine leere Antwort. Fuer lange Historien Datumsbereich in Bloecken.
+      * order-Werte laut Doku: 'asc'/'desc' (klein)."""
+    p = {"limit": min(int(limit), 1000), "order": order.lower()}
     if von:
-        p["date_start"] = von
+        p["date.gte"] = von            # greater-than-or-equal
     if bis:
-        p["date_end"] = bis
+        p["date.lt"] = bis             # less-than
     d = _get(f"stock-prices/{_sym(t)}", p)
     reihen = d if isinstance(d, list) else (d or {}).get("data")
     return reihen if isinstance(reihen, list) else []

@@ -6185,6 +6185,14 @@ if nav == "Backtest":
                     st.warning("Keine auswertbaren Datenpunkte. M\u00f6glich: roic "
                                "liefert f\u00fcr diese Titel keine tiefe Historie, "
                                "oder der Zeitraum ist zu kurz.")
+                    with st.expander("\U0001f527 Diagnose: woran liegt es?"):
+                        for _tk in _ticker[:3]:
+                            st.markdown(f"**{_tk}**")
+                            try:
+                                for _zeile in _bt.diagnose(_btroic, _tk):
+                                    st.text(_zeile)
+                            except Exception as _de:
+                                st.text(f"Diagnose-Fehler: {_de}")
                 else:
                     _a = _bt.auswertung(_alle)
                     st.markdown("### Ergebnis")

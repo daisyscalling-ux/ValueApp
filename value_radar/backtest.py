@@ -111,25 +111,42 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
     bal_row = bal_idx.get(fy, {})
     cf_row = cf_idx.get(fy, {})
 
-    # Fundamentaldaten-Dict im Format, das valuation.fair_value erwartet,
-    # aus den historischen roic-Rohzeilen zusammenbauen.
-    revenue = _num(_g(inc_row, "revenue", "total_revenue"))
-    net_income = _num(_g(inc_row, "net_income"))
-    ebit = _num(_g(inc_row, "operating_income", "ebit"))
-    ebitda = _num(_g(inc_row, "ebitda"))
-    shares = _num(_g(inc_row, "diluted_shares_outstanding",
-                     "weighted_average_shares_diluted", "shares_outstanding"))
-    op_cf = _num(_g(cf_row, "operating_cash_flow", "net_cash_from_operations"))
-    capex = _num(_g(cf_row, "capital_expenditure", "capex"))
-    fcf = None
-    if op_cf is not None and capex is not None:
+    # Fundamentaldaten-Dict im Format, das valuation.fair_value erwartet, aus
+    # den historischen roic-Rohzeilen. WICHTIG: roic nutzt eigene Praefixe
+    # (is_ = income statement, cf_ = cash flow, bs_ = balance sheet).
+    revenue = _num(_g(inc_row, "is_sales_revenue_turnover",
+                      "is_sales_and_services_revenues"))
+    net_income = _num(_g(inc_row, "is_net_income", "is_earn_for_common"))
+    ebit = _num(_g(inc_row, "is_oper_income"))
+    shares = _num(_g(inc_row, "is_sh_for_diluted_eps", "is_avg_num_sh_for_eps"))
+    eps = _num(_g(inc_row, "diluted_eps", "eps"))
+    # Cashflow: roic liefert FCF teils fertig (ttm/firm), sonst selbst rechnen
+    fcf = _num(_g(cf_row, "cf_free_cash_flow_firm", "ttm_free_cash_flow"))
+    op_cf = _num(_g(cf_row, "cf_cash_from_oper", "ttm_cash_from_oper"))
+    capex = _num(_g(cf_row, "cf_cap_expenditures", "ttm_cap_expend"))
+    if fcf is None and op_cf is not None and capex is not None:
         fcf = op_cf - abs(capex)
-    total_debt = _num(_g(bal_row, "total_debt", "total_debt_and_capital_leases"))
-    cash = _num(_g(bal_row, "cash_and_equivalents", "cash_and_short_term_investments"))
-    equity = _num(_g(bal_row, "total_equity", "total_shareholders_equity"))
-    net_debt = None
-    if total_debt is not None and cash is not None:
+    # Bilanz: net_debt und equity liefert roic direkt
+    net_debt = _num(_g(bal_row, "net_debt"))
+    cash = _num(_g(bal_row, "bs_cash_near_cash_item",
+                   "bs_c_and_ce_and_sti_detailed"))
+    equity = _num(_g(bal_row, "bs_total_equity"))
+    total_debt = _num(_g(bal_row, "bs_tot_liab"))
+    _st = _num(_g(bal_row, "bs_st_borrow"))
+    _lt = _num(_g(bal_row, "bs_lt_borrow"))
+    if total_debt is None and (_st is not None or _lt is not None):
+        total_debt = (_st or 0) + (_lt or 0)
+    if net_debt is None and total_debt is not None and cash is not None:
         net_debt = total_debt - cash
+    # EBITDA aus EBIT + Abschreibungen annaehern, falls nicht direkt da
+    ebitda = None
+    _depr = _num(_g(cf_row, "cf_depr_amort", "cf_depreciation_amort"))
+    if ebit is not None:
+        ebitda = ebit + (_depr or 0)
+
+    # EPS bevorzugt direkt aus roic, sonst aus net_income/shares
+    if eps is None and net_income and shares:
+        eps = net_income / shares
 
     fund = {
         "revenue": revenue, "net_income": net_income,
@@ -137,7 +154,7 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
         "free_cashflow": fcf, "operating_cashflow": op_cf,
         "net_debt": net_debt, "total_debt": total_debt, "cash": cash,
         "book_value_ps": (equity / shares) if (equity and shares) else None,
-        "eps_trailing": (net_income / shares) if (net_income and shares) else None,
+        "eps_trailing": eps,
         "sector": None, "_backtest_fy": fy,
         "_period_end": _g(inc_row, "period_end_date", "date"),
     }
@@ -225,6 +242,47 @@ def einzeltest(roic_mod, valuation_mod, ticker, stichtage,
             "fv_angenaehert": angenaehert,
             "preset": preset,
         })
+    return zeilen
+
+
+def diagnose(roic_mod, ticker, stichtag=None):
+    """Erklaert, warum ein Titel (keine) Datenpunkte liefert. Prueft Schritt
+    fuer Schritt: kommt die Historie an, greifen die Feldnamen, klappt der
+    Look-ahead-Filter, gibt es Kurse? Gibt eine Liste von Diagnose-Zeilen."""
+    import datetime as _d
+    stichtag = stichtag or _d.date(2020, 6, 15)
+    zeilen = []
+    try:
+        inc = roic_mod.income_annual(ticker, limit=15) or []
+    except Exception as e:
+        return [f"income_annual Fehler: {e}"]
+    zeilen.append(f"income_annual: {len(inc)} Jahre erhalten")
+    if inc:
+        _g = roic_mod._g
+        _num = roic_mod._num
+        r0 = inc[0]
+        pend = _g(r0, "period_end_date", "date")
+        rev = _num(_g(r0, "is_sales_revenue_turnover", "is_sales_and_services_revenues"))
+        ni = _num(_g(r0, "is_net_income"))
+        sh = _num(_g(r0, "is_sh_for_diluted_eps", "is_avg_num_sh_for_eps"))
+        zeilen.append(f"  neuestes: FY-Ende {pend}, Umsatz {rev}, "
+                      f"Nettogewinn {ni}, Aktien {sh}")
+        ab = verfuegbar_ab(pend)
+        zeilen.append(f"  verfuegbar ab: {ab}")
+    fund, fy = fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag)
+    if fund:
+        zeilen.append(f"Fundamentaldaten zum {stichtag}: FY{fy}, "
+                      f"FCF={fund.get('free_cashflow')}, "
+                      f"shares={fund.get('shares_out')}, "
+                      f"net_income={fund.get('net_income')}")
+    else:
+        zeilen.append(f"KEINE Fundamentaldaten zum {stichtag} rekonstruierbar")
+    try:
+        mk = roic_mod.monatsende(ticker, jahre=20)
+        zeilen.append(f"Monatskurse: {len(mk)} Punkte"
+                      + (f", von {mk[0][0]} bis {mk[-1][0]}" if mk else ""))
+    except Exception as e:
+        zeilen.append(f"monatsende Fehler: {e}")
     return zeilen
 
 

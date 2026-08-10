@@ -430,25 +430,25 @@ def multiples(t: str):
 
 def income_quarterly(t: str, limit: int = 20):
     d = _get(f"fundamental/income-statement/{_sym(t)}",
-             {"period": "quarter", "limit": limit})
+             {"period_type": "quarterly", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
 def income_annual(t: str, limit: int = 12):
     d = _get(f"fundamental/income-statement/{_sym(t)}",
-             {"period": "annual", "limit": limit})
+             {"period_type": "annual", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
 def balance_annual(t: str, limit: int = 2):
     d = _get(f"fundamental/balance-sheet/{_sym(t)}",
-             {"period": "annual", "limit": limit})
+             {"period_type": "annual", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
 def cashflow_annual(t: str, limit: int = 2):
     d = _get(f"fundamental/cash-flow/{_sym(t)}",
-             {"period": "annual", "limit": limit})
+             {"period_type": "annual", "limit": limit})
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
@@ -459,8 +459,11 @@ def prices_history(t: str, von: str = None, bis: str = None,
     Felder: date, open, high, low, close, adj_close, volume, change_percent.
 
     KORREKTUR: Meine erste Fassung nutzte 'prices/historical/{t}' mit
-    from/to - den Pfad gibt es nicht, der Abruf lieferte immer nichts."""
-    p = {"limit": limit, "order": order}
+    from/to - den Pfad gibt es nicht, der Abruf lieferte immer nichts.
+    LIMIT-DECKEL: roic erlaubt max. 1000 Kurse pro Abruf. Ein hoeheres
+    Limit liefert eine leere Antwort - genau das liess den Backtest
+    scheitern. Fuer lange Historien einen Datumsbereich (von/bis) nutzen."""
+    p = {"limit": min(int(limit), 1000), "order": order}
     if von:
         p["date_start"] = von
     if bis:
@@ -489,18 +492,47 @@ def schlusskurse(t: str, tage: int = 260, adjustiert: bool = True):
 
 
 def monatsende(t: str, jahre: int = 20):
-    """Monatsschlusskurse aus der Tagesreihe - fuer Saisonalitaet.
+    """Monatsschlusskurse - fuer Saisonalitaet und Backtest.
 
-    Ein Abruf statt zwoelf: Die Tagesreihe wird geholt und je Monat der
-    letzte Handelstag genommen."""
-    tage = min(jahre * 252 + 20, 6000)
-    reihe = schlusskurse(t, tage=tage)
-    if not reihe:
-        return []
-    letzter = {}
-    for d, k in reihe:
-        letzter[d[:7]] = (d, k)          # spaeterer Tag ueberschreibt
-    return [letzter[m] for m in sorted(letzter)]
+    roic liefert max. 1000 Tageskurse pro Abruf (~4 Jahre). Fuer laengere
+    Zeitraeume holen wir MEHRERE Bloecke ueber Datumsbereiche und fuegen sie
+    zusammen. Aus der Tagesreihe wird je Monat der letzte Handelstag."""
+    import datetime as _dt
+    heute = _dt.date.today()
+    start_jahr = max(heute.year - jahre, 1990)
+
+    alle = {}          # monat -> (datum, kurs)
+    # in 3-Jahres-Bloecken (unter 1000 Handelstagen) rueckwaerts holen
+    bis_jahr = heute.year + 1
+    while bis_jahr > start_jahr:
+        von_jahr = max(bis_jahr - 3, start_jahr)
+        von = _dt.date(von_jahr, 1, 1).isoformat()
+        bis = _dt.date(min(bis_jahr, heute.year), 12, 31).isoformat()
+        try:
+            reihe = prices_history(t, von=von, bis=bis, limit=1000, order="DESC")
+        except Exception:
+            reihe = []
+        for z in reihe or []:
+            if not isinstance(z, dict):
+                continue
+            d = str(_g(z, "date") or "")[:10]
+            k = _num(_g(z, "adj_close")) or _num(_g(z, "close"))
+            if d and k:
+                monat = d[:7]
+                # spaetester Tag je Monat gewinnt
+                if monat not in alle or d > alle[monat][0]:
+                    alle[monat] = (d, k)
+        bis_jahr = von_jahr
+        if not reihe:          # nichts mehr da -> aufhoeren
+            break
+    if not alle:
+        # Rueckfall: die letzten 1000 Tage ohne Datumsbereich
+        try:
+            for d, k in schlusskurse(t, tage=1000):
+                alle[d[:7]] = (d, k)
+        except Exception:
+            pass
+    return [alle[m] for m in sorted(alle)]
 
 
 def search(q: str):
@@ -558,7 +590,7 @@ def bundle(t: str) -> dict:
     mu = multiples(t) if multiples_ok(t) else None
     inc = income_annual(t, limit=2) or []
     bs = _first(_get(f"fundamental/balance-sheet/{_sym(t)}",
-                     {"period": "annual", "limit": 1}))
+                     {"period_type": "annual", "limit": 1}))
 
     out = {
         "_src": "roic",
@@ -678,7 +710,7 @@ def pe_history(t: str, jahre: int = 10) -> dict:
     Rueckgabe: {median, werte, jahre, spanne_hoch, spanne_tief} oder {}."""
     if not multiples_ok(t):
         return {}
-    d = _get(f"fundamental/multiples/{_sym(t)}", {"period": "annual", "limit": jahre})
+    d = _get(f"fundamental/multiples/{_sym(t)}", {"period_type": "annual", "limit": jahre})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     werte, hochs, tiefs, labels = [], [], [], []
     for z in reihen:
@@ -789,7 +821,7 @@ def financials(t: str, art="income", period="annual", limit=10) -> list:
         return []
     pfad = {"income": "income-statement", "balance": "balance-sheet",
             "cashflow": "cash-flow"}.get(art, "income-statement")
-    d = _get(f"fundamental/{pfad}/{_sym(t)}", {"period": period, "limit": limit})
+    d = _get(f"fundamental/{pfad}/{_sym(t)}", {"period_type": period, "limit": limit})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     return reihen if isinstance(reihen, list) else []
 
@@ -802,7 +834,7 @@ def multiples_historie(t: str, jahre=10) -> list:
     der heutige Wert im historischen Rahmen liegt."""
     if not multiples_ok(t):
         return []
-    d = _get(f"fundamental/multiples/{_sym(t)}", {"period": "annual", "limit": jahre})
+    d = _get(f"fundamental/multiples/{_sym(t)}", {"period_type": "annual", "limit": jahre})
     reihen = d if isinstance(d, list) else (d or {}).get("data") or []
     out = []
     for z in reihen:

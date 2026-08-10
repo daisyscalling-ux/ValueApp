@@ -120,6 +120,27 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
     ebit = _num(_g(inc_row, "is_oper_income"))
     shares = _num(_g(inc_row, "is_sh_for_diluted_eps", "is_avg_num_sh_for_eps"))
     eps = _num(_g(inc_row, "diluted_eps", "eps"))
+
+    # WACHSTUM aus dem Vorjahresvergleich berechnen. OHNE das fiel der DCF auf
+    # den Notwert 6% zurueck und unterschaetzte den Fair Value massiv - genau
+    # das hat der Backtest aufgedeckt (durchgehend negativer Upside).
+    revenue_growth = None
+    earnings_growth = None
+    # Vorjahres-GuV finden (fiscal_year = fy - 1)
+    _vorjahr = None
+    for r in inc:
+        if isinstance(r, dict) and _g(r, "fiscal_year") == (fy - 1 if fy else None):
+            _vorjahr = r
+            break
+    if _vorjahr:
+        _rev_vj = _num(_g(_vorjahr, "is_sales_revenue_turnover",
+                          "is_sales_and_services_revenues"))
+        _ni_vj = _num(_g(_vorjahr, "is_net_income", "is_earn_for_common"))
+        if revenue and _rev_vj and _rev_vj > 0:
+            revenue_growth = revenue / _rev_vj - 1
+        if net_income and _ni_vj and _ni_vj > 0:
+            earnings_growth = net_income / _ni_vj - 1
+
     # Cashflow: roic liefert FCF teils fertig (ttm/firm), sonst selbst rechnen
     fcf = _num(_g(cf_row, "cf_free_cash_flow_firm", "ttm_free_cash_flow"))
     op_cf = _num(_g(cf_row, "cf_cash_from_oper", "ttm_cash_from_oper"))
@@ -155,9 +176,43 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
         "net_debt": net_debt, "total_debt": total_debt, "cash": cash,
         "book_value_ps": (equity / shares) if (equity and shares) else None,
         "eps_trailing": eps,
+        "revenue_growth": revenue_growth,
+        "earnings_growth": earnings_growth,
         "sector": None, "_backtest_fy": fy,
         "_period_end": _g(inc_row, "period_end_date", "date"),
     }
+    # Bewertungs-Multiples aus den Rohdaten selbst berechnen, damit im Backtest
+    # mehr Methoden als nur der DCF greifen (KGV, KBV, KUV, EV/EBITDA). roic
+    # liefert historisch keine fertigen Multiples, aber aus Kurs+Fundamentaldaten
+    # lassen sie sich exakt bilden - der Kurs wird spaeter in einzeltest gesetzt.
+    # (Wir markieren sie, damit einzeltest sie nach dem Kurs-Setzen fuellt.)
+    fund["_kann_multiples"] = True
+    return fund, fy
+
+
+def _ergaenze_multiples(fund):
+    """Fuellt KGV/KBV/KUV/EV-EBITDA aus Kurs + Fundamentaldaten. Aufgerufen,
+    nachdem der historische Kurs gesetzt wurde. So greifen im Backtest mehr
+    Bewertungsmethoden als nur der DCF."""
+    price = fund.get("price")
+    if not price or price <= 0:
+        return fund
+    eps = fund.get("eps_trailing")
+    if eps and eps > 0:
+        fund["pe_trailing"] = price / eps
+    bvps = fund.get("book_value_ps")
+    if bvps and bvps > 0:
+        fund["pb"] = price / bvps
+    rev = fund.get("revenue")
+    sh = fund.get("shares_out")
+    if rev and sh and rev > 0:
+        fund["ps"] = (price * sh) / rev
+    ebitda = fund.get("ebitda")
+    mc = fund.get("market_cap") or (price * sh if sh else None)
+    nd = fund.get("net_debt") or 0
+    if ebitda and ebitda > 0 and mc:
+        fund["ev_ebitda"] = (mc + nd) / ebitda
+    return fund
     return fund, fy
 
 
@@ -212,6 +267,9 @@ def einzeltest(roic_mod, valuation_mod, ticker, stichtage,
         fund["price"] = kurs_damals
         if fund.get("shares_out"):
             fund["market_cap"] = kurs_damals * fund["shares_out"]
+        # jetzt die kursabhaengigen Multiples fuellen (KGV/KBV/KUV/EV-EBITDA),
+        # damit im Backtest mehr Bewertungsmethoden greifen als nur der DCF.
+        _ergaenze_multiples(fund)
         try:
             preset = valuation_mod.classify_playbook(fund)
             fv = valuation_mod.fair_value(fund, None, preset)

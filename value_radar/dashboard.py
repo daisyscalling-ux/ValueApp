@@ -2117,12 +2117,13 @@ def home_screener_picks(n=10, regions=("us", "de", "fr", "gb", "nl", "ch", "ca",
             continue
         v = valuation.fair_value(f, None, ep)
         capped = v.get("fair_value_capped")
-        up = v.get("upside_pct") if not capped else None    # nur gekappte Extremwerte raus
+        up = v.get("upside_pct") if not capped else None    # nur gekappte Extremwerte raus (fuer Score)
+        up_anzeige = display_upside(v, f.get("price"))       # konsistente Anzeige ueberall
         reliable = v.get("reliable", False)
         rows.append({"ticker": f["ticker"], "name": f.get("name"), "sector": f.get("sector"),
                      "country": f.get("country"),
                      "price_eur": round((f.get("price") or 0) * f["_fx"], 2),
-                     "score": comp, "upside": up, "reliable": reliable, "capped": bool(capped),
+                     "score": comp, "upside": up_anzeige, "reliable": reliable, "capped": bool(capped),
                      "confidence": v.get("confidence"),
                      "opportunity": round(opportunity_score(comp, up, reliable), 1)})
     rows.sort(key=lambda r: (r["opportunity"] or 0), reverse=True)
@@ -4655,7 +4656,7 @@ if nav == "Einzelanalyse":
                                     "Score": round(pcomp),
                                     "Kurs": round(pf_["price"], 2),
                                     "Fair Value": pv.get("fair_value"),
-                                    "Upside %": pv.get("upside_pct"),
+                                    "Upside %": display_upside(pv, pf_.get("price")),
                                     "Analysten-Ziel": atgt,
                                     "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
                                                       if atgt and pf_.get("price") else None)})
@@ -5501,7 +5502,7 @@ if nav == "Screener":
                     "Preis \u20ac": round((fd.get("price") or 0) * fx, 2),
                     "Fair Value \u20ac": round((fv.get("fair_value") or 0) * fx, 2)
                     if fv.get("fair_value") else None,
-                    "Upside %": fv.get("upside_pct"),
+                    "Upside %": display_upside(fv, fd.get("price")),
                     "KGV": round(pe, 1) if pe else None,
                     "12M %": ex.get("ch_1y"),
                     "Bonus-Fit": f"{ev['soft_pass']}/{ev['soft_total']}",

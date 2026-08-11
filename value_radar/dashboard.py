@@ -6147,8 +6147,20 @@ if nav == "Backtest":
         # Bewusst GEMISCHTES Feld statt nur teurer Tech-Giganten: Zykliker,
         # Banken, Energie, Substanzwerte - auch Titel, die mal wirklich billig
         # waren. Nur so ist Frage 2 (bringt hoher Upside Rendite?) beantwortbar.
-        _std_titel = ("F, GM, DAL, DOW, C, WFC, MET, XOM, CVX, "
-                      "PFE, VZ, TGT, INTC, T, BAC")
+        # Breites, quer gestreutes Feld (~40 Titel) fuer mehr Datenpunkte -
+        # besonders wichtig fuer Frage 3, die zuletzt an nur 3 Titeln haing.
+        # Bewusst ueber alle Bewertungslagen: Zykliker, Banken, Energie,
+        # Industrie, Konsum, Pharma, Tech, Telekom, Handel.
+        _std_titel = (
+            "F, GM, DAL, UAL, DOW, DD, CAT, DE, "        # Zykliker/Industrie
+            "C, WFC, BAC, JPM, GS, MET, PRU, AIG, "      # Banken/Versicherung
+            "XOM, CVX, COP, OXY, "                        # Energie
+            "PFE, MRK, BMY, CVS, "                        # Pharma/Gesundheit
+            "VZ, T, TMUS, "                               # Telekom
+            "TGT, WMT, KR, "                              # Handel
+            "INTC, CSCO, IBM, HPQ, "                      # Tech (reifer)
+            "KO, PEP, MO, KHC"                            # Konsum
+        )
         _eingabe = st.text_input(
             "Titel (Komma-getrennt, am besten langlebige US-Titel)",
             value=_std_titel, key="bt_ticker")
@@ -6171,10 +6183,11 @@ if nav == "Backtest":
 
         st.caption("\u26a0\ufe0f **Dein roic-Tarif (Individual) liefert 5 Jahre "
                    "Historie.** Ein Backtest reicht also nur ~5 Jahre zur\u00fcck, "
-                   "nicht weiter. Das sind wenige Datenpunkte \u2013 ein erster "
-                   "Anhaltspunkt, keine statistische Gewissheit. Der Backtest "
-                   "ruft die volle Historie ab, das dauert; fang mit wenigen "
-                   "Titeln an.")
+                   "nicht weiter. Mehr Titel = mehr Datenpunkte (besser f\u00fcr die "
+                   "Statistik), aber jeder Titel kostet mehrere roic-Abrufe \u2013 "
+                   "das breite Feld dauert **1-2 Minuten** und kann ans "
+                   "Rate-Limit sto\u00dfen. Zwei Stichtage pro Jahr verdoppeln die "
+                   "Punkte. Bleibt ein Anhaltspunkt, keine Gewissheit.")
 
         if st.button("\U0001f9ea Backtest starten", key="bt_start"):
             _ticker = [t.strip().upper() for t in _eingabe.split(",") if t.strip()]
@@ -6184,7 +6197,7 @@ if nav == "Backtest":
                 st.error("roic ist nicht aktiv \u2013 der Backtest braucht die "
                          "historischen roic-Daten.")
             else:
-                _stichtage = _bt.jahres_stichtage(int(_von), int(_bis))
+                _stichtage = _bt.jahres_stichtage(int(_von), int(_bis), pro_jahr=2)
                 _alle = []
                 _pro_titel = {}
                 _prog = st.progress(0.0)
@@ -6217,6 +6230,19 @@ if nav == "Backtest":
                 else:
                     _a = _bt.auswertung(_alle)
                     st.markdown("### Ergebnis")
+                    # Kurzuebersicht: wie viele Titel lieferten Daten, welche nicht
+                    _ok = sum(1 for v in _pro_titel.values()
+                              if isinstance(v, int) and v > 0)
+                    _leer = [k for k, v in _pro_titel.items()
+                             if isinstance(v, int) and v == 0]
+                    _fehler = [k for k, v in _pro_titel.items()
+                               if not isinstance(v, int)]
+                    _info = f"{_ok} von {len(_ticker)} Titeln lieferten Daten"
+                    if _leer:
+                        _info += f" \u00b7 ohne Historie: {', '.join(_leer)}"
+                    if _fehler:
+                        _info += f" \u00b7 Fehler: {', '.join(_fehler)}"
+                    st.caption(_info)
                     _m1, _m2, _m3 = st.columns(3)
                     card(_m1, "Datenpunkte", str(_a["n"]),
                          "Titel \u00d7 Stichtage")
@@ -6356,6 +6382,73 @@ if nav == "Backtest":
                                            f"mehr ({_hmt:+.1f}% vs. {_hmr:+.1f}%). Ehrlich "
                                            f"festzuhalten \u2013 und wir justieren die "
                                            f"Schwelle bewusst NICHT nach.")
+
+                    # Frage 4: die STRENGERE feste Hypothese (guenstig + stark + solide)
+                    if _a.get("hyp_verfuegbar"):
+                        st.markdown("#### Frage 4: Strengere Hypothese "
+                                    "(g\u00fcnstig + stark + solide Bilanz)?")
+                        _h2t = _a.get("hyp2_median_treffer")
+                        _h2r = _a.get("hyp2_median_rest")
+                        _h2n = _a.get("hyp2_n_treffer", 0)
+                        st.caption(f"**Vorab festgelegt, nicht optimiert:** Upside > "
+                                   f"{_a.get('hyp2_upside_min',15):.0f}% UND Composite "
+                                   f"\u2265 {_a.get('hyp2_composite_min',60):.0f} UND "
+                                   f"Netto-Verschuldung/EBITDA < "
+                                   f"{_a.get('hyp2_netdebt_max',3):.0f} (solide Bilanz). "
+                                   f"Katalysator bewusst ausgelassen \u2013 historisch "
+                                   f"nicht sauber rekonstruierbar. Drei Bedingungen "
+                                   f"sind streng; erwartungsgem\u00e4\u00df erf\u00fcllen sie nur "
+                                   f"wenige Titel.")
+                        if _h2n == 0:
+                            st.warning("\u26a0\ufe0f **Kein einziger Titel** erf\u00fcllte alle "
+                                       "drei Bedingungen in diesem Zeitraum. Die "
+                                       "Hypothese ist damit **nicht testbar** \u2013 das "
+                                       "ist das ehrliche Ergebnis, kein Beleg f\u00fcr "
+                                       "oder gegen die Strategie. Genau die "
+                                       "Overfitting-Falle, die wir vermeiden wollten: "
+                                       "zu enge Filter treffen fast nie.")
+                        elif _h2n < 4:
+                            st.info(f"\u2696\ufe0f Nur **{_h2n} Titel** erf\u00fcllten alle drei "
+                                    f"Bedingungen ({', '.join(_a.get('hyp2_treffer_titel', []))}). "
+                                    f"Median-Rendite {_h2t:+.1f}% gegen den Rest "
+                                    f"{_h2r:+.1f}%. **Zu wenige F\u00e4lle f\u00fcr eine "
+                                    f"belastbare Aussage** \u2013 bei 1\u20133 Titeln ist "
+                                    f"jedes Ergebnis Zufall. Ehrlich: nicht "
+                                    f"aussagekr\u00e4ftig.")
+                        else:
+                            _h2tab = [
+                                {"Gruppe": "G\u00fcnstig+stark+solide",
+                                 "Median": f"{_h2t:+.1f}%" if _h2t is not None else "\u2014",
+                                 "\u00d8": (f"{_a.get('hyp2_schnitt_treffer'):+.1f}%"
+                                        if _a.get('hyp2_schnitt_treffer') is not None else "\u2014"),
+                                 "FV-Treffer": (f"{_a.get('hyp2_treffer_fv_quote'):.0f}%"
+                                                if _a.get('hyp2_treffer_fv_quote') is not None else "\u2014"),
+                                 "Anzahl": _h2n},
+                                {"Gruppe": "Rest",
+                                 "Median": f"{_h2r:+.1f}%" if _h2r is not None else "\u2014",
+                                 "\u00d8": "\u2014", "FV-Treffer": "\u2014",
+                                 "Anzahl": _a.get("hyp2_n_rest", 0)},
+                            ]
+                            vr_table(_h2tab)
+                            st.caption(f"Erf\u00fcllt von: "
+                                       f"{', '.join(_a.get('hyp2_treffer_titel', []))}")
+                            if _h2t is not None and _h2r is not None:
+                                if _h2t > _h2r + 3:
+                                    st.success(f"\u2705 Die strenge Kombination h\u00e4lt "
+                                               f"(in diesem Zeitraum, {_h2n} Titel): "
+                                               f"{_h2t - _h2r:+.1f} Prozentpunkte mehr "
+                                               f"im Median. Ein ehrliches, weil vorab "
+                                               f"festgelegtes Signal \u2013 mit der "
+                                               f"n\u00f6tigen Vorsicht bei {_h2n} F\u00e4llen.")
+                                elif abs(_h2t - _h2r) <= 3:
+                                    st.info(f"\u2696\ufe0f Gleichauf mit dem Rest "
+                                            f"({_h2t:+.1f}% vs. {_h2r:+.1f}%) \u2013 die "
+                                            f"strenge Kombination trug hier keinen "
+                                            f"klaren Vorteil.")
+                                else:
+                                    st.warning(f"\u26a0\ufe0f F\u00e4llt durch: {_h2t:+.1f}% vs. "
+                                               f"{_h2r:+.1f}%. Wir justieren die "
+                                               f"Schwellen bewusst NICHT nach.")
 
                     with st.expander("Alle Datenpunkte ansehen"):
                         vr_table([{

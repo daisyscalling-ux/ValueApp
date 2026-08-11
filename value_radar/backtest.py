@@ -334,6 +334,8 @@ def einzeltest(roic_mod, valuation_mod, ticker, stichtage,
             "fair_value": round(fair, 2),
             "upside_pct": round(upside_damals, 1),
             "composite": round(composite, 1) if composite is not None else None,
+            "net_debt_ebitda": (round(fund.get("net_debt_ebitda"), 2)
+                                if fund.get("net_debt_ebitda") is not None else None),
             "kurs_spaeter": round(kurs_spaeter, 2),
             "rendite_pct": round(rendite, 1),
             "fv_angenaehert": angenaehert,
@@ -385,10 +387,19 @@ def diagnose(roic_mod, ticker, stichtag=None):
     return zeilen
 
 
-def jahres_stichtage(von_jahr, bis_jahr, monat=6):
-    """Liste von Stichtagen: je ein Datum pro Jahr (Standard: Jahresmitte,
-    damit die Vorjahreszahlen mit Puffer sicher bekannt sind)."""
-    return [_dt.date(j, monat, 15) for j in range(von_jahr, bis_jahr + 1)]
+def jahres_stichtage(von_jahr, bis_jahr, pro_jahr=2):
+    """Liste von Stichtagen. pro_jahr steuert die Dichte:
+      1 = nur Jahresmitte (Juni)
+      2 = Fruehjahr (April) + Herbst (Oktober) - verdoppelt die Datenpunkte
+      4 = quartalsweise
+    Mehr Stichtage = mehr Datenpunkte aus demselben 5-Jahres-Fenster. Die
+    Monate sind so gewaehlt, dass die Vorjahreszahlen mit Puffer bekannt sind."""
+    monate = {1: [6], 2: [4, 10], 4: [2, 5, 8, 11]}.get(pro_jahr, [6])
+    out = []
+    for j in range(von_jahr, bis_jahr + 1):
+        for m in monate:
+            out.append(_dt.date(j, m, 15))
+    return out
 
 
 def auswertung(alle_zeilen):
@@ -498,6 +509,16 @@ def auswertung(alle_zeilen):
 HYP_UPSIDE_MIN = 0.0
 HYP_COMPOSITE_MIN = 55.0
 
+# STRENGERE feste Hypothese (Frage 4) - ebenfalls VORAB festgelegt, BEVOR das
+# Ergebnis gesehen wurde. Kombination aus guenstig + stark + solide Bilanz.
+# Diese drei Zahlen werden NICHT nachjustiert. Erwartung offen gehalten: es ist
+# gut moeglich, dass zu wenige Titel alle drei erfuellen - dann lautet die
+# ehrliche Antwort "nicht testbar", nicht "funktioniert (nicht)".
+# Katalysator BEWUSST ausgelassen: historisch nicht sauber rekonstruierbar.
+HYP2_UPSIDE_MIN = 15.0        # klar unterbewertet
+HYP2_COMPOSITE_MIN = 60.0     # fundamental stark
+HYP2_NETDEBT_EBITDA_MAX = 3.0 # solide Bilanz (nicht ueberschuldet)
+
 
 def _hypothese_auswertung(zeilen, median_fn, schnitt_fn):
     """Testet die EINE vorab festgelegte Hypothese: Titel mit Upside > 0 UND
@@ -510,6 +531,15 @@ def _hypothese_auswertung(zeilen, median_fn, schnitt_fn):
                if z["upside_pct"] > HYP_UPSIDE_MIN
                and z["composite"] >= HYP_COMPOSITE_MIN]
     rest = [z for z in mit_comp if z not in treffer]
+
+    # Strengere Hypothese 2: guenstig UND stark UND solide Bilanz.
+    treffer2 = [z for z in mit_comp
+                if z["upside_pct"] > HYP2_UPSIDE_MIN
+                and z["composite"] >= HYP2_COMPOSITE_MIN
+                and z.get("net_debt_ebitda") is not None
+                and z["net_debt_ebitda"] < HYP2_NETDEBT_EBITDA_MAX]
+    rest2 = [z for z in mit_comp if z not in treffer2]
+
     return {
         "hyp_verfuegbar": True,
         "hyp_median_treffer": median_fn(treffer),
@@ -521,4 +551,17 @@ def _hypothese_auswertung(zeilen, median_fn, schnitt_fn):
         "hyp_treffer_fv_quote": (round(
             sum(1 for z in treffer if z["fv_angenaehert"]) / len(treffer) * 100, 1)
             if treffer else None),
+        # Hypothese 2 (strenger)
+        "hyp2_upside_min": HYP2_UPSIDE_MIN,
+        "hyp2_composite_min": HYP2_COMPOSITE_MIN,
+        "hyp2_netdebt_max": HYP2_NETDEBT_EBITDA_MAX,
+        "hyp2_median_treffer": median_fn(treffer2),
+        "hyp2_median_rest": median_fn(rest2),
+        "hyp2_schnitt_treffer": schnitt_fn(treffer2),
+        "hyp2_n_treffer": len(treffer2),
+        "hyp2_n_rest": len(rest2),
+        "hyp2_treffer_fv_quote": (round(
+            sum(1 for z in treffer2 if z["fv_angenaehert"]) / len(treffer2) * 100, 1)
+            if treffer2 else None),
+        "hyp2_treffer_titel": sorted(set(z["ticker"] for z in treffer2)),
     }

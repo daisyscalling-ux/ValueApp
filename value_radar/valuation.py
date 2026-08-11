@@ -81,6 +81,11 @@ def classify_playbook(fund) -> str:
     sector = fund.get("sector") or ""
     industry = (fund.get("industry") or "").lower()
 
+    # 0) datenbasierte Zyklus-Erkennung (z.B. aus dem Backtest): stark
+    # schwankende Gewinnmargen -> cyclical, auch ohne Sektor-Label.
+    if fund.get("_ist_zyklisch"):
+        return "cyclical"
+
     # 1) Finanzwerte: eigenes Modell (Gewinn + Buchwert)
     if sector == "Financial Services":
         return "financial"

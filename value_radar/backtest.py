@@ -141,6 +141,57 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
         if net_income and _ni_vj and _ni_vj > 0:
             earnings_growth = net_income / _ni_vj - 1
 
+    # ZYKLUS-ERKENNUNG + NORMALISIERTE GEWINNE (gegen die Zyklus-Falle).
+    # Ein Zykliker hat stark schwankende Gewinnmargen ueber die Jahre. Am
+    # Gewinngipfel sieht er faelschlich "billig + stark" aus. Wir sammeln die
+    # Nettomargen der verfuegbaren Jahre, messen ihre Schwankung, und wenn sie
+    # gross ist, berechnen wir einen NORMALISIERTEN Gewinn aus der
+    # Durchschnittsmarge x aktuellem Umsatz - statt des Spitzengewinns.
+    _margen = []
+    for r in inc:
+        if not isinstance(r, dict):
+            continue
+        _rv = _num(_g(r, "is_sales_revenue_turnover",
+                      "is_sales_and_services_revenues"))
+        _ni = _num(_g(r, "is_net_income", "is_earn_for_common"))
+        if _rv and _rv > 0 and _ni is not None:
+            _margen.append(_ni / _rv)
+    ist_zyklisch_daten = False
+    net_income_normalisiert = net_income
+    if len(_margen) >= 4:
+        _schnitt_marge = sum(_margen) / len(_margen)
+        # Standardabweichung der Margen
+        _var = sum((m - _schnitt_marge) ** 2 for m in _margen) / len(_margen)
+        _std = _var ** 0.5
+        # Variationskoeffizient: Schwankung relativ zum Schnitt. Hoch =
+        # zyklisch. Schwelle 0.4 = deutliche Schwankung. Zusaetzlich muss die
+        # aktuelle Marge klar ueber dem Schnitt liegen (= Gipfelverdacht).
+        _aktuelle_marge = (net_income / revenue) if (net_income and revenue
+                                                     and revenue > 0) else None
+        if _schnitt_marge and abs(_schnitt_marge) > 0.001:
+            _variationskoeff = _std / abs(_schnitt_marge)
+            if _variationskoeff > 0.4:
+                ist_zyklisch_daten = True
+                # normalisierten Gewinn NUR ansetzen, wenn aktueller Gewinn
+                # ueber dem Zyklus-Schnitt liegt (Gipfel) - nicht im Tal
+                # (dort waere die Firma sonst faelschlich "teuer").
+                if (_aktuelle_marge is not None and revenue
+                        and _aktuelle_marge > _schnitt_marge):
+                    net_income_normalisiert = _schnitt_marge * revenue
+
+    # BANKEN-ERKENNUNG aus den Daten (analog zur Zyklus-Erkennung). Banken
+    # brauchen das financial-Playbook (KBV+KGV, KEIN DCF) - ein DCF auf eine
+    # Bank liefert Unsinn. Im Backtest fehlt das Sektor-Label, also erkennen
+    # wir Banken an harten Bilanzmerkmalen: nennenswerte Kreditforderungen
+    # UND eine im Verhaeltnis zum Umsatz sehr grosse Bilanzsumme.
+    _loans = _num(_g(bal_row, "bs_loans_receivable"))
+    _bilanzsumme = _num(_g(bal_row, "bs_tot_asset", "bs_total_assets"))
+    ist_bank_daten = False
+    if _loans and _bilanzsumme and revenue and revenue > 0:
+        # Kredite > 15 % der Bilanz UND Bilanz > 4x Umsatz = klar Bank/Finanz
+        if _loans / _bilanzsumme > 0.15 and _bilanzsumme / revenue > 4:
+            ist_bank_daten = True
+
     # Cashflow: roic liefert FCF teils fertig (ttm/firm), sonst selbst rechnen
     fcf = _num(_g(cf_row, "cf_free_cash_flow_firm", "ttm_free_cash_flow"))
     op_cf = _num(_g(cf_row, "cf_cash_from_oper", "ttm_cash_from_oper"))
@@ -168,6 +219,13 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
     # EPS bevorzugt direkt aus roic, sonst aus net_income/shares
     if eps is None and net_income and shares:
         eps = net_income / shares
+    # Bei erkannten Zyklikern am Gipfel: EPS aus dem NORMALISIERTEN Gewinn -
+    # so sieht der Titel nicht faelschlich spottbillig aus.
+    eps_normalisiert = eps
+    if (ist_zyklisch_daten and not ist_bank_daten
+            and net_income_normalisiert is not None
+            and shares and shares > 0):
+        eps_normalisiert = net_income_normalisiert / shares
 
     # KENNZAHLEN FUER DEN COMPOSITE SCORE selbst berechnen (aus den Rohdaten,
     # ohne Extra-Abrufe). So laesst sich der Composite historisch nachbilden.
@@ -183,19 +241,29 @@ def fundamentaldaten_zum_stichtag(roic_mod, ticker, stichtag: _dt.date):
     net_debt_ebitda = (net_debt / ebitda) if (net_debt is not None and ebitda and ebitda > 0) else None
 
     fund = {
-        "revenue": revenue, "net_income": net_income,
+        "revenue": revenue, "net_income": net_income_normalisiert,
+        "net_income_roh": net_income,
         "ebit": ebit, "ebitda": ebitda, "shares_out": shares,
         "free_cashflow": fcf, "operating_cashflow": op_cf,
         "net_debt": net_debt, "total_debt": total_debt, "cash": cash,
         "book_value_ps": (equity / shares) if (equity and shares) else None,
-        "eps_trailing": eps,
+        "eps_trailing": eps_normalisiert,
+        "eps_roh": eps,
         "revenue_growth": revenue_growth,
         "earnings_growth": earnings_growth,
         # Composite-Kennzahlen:
         "roe": roe, "roa": roa,
         "gross_margin": gross_margin, "operating_margin": operating_margin,
         "current_ratio": current_ratio, "net_debt_ebitda": net_debt_ebitda,
-        "sector": None, "_backtest_fy": fy,
+        # Zyklus-Erkennung aus den Daten: setzt das cyclical-Playbook, auch
+        # ohne Sektor-Label. So greift die mid-cycle-Bewertung.
+        "_ist_zyklisch": ist_zyklisch_daten and not ist_bank_daten,
+        "_ist_bank": ist_bank_daten,
+        # Bank hat Vorrang: financial-Playbook (KEIN DCF). Sonst Energy fuer
+        # erkannte Zykliker. Sonst kein Label (quality/inflection nach Wachstum).
+        "sector": ("Financial Services" if ist_bank_daten
+                   else "Energy" if ist_zyklisch_daten else None),
+        "_backtest_fy": fy,
         "_period_end": _g(inc_row, "period_end_date", "date"),
     }
     # Bewertungs-Multiples aus den Rohdaten selbst berechnen, damit im Backtest

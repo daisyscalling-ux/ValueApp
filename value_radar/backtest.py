@@ -347,7 +347,9 @@ def diagnose(roic_mod, ticker, stichtag=None):
     fuer Schritt: kommt die Historie an, greifen die Feldnamen, klappt der
     Look-ahead-Filter, gibt es Kurse? Gibt eine Liste von Diagnose-Zeilen."""
     import datetime as _d
-    stichtag = stichtag or _d.date(2020, 6, 15)
+    # Standard-Stichtag: 3 Jahre zurueck (liegt im 5-Jahres-Tarif-Fenster).
+    # Der Dashboard-Aufruf sollte den tatsaechlich gewaehlten Stichtag geben.
+    stichtag = stichtag or _d.date(_d.date.today().year - 3, 6, 15)
     zeilen = []
     try:
         inc = roic_mod.income_annual(ticker, limit=15) or []

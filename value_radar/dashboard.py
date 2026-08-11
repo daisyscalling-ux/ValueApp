@@ -6208,7 +6208,9 @@ if nav == "Backtest":
                         for _tk in _ticker[:3]:
                             st.markdown(f"**{_tk}**")
                             try:
-                                for _zeile in _bt.diagnose(_btroic, _tk):
+                                import datetime as _dtd
+                                _diag_st = _dtd.date(int(_von), 6, 15)
+                                for _zeile in _bt.diagnose(_btroic, _tk, _diag_st):
                                     st.text(_zeile)
                             except Exception as _de:
                                 st.text(f"Diagnose-Fehler: {_de}")

@@ -503,8 +503,11 @@ def monatsende(t: str, jahre: int = 20):
     start_jahr = max(heute.year - jahre, 1990)
 
     alle = {}          # monat -> (datum, kurs)
-    # in 3-Jahres-Bloecken (unter 1000 Handelstagen) rueckwaerts holen
+    # in 3-Jahres-Bloecken (unter 1000 Handelstagen) rueckwaerts holen.
+    # Ein leerer Block bedeutet NICHT automatisch das Ende: der Tarif kann
+    # eine Luecke haben. Erst nach zwei leeren Bloecken in Folge aufhoeren.
     bis_jahr = heute.year + 1
+    leer_in_folge = 0
     while bis_jahr > start_jahr:
         von_jahr = max(bis_jahr - 3, start_jahr)
         von = _dt.date(von_jahr, 1, 1).isoformat()
@@ -524,8 +527,12 @@ def monatsende(t: str, jahre: int = 20):
                 if monat not in alle or d > alle[monat][0]:
                     alle[monat] = (d, k)
         bis_jahr = von_jahr
-        if not reihe:          # nichts mehr da -> aufhoeren
-            break
+        if not reihe:
+            leer_in_folge += 1
+            if leer_in_folge >= 2:     # zwei leere Bloecke = Tarifgrenze erreicht
+                break
+        else:
+            leer_in_folge = 0
     if not alle:
         # Rueckfall: die letzten 1000 Tage ohne Datumsbereich
         try:

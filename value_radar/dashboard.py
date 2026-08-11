@@ -2465,11 +2465,13 @@ if st.session_state.get("_last_nav") != nav:     # Tab-Wechsel -> hoch
 # zu Rand. Buttons OHNE st.columns - das CSS-Grid ordnet sie in 6 gleiche Zellen
 # (robust gegen Streamlit-Versionswechsel). Icons statt Text: passt auf jedes Display.
 MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
-              "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
+              "Einzelanalyse": "\U0001f4c8", "Aktienvergleich": "\u2696\ufe0f",
+              "Radar": "\U0001f3af",
               "Screener": "\U0001f50d", "Momentum": "\U0001f680",
               "Watchlist": "\u2b50",
-              "Long/Short": "\u2696\ufe0f", "Portfoliocheck": "\U0001f4bc",
-              "Trefferbilanz": "\U0001f3c6", "Earnings Calls": "\U0001f399\ufe0f",
+              "Long/Short": "\U0001f4c9", "Portfoliocheck": "\U0001f4bc",
+              "Trefferbilanz": "\U0001f3c6", "Backtest": "\U0001f9ea",
+              "Earnings Calls": "\U0001f399\ufe0f",
               "Umfeld": "\U0001f30d"}
 _mnav = st.container(key="mobilenav")
 with _mnav:

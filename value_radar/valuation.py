@@ -117,6 +117,118 @@ def wacc(beta, market_cap, total_debt, tax_rate=None) -> float:
 
 
 # --- 1) Faires KGV ----------------------------------------------------------
+def ungehebelte_ekr(fund) -> Optional[float]:
+    """Schmidlins ungehebelte Eigenkapitalrendite: normalisiert die ROE auf
+    eine ANGEMESSENE Eigenkapitalbasis, statt eine durch hohe Verschuldung
+    aufgeblaehte ROE zu verwenden. Faustregel: Mindest-EK-Quote = Sach-
+    investitionsquote (CAPEX/operativer Cashflow). Kapitalintensive Modelle
+    brauchen mehr Eigenkapital -> ehrlichere Rentabilitaet. Gibt die entschuldete
+    ROE (Dezimal) oder None zurueck."""
+    ni = fund.get("net_income")
+    assets = fund.get("total_assets") or fund.get("_total_assets")
+    # Bilanzsumme aus Eigenkapital + Schulden approximieren, falls nicht direkt da
+    if not assets:
+        bvps = fund.get("book_value_ps")
+        shares = fund.get("shares_out")
+        eq = (bvps * shares) if (bvps and shares) else None
+        debt = fund.get("total_debt") or 0
+        if eq:
+            assets = eq + (debt or 0)
+    if not ni or not assets or assets <= 0:
+        return None
+    # Sachinvestitionsquote = CAPEX / operativer Cashflow (Naeherung ueber FCF)
+    opcf = fund.get("operating_cashflow")
+    fcf = fund.get("free_cashflow")
+    capex = None
+    if opcf is not None and fcf is not None:
+        capex = abs(opcf - fcf)
+    sach_quote = None
+    if capex is not None and opcf and opcf > 0:
+        sach_quote = capex / opcf
+    if sach_quote is None:
+        sach_quote = 0.35       # neutraler Default, wenn CAPEX/CF fehlt
+    # Mindest-EK-Quote sinnvoll begrenzen: nie unter 25% (sonst unrealistisch
+    # hohe entschuldete ROE), nie ueber 80%.
+    sach_quote = min(max(sach_quote, 0.25), 0.80)
+    # fiktive angemessene EK-Basis = Bilanzsumme x Mindest-EK-Quote
+    fiktives_ek = assets * sach_quote
+    if fiktives_ek <= 0:
+        return None
+    return ni / fiktives_ek
+
+
+def net_net_wert(fund) -> Optional[float]:
+    """Schmidlins Net-Net (Graham): schnell liquidierbares Umlaufvermoegen
+    minus ALLE Verbindlichkeiten, je Aktie. Liquide Mittel zu 100%,
+    Forderungen und Vorraete mit Abschlag. Notiert die Aktie darunter, ist sie
+    selbst im Liquidationsfall unterbewertet - staerkste Sicherheitsmarge.
+    Gibt den Net-Net je Aktie oder None zurueck."""
+    cash = fund.get("cash")
+    cur_assets = fund.get("current_assets") or fund.get("_current_assets")
+    receivables = fund.get("receivables")
+    inventory = fund.get("inventory")
+    tot_liab = fund.get("total_liabilities") or fund.get("total_debt")
+    shares = fund.get("shares_out")
+    if not shares or shares <= 0:
+        return None
+    # bevorzugt Einzelposten mit Graham-Abschlaegen, sonst Umlaufvermoegen grob
+    if cash is not None and receivables is not None and inventory is not None:
+        liquidierbar = cash + 0.75 * receivables + 0.5 * inventory
+    elif cur_assets is not None:
+        liquidierbar = cur_assets * 0.7      # pauschaler Graham-Abschlag
+    elif cash is not None:
+        liquidierbar = cash                  # nur Cash bekannt (sehr konservativ)
+    else:
+        return None
+    if tot_liab is None:
+        return None
+    net_net = (liquidierbar - tot_liab) / shares
+    return net_net
+
+
+def peg_ratio(fund) -> Optional[float]:
+    """KGV / erwartetes Gewinnwachstum (in %). Schmidlin fuer Wachstumswerte:
+    < 1 guenstig, ~1 fair, > 1 teuer."""
+    eps = _eps(fund)
+    price = fund.get("price")
+    if not eps or eps <= 0 or not price:
+        return None
+    kgv = price / eps
+    g = fund.get("earnings_growth")
+    if g is None:
+        g = fund.get("revenue_growth")
+    if g is None or g <= 0:
+        return None
+    g_pct = g * 100
+    if g_pct < 1:
+        return None
+    return round(kgv / g_pct, 2)
+
+
+def verwaesserung(fund) -> Optional[dict]:
+    """Waechst der Gewinn JE AKTIE oder nur der absolute Gewinn? Grosse Luecke
+    = Verwaesserung durch neue Aktien."""
+    g_ni = fund.get("earnings_growth")
+    g_eps = fund.get("eps_growth")
+    if g_ni is None or g_eps is None:
+        return None
+    luecke = g_ni - g_eps
+    return {"gewinn_wachstum": round(g_ni, 3), "eps_wachstum": round(g_eps, 3),
+            "luecke": round(luecke, 3), "verwaessert": luecke > 0.03}
+
+
+def dynamischer_verschuldungsgrad(fund) -> Optional[float]:
+    """Net Debt / operativer Cashflow: in wie vielen Jahren waere die Firma
+    schuldenfrei. < 3 solide, > 5 bedenklich."""
+    nd = fund.get("net_debt")
+    opcf = fund.get("operating_cashflow")
+    if nd is None or not opcf or opcf <= 0:
+        return None
+    if nd <= 0:
+        return 0.0
+    return round(nd / opcf, 1)
+
+
 def justified_pe_number(fund, preset="quality") -> Optional[float]:
     eps = _eps(fund)
     if not eps or eps <= 0:
@@ -132,12 +244,16 @@ def justified_pe_number(fund, preset="quality") -> Optional[float]:
     if cr and cr > 1.2:
         stab += 1
     stab = min(stab, 3)
+    # Rentabilitaet: bevorzugt die UNGEHEBELTE ROE (Schmidlin), sonst rohe ROE.
+    # Verhindert, dass hochverschuldete Firmen faelschlich zu profitabel wirken.
+    uroe = ungehebelte_ekr(fund)
     roe = fund.get("roe")
-    if roe is None:
+    _basis = uroe if uroe is not None else roe
+    if _basis is None:
         prof = 1.5
     else:
-        prof = (0 if roe < 0.05 else 1 if roe < 0.10 else 2 if roe < 0.15
-                else 3 if roe < 0.20 else 4)
+        prof = (0 if _basis < 0.05 else 1 if _basis < 0.10 else 2 if _basis < 0.15
+                else 3 if _basis < 0.20 else 4)
     gm = fund.get("gross_margin")
     pos = (1 if (gm is None or gm < 0.30) else 1.5 if gm < 0.40 else 2 if gm < 0.50
            else 2.8 if gm < 0.65 else 3.5)
@@ -703,6 +819,22 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         avail = dict(near)
 
     mos = config.MARGIN_OF_SAFETY.get(preset, 0.20)
+    # Schmidlin: die geforderte Sicherheitsmarge steigt mit dem RISIKO des
+    # einzelnen Titels, nicht nur mit dem Playbook-Typ. Schwache Bilanz oder
+    # hohe Verschuldung -> hoehere Marge fordern (bis +12 Punkte).
+    _risk_add = 0.0
+    _nde = fund.get("net_debt_ebitda")
+    if _nde is not None and _nde > 3:
+        _risk_add += 0.04 if _nde <= 4 else 0.08     # hohe Verschuldung
+    if (fund.get("free_cashflow") or 0) < 0:
+        _risk_add += 0.04                            # verbrennt Cash
+    _cr = fund.get("current_ratio")
+    if _cr is not None and _cr < 1.0:
+        _risk_add += 0.03                            # schwache Liquiditaet
+    if fund.get("_ist_zyklisch"):
+        _risk_add += 0.03                            # Zykliker: extra vorsichtig
+    mos = min(mos + _risk_add, 0.55)                 # Deckel bei 55%
+    fund["_mos_verwendet"] = round(mos, 3)
     entry = fv * (1 - mos) if fv else None
     g1 = fund.get("revenue_growth")
     if g1 is None:                                  # nur bei fehlendem Wert ersetzen
@@ -735,6 +867,13 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         confidence = "mittel"
     n_methods = len(avail)
 
+    # Schmidlin Net-Net: harter Bodenwert. Wenn der Kurs UNTER dem Netto-
+    # Liquidationswert liegt, ist der Titel selbst im Zerschlagungsfall billig.
+    # Wir heben den fairen Wert nie kuenstlich an, markieren aber diese seltene,
+    # sehr starke Unterbewertung.
+    _netnet = net_net_wert(fund)
+    _unter_netnet = bool(_netnet and price and price < _netnet)
+
     return {
         "ticker": fund.get("ticker"),
         "price": price,
@@ -742,6 +881,11 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "n_methods": n_methods,
         "fair_value": round(fv, 2) if fv else None,
         "fair_value_capped": capped,
+        "net_net": round(_netnet, 2) if _netnet is not None else None,
+        "unter_net_net": _unter_netnet,
+        "mos_verwendet": fund.get("_mos_verwendet"),
+        "ungehebelte_roe": (round(ungehebelte_ekr(fund), 3)
+                            if ungehebelte_ekr(fund) is not None else None),
         # Notbehelf-Kennzeichen: TRUE heisst, dass KEINE Bewertungsmethode
         # ein plausibles Ergebnis lieferte. Der angezeigte Wert ist dann nur
         # der gegen den Kurs geklammerte Median der Rohwerte - also faktisch

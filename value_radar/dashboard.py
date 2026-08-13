@@ -3829,6 +3829,39 @@ if nav == "Einzelanalyse":
                     st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
                                + "  \u00b7  ".join(f"{k} {x}" for k, x in q["parts"].items()))
 
+                # Schmidlin-Kennzahlen (kompakt): ungehebelte ROE, dyn.
+                # Verschuldungsgrad, Net-Net, PEG. Ergaenzen den fairen Wert.
+                _uroe = v.get("ungehebelte_roe")
+                _dvg = valuation.dynamischer_verschuldungsgrad(f)
+                _nn = v.get("net_net")
+                _peg = valuation.peg_ratio(f)
+                _sm = []
+                if _uroe is not None:
+                    _sm.append(f"Ungehebelte EKR (Schmidlin): **{_uroe*100:.0f}%** "
+                               f"(entschuldete Rentabilit\u00e4t)")
+                if _dvg is not None:
+                    _sm.append(f"Dyn. Verschuldungsgrad: **{_dvg:.1f} Jahre** "
+                               f"bis schuldenfrei ({'solide' if _dvg < 3 else 'erh\u00f6ht' if _dvg < 5 else 'bedenklich'})")
+                if _nn is not None:
+                    _sm.append(f"Net-Net-Wert (Liquidation): **{m(_nn)}**"
+                               + (" \u2013 \U0001f7e2 Kurs darunter!" if v.get("unter_net_net") else ""))
+                if _peg is not None:
+                    _sm.append(f"PEG: **{_peg:.2f}** "
+                               f"({'g\u00fcnstig' if _peg < 1 else 'fair' if _peg < 1.3 else 'teuer'})")
+                if _sm:
+                    st.caption(" \u00b7 ".join(_sm))
+                if v.get("unter_net_net"):
+                    st.success("\U0001f7e2 **Seltenes Signal:** Der Kurs liegt unter "
+                               "dem Netto-Liquidationswert (Net-Net). Selbst bei "
+                               "Zerschlagung w\u00e4re der Titel damit rechnerisch billig "
+                               "\u2013 Grahams st\u00e4rkste Sicherheitsmarge. Pr\u00fcfe, ob die "
+                               "Bilanzwerte werthaltig sind.")
+                if v.get("mos_verwendet") and v.get("mos_verwendet") != v.get("margin_of_safety"):
+                    st.caption(f"\u2139\ufe0f Wegen erh\u00f6hten Risikos wurde die geforderte "
+                               f"Sicherheitsmarge auf **{int(v['mos_verwendet']*100)}%** "
+                               f"angehoben (Schmidlin: riskante Titel brauchen mehr "
+                               f"Marge).")
+
                 # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
                 _vtw = q.get("value_trap_warnung") or []
@@ -4104,6 +4137,61 @@ if nav == "Einzelanalyse":
                                            "gesetzt?")
                     else:
                         _tb3.caption("\U0001f916 Claude aus")
+
+                # -----------------------------------------------------------
+                # PORTER FUENF KRAEFTE - dein gefuehrter Eigen-Input (Schmidlin).
+                # Die Marktmacht laesst sich nicht automatisieren; hier bewertest
+                # DU sie, Claude liefert dir die Fakten. Ergebnis = Porter-Punkte,
+                # die deinen eigenen Marktstellungs-Eindruck festhalten.
+                # -----------------------------------------------------------
+                with st.expander("\u2696\ufe0f Marktmacht bewerten (Porter, dein "
+                                 "Urteil)", expanded=False):
+                    st.caption("Die Marktmacht kann das Modell **nicht** automatisch "
+                               "messen \u2013 sie braucht dein Urteil. Bewerte jede der "
+                               "f\u00fcnf Kr\u00e4fte von 0 (ung\u00fcnstig f\u00fcr die Firma) bis 5 "
+                               "(sehr g\u00fcnstig). Claude liefert dir bei jeder Frage "
+                               "die Fakten. Die Summe (0\u201325) h\u00e4lt deinen Eindruck "
+                               "der Wettbewerbsposition fest.")
+                    _porter_alt = (_these.get("porter") or {}) if _these else {}
+                    _porter_neu = {}
+                    for _kraft in these_mod.PORTER_KRAEFTE:
+                        _kk = _kraft["key"]
+                        st.markdown(f"**{_kraft['frage']}**")
+                        st.caption(_kraft["hilfe"])
+                        _pc1, _pc2 = st.columns([3, 1])
+                        _porter_neu[_kk] = _pc1.select_slider(
+                            "Bewertung", options=[0, 1, 2, 3, 4, 5],
+                            value=int(_porter_alt.get(_kk, 2)),
+                            key=f"porter_{_kk}_{ticker}",
+                            label_visibility="collapsed")
+                        if these_mod.verfuegbar():
+                            if _pc2.button("\U0001f916 Fakten",
+                                           key=f"porter_ai_{_kk}_{ticker}"):
+                                with st.spinner("Claude recherchiert \u2026"):
+                                    _pa = these_mod.porter_frage_an_claude(
+                                        ticker, f.get("name", ticker), _kk)
+                                if _pa:
+                                    st.info(_pa)
+                                else:
+                                    st.warning("Claude nicht erreichbar.")
+                    _summe = sum(_porter_neu.values())
+                    _aufschlag = these_mod.porter_punkte_zu_aufschlag(_summe)
+                    st.markdown(f"**Deine Porter-Summe: {_summe}/25** \u2192 "
+                                f"entspr\u00e4che bei Schmidlin einem KGV-Aufschlag von "
+                                f"~{_aufschlag:.2f} Punkten.")
+                    st.caption("Zur Einordnung: 0\u20135 = vollkommene Konkurrenz, "
+                               "6\u201310 = starker Wettbewerb, 11\u201315 = m\u00e4\u00dfig, "
+                               "16\u201320 = oligopolistisch, 21\u201325 = "
+                               "monopolistische Tendenz. Dieser Wert flie\u00dft "
+                               "**nicht automatisch** in den Fair Value \u2013 er h\u00e4lt "
+                               "dein eigenes Urteil fest, das du gegen die "
+                               "Modellzahl stellen kannst.")
+                    if st.button("\U0001f4be Porter-Bewertung speichern",
+                                 key=f"porter_save_{ticker}"):
+                        store.set_these(ticker, {"porter": _porter_neu,
+                                                 "porter_summe": _summe,
+                                                 "name": f.get("name", ticker)})
+                        st.success("Porter-Bewertung in deiner These gespeichert.")
 
                 # Hinweis, wenn roic-Werte umgerechnet werden mussten
                 if f.get("_roic_fx"):

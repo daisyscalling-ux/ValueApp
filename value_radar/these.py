@@ -125,6 +125,80 @@ def frage_stellen(frage: str, verlauf=None) -> str | None:
 
 
 # ===========================================================================
+# PORTER FUENF KRAEFTE - gefuehrter Eigen-Input (Schmidlin, Kapitel 5/8.2)
+# ===========================================================================
+# Die Marktmacht laesst sich NICHT sauber automatisieren - sie braucht dein
+# Urteil. Diese fuenf Fragen strukturieren es. Claude hilft beim Einschaetzen,
+# entscheiden tust du. Jede Kraft wird 0-5 bewertet (5 = sehr guenstig fuer die
+# Firma), Summe 0-25 = "Porter-Punkte" -> Marktstellungs-Aufschlag im fairen KGV.
+
+PORTER_KRAEFTE = [
+    {"key": "rivalitaet",
+     "frage": "Wie stark ist die Rivalit\u00e4t unter den bestehenden Wettbewerbern?",
+     "hilfe": "Wenige Wettbewerber und wenig Preiskampf = g\u00fcnstig (hoch). Viele "
+              "austauschbare Anbieter, Preiskrieg = ung\u00fcnstig (niedrig).",
+     "claude": "Wer sind die Hauptwettbewerber von {name} ({ticker}), und wie "
+               "intensiv ist der Preiswettbewerb in dieser Branche? Nenne mir "
+               "die 2-3 wichtigsten Punkte, die ich f\u00fcr eine Einsch\u00e4tzung der "
+               "Wettbewerbsintensit\u00e4t (0=brutal, 5=entspannt) brauche."},
+    {"key": "neue_anbieter",
+     "frage": "Wie hoch sind die Markteintrittsbarrieren (Bedrohung durch neue Anbieter)?",
+     "hilfe": "Hohe Barrieren (Kapital, Patente, Marke, Netzwerkeffekte) = "
+              "g\u00fcnstig (hoch). Leichter Eintritt = ung\u00fcnstig (niedrig).",
+     "claude": "Wie hoch sind die Markteintrittsbarrieren im Gesch\u00e4ft von {name} "
+               "({ticker})? Was h\u00e4lt neue Konkurrenten fern (oder eben nicht)? "
+               "Nenne mir die entscheidenden Faktoren."},
+    {"key": "lieferanten",
+     "frage": "Wie gro\u00df ist die Verhandlungsmacht der Lieferanten?",
+     "hilfe": "Firma ist von wenigen Lieferanten abh\u00e4ngig = ung\u00fcnstig (niedrig). "
+              "Viele austauschbare Lieferanten = g\u00fcnstig (hoch).",
+     "claude": "Wie abh\u00e4ngig ist {name} ({ticker}) von seinen Lieferanten? Gibt "
+               "es Kl\u00fcmpchenrisiken oder viele Alternativen? Was sollte ich "
+               "wissen, um die Lieferantenmacht einzusch\u00e4tzen?"},
+    {"key": "abnehmer",
+     "frage": "Wie gro\u00df ist die Verhandlungsmacht der Abnehmer/Kunden?",
+     "hilfe": "Wenige gro\u00dfe Kunden, die Druck machen k\u00f6nnen = ung\u00fcnstig (niedrig). "
+              "Viele kleine Kunden, hohe Wechselkosten = g\u00fcnstig (hoch).",
+     "claude": "Wie ist die Kundenstruktur von {name} ({ticker})? Gibt es "
+               "Kl\u00fcmpchenrisiken (wenige Gro\u00dfkunden) oder Preismacht gegen\u00fcber "
+               "den Kunden? Was ist f\u00fcr die Einsch\u00e4tzung wichtig?"},
+    {"key": "substitute",
+     "frage": "Wie gro\u00df ist die Bedrohung durch Ersatzprodukte (Substitute)?",
+     "hilfe": "Kaum Alternativen zum Produkt = g\u00fcnstig (hoch). Leicht ersetzbar "
+              "durch andere L\u00f6sungen/Technologien = ung\u00fcnstig (niedrig).",
+     "claude": "Welche Substitute oder alternativen Technologien bedrohen das "
+               "Kerngesch\u00e4ft von {name} ({ticker}) mittelfristig? Wie gro\u00df ist "
+               "die Verdr\u00e4ngungsgefahr?"},
+]
+
+
+def porter_punkte_zu_aufschlag(summe: int) -> float:
+    """Wandelt die Porter-Summe (0-25) in Schmidlins KGV-Aufschlag (0-3)."""
+    if summe <= 5:
+        return 0.25
+    if summe <= 10:
+        return 1.0
+    if summe <= 15:
+        return 1.75
+    if summe <= 20:
+        return 2.25
+    return 2.75
+
+
+def porter_frage_an_claude(ticker: str, name: str, kraft_key: str) -> str | None:
+    """Holt fuer EINE Porter-Kraft die passende Recherchehilfe von Claude,
+    damit der Nutzer die Frage fundiert selbst beantworten kann."""
+    kraft = next((k for k in PORTER_KRAEFTE if k["key"] == kraft_key), None)
+    if not kraft:
+        return None
+    prompt = kraft["claude"].format(name=name, ticker=ticker)
+    system = (_SYSTEM_FRAGE + " Halte dich kurz und konkret - der Nutzer will "
+              "diese eine Wettbewerbskraft selbst auf einer Skala 0-5 bewerten "
+              "und braucht daf\u00fcr die entscheidenden Fakten, keine Romane.")
+    return _frag_claude(system, prompt, max_tokens=700)
+
+
+# ===========================================================================
 # THESEN-TRACKRECORD - dein ehrlicher Spiegel: gehen DEINE Thesen auf?
 # ===========================================================================
 # Kein Modell-Lernen. Das Tool wird durch deine Thesen NICHT "besser". Es

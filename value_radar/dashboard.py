@@ -27,6 +27,7 @@ import matrices as mx
 import scorecard as sc
 import portfolio as pf
 import store
+import these as these_mod
 import radar as radar
 import marketnews as mn
 import briefing as bfg
@@ -459,8 +460,39 @@ def load_universe(regions, min_mcap_eur_bn, size, max_mcap_eur_bn=None,
 def mcap_eur_bn(fd):
     """Marktkapitalisierung in Mrd. EUR (einheitlich fuer Radar & Screener)."""
     return ((fd.get("market_cap") or 0) * (fd.get("_fx") or 1.0)) / 1e9
-@st.cache_data(ttl=1800, show_spinner=False)
-def load_perf(t): return providers.get_performance(t)
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_scores(t, fund_hint=None):
+    """Berechnet Piotroski F, Altman Z und Beneish M aus roic-Jahresdaten.
+    Gibt {"f": ..., "z": ..., "m": ...} mit den Score-Dicts (oder None je
+    Score). Bei fehlendem roic oder zu wenig Historie: alle None."""
+    import scores as _sc
+    try:
+        import roic as _r
+        inc = _r.income_annual(t, limit=3) or []
+        bal = _r.balance_annual(t, limit=3) or []
+        cf = _r.cashflow_annual(t, limit=3) or []
+    except Exception:
+        return {"f": None, "z": None, "m": None}
+    akt, vorjahr = _sc.jahres_paar(inc, bal, cf)
+    if akt is None:
+        return {"f": None, "z": None, "m": None}
+    sektor = (fund_hint or {}).get("sector") if fund_hint else None
+    try:
+        f = _sc.piotroski_f(akt, vorjahr, sektor, fund_hint)
+    except Exception:
+        f = None
+    try:
+        z = _sc.altman_z(akt, sektor, fund_hint)
+    except Exception:
+        z = None
+    try:
+        m = _sc.beneish_m(akt, vorjahr, sektor, fund_hint)
+    except Exception:
+        m = None
+    return {"f": f, "z": z, "m": m}
+
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_screen_extras(t): return providers.get_screen_extras(t)
 @st.cache_data(ttl=86400, show_spinner=False)
@@ -1891,24 +1923,74 @@ def longshort_candidates(regions, min_mcap_eur_bn, size):
         mom20, mom60, vol = tm.get("mom20"), tm.get("mom60"), tm.get("vol")
         fx = fx_to_eur(f.get("currency", "USD")) or 1.0
         trend = ("\u2191 \u00fcber 200T" if above else "\u2193 unter 200T") if above is not None else "\u2014"
+
+        # NEU: wissenschaftliche Fundamental-Scores (Piotroski/Altman/Beneish)
+        _sc = load_scores(t, {"sector": f.get("sector"),
+                              "market_cap": f.get("market_cap"),
+                              "_ist_bank": f.get("_ist_bank")})
+        _fsc = _sc.get("f")
+        _zsc = _sc.get("z")
+        _msc = _sc.get("m")
+        _f_score = _fsc.get("score") if _fsc else None
+        _z_val = _zsc.get("z") if _zsc else None
+        _m_val = _msc.get("m") if _msc else None
+        # Short-Interest als Squeeze-Warnung
+        _short_pct = f.get("short_pct_float")
+
         base = {"Ticker": t, "Name": (f.get("name") or "")[:18],
                 "Kurs \u20ac": round(price * fx, 2), "Comp.": round(comp),
                 "Upside %": round(up, 1),
+                "F": _f_score if _f_score is not None else "\u2014",
+                "Z": _z_val if _z_val is not None else "\u2014",
+                "M": _m_val if _m_val is not None else "\u2014",
                 "Vola %": round(vol) if vol else None, "Trend": trend}
 
-        # LONG: Qualitaet + Bewertungsabstand, nicht im freien Fall
-        if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
-            lscore = comp * 0.6 + min(up, 60) * 0.5 + (6 if above else 0)
-            longs.append({**base, "Chance": round(lscore)})
+        # ---------------------------------------------------------------
+        # LONG: Qualitaet + Bewertungsabstand + fundamentale STAERKE.
+        # Der Piotroski F-Score >= 7 filtert Value-Fallen (billige Titel,
+        # die nur billig sind, weil sie kranken). Wenn kein F-Score da ist,
+        # faellt die Logik auf die alte Regel zurueck (mildere Schwelle).
+        # ---------------------------------------------------------------
+        _long_basis = comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20)
+        if _long_basis:
+            if _f_score is None or _f_score >= 7:
+                # F-Score verstaerkt die Chance; ohne F etwas vorsichtiger
+                _f_bonus = 0
+                if _f_score is not None:
+                    _f_bonus = (_f_score - 6) * 4    # 7->4, 8->8, 9->12
+                lscore = comp * 0.6 + min(up, 60) * 0.5 + (6 if above else 0) + _f_bonus
+                _tag = ("\u2b50 F%d" % _f_score) if _f_score is not None else ""
+                longs.append({**base, "Chance": round(lscore), "Signal": _tag})
 
-        # SHORT: ueberbewertet + schwaecher + kein starker Aufwaertstrend
+        # ---------------------------------------------------------------
+        # SHORT: ueberbewertet + schwaechere Qualitaet + FORENSISCHE
+        # Warnsignale (niedriger Altman Z ODER hoher Beneish M) + kein
+        # starker Aufwaertstrend (Squeeze-Schutz). Nur eine Kombination aus
+        # Ueberbewertung UND echtem fundamentalem Problem ist ein Short-Fit.
+        # ---------------------------------------------------------------
         if up <= -20 and comp <= 52:
             strong_uptrend = bool(above and (mom60 or 0) > 0.15)
             rolling_over = (mom20 or 0) < 0
-            if not strong_uptrend and (not above or rolling_over):
+            # forensisches Warnsignal?
+            _z_warn = (_z_val is not None and _z_val < 1.81)      # Pleiterisiko
+            _m_warn = (_m_val is not None and _m_val > -2.22)     # Manipulation
+            _forensik = _z_warn or _m_warn
+            # Squeeze-Gefahr: hohe Short-Interest
+            _squeeze = (_short_pct is not None and _short_pct > 0.10)
+            if (not strong_uptrend and (not above or rolling_over)
+                    and not _squeeze):
+                # Grundfit; forensische Warnung erhoeht ihn deutlich
                 sscore = (-up) * 0.5 + (60 - comp) * 0.4 \
                     + (10 if rolling_over else 0) - (15 if above else 0)
-                shorts.append({**base, "Risiko-Fit": round(sscore)})
+                if _forensik:
+                    sscore += 20
+                _warnung = []
+                if _z_warn:
+                    _warnung.append("Z<1.8 Pleiterisiko")
+                if _m_warn:
+                    _warnung.append("M>-2.22 Bilanz?")
+                shorts.append({**base, "Risiko-Fit": round(sscore),
+                               "Warnung": " \u00b7 ".join(_warnung) or "\u2014"})
 
     longs.sort(key=lambda r: -r["Chance"])
     shorts.sort(key=lambda r: -r["Risiko-Fit"])
@@ -2403,12 +2485,14 @@ NAV_GROUPS = [
      "children": [
         ("Portfoliocheck", "Portfolio", "\U0001f4bc"),
         ("Watchlist", "Watchlist", "\u2b50"),
+        ("ClaudeChat", "Frag Claude", "\U0001f916"),
      ]},
     {"key": "StrategieStatistik", "label": "Strategie und Statistik",
      "icon": "\U0001f3c6", "children": [
         ("Trefferbilanz", "Trefferbilanz", "\U0001f3c6"),
         ("Long/Short", "Long/Short", "\u2696\ufe0f"),
         ("Backtest", "Backtest", "\U0001f9ea"),
+        ("ThesenTrack", "Thesen-Bilanz", "\U0001f4dd"),
      ]},
 ]
 # Ueberpunkte, die selbst eine eigene Seite haben (kein reiner Container).
@@ -2472,7 +2556,9 @@ MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Watchlist": "\u2b50",
               "Long/Short": "\U0001f4c9", "Portfoliocheck": "\U0001f4bc",
               "Trefferbilanz": "\U0001f3c6", "Backtest": "\U0001f9ea",
+              "ThesenTrack": "\U0001f4dd",
               "Earnings Calls": "\U0001f399\ufe0f",
+              "ClaudeChat": "\U0001f916",
               "Umfeld": "\U0001f30d"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
@@ -3831,6 +3917,105 @@ if nav == "Einzelanalyse":
                                + f": Analysten sehen {dv:+.0f}% ggü. Modell \u2013 unser Fair Value "
                                  "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
                                  "Wachstumsstory, nicht an heutigen Zahlen.")
+
+                # ---------------------------------------------------------
+                # DEINE THESE (getrennt vom Fundamentalwert). Hier fliesst
+                # dein eigenes Wissen ein - Endmarkt, Katalysator, Erwartung -,
+                # das die rueckwaertsgerichteten Zahlen NICHT erfassen. Das
+                # Modell bleibt unangetastet; deine These steht daneben.
+                # ---------------------------------------------------------
+                with st.expander("\U0001f4dd Deine These (dein Wissen, getrennt "
+                                 "vom Modell)", expanded=False):
+                    _these = store.get_these(ticker)
+                    st.caption("Das Modell oben schaut in die **Vergangenheit** "
+                               "(Zahlen, die schon passiert sind). Dein Wissen "
+                               "\u00fcber **Zukunft** \u2013 Endm\u00e4rkte, Katalysatoren, "
+                               "Ausblick \u2013 geh\u00f6rt hierher. Es ver\u00e4ndert die "
+                               "Modellzahl bewusst NICHT: So bleibt der Fair Value "
+                               "ein ehrliches Korrektiv, und du siehst die "
+                               "Spannung zwischen kalter Zahl und deiner \u00dcberzeugung.")
+                    _t_text = st.text_area(
+                        "Deine Investment-These",
+                        value=_these.get("text", ""),
+                        placeholder="z.B. Eaton profitiert vom AI-Rechenzentrums"
+                                    "-Ausbau (K\u00fchlung/Strominfrastruktur). Starke "
+                                    "Earnings + Ausblick deuten auf anhaltende "
+                                    "Nachfrage.",
+                        key=f"these_text_{ticker}", height=90)
+                    _tc1, _tc2 = st.columns(2)
+                    _t_endmarkt = _tc1.text_input(
+                        "Endmarkt / Treiber", value=_these.get("endmarkt", ""),
+                        placeholder="z.B. AI-Datacenter", key=f"these_em_{ticker}")
+                    _t_kat = _tc2.text_input(
+                        "Katalysator", value=_these.get("katalysator", ""),
+                        placeholder="z.B. Q-Zahlen, Gro\u00dfauftrag",
+                        key=f"these_kat_{ticker}")
+                    _tc3, _tc4 = st.columns(2)
+                    _t_ziel = _tc3.number_input(
+                        "Dein Kursziel (Heimatw\u00e4hrung, optional)",
+                        value=float(_these.get("eigenes_ziel", 0.0) or 0.0),
+                        min_value=0.0, step=1.0, key=f"these_ziel_{ticker}")
+                    _t_ueber = _tc4.select_slider(
+                        "Deine \u00dcberzeugung",
+                        options=[1, 2, 3, 4, 5],
+                        value=int(_these.get("ueberzeugung", 3) or 3),
+                        format_func=lambda x: {1: "1 \u2013 vage Idee",
+                                               2: "2", 3: "3 \u2013 mittel",
+                                               4: "4", 5: "5 \u2013 hohe \u00dcberzeugung"}.get(x, str(x)),
+                        key=f"these_ueber_{ticker}")
+                    _tb1, _tb2, _tb3 = st.columns(3)
+                    if _tb1.button("\U0001f4be These speichern", key=f"these_save_{ticker}"):
+                        store.set_these(ticker, {
+                            "text": _t_text.strip(),
+                            "endmarkt": _t_endmarkt.strip(),
+                            "katalysator": _t_kat.strip(),
+                            "eigenes_ziel": _t_ziel or None,
+                            "ueberzeugung": int(_t_ueber),
+                            "start_kurs": f.get("price"),
+                            "name": f.get("name", ticker)})
+                        st.success("These gespeichert. Startkurs "
+                                   f"{m(f.get('price'))} festgehalten \u2013 ab jetzt "
+                                   "z\u00e4hlt dein Trackrecord.")
+                    if _these and _tb2.button("\U0001f5d1\ufe0f L\u00f6schen",
+                                              key=f"these_del_{ticker}"):
+                        store.delete_these(ticker)
+                        st.info("These gel\u00f6scht \u2013 Seite neu laden.")
+                    # Kursziel-Spannung sichtbar machen (ohne Modell zu aendern)
+                    if _t_ziel and f.get("price"):
+                        _mein_up = (_t_ziel / f["price"] - 1) * 100
+                        _modell_up = display_upside(v, f.get("price"))
+                        st.caption(f"**Dein Ziel-Upside: {_mein_up:+.1f}%**"
+                                   + (f"  \u00b7  Modell-Upside: {_modell_up:+.1f}%"
+                                      if _modell_up is not None else "")
+                                   + ". Gro\u00dfe Differenz? Dann h\u00e4ngt deine These an "
+                                   "der Zukunftsstory \u2013 frag dich ehrlich, ob sie "
+                                   "das rechtfertigt.")
+
+                    # Claude als Sparringspartner (schaerft die These, sucht Risiken)
+                    if these_mod.verfuegbar():
+                        if _tb3.button("\U0001f916 Claude: These pr\u00fcfen",
+                                       key=f"these_ai_{ticker}"):
+                            with st.spinner("Claude denkt mit \u2026"):
+                                _kontext = {
+                                    "composite_score": s.get("composite"),
+                                    "modell_upside_pct": display_upside(v, f.get("price")),
+                                    "fair_value": v.get("fair_value")}
+                                _antwort = these_mod.these_pruefen(
+                                    ticker, f.get("name", ticker),
+                                    _t_text.strip(), _t_endmarkt.strip(),
+                                    _t_kat.strip(), _kontext)
+                            if _antwort:
+                                st.markdown("**Claude als Sparringspartner "
+                                            "(sucht die Schwachstellen):**")
+                                st.markdown(_antwort)
+                                st.caption("Claude sagt dir bewusst NICHT, ob die "
+                                           "Aktie steigt \u2013 es hilft nur, die These "
+                                           "ehrlicher zu denken. Kein Anlagerat.")
+                            else:
+                                st.warning("Claude nicht erreichbar \u2013 API-Key "
+                                           "gesetzt?")
+                    else:
+                        _tb3.caption("\U0001f916 Claude aus")
 
                 # Hinweis, wenn roic-Werte umgerechnet werden mussten
                 if f.get("_roic_fx"):
@@ -6045,7 +6230,9 @@ if nav == "Long/Short":
                 vr_table([{k: v for k, v in r.items() if k != "Vola %"} for r in longs],
                          score_cols=("Comp.", "Chance"), signed_cols=("Upside %",),
                          height=min(len(longs) * 40 + 46, 520))
-                st.caption("Sortiert nach \u201eChance\u201c (Qualit\u00e4t + Bewertungs-Upside). "
+                st.caption("Sortiert nach \u201eChance\u201c (Qualit\u00e4t + Bewertungs-Upside "
+                           "+ Piotroski-Bonus). **F** = Piotroski F-Score (0\u20139, "
+                           "fundamentale St\u00e4rke; \u2265 7 filtert Value-Fallen). "
                            "\u2191 \u00fcber 200T = Aufw\u00e4rtstrend best\u00e4tigt die Idee.")
             else:
                 st.info("Keine \u00fcberzeugenden Long-Kandidaten in diesem Universum "
@@ -6058,9 +6245,13 @@ if nav == "Long/Short":
                 vr_table(shorts, score_cols=("Comp.", "Risiko-Fit"),
                          signed_cols=("Upside %",),
                          height=min(len(shorts) * 40 + 46, 520))
-                st.caption("Nur Titel, die \u00fcberbewertet UND nicht in starkem Aufw\u00e4rtstrend "
-                           "sind. \u2193 unter 200T oder abdrehendes Momentum st\u00fctzt die Short-These. "
-                           "Hohe \u201eVola %\u201c = gr\u00f6\u00dferes Squeeze-Risiko.")
+                st.caption("**Z** = Altman Z (< 1,8 = Pleiterisiko), **M** = "
+                           "Beneish M (> \u22122,22 = m\u00f6gliche Bilanzmanipulation). Nur "
+                           "Titel, die \u00fcberbewertet UND fundamental problematisch "
+                           "sind, nicht in starkem Aufw\u00e4rtstrend, ohne Squeeze-"
+                           "Gefahr. Die \u201eWarnung\u201c nennt das forensische Signal. "
+                           "Shorten ist f\u00fcr Privatanleger riskant \u2013 sieh das eher "
+                           "als \u201ediese meiden\u201c denn als Aufforderung.")
             else:
                 st.info("Aktuell keine vertretbaren Short-Kandidaten \u2013 entweder nichts stark "
                         "genug \u00fcberbewertet, oder die \u00dcberbewerteten laufen noch im "
@@ -6469,6 +6660,179 @@ if nav == "Backtest":
                                "Jahreszahlen mit Berichtspuffer, aber der "
                                "Analystenteil fehlt r\u00fcckwirkend. Ein erster "
                                "Anhaltspunkt, kein endg\u00fcltiges Urteil.")
+
+
+# ===========================================================================
+# FRAG CLAUDE - Denk- und Recherchepartner (aendert KEINE Modellzahlen)
+# ===========================================================================
+# ===========================================================================
+# THESEN-BILANZ - dein ehrlicher Spiegel: gehen DEINE eigenen Thesen auf?
+# ===========================================================================
+if nav == "ThesenTrack":
+    st.markdown('<div class="sec-title">THESEN-BILANZ \u2013 TRIFFT DEIN '
+                'URTEIL?</div>', unsafe_allow_html=True)
+    st.caption("Kein Modell-Lernen \u2013 dein eigener Spiegel. Das Tool schaut "
+               "nach, was aus deinen gespeicherten Thesen wurde: Gingen sie "
+               "auf? Triffst du besser, wenn du \u00fcberzeugt warst? Wie der "
+               "Backtest, aber angewandt auf DEIN Urteil. So lernst nicht das "
+               "Tool aus dir \u2013 sondern du aus dir selbst. Kein Anlagerat.")
+
+    _alle_thesen = store.get_alle_thesen()
+    if not _alle_thesen:
+        st.info("Noch keine Thesen gespeichert. Leg in der **Einzelanalyse** "
+                "unter \U0001f4dd \u201eDeine These\u201c eine an \u2013 dann beginnt dein "
+                "Trackrecord. Erst mit ein paar Thesen \u00fcber Wochen/Monate "
+                "wird die Bilanz aussagekr\u00e4ftig.")
+    else:
+        st.caption(f"{len(_alle_thesen)} Thesen gespeichert. Aktuelle Kurse "
+                   "werden geladen \u2013 das kann einen Moment dauern.")
+        if st.button("\U0001f504 Bilanz berechnen", key="tt_calc"):
+            _bewertungen = []
+            _zeilen = []
+            _prog = st.progress(0.0)
+            _items = list(_alle_thesen.items())
+            for _i, (_tk, _th) in enumerate(_items):
+                if _th.get("start_kurs"):
+                    try:
+                        _f = load_fundamentals_deep(_tk)
+                        _akt = _f.get("price") if _f else None
+                    except Exception:
+                        _akt = None
+                    _b = these_mod.these_bewerten(_th, _akt)
+                    if _b:
+                        _bewertungen.append(_b)
+                        _zeilen.append({
+                            "Ticker": _tk,
+                            "Name": (_th.get("name") or _tk)[:20],
+                            "Endmarkt": (_th.get("endmarkt") or "\u2014")[:18],
+                            "Angelegt": _th.get("angelegt", "\u2014"),
+                            "Start": _th.get("start_kurs"),
+                            "Aktuell": round(_akt, 2) if _akt else "\u2014",
+                            "Rendite %": _b["rendite_pct"],
+                            "\u00dcberzeugung": _b.get("ueberzeugung") or "\u2014",
+                            "Ziel erreicht": ("\u2713" if _b["ziel_erreicht"]
+                                              else "\u2717" if _b["ziel_erreicht"] is False
+                                              else "\u2014"),
+                        })
+                _prog.progress((_i + 1) / len(_items))
+            _prog.empty()
+
+            if not _bewertungen:
+                st.warning("Keine auswertbaren Thesen \u2013 es fehlen Startkurse. "
+                           "Thesen, die vor diesem Update angelegt wurden, haben "
+                           "noch keinen Startkurs. Speichere sie einmal neu, "
+                           "dann z\u00e4hlen sie ab jetzt.")
+            else:
+                _tr = these_mod.trackrecord_auswerten(_bewertungen)
+                _m1, _m2, _m3 = st.columns(3)
+                card(_m1, "Thesen gemessen", str(_tr["n"]), "mit Startkurs")
+                _mr = _tr.get("median_rendite")
+                card(_m2, "Median-Rendite",
+                     f"{_mr:+.1f}%" if _mr is not None else "\u2014",
+                     "seit Anlage",
+                     "var(--green)" if (_mr or 0) >= 0 else "var(--red)")
+                _zt = _tr.get("ziel_treffer_pct")
+                card(_m3, "Ziel-Trefferquote",
+                     f"{_zt:.0f}%" if _zt is not None else "\u2014",
+                     f"{_tr.get('ziel_treffer',0)} von {_tr.get('n_mit_ziel',0)}",
+                     score_color(_zt) if _zt is not None else "var(--amber)")
+
+                # Der eigentliche Erkenntnis-Moment: Ueberzeugung vs. Treffer
+                _mh = _tr.get("median_hohe_ueberzeugung")
+                _mn = _tr.get("median_niedrige_ueberzeugung")
+                if _mh is not None and _mn is not None:
+                    st.markdown("#### Triffst du besser, wenn du \u00fcberzeugt bist?")
+                    vr_table([
+                        {"Gruppe": "Hohe \u00dcberzeugung (4\u20135)",
+                         "Median-Rendite": f"{_mh:+.1f}%",
+                         "Anzahl": _tr.get("n_hohe_ueberzeugung", 0)},
+                        {"Gruppe": "Vage Idee (1\u20132)",
+                         "Median-Rendite": f"{_mn:+.1f}%",
+                         "Anzahl": _tr.get("n_niedrige_ueberzeugung", 0)},
+                    ])
+                    if _mh > _mn + 3:
+                        st.success("\u2705 Deine \u00fcberzeugten Thesen liefen besser als "
+                                   "deine vagen Ideen \u2013 ein Zeichen, dass deine "
+                                   "\u00dcberzeugung echte Information tr\u00e4gt. Vertrau "
+                                   "ihr, aber bleib demütig.")
+                    elif _mh < _mn - 3:
+                        st.warning("\u26a0\ufe0f Deine vagen Ideen liefen besser als deine "
+                                   "\u00fcberzeugten Thesen. Das ist unbequem, aber "
+                                   "lehrreich: Vielleicht \u00fcbersch\u00e4tzt du dich "
+                                   "gerade dort, wo du dir am sichersten bist. "
+                                   "Ein klassischer Denkfehler \u2013 gut, ihn zu sehen.")
+                    else:
+                        st.info("\u2696\ufe0f \u00dcberzeugung und Trefferquote h\u00e4ngen bei "
+                                "dir bisher kaum zusammen. Bei wenigen Thesen "
+                                "normal \u2013 beobachte es weiter.")
+
+                st.markdown("#### Deine Thesen im Einzelnen")
+                vr_table(_zeilen, signed_cols=("Rendite %",))
+                st.caption(f"Beste These {_tr.get('beste'):+.1f}%, schlechteste "
+                           f"{_tr.get('schlechteste'):+.1f}%. **Wenige Thesen = "
+                           "noch kein Urteil \u00fcber dein K\u00f6nnen.** Der Wert "
+                           "entsteht \u00fcber Monate und Jahre, wenn du siehst, wo "
+                           "du echte St\u00e4rken hast und wo du dich t\u00e4uschst.")
+
+
+if nav == "ClaudeChat":
+    st.markdown('<div class="sec-title">FRAG CLAUDE</div>', unsafe_allow_html=True)
+    st.caption("Dein Denk- und Recherchepartner: Themen erfragen, Ideen teilen, "
+               "Informationen einordnen und beurteilen. Claude hilft dir beim "
+               "**Verstehen** \u2013 es gibt keine Kaufempfehlung und keine "
+               "Kursprognose, und es ver\u00e4ndert die Bewertungszahlen des Tools "
+               "nicht. Kein Anlagerat.")
+
+    if not these_mod.verfuegbar():
+        st.warning("\U0001f916 Claude ist nicht aktiv \u2013 es fehlt der "
+                   "**ANTHROPIC_API_KEY** in den Umgebungsvariablen. Ohne ihn "
+                   "kann die Chat-Funktion keine Anfragen stellen.")
+    else:
+        # Verlauf im Session-State halten (nur diese Sitzung)
+        if "claude_chat" not in st.session_state:
+            st.session_state["claude_chat"] = []
+
+        _cc1, _cc2 = st.columns([4, 1])
+        with _cc2:
+            if st.button("\U0001f5d1\ufe0f Verlauf leeren", key="claude_clear"):
+                st.session_state["claude_chat"] = []
+                st.rerun()
+
+        # bisherigen Verlauf anzeigen
+        for _msg in st.session_state["claude_chat"]:
+            _rolle = "\U0001f9d1 Du" if _msg["role"] == "user" else "\U0001f916 Claude"
+            st.markdown(f"**{_rolle}:**")
+            st.markdown(_msg["content"])
+            st.markdown("---")
+
+        _frage = st.text_area(
+            "Deine Frage oder Idee",
+            placeholder="z.B. Welche Firmen profitieren strukturell vom Ausbau "
+                        "der AI-Rechenzentren \u2013 und wo sind die Risiken? Oder: "
+                        "Was sollte ich bei einem Hersteller von Stromin"
+                        "frastruktur fundamental besonders pr\u00fcfen?",
+            key="claude_frage", height=100)
+
+        if st.button("\U0001f4ac Fragen", key="claude_send") and _frage.strip():
+            # Verlauf fuer die API aufbereiten (nur role+content)
+            _verlauf = [{"role": m["role"], "content": m["content"]}
+                        for m in st.session_state["claude_chat"]]
+            with st.spinner("Claude denkt \u2026"):
+                _antwort = these_mod.frage_stellen(_frage.strip(), _verlauf)
+            if _antwort:
+                st.session_state["claude_chat"].append(
+                    {"role": "user", "content": _frage.strip()})
+                st.session_state["claude_chat"].append(
+                    {"role": "assistant", "content": _antwort})
+                st.rerun()
+            else:
+                st.error("Claude nicht erreichbar. Ist der API-Key g\u00fcltig?")
+
+        st.caption("\U0001f4a1 Tipp: Claude eignet sich gut, um einen Endmarkt zu "
+                   "verstehen, eine These auf Schwachstellen zu pr\u00fcfen oder "
+                   "eine Nachricht einzuordnen. F\u00fcr die konkrete Bewertung "
+                   "eines Titels nutze die Einzelanalyse \u2013 dort steht deine "
+                   "These direkt neben der Modellzahl.")
 
 
 # ===========================================================================

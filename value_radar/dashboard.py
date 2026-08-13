@@ -1892,17 +1892,58 @@ def longshort_candidates(regions, min_mcap_eur_bn, size):
             Aufwaertstrend (sonst Squeeze-Gefahr). Volatilitaet = nur Kontext.
     """
     tickers, _src = load_universe(regions, min_mcap_eur_bn, size)
+    # ---- Doppelnotierungen entfernen (Schicht 1: bekannte Doppelklassen) ----
+    # Gleiche Firma, zwei Aktienklassen (z.B. Alphabet GOOGL/GOOG). Wir behalten
+    # nur EINE - bevorzugt die stimmberechtigte / liquidere Klasse.
+    _DOPPELKLASSEN = {
+        "GOOG": "GOOGL", "GOOGL": "GOOGL",     # Alphabet -> A-Aktie behalten
+        "BRK.B": "BRK.A", "BRK.A": "BRK.A", "BRK-B": "BRK.A", "BRK-A": "BRK.A",
+        "BRKB": "BRK.A", "BRKA": "BRK.A",
+        "FOX": "FOXA", "FOXA": "FOXA",          # Fox
+        "NWS": "NWSA", "NWSA": "NWSA",          # News Corp
+        "UAA": "UA", "UA": "UA",                # Under Armour
+        "LEN.B": "LEN", "LEN": "LEN",           # Lennar
+        "HEI.A": "HEI", "HEI": "HEI",           # Heico
+    }
+    _gesehen_klasse = set()
+    _bereinigt = []
+    for t in tickers:
+        _kanon = _DOPPELKLASSEN.get(t.upper())
+        if _kanon:
+            if _kanon in _gesehen_klasse:
+                continue          # zweite Klasse derselben Firma -> raus
+            _gesehen_klasse.add(_kanon)
+        _bereinigt.append(t)
+    tickers = _bereinigt
+
     try:
         import hedgefund as _hf
         _gate = _hf._quality_gate
     except Exception:
         _gate = None
     longs, shorts = [], []
+    _gesehen_namen = {}      # Schicht 2: Dedup nach Firmenname (ISIN-aehnlich)
     for t in tickers:
         f = load_fundamentals(t)
         price = f.get("price")
         if not price:
             continue
+        # Schicht 2: Dedup nach ISIN bzw. normalisiertem Firmennamen. Faengt
+        # Doppelnotierungen ab, die nicht in der Klassen-Tabelle stehen
+        # (z.B. gleiche Firma an zwei Boersen, unbekannte Doppelklassen).
+        _isin = f.get("isin")
+        _nm = (f.get("name") or "").strip().lower()
+        # Namen normalisieren: Rechtsformen/Klassenzusaetze entfernen
+        for _suffix in (" inc", " corp", " co", " ltd", " plc", " ag", " sa",
+                        " nv", " class a", " class b", " class c", " cl a",
+                        " cl b", " a", " b", " c", ".", ","):
+            if _nm.endswith(_suffix):
+                _nm = _nm[:-len(_suffix)].strip()
+        _key = _isin or _nm
+        if _key:
+            if _key in _gesehen_namen:
+                continue          # gleiche Firma schon gesehen -> ueberspringen
+            _gesehen_namen[_key] = t
         ep = valuation.classify_playbook(f)
         s = scoring.score_stock(f, None, preset=ep)
         comp = s.get("composite")
@@ -6209,7 +6250,7 @@ if nav == "Long/Short":
             "Markt", ["USA + Europa", "Nur USA", "Nur Europa", "Breit (inkl. Asien)"],
             key="ls_region")
         depth = lc[1].select_slider("Tiefe", ["schnell", "mittel", "gr\u00fcndlich"],
-                                    value="mittel", key="ls_depth")
+                                    value="gr\u00fcndlich", key="ls_depth")
         _REG = {"USA + Europa": ["us", "de", "fr", "gb", "nl", "ch"],
                 "Nur USA": ["us"], "Nur Europa": ["de", "fr", "gb", "nl", "ch", "it", "es"],
                 "Breit (inkl. Asien)": ["us", "de", "fr", "gb", "nl", "ch", "jp", "hk"]}

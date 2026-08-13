@@ -2724,6 +2724,53 @@ with st.sidebar:
                 _nav_button(_ckey, _clabel, _cicon, _ckey == nav, _indent=True)
     st.markdown("---")
 
+    # -----------------------------------------------------------------
+    # CLAUDE - ueberall erreichbar, auf-/zuklappbar. Denk- und
+    # Recherchepartner; aendert KEINE Modellzahlen. Kein Anlagerat.
+    # -----------------------------------------------------------------
+    with st.expander("\U0001f916 Claude fragen", expanded=False):
+        if not these_mod.verfuegbar():
+            st.caption("Claude ist aus \u2013 es fehlt der ANTHROPIC_API_KEY in "
+                       "den Umgebungsvariablen (Streamlit Cloud: Settings \u2192 "
+                       "Secrets).")
+        else:
+            if "claude_chat" not in st.session_state:
+                st.session_state["claude_chat"] = []
+            # letzte 2 Wortwechsel kompakt zeigen (Platz in der Sidebar)
+            _verlauf_sb = st.session_state["claude_chat"]
+            if _verlauf_sb:
+                for _m in _verlauf_sb[-4:]:
+                    _wer = "\U0001f9d1" if _m["role"] == "user" else "\U0001f916"
+                    _txt = _m["content"]
+                    if len(_txt) > 400 and _m["role"] == "assistant":
+                        _txt = _txt[:400] + " \u2026"
+                    st.markdown(f"{_wer} {_txt}")
+                st.markdown("---")
+            _sb_frage = st.text_area("Frage / Idee", key="sb_claude_frage",
+                                     height=80, label_visibility="collapsed",
+                                     placeholder="z.B. Wer profitiert vom "
+                                                 "AI-Datacenter-Ausbau?")
+            _sbc1, _sbc2 = st.columns(2)
+            if _sbc1.button("\U0001f4ac Fragen", key="sb_claude_send",
+                            use_container_width=True) and _sb_frage.strip():
+                _vl = [{"role": m["role"], "content": m["content"]}
+                       for m in st.session_state["claude_chat"]]
+                with st.spinner("Claude denkt \u2026"):
+                    _ans = these_mod.frage_stellen(_sb_frage.strip(), _vl)
+                if _ans:
+                    st.session_state["claude_chat"].append(
+                        {"role": "user", "content": _sb_frage.strip()})
+                    st.session_state["claude_chat"].append(
+                        {"role": "assistant", "content": _ans})
+                    st.rerun()
+                else:
+                    st.warning("Claude nicht erreichbar.")
+            if _sbc2.button("\U0001f5d1\ufe0f Leeren", key="sb_claude_clear",
+                            use_container_width=True):
+                st.session_state["claude_chat"] = []
+                st.rerun()
+            st.caption("Denkt mit \u2013 keine Kursprognose. F\u00fcr ausf\u00fchrliche "
+                       "Antworten: Men\u00fc \u201eFrag Claude\u201c.")
     st.markdown("---")
     if st.button("\U0001f504 Marktdaten neu laden", use_container_width=True,
                  help="Leert den Datencache und holt frische Live-Daten. "

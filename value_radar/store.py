@@ -157,6 +157,62 @@ def get_watchlist() -> list:
     return wl if isinstance(wl, list) else []
 
 
+def get_these(ticker: str) -> dict:
+    """Eigene Investment-These zu einem Titel (getrennt vom Fundamentalwert).
+    Enthaelt: text (freie These), endmarkt, katalysator, eigenes_ziel (Kurs),
+    ueberzeugung (1-5), stand (Zeitstempel). Leeres Dict, wenn keine da."""
+    t = str(ticker or "").strip().upper()
+    allt = _load_aux().get("thesen", {})
+    v = allt.get(t) if isinstance(allt, dict) else None
+    return v if isinstance(v, dict) else {}
+
+
+def set_these(ticker: str, these: dict) -> bool:
+    """Speichert/aktualisiert die These zu einem Titel. Ueberschreibt nur die
+    uebergebenen Felder, laesst den Rest stehen.
+
+    Beim ERSTEN Anlegen werden Startkurs und Anlagedatum festgeschrieben (aus
+    dem Feld 'start_kurs', falls uebergeben) - sie sind der Messpunkt fuer den
+    spaeteren Trackrecord und werden danach NICHT mehr ueberschrieben."""
+    import time as _t
+    t = str(ticker or "").strip().upper()
+    if not t:
+        return False
+    d = _load_aux()
+    allt = d.get("thesen")
+    if not isinstance(allt, dict):
+        allt = {}
+    cur = allt.get(t) if isinstance(allt.get(t), dict) else {}
+    _ist_neu = not cur
+    for k, v in (these or {}).items():
+        cur[k] = v
+    cur["stand"] = _t.strftime("%Y-%m-%d %H:%M")
+    # Startkurs + Anlagedatum nur EINMAL setzen (Messpunkt fuer Trackrecord)
+    if "start_kurs" in (these or {}) and these.get("start_kurs"):
+        if not cur.get("start_kurs"):
+            cur["start_kurs"] = these["start_kurs"]
+            cur["angelegt"] = _t.strftime("%Y-%m-%d")
+    allt[t] = cur
+    d["thesen"] = allt
+    return _save_aux(d)
+
+
+def delete_these(ticker: str) -> bool:
+    t = str(ticker or "").strip().upper()
+    d = _load_aux()
+    allt = d.get("thesen")
+    if isinstance(allt, dict) and t in allt:
+        del allt[t]
+        d["thesen"] = allt
+        return _save_aux(d)
+    return False
+
+
+def get_alle_thesen() -> dict:
+    allt = _load_aux().get("thesen", {})
+    return allt if isinstance(allt, dict) else {}
+
+
 def set_watchlist(tickers: list) -> bool:
     d = _load_aux()
     seen, clean = set(), []

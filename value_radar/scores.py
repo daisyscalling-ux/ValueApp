@@ -297,3 +297,118 @@ def jahres_paar(inc: list, bal: list, cf: list):
     if not all(isinstance(x, list) and len(x) >= 2 for x in (inc, bal)):
         return None, None
     return _mische(0), _mische(1)
+
+
+# roic-Felder fuer Cashflow (Dorsey)
+_F_FCF = ("cf_free_cash_flow_firm", "ttm_free_cash_flow")
+_F_CAPEX = ("cf_cap_expenditures", "ttm_cap_expend")
+
+
+# ===========================================================================
+# DORSEY MOAT-PROFITABILITAET - anhaltend hohe Rentabilitaet = Burggraben
+# ===========================================================================
+def dorsey_moat(inc: list, bal: list, cf: list, jahre: int = 5) -> dict | None:
+    """Dorseys vier Moat-Indikatoren, geprueft ueber MEHRERE Jahre (Konstanz
+    zaehlt, nicht ein Ausreisser-Jahr). Schwellen: FCF/Umsatz > 5%, Nettomarge
+    > 15%, ROE > 15%, ROA > 6-7%. Gibt je Kennzahl den Anteil der Jahre ueber
+    der Schwelle zurueck + ein Gesamturteil. None bei zu wenig Daten."""
+    if not all(isinstance(x, list) for x in (inc, bal, cf)):
+        return None
+    n = min(len(inc), len(bal), len(cf), jahre)
+    if n < 2:
+        return None
+
+    fcf_sales, net_marg, roe_l, roa_l = [], [], [], []
+    for i in range(n):
+        ir = inc[i] if isinstance(inc[i], dict) else {}
+        br = bal[i] if isinstance(bal[i], dict) else {}
+        cr = cf[i] if isinstance(cf[i], dict) else {}
+        rev = _num(_g(ir, *_F_REVENUE))
+        ni = _num(_g(ir, *_F_NETINCOME))
+        eq = _num(_g(br, "bs_total_equity"))
+        assets = _num(_g(br, *_F_ASSETS))
+        fcf = _num(_g(cr, *_F_FCF))
+        if fcf is None:
+            opcf = _num(_g(cr, *_F_OPCF))
+            capex = _num(_g(cr, *_F_CAPEX))
+            if opcf is not None and capex is not None:
+                fcf = opcf - abs(capex)
+        if rev and rev > 0:
+            if fcf is not None:
+                fcf_sales.append(fcf / rev)
+            if ni is not None:
+                net_marg.append(ni / rev)
+        if ni is not None and eq and eq > 0:
+            roe_l.append(ni / eq)
+        if ni is not None and assets and assets > 0:
+            roa_l.append(ni / assets)
+
+    def _anteil(werte, schwelle):
+        if not werte:
+            return None
+        return round(sum(1 for w in werte if w > schwelle) / len(werte), 2)
+
+    a_fcf = _anteil(fcf_sales, 0.05)
+    a_nm = _anteil(net_marg, 0.15)
+    a_roe = _anteil(roe_l, 0.15)
+    a_roa = _anteil(roa_l, 0.06)
+    anteile = [a for a in (a_fcf, a_nm, a_roe, a_roa) if a is not None]
+    if not anteile:
+        return None
+    schnitt = sum(anteile) / len(anteile)
+    # Moat-Urteil: wie konstant liegen die Kennzahlen ueber Dorseys Schwellen?
+    if schnitt >= 0.8:
+        urteil = "breit"          # wide moat
+    elif schnitt >= 0.5:
+        urteil = "schmal"         # narrow moat
+    else:
+        urteil = "keiner"
+    return {
+        "jahre_geprueft": n,
+        "fcf_sales_anteil": a_fcf,
+        "net_margin_anteil": a_nm,
+        "roe_anteil": a_roe,
+        "roa_anteil": a_roa,
+        "moat_urteil": urteil,
+        "moat_score": round(schnitt, 2),
+        # aktuelle Werte fuer die Anzeige
+        "fcf_sales_akt": round(fcf_sales[0] * 100, 1) if fcf_sales else None,
+        "net_margin_akt": round(net_marg[0] * 100, 1) if net_marg else None,
+    }
+
+
+# ===========================================================================
+# DORSEY RED FLAG - Cashflow-vs-Gewinn-Divergenz
+# ===========================================================================
+def cashflow_gewinn_divergenz(inc: list, cf: list, jahre: int = 3) -> dict | None:
+    """Dorseys wichtigster Red Flag: Steigt der Gewinn, waehrend der operative
+    Cashflow faellt (oder viel langsamer waechst), bucht die Firma Umsaetze,
+    ohne das Geld zu kassieren - Warnsignal (Bsp. Lucent). Gibt {divergenz,
+    warnung} oder None."""
+    if not all(isinstance(x, list) for x in (inc, cf)):
+        return None
+    n = min(len(inc), len(cf), jahre)
+    if n < 2:
+        return None
+    # aktuelles Jahr vs. Vorjahr
+    ni_akt = _num(_g(inc[0], *_F_NETINCOME))
+    ni_vj = _num(_g(inc[1], *_F_NETINCOME))
+    cf_akt = _num(_g(cf[0], *_F_OPCF))
+    cf_vj = _num(_g(cf[1], *_F_OPCF))
+    if None in (ni_akt, ni_vj, cf_akt, cf_vj):
+        return None
+    ni_wachstum = (ni_akt / ni_vj - 1) if ni_vj and ni_vj > 0 else None
+    cf_wachstum = (cf_akt / cf_vj - 1) if cf_vj and cf_vj > 0 else None
+    if ni_wachstum is None or cf_wachstum is None:
+        return None
+    divergenz = ni_wachstum - cf_wachstum
+    # Warnung: Gewinn waechst deutlich, Cashflow faellt oder waechst kaum
+    warnung = (ni_wachstum > 0.10 and cf_wachstum < ni_wachstum - 0.15)
+    stark = (ni_wachstum > 0.10 and cf_wachstum < 0)   # CF faellt trotz Gewinn+
+    return {
+        "gewinn_wachstum": round(ni_wachstum, 3),
+        "cashflow_wachstum": round(cf_wachstum, 3),
+        "divergenz": round(divergenz, 3),
+        "warnung": bool(warnung),
+        "stark": bool(stark),
+    }

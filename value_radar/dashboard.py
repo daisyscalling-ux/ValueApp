@@ -462,20 +462,21 @@ def mcap_eur_bn(fd):
     return ((fd.get("market_cap") or 0) * (fd.get("_fx") or 1.0)) / 1e9
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_scores(t, fund_hint=None):
-    """Berechnet Piotroski F, Altman Z und Beneish M aus roic-Jahresdaten.
-    Gibt {"f": ..., "z": ..., "m": ...} mit den Score-Dicts (oder None je
-    Score). Bei fehlendem roic oder zu wenig Historie: alle None."""
+    """Berechnet Piotroski F, Altman Z, Beneish M, Dorseys Moat-Profitabilitaet
+    und die Cashflow-Gewinn-Divergenz aus roic-Jahresdaten. Gibt ein Dict mit
+    allen Scores (None je Score, wenn Daten fehlen)."""
     import scores as _sc
+    _leer = {"f": None, "z": None, "m": None, "moat": None, "cf_div": None}
     try:
         import roic as _r
-        inc = _r.income_annual(t, limit=3) or []
-        bal = _r.balance_annual(t, limit=3) or []
-        cf = _r.cashflow_annual(t, limit=3) or []
+        inc = _r.income_annual(t, limit=6) or []
+        bal = _r.balance_annual(t, limit=6) or []
+        cf = _r.cashflow_annual(t, limit=6) or []
     except Exception:
-        return {"f": None, "z": None, "m": None}
+        return _leer
     akt, vorjahr = _sc.jahres_paar(inc, bal, cf)
     if akt is None:
-        return {"f": None, "z": None, "m": None}
+        return _leer
     sektor = (fund_hint or {}).get("sector") if fund_hint else None
     try:
         f = _sc.piotroski_f(akt, vorjahr, sektor, fund_hint)
@@ -489,7 +490,15 @@ def load_scores(t, fund_hint=None):
         m = _sc.beneish_m(akt, vorjahr, sektor, fund_hint)
     except Exception:
         m = None
-    return {"f": f, "z": z, "m": m}
+    try:
+        moat = _sc.dorsey_moat(inc, bal, cf, jahre=5)
+    except Exception:
+        moat = None
+    try:
+        cf_div = _sc.cashflow_gewinn_divergenz(inc, cf, jahre=3)
+    except Exception:
+        cf_div = None
+    return {"f": f, "z": z, "m": m, "moat": moat, "cf_div": cf_div}
 
 
 
@@ -3862,6 +3871,45 @@ if nav == "Einzelanalyse":
                                f"angehoben (Schmidlin: riskante Titel brauchen mehr "
                                f"Marge).")
 
+                # Dorsey: Moat-Profitabilitaet (ueber 5 Jahre) + Cashflow-Red-Flag
+                _dsc = load_scores(ticker, {"sector": f.get("sector"),
+                                            "market_cap": f.get("market_cap"),
+                                            "_ist_bank": f.get("_ist_bank")})
+                _moat = _dsc.get("moat")
+                _cfdiv = _dsc.get("cf_div")
+                if _moat:
+                    _urteil_txt = {"breit": "\U0001f7e2 breiter Burggraben",
+                                   "schmal": "\U0001f7e1 schmaler Burggraben",
+                                   "keiner": "\U0001f534 kein erkennbarer Burggraben"}.get(
+                                       _moat["moat_urteil"], _moat["moat_urteil"])
+                    _mteile = [f"**Moat (Dorsey, {_moat['jahre_geprueft']}J): "
+                               f"{_urteil_txt}**"]
+                    _hak = "\u2713"
+                    _kreuz = "\u2717"
+                    if _moat.get("fcf_sales_akt") is not None:
+                        _fcf_ok = _hak if (_moat.get("fcf_sales_anteil") or 0) >= 0.6 else _kreuz
+                        _mteile.append(f"FCF/Umsatz {_moat['fcf_sales_akt']:.0f}% "
+                                       f"({_fcf_ok} Dorsey-Schwelle 5%)")
+                    if _moat.get("net_margin_akt") is not None:
+                        _nm_ok = _hak if (_moat.get("net_margin_anteil") or 0) >= 0.6 else _kreuz
+                        _mteile.append(f"Nettomarge {_moat['net_margin_akt']:.0f}% "
+                                       f"({_nm_ok} Schwelle 15%)")
+                    st.caption(" \u00b7 ".join(_mteile))
+                    st.caption("Dorsey: Ein dauerhafter Wettbewerbsvorteil zeigt "
+                               "sich in **anhaltend** hoher Profitabilit\u00e4t \u2013 "
+                               "gepr\u00fcft \u00fcber mehrere Jahre, nicht ein Ausrei\u00dfer-Jahr.")
+                if _cfdiv and _cfdiv.get("warnung"):
+                    _schwere = ("\U0001f534 **Starkes Warnsignal**" if _cfdiv.get("stark")
+                                else "\U0001f7e1 Warnsignal")
+                    _cf_richtung = "f\u00e4llt" if _cfdiv["cashflow_wachstum"] < 0 else "w\u00e4chst kaum"
+                    st.warning(f"{_schwere} (Dorsey Red Flag): Der Gewinn w\u00e4chst "
+                               f"({_cfdiv['gewinn_wachstum']*100:+.0f}%), aber der "
+                               f"operative Cashflow {_cf_richtung} "
+                               f"({_cfdiv['cashflow_wachstum']*100:+.0f}%). Das kann "
+                               f"hei\u00dfen, dass Ums\u00e4tze gebucht, aber nicht kassiert "
+                               f"werden \u2013 pr\u00fcfe Forderungen und Vorr\u00e4te. (Dorseys "
+                               f"Lucent-Beispiel begann genau so.)")
+
                 # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
                 _vtw = q.get("value_trap_warnung") or []
@@ -4192,6 +4240,104 @@ if nav == "Einzelanalyse":
                                                  "porter_summe": _summe,
                                                  "name": f.get("name", ticker)})
                         st.success("Porter-Bewertung in deiner These gespeichert.")
+
+                # -----------------------------------------------------------
+                # DORSEY MOAT-QUELLEN - dein Eigen-Input: WORAUS besteht der
+                # Burggraben? Ergaenzt die automatische Moat-Profitabilitaet
+                # (die das OB misst) um das qualitative WORAUS.
+                # -----------------------------------------------------------
+                with st.expander("\U0001f3f0 Burggraben-Quellen (Dorsey, dein "
+                                 "Urteil)", expanded=False):
+                    st.caption("Die Kennzahlen oben zeigen, **ob** die Firma einen "
+                               "Burggraben hat (anhaltend hohe Profitabilit\u00e4t). "
+                               "Hier beurteilst **du**, **woraus** er besteht \u2013 "
+                               "das kann kein Automatismus. Bewerte jede der f\u00fcnf "
+                               "Quellen von 0 (nicht vorhanden) bis 5 (sehr stark). "
+                               "Claude liefert dir die Fakten.")
+                    _moat_alt = (_these.get("moat_quellen") or {}) if _these else {}
+                    _moat_neu = {}
+                    for _mq in these_mod.MOAT_QUELLEN:
+                        _mk = _mq["key"]
+                        st.markdown(f"**{_mq['frage']}**")
+                        st.caption(_mq["hilfe"])
+                        _mc1, _mc2 = st.columns([3, 1])
+                        _moat_neu[_mk] = _mc1.select_slider(
+                            "Bewertung", options=[0, 1, 2, 3, 4, 5],
+                            value=int(_moat_alt.get(_mk, 0)),
+                            key=f"moat_{_mk}_{ticker}",
+                            label_visibility="collapsed")
+                        if these_mod.verfuegbar():
+                            if _mc2.button("\U0001f916 Fakten",
+                                           key=f"moat_ai_{_mk}_{ticker}"):
+                                with st.spinner("Claude recherchiert \u2026"):
+                                    _ma = these_mod.moat_frage_an_claude(
+                                        ticker, f.get("name", ticker), _mk)
+                                if _ma:
+                                    st.info(_ma)
+                                else:
+                                    st.warning("Claude nicht erreichbar.")
+                    _moat_summe = sum(_moat_neu.values())
+                    st.markdown(f"**Deine Burggraben-St\u00e4rke: {_moat_summe}/25**")
+                    st.caption("Dieser Wert h\u00e4lt dein qualitatives Urteil fest und "
+                               "flie\u00dft **nicht** automatisch in den Fair Value.")
+                    if st.button("\U0001f4be Burggraben-Bewertung speichern",
+                                 key=f"moat_save_{ticker}"):
+                        _t_neu = dict(_these or {})
+                        _t_neu.update({"moat_quellen": _moat_neu,
+                                       "moat_summe": _moat_summe,
+                                       "name": f.get("name", ticker)})
+                        store.set_these(ticker, _t_neu)
+                        st.success("Burggraben-Bewertung in deiner These gespeichert.")
+
+                # -----------------------------------------------------------
+                # JEAN-JACQUES KATALYSATOREN - dein Eigen-Input: WARUM sollte
+                # sich die Luecke zwischen Preis und Wert schliessen?
+                # -----------------------------------------------------------
+                with st.expander("\u26a1 Katalysator (Jean-Jacques, dein Urteil)",
+                                 expanded=False):
+                    st.caption("Ein Katalysator ist der Grund, **warum** sich der "
+                               "Abstand zwischen Preis und Wert schlie\u00dfen sollte. "
+                               "Ohne ihn kann ein g\u00fcnstiger Titel ewig g\u00fcnstig "
+                               "bleiben (Value-Falle). W\u00e4hle die zutreffenden "
+                               "Typen und beschreibe den konkreten Katalysator. "
+                               "Claude hilft dir, echte von Schein-Katalysatoren "
+                               "zu unterscheiden.")
+                    _kat_alt = (_these.get("katalysator_typen") or []) if _these else []
+                    _kat_neu = []
+                    for _kt in these_mod.KATALYSATOR_TYPEN:
+                        _checked = st.checkbox(
+                            _kt["label"], value=(_kt["key"] in _kat_alt),
+                            key=f"kat_{_kt['key']}_{ticker}",
+                            help=_kt["hilfe"])
+                        if _checked:
+                            _kat_neu.append(_kt["key"])
+                    _kat_text = st.text_area(
+                        "Konkreter Katalysator (deine Worte)",
+                        value=(_these.get("katalysator_text", "") if _these else ""),
+                        key=f"kat_text_{ticker}", height=70,
+                        placeholder="z.B. Neuer CEO seit Q1, hat Kostensenkung "
+                                    "und Verkauf der Verlustsparte angek\u00fcndigt.")
+                    if these_mod.verfuegbar():
+                        if st.button("\U0001f916 Claude: m\u00f6gliche Katalysatoren",
+                                     key=f"kat_ai_{ticker}"):
+                            with st.spinner("Claude recherchiert \u2026"):
+                                _ka = these_mod.katalysator_frage_an_claude(
+                                    ticker, f.get("name", ticker))
+                            if _ka:
+                                st.info(_ka)
+                                st.caption("Pr\u00fcfe selbst, ob das echte "
+                                           "(wertsteigernde) Katalysatoren sind. "
+                                           "Kein Anlagerat.")
+                            else:
+                                st.warning("Claude nicht erreichbar.")
+                    if st.button("\U0001f4be Katalysator speichern",
+                                 key=f"kat_save_{ticker}"):
+                        _t_neu = dict(_these or {})
+                        _t_neu.update({"katalysator_typen": _kat_neu,
+                                       "katalysator_text": _kat_text,
+                                       "name": f.get("name", ticker)})
+                        store.set_these(ticker, _t_neu)
+                        st.success("Katalysator in deiner These gespeichert.")
 
                 # Hinweis, wenn roic-Werte umgerechnet werden mussten
                 if f.get("_roic_fx"):

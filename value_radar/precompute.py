@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-x"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-av"   # bei jeder Aenderung hochzaehlen
 
 # Analysten-Historie fuer die Value-Trap-Trenderkennung. In run() aus dem
 # Speicher geladen, waehrend des Laufs von score_ticker fortgeschrieben, am
@@ -205,6 +205,25 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "vt_warnung": q.get("value_trap_warnung") or [],
         "revenue_growth": (round(f["revenue_growth"] * 100, 1)
                            if f.get("revenue_growth") is not None else None),
+        # --- Schmidlins "ergiebige Wertpaare" fuer die Vorauswahl (alle schon
+        #     in f vorhanden, keine Extra-Abrufe): KGV+Wachstum, KBV+EKR,
+        #     EV/EBITDA+Marge. Damit lassen sich guenstige Titel MIT soliden
+        #     Fundamentaldaten in einem Schritt finden.
+        "pe": (round(f["price"] / f["eps_trailing"], 1)
+               if f.get("eps_trailing") and f.get("eps_trailing") > 0
+               and f.get("price") else None),
+        "pb": (round(f["price"] / f["book_value_ps"], 2)
+               if f.get("book_value_ps") and f.get("book_value_ps") > 0
+               and f.get("price") else None),
+        "ev_ebitda": (round(f["ev_ebitda"], 1)
+                      if f.get("ev_ebitda") is not None else None),
+        "roe": (round(f["roe"] * 100, 1) if f.get("roe") is not None else None),
+        "ebitda_margin": (round(f["ebitda"] / f["revenue"] * 100, 1)
+                          if f.get("ebitda") and f.get("revenue")
+                          and f.get("revenue") > 0 else None),
+        "gross_margin": (round(f["gross_margin"] * 100, 1)
+                         if f.get("gross_margin") is not None else None),
+        "net_debt_ebitda": f.get("net_debt_ebitda"),
     }
 
 
@@ -1728,6 +1747,47 @@ def _s_uebersehen(r):
             and (r.get("upside") or -999) >= 10)
 
 
+# --- Schmidlins "ergiebige Wertpaare" (Kapitel 9.3) ------------------------
+# Kennzahl NIE isoliert lesen: ein niedriges KGV ist nur gut bei Wachstum,
+# ein niedriges KBV nur bei guter Eigenkapitalrendite, ein niedriges
+# EV/EBITDA nur bei solider Marge. Sonst droht die Value-Falle.
+
+def _s_kgv_wachstum(r):
+    """Guenstiges KGV UND echtes Wachstum (Schmidlins PEG-Gedanke).
+    Niedriges KGV allein ist oft eine Falle; erst mit Wachstum wird es zur
+    Chance."""
+    pe = r.get("pe")
+    g = r.get("revenue_growth")
+    if pe is None or g is None or pe <= 0:
+        return False
+    # KGV unter 18 UND Wachstum ueber 8% -> impliziertes PEG < ~1.5
+    return pe < 18 and g > 8 and not r.get("value_trap")
+
+
+def _s_kbv_ekr(r):
+    """Guenstiges KBV UND hohe Eigenkapitalrendite. Ein Titel unter Buchwert
+    ist nur interessant, wenn er sein Eigenkapital auch rentabel einsetzt -
+    sonst ist der niedrige Buchwert-Multiplikator berechtigt."""
+    pb = r.get("pb")
+    roe = r.get("roe")
+    if pb is None or roe is None or pb <= 0:
+        return False
+    # KBV unter 2 UND EKR ueber 12% (Schmidlins Mindest-Rentabilitaet)
+    return pb < 2.0 and roe > 12 and not r.get("value_trap")
+
+
+def _s_ev_marge(r):
+    """Guenstiges EV/EBITDA UND solide EBITDA-Marge. Ein niedriges EV/EBITDA
+    ist nur dann ein Schnaeppchen, wenn die Marge (= Preismacht/Qualitaet)
+    stimmt - sonst ist es ein Margen-schwacher Titel zu Recht billig."""
+    ev = r.get("ev_ebitda")
+    m = r.get("ebitda_margin")
+    if ev is None or m is None or ev <= 0:
+        return False
+    # EV/EBITDA unter 10 UND EBITDA-Marge ueber 15%
+    return ev < 10 and m > 15 and not r.get("value_trap")
+
+
 STRATEGIEN = {
     "Standard (wie Nachtlauf)": {
         "filter": _s_standard,
@@ -1784,6 +1844,47 @@ STRATEGIEN = {
                   "entsprechend unzuverlässig. Zudem oft geringere "
                   "Handelbarkeit.",
         "spalten": [("Analysten", "analyst_count")],
+    },
+    "Schmidlin: KGV + Wachstum": {
+        "filter": _s_kgv_wachstum,
+        "sort": lambda r: (r.get("revenue_growth") or 0) * 1.5
+                          + (r.get("composite") or 0) * 0.3
+                          - (r.get("pe") or 30),
+        "was": "G\u00fcnstiges KGV (unter 18) UND echtes Umsatzwachstum (\u00fcber 8 %). "
+               "Schmidlins PEG-Gedanke: Ein niedriges KGV ist nur mit Wachstum "
+               "eine Chance, sonst oft eine Falle.",
+        "risiko": "Wachstum ist die fehleranf\u00e4lligste Bewertungskomponente. "
+                  "Historisches Wachstum setzt sich nicht zwingend fort \u2013 "
+                  "gerade bei zyklischem R\u00fcckenwind kann es t\u00e4uschen.",
+        "spalten": [("KGV", "pe"), ("Wachstum %", "revenue_growth")],
+    },
+    "Schmidlin: KBV + Eigenkapitalrendite": {
+        "filter": _s_kbv_ekr,
+        "sort": lambda r: (r.get("roe") or 0) * 1.2
+                          + (r.get("composite") or 0) * 0.3
+                          - (r.get("pb") or 5) * 5,
+        "was": "G\u00fcnstiges KBV (unter 2) UND hohe Eigenkapitalrendite (\u00fcber "
+               "12 %). Ein Titel nahe Buchwert ist nur interessant, wenn er "
+               "sein Kapital auch rentabel einsetzt.",
+        "risiko": "Die ausgewiesene EKR kann durch hohe Verschuldung "
+                  "aufgebl\u00e4ht sein (siehe ungehebelte EKR in der "
+                  "Einzelanalyse). Ein niedriges KBV kann auch zweifelhafte "
+                  "Bilanzwerte widerspiegeln.",
+        "spalten": [("KBV", "pb"), ("EKR %", "roe")],
+    },
+    "Schmidlin: EV/EBITDA + Marge": {
+        "filter": _s_ev_marge,
+        "sort": lambda r: (r.get("ebitda_margin") or 0) * 1.0
+                          + (r.get("composite") or 0) * 0.3
+                          - (r.get("ev_ebitda") or 15) * 2,
+        "was": "G\u00fcnstiges EV/EBITDA (unter 10) UND solide EBITDA-Marge (\u00fcber "
+               "15 %). Ein niedriges EV/EBITDA ist nur ein Schn\u00e4ppchen, wenn "
+               "die Marge \u2013 also Preismacht und Qualit\u00e4t \u2013 stimmt.",
+        "risiko": "EBITDA blendet Abschreibungen und Zinsen aus \u2013 bei "
+                  "kapitalintensiven oder hochverschuldeten Firmen kann das "
+                  "die wahre Lage beschönigen. Immer gegen den Cashflow "
+                  "gegenpr\u00fcfen.",
+        "spalten": [("EV/EBITDA", "ev_ebitda"), ("EBITDA-Marge %", "ebitda_margin")],
     },
 }
 

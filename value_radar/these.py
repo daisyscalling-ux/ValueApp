@@ -275,3 +275,109 @@ def trackrecord_auswerten(bewertungen: list) -> dict:
         "median_niedrige_ueberzeugung": _median([b["rendite_pct"] for b in niedrig]) if niedrig else None,
         "n_niedrige_ueberzeugung": len(niedrig),
     }
+
+
+# ===========================================================================
+# DORSEY MOAT-QUELLEN - gefuehrter Eigen-Input (5 Quellen des Wettbewerbsvorteils)
+# ===========================================================================
+# Ob eine Firma einen dauerhaften Wettbewerbsvorteil hat, ist ein QUALITATIVES
+# Urteil - nicht automatisierbar. Diese 5 Fragen (Dorsey) strukturieren es,
+# Claude liefert die Fakten. Ergaenzt die Porter-Kraefte um die Innensicht:
+# WORAUS besteht der Burggraben?
+
+MOAT_QUELLEN = [
+    {"key": "differenzierung",
+     "frage": "Echte Produktdifferenzierung durch \u00fcberlegene Technik/Features?",
+     "hilfe": "Hat die Firma ein objektiv besseres Produkt, das schwer zu "
+              "kopieren ist? (Oft nicht nachhaltig \u2013 Konkurrenz holt auf.)",
+     "claude": "Hat {name} ({ticker}) ein technisch \u00fcberlegenes, schwer "
+               "kopierbares Produkt? Wie nachhaltig ist dieser Vorsprung? "
+               "Nenne mir die wichtigsten Punkte."},
+    {"key": "marke",
+     "frage": "Wahrgenommene Differenzierung durch Marke/Ruf?",
+     "hilfe": "Zahlen Kunden mehr allein wegen der Marke/des Vertrauens? "
+              "(Starke, dauerhafte Moat-Quelle.)",
+     "claude": "Wie stark ist die Marke von {name} ({ticker})? Zahlen Kunden "
+               "einen Aufpreis allein wegen des Namens/Vertrauens? Beispiele?"},
+    {"key": "kosten",
+     "frage": "Kostenf\u00fchrerschaft \u2013 g\u00fcnstiger als alle anderen?",
+     "hilfe": "Kann die Firma dauerhaft billiger produzieren/anbieten "
+              "(Skalen, Prozesse, Standort)? Dann schwer angreifbar.",
+     "claude": "Ist {name} ({ticker}) ein struktureller Kostenf\u00fchrer? Woher "
+               "kommt der Kostenvorteil, und ist er dauerhaft?"},
+    {"key": "wechselkosten",
+     "frage": "Hohe Wechselkosten \u2013 Kunden eingesperrt?",
+     "hilfe": "Ist ein Wechsel f\u00fcr Kunden teuer/aufwendig/riskant (Software, "
+              "Integration, Gewohnheit)? Laut Dorsey oft der st\u00e4rkste Moat.",
+     "claude": "Wie hoch sind die Wechselkosten f\u00fcr Kunden von {name} "
+               "({ticker})? Wie schwer ist es, zu einem Konkurrenten zu "
+               "wechseln? Was bindet die Kunden?"},
+    {"key": "barrieren",
+     "frage": "Hohe Eintrittsbarrieren \u2013 Konkurrenten ausgesperrt?",
+     "hilfe": "Netzwerkeffekte, Lizenzen, Kapitalbedarf, Regulierung, "
+              "Gr\u00f6\u00dfenvorteile \u2013 was h\u00e4lt neue Konkurrenten drau\u00dfen?",
+     "claude": "Welche Eintrittsbarrieren sch\u00fctzen {name} ({ticker}) vor neuer "
+               "Konkurrenz (Netzwerkeffekte, Regulierung, Kapital, Skalen)? "
+               "Wie hoch sind sie?"},
+]
+
+
+# ===========================================================================
+# JEAN-JACQUES KATALYSATOREN - gefuehrter Eigen-Input
+# ===========================================================================
+# Ein Katalysator schliesst die Luecke zwischen Preis und Wert. Jean-Jacques
+# unterscheidet ECHTE (firm value) von SCHEIN-Katalysatoren (nur Kurs). Diese
+# Fragen helfen dir, einen echten Katalysator zu identifizieren - er gehoert
+# in deine These, NICHT in die Modellzahl.
+
+KATALYSATOR_TYPEN = [
+    {"key": "management",
+     "label": "Neues Management / neue Strategie",
+     "hilfe": "Neue F\u00fchrung oder Strategiewechsel? Oft ein starker, "
+              "dauerhafter Katalysator (Kostensenkung, Fokus, Reorganisation)."},
+    {"key": "rueckkauf",
+     "label": "Aktienr\u00fcckkauf / Kapitalr\u00fcckf\u00fchrung",
+     "hilfe": "Substanzielle R\u00fcckk\u00e4ufe zu g\u00fcnstigen Kursen schaffen echten "
+              "Wert je Aktie (nicht nur Optik)."},
+    {"key": "spinoff",
+     "label": "Spin-off / Abspaltung / Verkauf einer Sparte",
+     "hilfe": "Abspaltung kann versteckten Wert freisetzen und den Fokus "
+              "sch\u00e4rfen (Jean-Jacques' Varian-Beispiel)."},
+    {"key": "ma",
+     "label": "M&A / \u00dcbernahme (die Firma als Ziel oder K\u00e4ufer)",
+     "hilfe": "\u00dcbernahmen in der Branche oder die Firma selbst als "
+              "\u00dcbernahmekandidat \u2013 externer Katalysator."},
+    {"key": "zyklus",
+     "label": "Zyklus-Wende (Zykliker kommt aus dem Tal)",
+     "hilfe": "Ein Zykliker am Tiefpunkt des Zyklus \u2013 wenn die Erholung "
+              "kommt, hebt sie Umsatz und Marge. (Vorsicht: Timing schwer.)"},
+    {"key": "sonstige",
+     "label": "Anderer echter Katalysator",
+     "hilfe": "Regulierung, neuer Markt, Patentablauf beim Konkurrenten, "
+              "Sondersituation \u2013 alles, was den Wert real hebt."},
+]
+
+
+def moat_frage_an_claude(ticker: str, name: str, quelle_key: str) -> str | None:
+    """Recherchehilfe von Claude fuer EINE Moat-Quelle."""
+    quelle = next((q for q in MOAT_QUELLEN if q["key"] == quelle_key), None)
+    if not quelle:
+        return None
+    prompt = quelle["claude"].format(name=name, ticker=ticker)
+    system = (_SYSTEM_FRAGE + " Halte dich kurz und konkret - der Nutzer will "
+              "diese eine Moat-Quelle selbst einsch\u00e4tzen und braucht die "
+              "entscheidenden Fakten.")
+    return _frag_claude(system, prompt, max_tokens=650)
+
+
+def katalysator_frage_an_claude(ticker: str, name: str) -> str | None:
+    """Fragt Claude nach moeglichen ECHTEN Katalysatoren fuer einen Titel."""
+    prompt = (f"Welche ECHTEN Katalysatoren (die den Unternehmenswert steigern, "
+              f"nicht nur den Kurs) k\u00f6nnten bei {name} ({ticker}) mittelfristig "
+              f"eine Rolle spielen? Denke an neues Management, Aktienr\u00fcckk\u00e4ufe, "
+              f"Spin-offs, M&A, Zyklus-Wende. Falls dir keine bekannt sind, sage "
+              f"das ehrlich. Unterscheide echte (firm value) von Schein-"
+              f"Katalysatoren (nur Kurs, z.B. Aktiensplits).")
+    system = (_SYSTEM_FRAGE + " Sei ehrlich, wenn du keine konkreten aktuellen "
+              "Katalysatoren kennst - rate nicht. Kurz und konkret.")
+    return _frag_claude(system, prompt, max_tokens=800)

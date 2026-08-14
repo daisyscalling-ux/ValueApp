@@ -22,7 +22,11 @@ import store
 TP_LONG, SL_LONG = 20.0, -10.0
 TP_SHORT, SL_SHORT = 15.0, -10.0
 STRATS = {"marktneutral": (8, 8), "130/30": (8, 3), "quality_long": (8, 0),
-          "core_ko": (6, 0)}       # Aktien-Kern (6) + KO-Beimischung auf ANDERE Titel
+          "core_ko": (6, 0),       # Aktien-Kern (6) + KO-Beimischung auf ANDERE Titel
+          "screener_long": (8, 0)}  # Testet den Long/Short-Screener: kauft NUR
+                                    # dessen Top-"Chance"-Longs, OHNE die extra
+                                    # strengen Depot-Gates. So sieht man, ob der
+                                    # Screener allein gute Ergebnisse liefert.
 KO_LEV, KO_N, KO_EACH = 3.0, 3, 0.04    # 3 KOs x 4 % = ~12 % (Ziel 8-15 %)
 TP_KO, SL_KO = 45.0, -30.0
 START_CAPITAL = 10000.0
@@ -175,6 +179,65 @@ def scorecard_ok(ticker, f, s, v):
         res = (False, "Scorecard-Fehler", str(e), False)
     _SC_CACHE[ticker] = res
     return res
+
+
+def screener_longs(size=60, min_chance=None):
+    """Kandidaten fuer die Test-Strategie 'screener_long': bildet EXAKT die
+    Long-Logik des Long/Short-Screeners nach (dashboard.longshort_candidates)
+    und gibt dessen Top-'Chance'-Titel zurueck - OHNE die zusaetzlichen strengen
+    Depot-Gates (Scorecard, Trend, Einstiegszone). So laesst sich pruefen, ob
+    der Screener ALLEIN gute Ergebnisse liefert.
+
+    LONG-Kriterien (identisch zum Screener):
+      Composite >= 58, Upside >= 10 %, kein Absturz (mom60 > -20 %).
+      Chance = Composite*0.6 + min(Upside,60)*0.5 + (6 wenn ueber SMA200).
+    Rueckgabe: nach Chance absteigend sortierte Ticker-Liste."""
+    try:
+        import market_screener as ms
+        usd = providers.get_fx_to_eur("USD") or 0.92
+        tks, _ = ms.get_universe(["us", "de", "fr", "gb", "nl"], 5e9 / usd, size)
+    except Exception:
+        return []
+    bewertet = []
+    for t in tks:
+        f = providers.get_fundamentals(t)
+        price = f.get("price")
+        if not price:
+            continue
+        ep = valuation.classify_playbook(f)
+        s = scoring.score_stock(f, None, preset=ep)
+        comp = s.get("composite")
+        v = valuation.fair_value(f, None, ep)
+        up = v.get("upside_pct")
+        if v.get("fair_value_capped") and v.get("analyst_target"):
+            up = (v["analyst_target"] / price - 1) * 100
+        if comp is None or up is None:
+            continue
+        # Datenqualitaets-Gate wie im Screener (mild, 4/9 Gruppen)
+        _ok, _why = _quality_gate(f, s, v, "long", min_groups=4)
+        if not _ok:
+            continue
+        # Trend fuer den Chance-Score
+        above = None
+        h = providers.get_price_history(t, period="1y", interval="1d")
+        if h is not None and not getattr(h, "empty", True):
+            cl = [float(x) for x in h["Close"].dropna()]
+            if len(cl) > 61:
+                above = cl[-1] > sum(cl[-200:]) / min(len(cl), 200)
+                mom60 = cl[-1] / cl[-61] - 1
+            else:
+                mom60 = None
+        else:
+            mom60 = None
+        # exakt die Screener-Long-Bedingung
+        if comp >= 58 and up >= 10 and (mom60 is None or mom60 > -0.20):
+            chance = comp * 0.6 + min(up, 60) * 0.5 + (6 if above else 0)
+            bewertet.append((t, round(chance)))
+    bewertet.sort(key=lambda x: -x[1])
+    # optionaler Mindest-Chance-Filter ("nur gute Chancen")
+    if min_chance is not None:
+        bewertet = [(t, c) for t, c in bewertet if c >= min_chance]
+    return [t for t, _ in bewertet]
 
 
 def candidates(size=60):
@@ -573,8 +636,12 @@ def reset(strategy, refill=True, scan_size=50, grund=""):
     hf = store.get_hf() or {}
     st_ = fresh_state(strategy, grund)
     if refill:
-        lc, sc, pc = candidates(scan_size)
-        st_ = rebalance(st_, lc, sc, pc)
+        if strategy == "screener_long":
+            sl = screener_longs(scan_size)
+            st_ = rebalance(st_, sl, [], None, revalidate=False)
+        else:
+            lc, sc, pc = candidates(scan_size)
+            st_ = rebalance(st_, lc, sc, pc)
         st_["neustart_am"] = st_.get("neustart_am") or time.time()
         st_["neustart_grund"] = grund or ""
     hf[strategy] = st_
@@ -595,16 +662,21 @@ def reset_all(refill=True, scan_size=60, grund=""):
     _SC_CACHE.clear()
     hf = store.get_hf() or {}
     lc, sc, pc = ([], [], [])
+    sl = []
     if refill:
         lc, sc, pc = candidates(scan_size)
+        sl = screener_longs(scan_size)
         print(f"[hedgefund] Neustart: {len(lc)} Long-, {len(sc)} Short-, "
-              f"{len(pc)} KO-Kandidaten.")
+              f"{len(pc)} KO-Kandidaten, {len(sl)} Screener-Test-Longs.")
     jetzt = time.time()
     for strat in STRATS:
         st_ = fresh_state(strat, grund)
         st_["neustart_am"] = jetzt          # identischer Startzeitpunkt
         if refill:
-            st_ = rebalance(st_, lc, sc, pc)
+            if strat == "screener_long":
+                st_ = rebalance(st_, sl, [], None, revalidate=False)
+            else:
+                st_ = rebalance(st_, lc, sc, pc)
             st_["neustart_am"] = jetzt
             st_["neustart_grund"] = grund or ""
         hf[strat] = st_
@@ -620,10 +692,21 @@ def run_all(scan_size=60):
     hf = store.get_hf() or {}
     lc, sc, pc = candidates(scan_size)
     print(f"[hedgefund] Kandidaten: {len(lc)} Long, {len(sc)} Short, {len(pc)} KO-Put")
+    # Eigene Kandidatenquelle fuer die Screener-Test-Strategie: die Top-Longs
+    # des Long/Short-Screeners (nach "Chance" sortiert), OHNE die strengen
+    # Depot-Gates. So misst diese Strategie die reine Screener-Qualitaet.
+    sl = screener_longs(scan_size)
+    print(f"[hedgefund] Screener-Test: {len(sl)} Long-Kandidaten (Top-Chance)")
     for strat in STRATS:
         st_ = hf.get(strat) or fresh_state(strat)
         st_["strategy"] = strat
-        hf[strat] = rebalance(st_, lc, sc, pc)
+        if strat == "screener_long":
+            # revalidate=False: NICHT gegen die strenge Scorecard nachpruefen -
+            # die Strategie soll bewusst nur der Screener-Auswahl folgen. Exits
+            # laufen weiter ueber Take-Profit / Stop-Loss / Gewinn-Stop.
+            hf[strat] = rebalance(st_, sl, [], None, revalidate=False)
+        else:
+            hf[strat] = rebalance(st_, lc, sc, pc)
         print(f"[hedgefund] {strat}: Wert {hf[strat]['value_eur']:.0f} EUR, "
               f"{len(hf[strat]['positions'])} Positionen")
     store.set_hf(hf)

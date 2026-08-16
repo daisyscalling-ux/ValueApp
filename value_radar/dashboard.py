@@ -3949,29 +3949,42 @@ if nav == "Einzelanalyse":
                 # Bewertung, Qualitaet, Moat, Bilanz, Warnsignale.
                 # =====================================================
                 _ampel = []
+                # kleine Hilfsfunktion: Text mit Hover-Erklaerung (Tooltip)
+                def _tip(text, erklaerung):
+                    return (f'<span title="{erklaerung}" '
+                            f'style="border-bottom:1px dotted #666;cursor:help">'
+                            f'{text}</span>')
                 # Bewertung (Upside)
                 if up is not None:
                     _b = "\U0001f7e2" if up > 10 else "\U0001f7e1" if up > -10 else "\U0001f534"
                     _btxt = ("%.0f%% unterbewertet" % up if up > 0
                              else "%.0f%% \u00fcberbewertet" % abs(up))
-                    _ampel.append(f"{_b} Bewertung: {_btxt}")
+                    _ampel.append(f"{_b} " + _tip("Bewertung",
+                        "Abstand zwischen Kurs und fairem Wert. Gr\u00fcn = deutlich "
+                        "unterbewertet.") + f": {_btxt}")
                 # Qualitaet (Piotroski F)
                 if _fsc and _fsc.get("score") is not None:
                     _fs = _fsc["score"]
                     _b = "\U0001f7e2" if _fs >= 7 else "\U0001f7e1" if _fs >= 4 else "\U0001f534"
-                    _ampel.append(f"{_b} Qualit\u00e4t: F {_fs}/9")
+                    _ampel.append(f"{_b} " + _tip("Qualit\u00e4t",
+                        "Piotroski F-Score (0\u20139): fundamentale St\u00e4rke aus neun "
+                        "Kriterien. 7\u20139 = solide, 0\u20133 = schwach.") + f": {_fs}/9")
                 # Moat
                 if _moat:
                     _b = {"breit": "\U0001f7e2", "schmal": "\U0001f7e1",
                           "keiner": "\U0001f534"}.get(_moat["moat_urteil"], "\U0001f7e1")
                     _mtxt = {"breit": "breiter Burggraben", "schmal": "schmaler Burggraben",
                              "keiner": "kein Burggraben"}.get(_moat["moat_urteil"], "")
-                    _ampel.append(f"{_b} {_mtxt}")
+                    _ampel.append(f"{_b} " + _tip(_mtxt,
+                        "Dauerhafter Wettbewerbsvorteil (Dorsey), gemessen an "
+                        "anhaltend hoher Profitabilit\u00e4t \u00fcber mehrere Jahre."))
                 # Bilanz/Solvenz (Altman Z)
                 if _zsc and _zsc.get("z") is not None:
                     _z = _zsc["z"]
                     _b = "\U0001f7e2" if _z >= 3 else "\U0001f7e1" if _z >= 1.8 else "\U0001f534"
-                    _ampel.append(f"{_b} Bilanz: Z {_z:.1f}")
+                    _ampel.append(f"{_b} " + _tip("Bilanz",
+                        "Altman Z-Score: misst das Pleiterisiko. \u00dcber 3 sicher, "
+                        "unter 1,8 kritisch.") + f": {_z:.1f}")
                 # Warnsignale (Beneish M, Cashflow-Divergenz)
                 _warns = []
                 if _msc and _msc.get("verdaechtig"):
@@ -3984,7 +3997,8 @@ if nav == "Einzelanalyse":
                     _ampel.append("\u2705 keine Warnsignale")
                 if _ampel:
                     st.markdown("**Auf einen Blick:** &nbsp; "
-                                + " &nbsp;\u00b7&nbsp; ".join(_ampel))
+                                + " &nbsp;\u00b7&nbsp; ".join(_ampel),
+                                unsafe_allow_html=True)
 
                 if q["score"] is not None and q.get("parts"):
                     st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
@@ -4019,83 +4033,84 @@ if nav == "Einzelanalyse":
                 with st.expander("\U0001f52c Kennzahlen im Detail (Schmidlin, "
                                  "Dorsey, Piotroski, Altman, Beneish)",
                                  expanded=False):
-                    # --- Schmidlin ---
+                    # Kacheln: (Label, Wert-Text, Farbe, Hover-Erklaerung)
+                    _kacheln = []
+                    _GR, _GE, _RO = "var(--green)", "var(--amber)", "var(--red)"
                     if _uroe is not None:
-                        st.markdown(f"**Ungehebelte Eigenkapitalrendite: {_uroe*100:.0f}%** "
-                                    f"\u2013 wie rentabel die Firma ohne den Effekt der "
-                                    f"Verschuldung arbeitet (echte Ertragskraft). "
-                                    f"\u00dcber 15\u202f% gilt als stark.")
+                        _c = _GR if _uroe >= 0.15 else _GE if _uroe >= 0.08 else _RO
+                        _kacheln.append(("Ungeh. EKR", f"{_uroe*100:.0f}%", _c,
+                            "Ungehebelte Eigenkapitalrendite: wie rentabel die Firma "
+                            "ohne den Effekt der Verschuldung arbeitet. \u00dcber 15% stark."))
                     if _dvg is not None:
-                        _dvg_txt = ("solide" if _dvg < 3 else "erh\u00f6ht" if _dvg < 5
-                                    else "bedenklich")
-                        st.markdown(f"**Verschuldung: {_dvg:.1f} Jahre bis schuldenfrei** "
-                                    f"\u2013 so lange br\u00e4uchte die Firma, um mit ihrem "
-                                    f"operativen Cashflow alle Schulden zu tilgen. "
-                                    f"Unter 3 Jahren solide, \u00fcber 5 kritisch. Hier: "
-                                    f"{_dvg_txt}.")
+                        _c = _GR if _dvg < 3 else _GE if _dvg < 5 else _RO
+                        _kacheln.append(("Schuldenfrei in", f"{_dvg:.1f} J", _c,
+                            "Jahre, um mit dem operativen Cashflow alle Schulden zu "
+                            "tilgen. Unter 3 solide, \u00fcber 5 kritisch."))
                     if _nn is not None:
-                        if v.get("unter_net_net"):
-                            st.markdown(f"**Net-Net-Wert: {m(_nn)} \u2013 \U0001f7e2 Kurs "
-                                        f"liegt darunter!** Der Wert, der bei sofortiger "
-                                        f"Zerschlagung je Aktie \u00fcbrig bliebe. Der Kurs "
-                                        f"liegt darunter \u2013 ein seltenes, starkes Signal.")
-                        else:
-                            st.markdown(f"**Net-Net-Wert: {m(_nn)}** \u2013 was bei "
-                                        f"Zerschlagung je Aktie \u00fcbrig bliebe "
-                                        f"(Umlaufverm\u00f6gen minus alle Schulden). Ein "
-                                        f"negativer Wert ist normal und nur f\u00fcr die "
-                                        f"reine Substanz-Absicherung relevant.")
+                        _unter = v.get("unter_net_net")
+                        _c = _GR if _unter else _GE
+                        _kacheln.append(("Net-Net-Wert", m(_nn), _c,
+                            "Was bei Zerschlagung je Aktie \u00fcbrig bliebe "
+                            "(Umlaufverm\u00f6gen minus alle Schulden). "
+                            + ("Kurs liegt darunter \u2013 seltenes starkes Signal!"
+                               if _unter else "Negativer Wert ist normal.")))
                     if _peg is not None:
-                        _peg_txt = ("g\u00fcnstig" if _peg < 1 else "fair" if _peg < 1.3
-                                    else "teuer")
-                        st.markdown(f"**PEG-Verh\u00e4ltnis: {_peg:.2f} ({_peg_txt})** \u2013 "
-                                    f"KGV geteilt durch Gewinnwachstum. Unter 1 g\u00fcnstig, "
-                                    f"um 1 fair, \u00fcber 1,3 teuer. Nur so verl\u00e4sslich wie "
-                                    f"die Wachstumsannahme.")
-                    # --- Dorsey Moat (Details) ---
-                    if _moat:
-                        _urteil_txt = {
-                            "breit": "\U0001f7e2 **breiter Burggraben**",
-                            "schmal": "\U0001f7e1 **schmaler Burggraben**",
-                            "keiner": "\U0001f534 **kein erkennbarer Burggraben**"}.get(
-                                _moat["moat_urteil"], _moat["moat_urteil"])
-                        st.markdown(f"{_urteil_txt} (gepr\u00fcft \u00fcber "
-                                    f"{_moat['jahre_geprueft']} Jahre) \u2013 ein Burggraben "
-                                    f"ist ein dauerhafter Wettbewerbsvorteil, der sich "
-                                    f"nach Dorsey in **anhaltend** hoher Profitabilit\u00e4t "
-                                    f"zeigt:")
-                        if _moat.get("fcf_sales_akt") is not None:
-                            _fcf_ok = (_moat.get("fcf_sales_anteil") or 0) >= 0.6
-                            _fcf_sym = "\u2705" if _fcf_ok else "\u274c"
-                            st.markdown(f"\u2003{_fcf_sym} Freier Cashflow = "
-                                        f"{_moat['fcf_sales_akt']:.0f}\u202f% vom Umsatz "
-                                        f"(Dorsey-Schwelle 5\u202f%)")
-                        if _moat.get("net_margin_akt") is not None:
-                            _nm_ok = (_moat.get("net_margin_anteil") or 0) >= 0.6
-                            _nm_sym = "\u2705" if _nm_ok else "\u274c"
-                            st.markdown(f"\u2003{_nm_sym} Nettomarge = "
-                                        f"{_moat['net_margin_akt']:.0f}\u202f% "
-                                        f"(Schwelle 15\u202f%)")
-                    # --- Piotroski / Altman / Beneish ---
+                        _c = _GR if _peg < 1 else _GE if _peg < 1.3 else _RO
+                        _kacheln.append(("PEG", f"{_peg:.2f}", _c,
+                            "KGV geteilt durch Gewinnwachstum. Unter 1 g\u00fcnstig, um 1 "
+                            "fair, \u00fcber 1,3 teuer. Nur so gut wie die Wachstumsannahme."))
                     if _fsc and _fsc.get("score") is not None:
-                        st.markdown(f"**Piotroski F-Score: {_fsc['score']}/9** \u2013 "
-                                    f"fundamentale St\u00e4rke aus neun Kriterien "
-                                    f"(Profitabilit\u00e4t, Verschuldung, Effizienz). "
-                                    f"7\u20139 = solide, 0\u20133 = schwach.")
+                        _fs = _fsc["score"]
+                        _c = _GR if _fs >= 7 else _GE if _fs >= 4 else _RO
+                        _kacheln.append(("Piotroski F", f"{_fs}/9", _c,
+                            "Fundamentale St\u00e4rke aus neun Kriterien (Profitabilit\u00e4t, "
+                            "Verschuldung, Effizienz). 7\u20139 solide, 0\u20133 schwach."))
                     if _zsc and _zsc.get("z") is not None:
-                        _zt = {"sicher": "sicher", "grau": "Graubereich",
-                               "gefahr": "Pleiterisiko"}.get(_zsc.get("zone"), "")
-                        st.markdown(f"**Altman Z-Score: {_zsc['z']:.1f}** ({_zt}) \u2013 "
-                                    f"misst das Pleiterisiko. \u00dcber 3 sicher, unter 1,8 "
-                                    f"kritisch.")
+                        _z = _zsc["z"]
+                        _c = _GR if _z >= 3 else _GE if _z >= 1.8 else _RO
+                        _kacheln.append(("Altman Z", f"{_z:.1f}", _c,
+                            "Pleiterisiko. \u00dcber 3 sicher, 1,8\u20133 Graubereich, "
+                            "unter 1,8 kritisch."))
                     if _msc and _msc.get("m") is not None:
-                        _mv = "verd\u00e4chtig" if _msc.get("verdaechtig") else "unauff\u00e4llig"
-                        st.markdown(f"**Beneish M-Score: {_msc['m']:.1f}** ({_mv}) \u2013 "
-                                    f"sch\u00e4tzt die Wahrscheinlichkeit von "
-                                    f"Bilanzmanipulation. \u00dcber \u22122,22 = verd\u00e4chtig.")
-                    st.caption("Diese Kennzahlen stammen aus den drei Value-Werken "
-                               "(Schmidlin, Dorsey, Piotroski/Altman/Beneish). Sie "
-                               "erg\u00e4nzen den Fair Value \u2013 keine Kursprognose.")
+                        _verd = _msc.get("verdaechtig")
+                        _c = _RO if _verd else _GR
+                        _kacheln.append(("Beneish M", f"{_msc['m']:.1f}", _c,
+                            "Wahrscheinlichkeit von Bilanzmanipulation. \u00dcber \u22122,22 "
+                            "verd\u00e4chtig." + (" HIER VERD\u00c4CHTIG!" if _verd else "")))
+                    if _moat:
+                        _c = {"breit": _GR, "schmal": _GE, "keiner": _RO}.get(
+                            _moat["moat_urteil"], _GE)
+                        _mtxt = {"breit": "breit", "schmal": "schmal",
+                                 "keiner": "keiner"}.get(_moat["moat_urteil"], "")
+                        _fcf = _moat.get("fcf_sales_akt")
+                        _nm = _moat.get("net_margin_akt")
+                        _det = []
+                        if _fcf is not None:
+                            _det.append(f"FCF/Umsatz {_fcf:.0f}% (Ziel 5%)")
+                        if _nm is not None:
+                            _det.append(f"Nettomarge {_nm:.0f}% (Ziel 15%)")
+                        _kacheln.append(("Burggraben", _mtxt, _c,
+                            "Dauerhafter Wettbewerbsvorteil (Dorsey), gemessen an "
+                            "anhaltend hoher Profitabilit\u00e4t \u00fcber "
+                            f"{_moat['jahre_geprueft']} Jahre. "
+                            + " \u00b7 ".join(_det)))
+                    # Kacheln als Raster (3 pro Reihe) rendern
+                    if _kacheln:
+                        for _r in range(0, len(_kacheln), 3):
+                            _cols = st.columns(3)
+                            for _col, (_lab, _val, _col_c, _tipp) in zip(
+                                    _cols, _kacheln[_r:_r+3]):
+                                _col.markdown(
+                                    f'<div title="{_tipp}" style="cursor:help;'
+                                    f'border:1px solid #222;border-radius:8px;'
+                                    f'padding:8px 10px;margin-bottom:6px">'
+                                    f'<div style="font-size:11px;color:#888">{_lab}</div>'
+                                    f'<div style="font-size:18px;font-weight:600;'
+                                    f'color:{_col_c}">{_val}</div></div>',
+                                    unsafe_allow_html=True)
+                        st.caption("\U0001f4a1 Mit der Maus \u00fcber eine Kachel fahren "
+                                   "zeigt die Erkl\u00e4rung. Kennzahlen aus Schmidlin, "
+                                   "Dorsey, Piotroski/Altman/Beneish \u2013 keine Prognose.")
 
                 # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.

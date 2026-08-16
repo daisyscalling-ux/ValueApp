@@ -2957,18 +2957,18 @@ if nav == "Start":
         for _sec in _sortiert:
             _eintr = _gruppen[_sec]
             _titel = _sec_titel.get(_sec, "\U0001f4cc " + _sec)
-            # eigene Portfolio-/Watchlist-Meldungen aufgeklappt, breiter Markt zu
-            _auf = _sec in ("Portfolio", "Watchlist")
+            # alle Gruppen beim Start zugeklappt
+            _auf = False
             with st.expander(f"{_titel}  ({len(_eintr)})", expanded=_auf):
                 _rows = []
                 for _c in _eintr:
                     _ic = _kind_icon.get(_c.get("kind"), "\u2022")
                     _rows.append({
+                        "Wann": fmt_ts(_c.get("ts")) or "",
                         "": _ic,
                         "Ticker": str(_c.get("ticker") or ""),
                         "Name": (str(_c.get("name") or ""))[:22],
-                        "\u00c4nderung": str(_c.get("text") or ""),
-                        "Wann": fmt_ts(_c.get("ts")) or ""})
+                        "\u00c4nderung": str(_c.get("text") or "")})
                 vr_table(_rows, height=min(len(_rows) * 38 + 46, 420))
         st.caption("Automatisch \u00fcber Nacht berechnet \u00b7 kein Anlagerat. "
                    "Ticker in die Einzelanalyse eingeben f\u00fcr Details.")

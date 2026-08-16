@@ -2979,11 +2979,13 @@ if nav == "Start":
     saved_all = store.load_all()
     if saved_all:
         st.markdown('<div class="sec-title">MEINE PORTFOLIOS</div>', unsafe_allow_html=True)
-        st.caption("Beim Start neu berechnet. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
+        st.caption("Mit aktuellen Kursen berechnet \u2013 dieselben Werte wie im "
+                   "MyValueApp-Tab. \u201e\u00d6ffnen\u201c l\u00e4dt das Portfolio in den Check.")
         if True:
             def render_saved_portfolio(pname, precs):
                 with st.spinner(f"Berechne {pname} ..."):
-                    prows, _inv, _res = build_portfolio_rows(precs, inc_radar=False, inc_pl=True)
+                    prows, _inv, _res = build_portfolio_rows(
+                        precs, inc_radar=False, inc_pl=True, live=True)
                 if not prows:
                     st.markdown(
                         f'<div class="news-box" style="font-size:12px"><b>{esc(pname)}</b>'
@@ -3216,6 +3218,15 @@ if nav == "Aktienvergleich":
                 "beta": f.get("beta"),
                 "market_cap": f.get("market_cap"),
                 "sector": f.get("sector"), "country": f.get("country"),
+                # NEU: Solvenz/Qualitaets-Scores (Altman Z, Piotroski F, Moat)
+                **(lambda _s: {
+                    "altman_z": (_s.get("z") or {}).get("z") if _s.get("z") else None,
+                    "altman_zone": (_s.get("z") or {}).get("zone") if _s.get("z") else None,
+                    "piotroski_f": (_s.get("f") or {}).get("score") if _s.get("f") else None,
+                    "moat_urteil": (_s.get("moat") or {}).get("moat_urteil") if _s.get("moat") else None,
+                })(load_scores(tk, {"sector": f.get("sector"),
+                                    "market_cap": f.get("market_cap"),
+                                    "_ist_bank": f.get("_ist_bank")})),
                 # bewertungskritische Felder AUCH mitspeichern, damit die
                 # Datenquellen-Diagnose sie korrekt als vorhanden/roic erkennt
                 # (sonst meldet sie faelschlich "fehlt", obwohl roic sie liefert).
@@ -3292,6 +3303,85 @@ if nav == "Aktienvergleich":
 
             _amp_symbol = {"gruen": "\U0001f7e2", "gelb": "\U0001f7e1",
                            "rot": "\U0001f534"}
+
+            # -----------------------------------------------------------
+            # SCORE-UEBERSICHT im Stil "Bewertung / Profitabilitaet /
+            # Solvenz" nebeneinander, mit BEST-Markierung je Kategorie.
+            # -----------------------------------------------------------
+            st.markdown("#### \u00dcberblick")
+
+            def _prof_score(d):
+                """0-100 Profitabilitaets-Score aus ROE, Marge, FCF-Rendite."""
+                teile = []
+                if isinstance(d.get("roe"), (int, float)):
+                    teile.append(min(max(d["roe"] / 0.25, 0), 1))
+                if isinstance(d.get("operating_margin"), (int, float)):
+                    teile.append(min(max(d["operating_margin"] / 0.30, 0), 1))
+                if isinstance(d.get("fcf_yield"), (int, float)):
+                    teile.append(min(max(d["fcf_yield"] / 0.08, 0), 1))
+                if isinstance(d.get("gross_margin"), (int, float)):
+                    teile.append(min(max(d["gross_margin"] / 0.50, 0), 1))
+                return round(sum(teile) / len(teile) * 100) if teile else None
+
+            def _solv_score(d):
+                """0-100 Solvenz-Score, primaer aus Altman Z, sonst D/E."""
+                z = d.get("altman_z")
+                if isinstance(z, (int, float)):
+                    # Z 1.0 -> 0, Z 4.0 -> 100 (linear, gekappt)
+                    return round(min(max((z - 1.0) / 3.0, 0), 1) * 100)
+                de = d.get("debt_to_equity")
+                if isinstance(de, (int, float)):
+                    if de > 5:
+                        de = de / 100.0
+                    return round(min(max((1.5 - de) / 1.5, 0), 1) * 100)
+                return None
+
+            # Werte je Aktie berechnen
+            for d in _daten:
+                d["_prof"] = _prof_score(d)
+                d["_solv"] = _solv_score(d)
+            # BEST je Kategorie bestimmen (hoechster Wert)
+            def _best_idx(werte):
+                gultig = [(i, w) for i, w in enumerate(werte) if isinstance(w, (int, float))]
+                return max(gultig, key=lambda x: x[1])[0] if gultig else None
+            _best_up = _best_idx([d.get("upside") for d in _daten])
+            _best_prof = _best_idx([d.get("_prof") for d in _daten])
+            _best_solv = _best_idx([d.get("_solv") for d in _daten])
+
+            _ocols = st.columns(len(_daten))
+            for _i, (d, _col) in enumerate(zip(_daten, _ocols)):
+                with _col:
+                    st.markdown(f"**{d['name'][:20]}** \u00b7 {d['ticker']}")
+                    # Bewertung
+                    _up = d.get("upside")
+                    if isinstance(_up, (int, float)):
+                        _uptxt = ("%.0f%% unterbewertet" % _up if _up > 0
+                                  else "%.0f%% \u00fcberbewertet" % abs(_up))
+                        _best1 = " \U0001f3c6" if _i == _best_up else ""
+                        st.markdown(f"Bewertung: **{_uptxt}**{_best1}")
+                    # Profitabilitaet
+                    if d.get("_prof") is not None:
+                        _best2 = " \U0001f3c6" if _i == _best_prof else ""
+                        st.markdown(f"Profitabilit\u00e4t: **{d['_prof']}/100**{_best2}")
+                    # Solvenz
+                    if d.get("_solv") is not None:
+                        _best3 = " \U0001f3c6" if _i == _best_solv else ""
+                        _zone = d.get("altman_zone")
+                        _ztxt = (f" ({_zone})" if _zone else "")
+                        st.markdown(f"Solvenz: **{d['_solv']}/100**{_best3}{_ztxt}")
+                    # Moat + F-Score als Zusatz
+                    _mo = d.get("moat_urteil")
+                    if _mo:
+                        _mo_sym = {"breit": "\U0001f7e2 breit", "schmal": "\U0001f7e1 schmal",
+                                   "keiner": "\U0001f534 keiner"}.get(_mo, _mo)
+                        st.markdown(f"Burggraben: {_mo_sym}")
+                    _pf = d.get("piotroski_f")
+                    if _pf is not None:
+                        st.markdown(f"Piotroski F: **{_pf}/9**")
+            st.caption("\U0001f3c6 = bester Wert der Auswahl je Kategorie. "
+                       "Profitabilit\u00e4t/Solvenz als 0\u2013100 zusammengefasst. "
+                       "Details in der Tabelle unten.")
+            st.markdown("---")
             # welche keys gehoeren zu welcher Kategorie-Ueberschrift
             _kat_keys = {
                 "Bewertungskennzahlen": ["pe", "pb", "ev_ebitda"],
@@ -3844,102 +3934,66 @@ if nav == "Einzelanalyse":
                 _dvg = valuation.dynamischer_verschuldungsgrad(f)
                 _nn = v.get("net_net")
                 _peg = valuation.peg_ratio(f)
-                _sm = []
-                if _uroe is not None:
-                    _sm.append(f"**Ungehebelte Eigenkapitalrendite: {_uroe*100:.0f}%** "
-                               f"\u2013 wie rentabel die Firma arbeitet, wenn man den "
-                               f"Effekt der Verschuldung herausrechnet. Zeigt die "
-                               f"echte Ertragskraft ohne Schulden-Hebel. \u00dcber 15\u202f% "
-                               f"gilt als stark.")
-                if _dvg is not None:
-                    _dvg_txt = ("solide" if _dvg < 3 else "erh\u00f6ht" if _dvg < 5
-                                else "bedenklich")
-                    _sm.append(f"**Verschuldung: {_dvg:.1f} Jahre bis schuldenfrei** "
-                               f"\u2013 so lange br\u00e4uchte die Firma, um mit ihrem "
-                               f"heutigen operativen Cashflow alle Schulden zu tilgen. "
-                               f"Unter 3 Jahren solide, \u00fcber 5 kritisch. Hier: "
-                               f"{_dvg_txt}.")
-                if _nn is not None:
-                    if v.get("unter_net_net"):
-                        _sm.append(f"**Net-Net-Wert: {m(_nn)} \u2013 \U0001f7e2 Kurs liegt "
-                                   f"darunter!** Das ist der Wert, der bei sofortiger "
-                                   f"Zerschlagung je Aktie \u00fcbrig bliebe (Umlaufverm\u00f6gen "
-                                   f"minus alle Schulden). Der Kurs liegt darunter \u2013 "
-                                   f"ein sehr seltenes, starkes Signal.")
-                    else:
-                        _sm.append(f"**Net-Net-Wert: {m(_nn)}** \u2013 was bei sofortiger "
-                                   f"Zerschlagung je Aktie \u00fcbrig bliebe (Umlaufverm\u00f6gen "
-                                   f"minus alle Schulden). Ein negativer Wert ist bei "
-                                   f"den meisten Firmen normal und nur f\u00fcr die reine "
-                                   f"Substanz-Absicherung interessant \u2013 hier kein Thema.")
-                if _peg is not None:
-                    _peg_txt = ("g\u00fcnstig" if _peg < 1 else "fair" if _peg < 1.3
-                                else "teuer")
-                    _sm.append(f"**PEG-Verh\u00e4ltnis: {_peg:.2f} ({_peg_txt})** \u2013 das "
-                               f"KGV geteilt durch das Gewinnwachstum. Setzt den Preis "
-                               f"ins Verh\u00e4ltnis zum Wachstum: unter 1 g\u00fcnstig, um 1 "
-                               f"fair, \u00fcber 1,3 eher teuer. Achtung: nur so verl\u00e4sslich "
-                               f"wie die Wachstumsannahme.")
-                if _sm:
-                    for _z in _sm:
-                        st.markdown(_z)
-                if v.get("mos_verwendet") and v.get("mos_verwendet") != v.get("margin_of_safety"):
-                    st.caption(f"\u2139\ufe0f Wegen erh\u00f6hten Risikos (z.B. Verschuldung, "
-                               f"Zyklik) verlangt das Modell hier einen gr\u00f6\u00dferen "
-                               f"Sicherheitsabschlag: **{int(v['mos_verwendet']*100)}%** "
-                               f"statt der \u00fcblichen {int((v.get('margin_of_safety') or 0)*100)}%. "
-                               f"Je unsicherer die Lage, desto g\u00fcnstiger muss der "
-                               f"Kaufpreis sein (Schmidlin).")
-
-                # Dorsey: Moat-Profitabilitaet (ueber 5 Jahre) + Cashflow-Red-Flag
+                # Dorsey-Scores laden (Moat, Cashflow-Divergenz)
                 _dsc = load_scores(ticker, {"sector": f.get("sector"),
                                             "market_cap": f.get("market_cap"),
                                             "_ist_bank": f.get("_ist_bank")})
                 _moat = _dsc.get("moat")
                 _cfdiv = _dsc.get("cf_div")
+                _fsc = _dsc.get("f")
+                _zsc = _dsc.get("z")
+                _msc = _dsc.get("m")
+
+                # =====================================================
+                # AMPEL-ZUSAMMENFASSUNG - der 5-Sekunden-Blick.
+                # Bewertung, Qualitaet, Moat, Bilanz, Warnsignale.
+                # =====================================================
+                _ampel = []
+                # Bewertung (Upside)
+                if up is not None:
+                    _b = "\U0001f7e2" if up > 10 else "\U0001f7e1" if up > -10 else "\U0001f534"
+                    _btxt = ("%.0f%% unterbewertet" % up if up > 0
+                             else "%.0f%% \u00fcberbewertet" % abs(up))
+                    _ampel.append(f"{_b} Bewertung: {_btxt}")
+                # Qualitaet (Piotroski F)
+                if _fsc and _fsc.get("score") is not None:
+                    _fs = _fsc["score"]
+                    _b = "\U0001f7e2" if _fs >= 7 else "\U0001f7e1" if _fs >= 4 else "\U0001f534"
+                    _ampel.append(f"{_b} Qualit\u00e4t: F {_fs}/9")
+                # Moat
                 if _moat:
-                    _urteil_txt = {
-                        "breit": "\U0001f7e2 **breiter Burggraben**",
-                        "schmal": "\U0001f7e1 **schmaler Burggraben**",
-                        "keiner": "\U0001f534 **kein erkennbarer Burggraben**"}.get(
-                            _moat["moat_urteil"], _moat["moat_urteil"])
-                    _erklaer = {
-                        "breit": "Die Firma verdient \u00fcber Jahre hinweg konstant "
-                                 "sehr gut \u2013 ein Zeichen f\u00fcr einen starken, "
-                                 "dauerhaften Wettbewerbsvorteil.",
-                        "schmal": "Die Firma verdient ordentlich, aber nicht in "
-                                  "allen Punkten \u00fcberdurchschnittlich \u2013 ein "
-                                  "gewisser, aber kein starker Wettbewerbsvorteil.",
-                        "keiner": "Die Profitabilit\u00e4t reicht nicht aus, um auf "
-                                  "einen dauerhaften Wettbewerbsvorteil zu "
-                                  "schlie\u00dfen."}.get(_moat["moat_urteil"], "")
-                    st.markdown(f"{_urteil_txt} (gepr\u00fcft \u00fcber "
-                                f"{_moat['jahre_geprueft']} Jahre)")
-                    st.caption("Ein \u201eBurggraben\u201c ist ein dauerhafter "
-                               "Wettbewerbsvorteil, der Konkurrenten fernh\u00e4lt. Nach "
-                               "Dorsey zeigt er sich nicht in einem guten Jahr, "
-                               "sondern in **anhaltend** hoher Profitabilit\u00e4t. Das "
-                               "Modell pr\u00fcft daf\u00fcr zwei Kennzahlen \u00fcber mehrere Jahre:")
-                    if _moat.get("fcf_sales_akt") is not None:
-                        _fcf_ok = (_moat.get("fcf_sales_anteil") or 0) >= 0.6
-                        _fcf_sym = "\u2705" if _fcf_ok else "\u274c"
-                        _fcf_txt = ("liegt \u00fcber Dorseys Schwelle" if _fcf_ok
-                                    else "liegt meist unter Dorseys Schwelle")
-                        st.markdown(f"\u2003{_fcf_sym} **Freier Cashflow = "
-                                    f"{_moat['fcf_sales_akt']:.0f}\u202f% vom Umsatz** "
-                                    f"({_fcf_txt} von 5\u202f%). Zeigt, wie viel echtes "
-                                    f"Geld von jedem Umsatz-Euro \u00fcbrig bleibt.")
-                    if _moat.get("net_margin_akt") is not None:
-                        _nm_ok = (_moat.get("net_margin_anteil") or 0) >= 0.6
-                        _nm_sym = "\u2705" if _nm_ok else "\u274c"
-                        _nm_txt = ("liegt \u00fcber Dorseys Schwelle" if _nm_ok
-                                   else "liegt meist unter Dorseys Schwelle")
-                        st.markdown(f"\u2003{_nm_sym} **Nettomarge = "
-                                    f"{_moat['net_margin_akt']:.0f}\u202f%** "
-                                    f"({_nm_txt} von 15\u202f%). Zeigt, wie viel vom "
-                                    f"Umsatz nach allen Kosten als Gewinn bleibt.")
-                    if _erklaer:
-                        st.caption(f"\u2192 {_erklaer}")
+                    _b = {"breit": "\U0001f7e2", "schmal": "\U0001f7e1",
+                          "keiner": "\U0001f534"}.get(_moat["moat_urteil"], "\U0001f7e1")
+                    _mtxt = {"breit": "breiter Burggraben", "schmal": "schmaler Burggraben",
+                             "keiner": "kein Burggraben"}.get(_moat["moat_urteil"], "")
+                    _ampel.append(f"{_b} {_mtxt}")
+                # Bilanz/Solvenz (Altman Z)
+                if _zsc and _zsc.get("z") is not None:
+                    _z = _zsc["z"]
+                    _b = "\U0001f7e2" if _z >= 3 else "\U0001f7e1" if _z >= 1.8 else "\U0001f534"
+                    _ampel.append(f"{_b} Bilanz: Z {_z:.1f}")
+                # Warnsignale (Beneish M, Cashflow-Divergenz)
+                _warns = []
+                if _msc and _msc.get("verdaechtig"):
+                    _warns.append("Bilanzverdacht (Beneish)")
+                if _cfdiv and _cfdiv.get("warnung"):
+                    _warns.append("Cashflow-Divergenz")
+                if _warns:
+                    _ampel.append("\U0001f534 Warnsignal: " + ", ".join(_warns))
+                else:
+                    _ampel.append("\u2705 keine Warnsignale")
+                if _ampel:
+                    st.markdown("**Auf einen Blick:** &nbsp; "
+                                + " &nbsp;\u00b7&nbsp; ".join(_ampel))
+
+                if q["score"] is not None and q.get("parts"):
+                    st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
+                               + "  \u00b7  ".join(f"{k} {x}" for k, x in q["parts"].items()))
+
+                # =====================================================
+                # IMMER SICHTBAR: kritische, situative Warnungen.
+                # Diese duerfen NICHT weggeklappt werden.
+                # =====================================================
                 if _cfdiv and _cfdiv.get("warnung"):
                     _schwere = ("\U0001f534 **Starkes Warnsignal**" if _cfdiv.get("stark")
                                 else "\U0001f7e1 Warnsignal")
@@ -3951,6 +4005,97 @@ if nav == "Einzelanalyse":
                                f"hei\u00dfen, dass Ums\u00e4tze gebucht, aber nicht kassiert "
                                f"werden \u2013 pr\u00fcfe Forderungen und Vorr\u00e4te. (Dorseys "
                                f"Lucent-Beispiel begann genau so.)")
+                if v.get("mos_verwendet") and v.get("mos_verwendet") != v.get("margin_of_safety"):
+                    st.caption(f"\u2139\ufe0f Wegen erh\u00f6hten Risikos verlangt das Modell "
+                               f"einen gr\u00f6\u00dferen Sicherheitsabschlag: "
+                               f"**{int(v['mos_verwendet']*100)}%** statt "
+                               f"{int((v.get('margin_of_safety') or 0)*100)}% "
+                               f"(Schmidlin: unsichere Titel brauchen mehr Marge).")
+
+                # =====================================================
+                # DETAILS AUF ABRUF: alle Kennzahl-Erklaerungen in EINEM
+                # zugeklappten Block. Kurz oben, tief auf Wunsch.
+                # =====================================================
+                with st.expander("\U0001f52c Kennzahlen im Detail (Schmidlin, "
+                                 "Dorsey, Piotroski, Altman, Beneish)",
+                                 expanded=False):
+                    # --- Schmidlin ---
+                    if _uroe is not None:
+                        st.markdown(f"**Ungehebelte Eigenkapitalrendite: {_uroe*100:.0f}%** "
+                                    f"\u2013 wie rentabel die Firma ohne den Effekt der "
+                                    f"Verschuldung arbeitet (echte Ertragskraft). "
+                                    f"\u00dcber 15\u202f% gilt als stark.")
+                    if _dvg is not None:
+                        _dvg_txt = ("solide" if _dvg < 3 else "erh\u00f6ht" if _dvg < 5
+                                    else "bedenklich")
+                        st.markdown(f"**Verschuldung: {_dvg:.1f} Jahre bis schuldenfrei** "
+                                    f"\u2013 so lange br\u00e4uchte die Firma, um mit ihrem "
+                                    f"operativen Cashflow alle Schulden zu tilgen. "
+                                    f"Unter 3 Jahren solide, \u00fcber 5 kritisch. Hier: "
+                                    f"{_dvg_txt}.")
+                    if _nn is not None:
+                        if v.get("unter_net_net"):
+                            st.markdown(f"**Net-Net-Wert: {m(_nn)} \u2013 \U0001f7e2 Kurs "
+                                        f"liegt darunter!** Der Wert, der bei sofortiger "
+                                        f"Zerschlagung je Aktie \u00fcbrig bliebe. Der Kurs "
+                                        f"liegt darunter \u2013 ein seltenes, starkes Signal.")
+                        else:
+                            st.markdown(f"**Net-Net-Wert: {m(_nn)}** \u2013 was bei "
+                                        f"Zerschlagung je Aktie \u00fcbrig bliebe "
+                                        f"(Umlaufverm\u00f6gen minus alle Schulden). Ein "
+                                        f"negativer Wert ist normal und nur f\u00fcr die "
+                                        f"reine Substanz-Absicherung relevant.")
+                    if _peg is not None:
+                        _peg_txt = ("g\u00fcnstig" if _peg < 1 else "fair" if _peg < 1.3
+                                    else "teuer")
+                        st.markdown(f"**PEG-Verh\u00e4ltnis: {_peg:.2f} ({_peg_txt})** \u2013 "
+                                    f"KGV geteilt durch Gewinnwachstum. Unter 1 g\u00fcnstig, "
+                                    f"um 1 fair, \u00fcber 1,3 teuer. Nur so verl\u00e4sslich wie "
+                                    f"die Wachstumsannahme.")
+                    # --- Dorsey Moat (Details) ---
+                    if _moat:
+                        _urteil_txt = {
+                            "breit": "\U0001f7e2 **breiter Burggraben**",
+                            "schmal": "\U0001f7e1 **schmaler Burggraben**",
+                            "keiner": "\U0001f534 **kein erkennbarer Burggraben**"}.get(
+                                _moat["moat_urteil"], _moat["moat_urteil"])
+                        st.markdown(f"{_urteil_txt} (gepr\u00fcft \u00fcber "
+                                    f"{_moat['jahre_geprueft']} Jahre) \u2013 ein Burggraben "
+                                    f"ist ein dauerhafter Wettbewerbsvorteil, der sich "
+                                    f"nach Dorsey in **anhaltend** hoher Profitabilit\u00e4t "
+                                    f"zeigt:")
+                        if _moat.get("fcf_sales_akt") is not None:
+                            _fcf_ok = (_moat.get("fcf_sales_anteil") or 0) >= 0.6
+                            _fcf_sym = "\u2705" if _fcf_ok else "\u274c"
+                            st.markdown(f"\u2003{_fcf_sym} Freier Cashflow = "
+                                        f"{_moat['fcf_sales_akt']:.0f}\u202f% vom Umsatz "
+                                        f"(Dorsey-Schwelle 5\u202f%)")
+                        if _moat.get("net_margin_akt") is not None:
+                            _nm_ok = (_moat.get("net_margin_anteil") or 0) >= 0.6
+                            _nm_sym = "\u2705" if _nm_ok else "\u274c"
+                            st.markdown(f"\u2003{_nm_sym} Nettomarge = "
+                                        f"{_moat['net_margin_akt']:.0f}\u202f% "
+                                        f"(Schwelle 15\u202f%)")
+                    # --- Piotroski / Altman / Beneish ---
+                    if _fsc and _fsc.get("score") is not None:
+                        st.markdown(f"**Piotroski F-Score: {_fsc['score']}/9** \u2013 "
+                                    f"fundamentale St\u00e4rke aus neun Kriterien "
+                                    f"(Profitabilit\u00e4t, Verschuldung, Effizienz). "
+                                    f"7\u20139 = solide, 0\u20133 = schwach.")
+                    if _zsc and _zsc.get("z") is not None:
+                        _zt = {"sicher": "sicher", "grau": "Graubereich",
+                               "gefahr": "Pleiterisiko"}.get(_zsc.get("zone"), "")
+                        st.markdown(f"**Altman Z-Score: {_zsc['z']:.1f}** ({_zt}) \u2013 "
+                                    f"misst das Pleiterisiko. \u00dcber 3 sicher, unter 1,8 "
+                                    f"kritisch.")
+                    if _msc and _msc.get("m") is not None:
+                        _mv = "verd\u00e4chtig" if _msc.get("verdaechtig") else "unauff\u00e4llig"
+                        st.markdown(f"**Beneish M-Score: {_msc['m']:.1f}** ({_mv}) \u2013 "
+                                    f"sch\u00e4tzt die Wahrscheinlichkeit von "
+                                    f"Bilanzmanipulation. \u00dcber \u22122,22 = verd\u00e4chtig.")
+                    st.caption("Diese Kennzahlen stammen aus den drei Value-Werken "
+                               "(Schmidlin, Dorsey, Piotroski/Altman/Beneish). Sie "
+                               "erg\u00e4nzen den Fair Value \u2013 keine Kursprognose.")
 
                 # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.

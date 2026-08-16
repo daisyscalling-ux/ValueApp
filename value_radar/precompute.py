@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-av"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-bb"   # bei jeder Aenderung hochzaehlen
 
 # Analysten-Historie fuer die Value-Trap-Trenderkennung. In run() aus dem
 # Speicher geladen, waehrend des Laufs von score_ticker fortgeschrieben, am
@@ -855,17 +855,36 @@ def diff_changes(old_snap, new_rows, section):
     return changes
 
 
-def diff_newcomers(old_list_tickers, new_rows, section):
-    """Neu in Screener/Radar-Top aufgetaucht."""
+def diff_newcomers(old_list_tickers, new_rows, section, letzte_meldung=None,
+                   cooldown_tage=7):
+    """Neu in Screener/Radar-Top aufgetaucht.
+
+    Entprellt (debounced): Ein Titel, der an der Ranking-Grenze wackelt (mal
+    knapp drin, mal knapp raus), wuerde sonst bei jedem Lauf erneut als 'neu'
+    gemeldet. Deshalb melden wir einen Titel nur, wenn er (a) nicht in der
+    alten Liste stand UND (b) in den letzten `cooldown_tage` Tagen nicht schon
+    einmal gemeldet wurde. `letzte_meldung` ist ein Dict {ticker: ts} und wird
+    in-place aktualisiert.
+    """
     out = []
     old = set(old_list_tickers or [])
+    lm = letzte_meldung if isinstance(letzte_meldung, dict) else {}
+    jetzt = time.time()
+    cooldown_s = cooldown_tage * 86400
     for r in new_rows:
-        if r["ticker"] not in old:
-            out.append({"ticker": r["ticker"], "name": r.get("name"), "section": section,
-                        "kind": "new_idea",
-                        "text": f"Neu in {section}-Top: {r['ticker']} "
-                                f"(Score {r.get('composite')}, Upside "
-                                f"{('%+d%%' % r['upside']) if r.get('upside') is not None else 'n/a'})"})
+        tk = r["ticker"]
+        if tk in old:
+            continue
+        # Cooldown: kuerzlich schon gemeldet? -> nicht erneut als "neu"
+        _last = lm.get(tk)
+        if _last is not None and (jetzt - _last) < cooldown_s:
+            continue
+        lm[tk] = jetzt        # Meldezeitpunkt merken
+        out.append({"ticker": tk, "name": r.get("name"), "section": section,
+                    "kind": "new_idea",
+                    "text": f"Neu in {section}-Top: {tk} "
+                            f"(Score {r.get('composite')}, Upside "
+                            f"{('%+d%%' % r['upside']) if r.get('upside') is not None else 'n/a'})"})
     return out
 
 
@@ -1092,8 +1111,14 @@ def run():
             _r.setdefault("radar_score", _rad_map[_t].get("score"))
     _prev_breit = old_snaps.get("_breit", {})
     changes += diff_changes(_prev_breit, _scr_map, "Markt")
-    changes += diff_newcomers(prev_scr, scr, "Screener")
-    changes += diff_newcomers(prev_rad, rad, "Radar")
+    # Meldehistorie laden (wann wurde welcher Titel zuletzt als "neu" gemeldet).
+    # Verhindert, dass Grenzwackler wie HEI/LITE bei jedem Lauf erneut als
+    # "neu" auftauchen. Wird in-place aktualisiert und unten zurueckgespeichert.
+    _melde_hist = dict(old_snaps.get("_newcomer_last", {}))
+    changes += diff_newcomers(prev_scr, scr, "Screener",
+                              letzte_meldung=_melde_hist)
+    changes += diff_newcomers(prev_rad, rad, "Radar",
+                              letzte_meldung=_melde_hist)
 
     ts = time.time()
     for c in changes:
@@ -1119,6 +1144,11 @@ def run():
             "growth": r.get("growth"), "momentum": r.get("momentum"),
             "catalyst": r.get("catalyst"), "value_trap": r.get("value_trap")}
         for t, r in _scr_map.items()}
+    # Meldehistorie der Newcomer mitspeichern, aber alte Eintraege (aelter als
+    # 30 Tage) ausduennen, damit der Snapshot nicht unbegrenzt waechst.
+    _jetzt = time.time()
+    new_snap["_newcomer_last"] = {tk: ts for tk, ts in _melde_hist.items()
+                                  if (_jetzt - ts) < 30 * 86400}
     store.set_snapshot(new_snap)
     # Analysten-Historie zurueckspeichern (fortgeschrieben in score_ticker).
     try:
@@ -1129,8 +1159,19 @@ def run():
     except Exception as _e:
         print(f"[value-trap] Analysten-Historie speichern fehlgeschlagen: {_e}")
 
-    # 5) Aenderungs-Feed fortschreiben (neueste zuerst, gekappt)
-    feed = changes + (store.get_changes() or [])
+    # 5) Aenderungs-Feed fortschreiben (neueste zuerst, gekappt).
+    # Zusaetzlich gegen Dubletten absichern: dieselbe Meldung (gleicher Ticker,
+    # gleiche Sektion, gleicher Text) soll nicht mehrfach im Feed stehen, auch
+    # wenn mehrere Laeufe pro Tag stattfinden.
+    _feed_roh = changes + (store.get_changes() or [])
+    _gesehen = set()
+    feed = []
+    for _c in _feed_roh:
+        _sig = (_c.get("ticker"), _c.get("section"), _c.get("text"))
+        if _sig in _gesehen:
+            continue
+        _gesehen.add(_sig)
+        feed.append(_c)
     store.set_changes(feed[:60])
     print(f"{len(changes)} neue Aenderung(en) erkannt.")
 

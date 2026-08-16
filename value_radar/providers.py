@@ -1714,6 +1714,79 @@ def get_dividend_years(ticker: str) -> Optional[int]:
         return None
 
 
+def get_earnings_history(ticker: str, limit: int = 12) -> list:
+    """Earnings-Historie mit EPS-Schaetzung/Ist/Surprise UND der Kursreaktion
+    am Tag nach dem Bericht. Fuer das 'Does the Beat Get Paid'-Streudiagramm
+    und die Ergebnis-Tabelle.
+
+    Kursreaktion = Schlusskurs am ersten Handelstag NACH dem Earnings-Datum
+    gegen den Schlusskurs am letzten Tag DAVOR. Gibt eine Liste (neueste zuerst)
+    von Dicts zurueck: {datum, eps_actual, eps_est, eps_surprise_pct,
+    price_reaction_pct}. Leere Liste bei fehlenden Daten.
+    """
+    if yf is None or not ticker:
+        return []
+    import pandas as pd
+    try:
+        tk = yf.Ticker(ticker)
+        df = tk.get_earnings_dates(limit=limit)
+    except Exception:
+        return []
+    if df is None or getattr(df, "empty", True):
+        return []
+    if "Reported EPS" not in df.columns:
+        return []
+    # nur bereits berichtete Quartale (Reported EPS vorhanden)
+    past = df[df["Reported EPS"].notna()].copy()
+    if past.empty:
+        return []
+    # Kurshistorie einmal breit holen, dann je Datum die Reaktion bestimmen
+    try:
+        _hist = tk.history(period="5y", interval="1d")
+    except Exception:
+        _hist = None
+    if _hist is not None and is_pence(ticker) and "Close" in _hist.columns:
+        try:
+            _hist = _hist.copy()
+            _hist["Close"] = _hist["Close"] / 100.0
+        except Exception:
+            pass
+
+    def _reaktion(edate):
+        if _hist is None or getattr(_hist, "empty", True):
+            return None
+        try:
+            idx = [x.date() for x in _hist.index]
+            close = _hist["Close"].tolist()
+            d = pd.to_datetime(edate).date()
+            vor = [(dt, c) for dt, c in zip(idx, close) if dt <= d and c == c]
+            nach = [(dt, c) for dt, c in zip(idx, close) if dt > d and c == c]
+            if not vor or not nach:
+                return None
+            p_vor = vor[-1][1]
+            p_nach = nach[0][1]
+            if p_vor and p_vor > 0:
+                return round((p_nach / p_vor - 1) * 100, 2)
+        except Exception:
+            return None
+        return None
+
+    out = []
+    for edate, r in past.iterrows():
+        est = _num(r.get("EPS Estimate"))
+        act = _num(r.get("Reported EPS"))
+        sp = _num(r.get("Surprise(%)"))
+        if sp is None and est not in (None, 0) and act is not None:
+            sp = round((act - est) / abs(est) * 100, 1)
+        out.append({
+            "datum": pd.to_datetime(edate).strftime("%Y-%m-%d"),
+            "eps_actual": act, "eps_est": est,
+            "eps_surprise_pct": sp,
+            "price_reaction_pct": _reaktion(edate),
+        })
+    return out
+
+
 def get_price_on(ticker: str, date) -> Optional[float]:
     """Schlusskurs am/zuletzt vor 'date' (YYYY-MM-DD oder Datum). None bei Fehler.
     Genutzt fuer Gewinn/Verlust seit Kauf im Portfoliocheck."""

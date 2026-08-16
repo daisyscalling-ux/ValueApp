@@ -508,6 +508,8 @@ def load_screen_extras(t): return providers.get_screen_extras(t)
 def load_div_years(t): return providers.get_dividend_years(t)
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_price_on(t, date): return providers.get_price_on(t, date)
+@st.cache_data(ttl=21600, show_spinner=False)
+def load_earnings_history(t): return providers.get_earnings_history(t)
 @st.cache_data(ttl=60, show_spinner=False)
 def load_intraday_price(t): return providers.get_intraday_price(t)
 @st.cache_data(ttl=60, show_spinner=False)
@@ -2535,7 +2537,6 @@ NAV_GROUPS = [
      "children": [
         ("Portfoliocheck", "Portfolio", "\U0001f4bc"),
         ("Watchlist", "Watchlist", "\u2b50"),
-        ("ClaudeChat", "Frag Claude", "\U0001f916"),
      ]},
     {"key": "StrategieStatistik", "label": "Strategie und Statistik",
      "icon": "\U0001f3c6", "children": [
@@ -2608,7 +2609,6 @@ MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Trefferbilanz": "\U0001f3c6", "Backtest": "\U0001f9ea",
               "ThesenTrack": "\U0001f4dd",
               "Earnings Calls": "\U0001f399\ufe0f",
-              "ClaudeChat": "\U0001f916",
               "Umfeld": "\U0001f30d"}
 _mnav = st.container(key="mobilenav")
 with _mnav:
@@ -2731,73 +2731,6 @@ with st.sidebar:
         if offen:
             for _ckey, _clabel, _cicon in kinder:
                 _nav_button(_ckey, _clabel, _cicon, _ckey == nav, _indent=True)
-    st.markdown("---")
-
-    # -----------------------------------------------------------------
-    # CLAUDE - ueberall erreichbar, auf-/zuklappbar. Denk- und
-    # Recherchepartner; aendert KEINE Modellzahlen. Kein Anlagerat.
-    # -----------------------------------------------------------------
-    with st.expander("\U0001f916 Claude fragen", expanded=False):
-        if not these_mod.verfuegbar():
-            st.caption("Claude ist aus \u2013 es fehlt der ANTHROPIC_API_KEY in "
-                       "den Umgebungsvariablen (Streamlit Cloud: Settings \u2192 "
-                       "Secrets).")
-        else:
-            if "claude_chat" not in st.session_state:
-                st.session_state["claude_chat"] = []
-            # letzte 2 Wortwechsel kompakt zeigen (Platz in der Sidebar)
-            _verlauf_sb = st.session_state["claude_chat"]
-            if _verlauf_sb:
-                for _m in _verlauf_sb[-4:]:
-                    _wer = "\U0001f9d1" if _m["role"] == "user" else "\U0001f916"
-                    _txt = _m["content"]
-                    if len(_txt) > 400 and _m["role"] == "assistant":
-                        _txt = _txt[:400] + " \u2026"
-                    st.markdown(f"{_wer} {_txt}")
-                st.markdown("---")
-            _sb_frage = st.text_area("Frage / Idee", key="sb_claude_frage",
-                                     height=80, label_visibility="collapsed",
-                                     placeholder="z.B. Wer profitiert vom "
-                                                 "AI-Datacenter-Ausbau?")
-            _sbc1, _sbc2 = st.columns(2)
-            if _sbc1.button("\U0001f4ac Fragen", key="sb_claude_send",
-                            use_container_width=True) and _sb_frage.strip():
-                _vl = [{"role": m["role"], "content": m["content"]}
-                       for m in st.session_state["claude_chat"]]
-                with st.spinner("Claude denkt \u2026"):
-                    _ans = these_mod.frage_stellen(_sb_frage.strip(), _vl)
-                if _ans:
-                    st.session_state["claude_chat"].append(
-                        {"role": "user", "content": _sb_frage.strip()})
-                    st.session_state["claude_chat"].append(
-                        {"role": "assistant", "content": _ans})
-                    st.rerun()
-                else:
-                    st.warning("Claude nicht erreichbar.")
-            if _sbc2.button("\U0001f5d1\ufe0f Leeren", key="sb_claude_clear",
-                            use_container_width=True):
-                st.session_state["claude_chat"] = []
-                st.rerun()
-            st.caption("Denkt mit \u2013 keine Kursprognose. F\u00fcr ausf\u00fchrliche "
-                       "Antworten: Men\u00fc \u201eFrag Claude\u201c.")
-    st.markdown("---")
-    if st.button("\U0001f504 Marktdaten neu laden", use_container_width=True,
-                 help="Leert den Datencache und holt frische Live-Daten. "
-                      "Ohne Klick nutzen wiederholte L\u00e4ufe denselben Cache "
-                      "(ca. 30 Min.) \u2013 dadurch sind die Ergebnisse reproduzierbar."):
-        for fn in (load_universe, load_fundamentals, load_fundamentals_deep, load_perf,
-                   load_analyst, load_screen_extras, load_div_years, load_intel, fx_to_eur,
-                   load_history, load_history_full, load_intraday_price,
-                   load_intraday_quote):
-            try:
-                fn.clear()
-            except Exception:
-                pass
-        for k in ("radar_results", "radar_last_pick", "scr_passed",
-                  "scr_zeit", "pf_rows_cache", "live_ergebnis",
-                  "live_zeit", "live_strat_used", "live_spalten"):
-            st.session_state.pop(k, None)
-        st.success("Cache geleert \u2013 der n\u00e4chste Lauf holt frische Daten.")
     st.markdown("---")
 
 
@@ -5367,9 +5300,82 @@ if nav == "Einzelanalyse":
                     else:
                         st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
                                     unsafe_allow_html=True)
-    # ===========================================================================
-    # Gemeinsame Signal-Vorbereitung fuer beide Matrizen
-    # ===========================================================================
+
+                # -----------------------------------------------------------
+                # EARNINGS: "Wird der Beat bezahlt?" - Surprise vs Kursreaktion.
+                # Zeigt, ob gute Zahlen vom Markt belohnt werden (oft nicht!).
+                # -----------------------------------------------------------
+                with st.expander("\U0001f4c8 Earnings: Wird der Beat bezahlt?",
+                                 expanded=False):
+                    with st.spinner("Lade Earnings-Historie \u2026"):
+                        _eh = load_earnings_history(ticker)
+                    if not _eh:
+                        st.caption("Keine Earnings-Historie verf\u00fcgbar (Datenquelle "
+                                   "liefert f\u00fcr diesen Titel keine Quartalszahlen).")
+                    else:
+                        st.caption("Jeder Punkt ist ein Quartal: **EPS-\u00dcberraschung** "
+                                   "(wie stark der Gewinn die Sch\u00e4tzung schlug) gegen "
+                                   "die **Kursreaktion** am Tag danach. Die Kernfrage: "
+                                   "Wird ein Gewinn-Beat vom Markt \u00fcberhaupt belohnt? "
+                                   "Gr\u00fcn = Kurs stieg, rot = Kurs fiel.")
+                        # Streudiagramm (Altair)
+                        _pts = [e for e in _eh
+                                if e.get("eps_surprise_pct") is not None
+                                and e.get("price_reaction_pct") is not None]
+                        if _pts:
+                            try:
+                                import pandas as _pd
+                                import altair as _alt
+                                _df = _pd.DataFrame([{
+                                    "EPS-\u00dcberraschung %": e["eps_surprise_pct"],
+                                    "Kursreaktion %": e["price_reaction_pct"],
+                                    "Quartal": e["datum"],
+                                    "Reaktion": ("positiv" if e["price_reaction_pct"] >= 0
+                                                 else "negativ"),
+                                } for e in _pts])
+                                _chart = _alt.Chart(_df).mark_circle(
+                                    size=120, opacity=0.75).encode(
+                                    x=_alt.X("EPS-\u00dcberraschung %:Q"),
+                                    y=_alt.Y("Kursreaktion %:Q"),
+                                    color=_alt.Color("Reaktion:N", scale=_alt.Scale(
+                                        domain=["positiv", "negativ"],
+                                        range=["#3FB950", "#F85149"]), legend=None),
+                                    tooltip=["Quartal", "EPS-\u00dcberraschung %",
+                                             "Kursreaktion %"],
+                                ).properties(height=280)
+                                st.altair_chart(_chart, use_container_width=True)
+                                # Kernaussage: korreliert Beat mit Kursreaktion?
+                                _npos = sum(1 for e in _pts if e["price_reaction_pct"] >= 0)
+                                _quote = round(_npos / len(_pts) * 100)
+                                st.markdown(f"**Bei {_quote}% der Quartale stieg der "
+                                            f"Kurs** nach den Zahlen ({_npos} von "
+                                            f"{len(_pts)}). "
+                                            + ("Der Markt belohnt die Zahlen "
+                                               "\u00fcberwiegend." if _quote >= 60 else
+                                               "Gute Zahlen f\u00fchren hier oft NICHT zu "
+                                               "steigenden Kursen \u2013 ein wichtiges "
+                                               "Warnsignal gegen die Annahme \u201eBeat "
+                                               "= Kurs rauf\u201c." if _quote <= 40 else
+                                               "Gemischtes Bild \u2013 der Beat allein "
+                                               "sagt wenig \u00fcber die Kursreaktion."))
+                            except Exception as _ce:
+                                st.caption(f"Diagramm nicht darstellbar ({_ce}).")
+                        # Tabelle
+                        _tab = []
+                        for e in _eh:
+                            _tab.append({
+                                "Quartal": e["datum"],
+                                "EPS Ist": e.get("eps_actual"),
+                                "EPS Sch\u00e4tz.": e.get("eps_est"),
+                                "\u00dcberrasch. %": e.get("eps_surprise_pct"),
+                                "Kursreaktion %": e.get("price_reaction_pct"),
+                            })
+                        vr_table(_tab, signed_cols=("\u00dcberrasch. %", "Kursreaktion %"),
+                                 height=min(len(_tab) * 38 + 46, 460))
+                        st.caption("Kursreaktion = Schlusskurs am ersten Handelstag "
+                                   "nach dem Bericht gegen den letzten Tag davor. "
+                                   "Datenquelle liefert typischerweise die letzten "
+                                   "8\u201312 Quartale.")
     def _prep_for_matrix(t):
         # WICHTIG: deep=True wie in der Einzelanalyse (Zeile ~2544). Sonst
         # laedt die Scorecard flachere Daten und der Composite weicht ab
@@ -7274,66 +7280,6 @@ if nav == "ThesenTrack":
                            "noch kein Urteil \u00fcber dein K\u00f6nnen.** Der Wert "
                            "entsteht \u00fcber Monate und Jahre, wenn du siehst, wo "
                            "du echte St\u00e4rken hast und wo du dich t\u00e4uschst.")
-
-
-if nav == "ClaudeChat":
-    st.markdown('<div class="sec-title">FRAG CLAUDE</div>', unsafe_allow_html=True)
-    st.caption("Dein Denk- und Recherchepartner: Themen erfragen, Ideen teilen, "
-               "Informationen einordnen und beurteilen. Claude hilft dir beim "
-               "**Verstehen** \u2013 es gibt keine Kaufempfehlung und keine "
-               "Kursprognose, und es ver\u00e4ndert die Bewertungszahlen des Tools "
-               "nicht. Kein Anlagerat.")
-
-    if not these_mod.verfuegbar():
-        st.warning("\U0001f916 Claude ist nicht aktiv \u2013 es fehlt der "
-                   "**ANTHROPIC_API_KEY** in den Umgebungsvariablen. Ohne ihn "
-                   "kann die Chat-Funktion keine Anfragen stellen.")
-    else:
-        # Verlauf im Session-State halten (nur diese Sitzung)
-        if "claude_chat" not in st.session_state:
-            st.session_state["claude_chat"] = []
-
-        _cc1, _cc2 = st.columns([4, 1])
-        with _cc2:
-            if st.button("\U0001f5d1\ufe0f Verlauf leeren", key="claude_clear"):
-                st.session_state["claude_chat"] = []
-                st.rerun()
-
-        # bisherigen Verlauf anzeigen
-        for _msg in st.session_state["claude_chat"]:
-            _rolle = "\U0001f9d1 Du" if _msg["role"] == "user" else "\U0001f916 Claude"
-            st.markdown(f"**{_rolle}:**")
-            st.markdown(_msg["content"])
-            st.markdown("---")
-
-        _frage = st.text_area(
-            "Deine Frage oder Idee",
-            placeholder="z.B. Welche Firmen profitieren strukturell vom Ausbau "
-                        "der AI-Rechenzentren \u2013 und wo sind die Risiken? Oder: "
-                        "Was sollte ich bei einem Hersteller von Stromin"
-                        "frastruktur fundamental besonders pr\u00fcfen?",
-            key="claude_frage", height=100)
-
-        if st.button("\U0001f4ac Fragen", key="claude_send") and _frage.strip():
-            # Verlauf fuer die API aufbereiten (nur role+content)
-            _verlauf = [{"role": m["role"], "content": m["content"]}
-                        for m in st.session_state["claude_chat"]]
-            with st.spinner("Claude denkt \u2026"):
-                _antwort = these_mod.frage_stellen(_frage.strip(), _verlauf)
-            if _antwort:
-                st.session_state["claude_chat"].append(
-                    {"role": "user", "content": _frage.strip()})
-                st.session_state["claude_chat"].append(
-                    {"role": "assistant", "content": _antwort})
-                st.rerun()
-            else:
-                st.error("Claude nicht erreichbar. Ist der API-Key g\u00fcltig?")
-
-        st.caption("\U0001f4a1 Tipp: Claude eignet sich gut, um einen Endmarkt zu "
-                   "verstehen, eine These auf Schwachstellen zu pr\u00fcfen oder "
-                   "eine Nachricht einzuordnen. F\u00fcr die konkrete Bewertung "
-                   "eines Titels nutze die Einzelanalyse \u2013 dort steht deine "
-                   "These direkt neben der Modellzahl.")
 
 
 # ===========================================================================

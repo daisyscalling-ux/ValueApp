@@ -7483,7 +7483,7 @@ if nav == "Portfoliocheck":
                 load_intraday_quote.clear()
                 fx_to_eur.clear()                 # frischer Wechselkurs (sonst bis 30 Min alt)
                 load_fundamentals.clear()
-                load_fundamentals_deep.clear()    # frischer Basis-Kurs (tiefe Quelle)
+                _DEEP_CACHE.clear()               # manueller Cache von load_fundamentals_deep
                 st.session_state.pop("pf_rows_cache", None)
                 st.rerun()
             # Ergebnis fuer die Sitzung behalten: Bei vielen Positionen dauert

@@ -4154,8 +4154,9 @@ if nav == "Einzelanalyse":
                                     'verf\u00fcgbar (Intraday/1W nur an Handelstagen).</span>',
                                     unsafe_allow_html=True)
                     lo, hi, pr = f.get("52w_low"), f.get("52w_high"), f.get("price")
-                    if lo and hi and pr:
+                    if lo and hi and pr and hi > lo:
                         pos = (pr - lo) / (hi - lo) * 100
+                        pos = max(0.0, min(pos, 100.0))   # sauber begrenzen
                         st.caption(f"52W: {m(lo)} \u2500\u2500 [{pos:.2f}%] \u2500\u2500 {m(hi)}")
 
                 # ============================================================

@@ -63,6 +63,17 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
     # =======================================================================
     # 1 - Innerer Wert, mit Szenario-Umschalter
     # =======================================================================
+    # Datenluecken zuerst: ein Fair Value auf halber Datenbasis sieht genauso
+    # aus wie einer auf voller - deshalb muss die Warnung VOR die Zahl.
+    dq = v.get("datenqualitaet")
+    if dq and dq.get("warnungen"):
+        ui.urteil_box(
+            titel=f'Datenbasis {dq["stufe"]}',
+            text=" ".join(dq["warnungen"]),
+            ton=dq["ton"],
+            chip=(f'{dq["gewichtsverlust"]:.0%} Gewicht fehlt'
+                  if dq.get("gewichtsverlust") else ""))
+
     ui.abschnitt(n, "Innerer Wert")
     n += 1
 

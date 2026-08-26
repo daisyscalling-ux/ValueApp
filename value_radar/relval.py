@@ -49,7 +49,7 @@ def historical_band(f, pe_hist_werte=None):
     if price and eps and eps > 0:
         pe_now = price / eps
     pe_hist = f.get("hist_pe_median")
-    werte = pe_hist_werte or f.get("hist_pe_werte")
+    werte = pe_hist_werte or f.get("hist_pe_werte") or f.get("hist_pe_values")
 
     out = {"pe_now": round(pe_now, 1) if pe_now else None,
            "pe_hist_median": round(pe_hist, 1) if pe_hist else None,
@@ -246,8 +246,10 @@ def kgv_historie(fund, pe_hist: Optional[dict] = None) -> Optional[dict]:
 
 
 def ev_ebitda_historie(fund, multiples_hist: Optional[Sequence[float]] = None) -> Optional[dict]:
-    """Analog fuer EV/EBITDA, wenn eine Jahresreihe vorliegt."""
+    """Analog fuer EV/EBITDA. Die Jahresreihe kommt aus roic (bundle liefert
+    hist_ev_ebitda_werte) oder wird uebergeben."""
     jetzt = fund.get("ev_ebitda")
+    multiples_hist = multiples_hist or fund.get("hist_ev_ebitda_werte")
     if not jetzt or jetzt <= 0 or not multiples_hist:
         return None
     p = perzentil(multiples_hist, jetzt, hoch_ist_teuer=True)
@@ -316,7 +318,15 @@ def multiple_band(pe_hist: Optional[dict]) -> Optional[Dict[str, float]]:
 
 def bericht(fund, pe_hist: Optional[dict] = None,
             ev_hist: Optional[Sequence[float]] = None) -> dict:
-    """Komplettpaket fuer die Anzeige."""
+    """Komplettpaket fuer die Anzeige.
+
+    Reihen kommen bevorzugt aus dem fund-Dict (roic liefert sie in bundle()),
+    koennen aber uebergeben werden.
+    """
+    if pe_hist is None and fund.get("hist_pe_werte"):
+        pe_hist = {"werte": fund["hist_pe_werte"],
+                   "jahre": fund.get("hist_pe_jahre"),
+                   "median": fund.get("hist_pe_median")}
     kgv = kgv_historie(fund, pe_hist)
     ev = ev_ebitda_historie(fund, ev_hist)
     return {"kgv": kgv, "ev_ebitda": ev,

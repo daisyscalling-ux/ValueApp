@@ -673,6 +673,27 @@ def bundle(t: str) -> dict:
         if r0 and r1 and r1 > 0:
             out["revenue_growth"] = (r0 / r1) - 1.0
 
+        # --- Gewinnwachstum aus denselben zwei Abschluessen.
+        # Fehlte bisher als einziges der beiden Wachstumsfelder und kam
+        # deshalb von FMP/Finnhub. Ohne diese Quellen stuft
+        # valuation.classify_playbook() einen Wachstumstitel lautlos als
+        # Qualitaetstitel ein - der Fair Value bricht dann ein, ohne dass
+        # sich am Unternehmen etwas geaendert hat. Die Daten liegen hier
+        # ohnehin vor, es kostet keinen zusaetzlichen Abruf.
+        e0 = _num(_g(inc[0], "eps", "diluted_eps"))
+        e1 = _num(_g(inc[1], "eps", "diluted_eps"))
+        if e0 is not None and e1 and e1 > 0:
+            _eg = (e0 / e1) - 1.0
+            if -0.95 < _eg < 10.0:
+                out["earnings_growth"] = _eg
+        else:                                   # Rueckfall ueber Nettogewinn
+            n0 = _num(_g(inc[0], "is_net_income"))
+            n1 = _num(_g(inc[1], "is_net_income"))
+            if n0 is not None and n1 and n1 > 0:
+                _eg = (n0 / n1) - 1.0
+                if -0.95 < _eg < 10.0:
+                    out["earnings_growth"] = _eg
+
     # --- Multiples nur, wo geprueft (US)
     if mu:
         out["pe_trailing"] = _num(_g(mu, "pe_ratio"))
@@ -691,6 +712,33 @@ def bundle(t: str) -> dict:
             out["hist_pe_high"] = _pe_hi
         if _pe_lo is not None:
             out["hist_pe_low"] = _pe_lo
+
+    # --- Echte Jahresreihen der Bewertungs-Multiples.
+    # hist_pe_median oben ist nur das Durchschnitts-KGV des LETZTEN
+    # Geschaeftsjahres - als Median-Ersatz brauchbar, aber kein Verlauf.
+    # multiples_historie() liefert zehn Jahre je KGV, EV/EBITDA, KUV und KBV.
+    # Damit rechnet relval.perzentil() ein gemessenes Perzentil statt einer
+    # Schaetzung mit angenommener Streuung. Ein Abruf.
+    if mu:
+        try:
+            _mh = multiples_historie(t, 10)
+            _pe_r = [z["pe"] for z in _mh if z.get("pe") and z["pe"] > 0]
+            _ev_r = [z["ev_ebitda"] for z in _mh if z.get("ev_ebitda") and z["ev_ebitda"] > 0]
+            _pb_r = [z["pb"] for z in _mh if z.get("pb") and z["pb"] > 0]
+            _jahre = [z.get("jahr") for z in _mh if z.get("pe")]
+            if len(_pe_r) >= 4:
+                out["hist_pe_werte"] = _pe_r
+                out["hist_pe_jahre"] = _jahre
+                _sortiert = sorted(_pe_r)
+                _m = len(_sortiert) // 2
+                out["hist_pe_median"] = (_sortiert[_m] if len(_sortiert) % 2
+                                         else (_sortiert[_m - 1] + _sortiert[_m]) / 2)
+            if len(_ev_r) >= 4:
+                out["hist_ev_ebitda_werte"] = _ev_r
+            if len(_pb_r) >= 4:
+                out["hist_pb_werte"] = _pb_r
+        except Exception:
+            pass
 
     # NEU: Yield-Kennzahlen aus roic (jetzt korrekter Endpunkt). Fertig
     # berechnete FCF-Rendite + Dividendenrendite direkt von der Quelle -
@@ -747,6 +795,65 @@ def pe_history(t: str, jahre: int = 10) -> dict:
         "spanne_tief": round(min(tiefs), 1) if tiefs else None,
         "n": len(werte),
     }
+
+
+def wachstum(t: str, jahre: int = 6) -> dict:
+    """Umsatz- und Gewinnwachstum aus der EIGENEN Jahreshistorie ableiten.
+
+    Hintergrund: bundle() liefert revenue_growth und earnings_growth nicht -
+    beide kamen bisher von FMP bzw. Finnhub. Fehlen sie, stuft
+    valuation.classify_playbook() einen Wachstumstitel lautlos als
+    Qualitaetstitel ein; der Fair Value faellt dann um die Haelfte, ohne dass
+    sich am Unternehmen etwas geaendert hat.
+
+    Da kennzahl_historie() die Jahresumsaetze und -gewinne ohnehin liefert,
+    lassen sich beide Groessen hier berechnen - damit wird roic auch fuer
+    diese Felder zur Primaerquelle.
+
+    Rueckgabe: {"revenue_growth":.., "earnings_growth":.., "eps_reihe":[..],
+                "umsatz_reihe":[..], "n":..}   (Reihen aufsteigend nach Jahr)
+    """
+    try:
+        rows = kennzahl_historie(t, jahre) or []
+    except Exception:
+        return {}
+    rows = [z for z in rows if z.get("jahr")]
+    if len(rows) < 2:
+        return {}
+    rows.sort(key=lambda z: str(z.get("jahr")))
+
+    def reihe(feld):
+        return [float(z[feld]) for z in rows
+                if z.get(feld) is not None and str(z[feld]) not in ("", "None")]
+
+    umsatz = reihe("revenue")
+    gewinn = reihe("net_income")
+    eps = reihe("eps")
+
+    def jahresrate(xs):
+        """Letzte Veraenderung gegenueber dem Vorjahr - dieselbe Definition,
+        die yfinance und FMP verwenden (nicht CAGR)."""
+        if len(xs) < 2 or xs[-2] == 0:
+            return None
+        if xs[-2] < 0:                     # Wachstum aus Verlust heraus ist sinnlos
+            return None
+        return xs[-1] / xs[-2] - 1.0
+
+    out = {"n": len(rows)}
+    rg = jahresrate(umsatz)
+    if rg is not None and -0.95 < rg < 5.0:
+        out["revenue_growth"] = round(rg, 4)
+    eg = jahresrate(eps) if len(eps) >= 2 else jahresrate(gewinn)
+    if eg is not None and -0.95 < eg < 10.0:
+        out["earnings_growth"] = round(eg, 4)
+    if eps:
+        out["eps_reihe"] = eps
+        out["eps_trailing_hist"] = eps[-1]
+    if umsatz:
+        out["umsatz_reihe"] = umsatz
+    if gewinn:
+        out["gewinn_reihe"] = gewinn
+    return out
 
 
 def kennzahl_historie(t: str, jahre: int = 10) -> list:
@@ -1307,15 +1414,15 @@ def peer_median(reihen: list, feld: str):
 
 
 def bundle_light(t: str) -> dict:
-    """Sparfassung mit 3 statt 8 Abrufen - fuer breite Scans.
+    """Sparfassung mit 4 statt 9 Abrufen - fuer breite Scans.
 
     Enthaelt alles, was die Vorauswahl braucht: Stammdaten, Groesse,
     Margen, Renditen, Umsatz und die Multiples. Weggelassen sind die
     Bilanz- und Liquiditaetsdetails sowie das Umsatzwachstum aus zwei
     Geschaeftsjahren - die kommen beim tiefen Nachrechnen dazu.
 
-    Damit kostet ein 400-Titel-Scan 1.200 statt 3.200 Abrufe:
-    5 Minuten statt 13."""
+    Damit kostet ein 400-Titel-Scan 1.600 statt 3.600 Abrufe:
+    7 Minuten statt 15."""
     if not covers(t):
         # UK/Pence-Titel: kursabhaengige Multiples bleiben gesperrt (Pence-
         # Fehler), aber Name/ISIN/Sektor sind waehrungsunabhaengig und fuer
@@ -1332,6 +1439,12 @@ def bundle_light(t: str) -> dict:
     ev = enterprise_value(t)
     rp = ratios_profitability(t)
     mu = multiples(t) if multiples_ok(t) else None
+    # Vierter Abruf: ohne revenue_growth/earnings_growth stuft
+    # valuation.classify_playbook() im breiten Scan jeden Wachstumstitel als
+    # Qualitaetstitel ein - genau der Fehler, der NVDA/MU auf -50 % geschickt
+    # hat. Ein Abruf mehr je Titel ist der Preis dafuer, dass die Vorauswahl
+    # ueberhaupt das richtige Playbook trifft.
+    inc = income_annual(t, limit=2) or []
 
     out = {
         "_src": "roic_light",
@@ -1363,6 +1476,19 @@ def bundle_light(t: str) -> dict:
         out["ps"] = _num(_g(mu, "pr_to_sales_ratio"))
         out["pb"] = _num(_g(mu, "pr_to_book_ratio"))
         out["ev_ebitda"] = _num(_g(mu, "ev_to_ttm_ebitda"))
+    if len(inc) >= 2:
+        r0, r1 = _yr(inc[0]), _yr(inc[1])
+        if r0 and r1 and r1 > 0:
+            out["revenue_growth"] = (r0 / r1) - 1.0
+        e0 = _num(_g(inc[0], "eps", "diluted_eps"))
+        e1 = _num(_g(inc[1], "eps", "diluted_eps"))
+        if e0 is not None and e1 and e1 > 0:
+            _eg = (e0 / e1) - 1.0
+            if -0.95 < _eg < 10.0:
+                out["earnings_growth"] = _eg
+        if out.get("eps_trailing") is None and e0 is not None:
+            out["eps_trailing"] = e0
+
     return {k: v for k, v in out.items() if v is not None or k == "_src"}
 
 

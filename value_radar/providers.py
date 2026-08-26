@@ -510,6 +510,29 @@ def _merge_sources(ticker, A, B, C=None, use_tiingo=False):
     }
 
 
+
+def _feldquellen(merged: dict) -> dict:
+    """Ordnet jedem vorhandenen Feld seine Quelle zu.
+
+    Reihenfolge der Wahrheit: roic > FMP-Lueckenfueller > uebriger Konsens
+    (yfinance/Finnhub/Tiingo). Nur Diagnose - keine Berechnung haengt daran.
+    """
+    roic_f = set(merged.get("_roic_felder") or [])
+    fmp_f = set(merged.get("_fmp_luecken") or [])
+    out = {}
+    for k, v in merged.items():
+        if k.startswith("_") or v is None:
+            continue
+        if k in roic_f:
+            out[k] = "roic"
+        elif k in fmp_f:
+            out[k] = "fmp (Luecke)"
+        else:
+            out[k] = "yfinance/finnhub"
+    return out
+
+
+
 def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     """Kombiniert mehrere Datenquellen feldweise zu einem moeglichst verlaesslichen
     Kennzahlen-Dict. yfinance (Taxonomie-Basis) + Finnhub + (bei deep=True) FMP fuer
@@ -559,7 +582,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             R = None
     C = None
     if deep and not R:
-        C = _fmp_bundle(ticker)          # Rueckfall nur noch ohne roic
+        C = _fmp_bundle(ticker)          # roic deckt den Titel nicht ab
     merged = _merge_sources(ticker, A, B, C, use_tiingo=deep)
     # roic-Werte gewinnen feldweise, wo vorhanden - ausser Kurs/Waehrung:
     # die bleiben bei yfinance, weil dort die Pence-Normalisierung haengt.
@@ -606,6 +629,44 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         # Diagnose: welche Felder kamen tatsaechlich von roic? (fuer die
         # Quellenanzeige im Aktienvergleich - aendert keine Berechnung)
         merged["_roic_felder"] = sorted(_roic_felder)
+
+        # --------------------------------------------------------------
+        # WACHSTUM AUS ROIC ABLEITEN.
+        # bundle() liefert revenue_growth/earnings_growth nicht; sie kamen
+        # bisher von FMP bzw. Finnhub. Fehlen sie, stuft classify_playbook()
+        # einen Wachstumstitel lautlos als Qualitaetstitel ein und der Fair
+        # Value bricht um die Haelfte ein. roic.wachstum() rechnet beide aus
+        # der eigenen Jahreshistorie - damit ist roic auch hier Primaerquelle.
+        # Nur bei deep: kostet einen zusaetzlichen Abruf.
+        # --------------------------------------------------------------
+        if deep:
+            try:
+                _w = _roic.wachstum(ticker) or {}
+                # Nur fuellen, nicht ueberschreiben: bundle() rechnet beide
+                # Wachstumsraten bereits aus den Jahresabschluessen. wachstum()
+                # springt nur ein, wenn dort etwas fehlt (z. B. weil nur zwei
+                # Abschluesse vorlagen), und liefert zusaetzlich die Reihen.
+                for _k in ("revenue_growth", "earnings_growth"):
+                    if merged.get(_k) is None and _w.get(_k) is not None:
+                        merged[_k] = _w[_k]
+                        _roic_felder.append(_k)
+                if _w.get("eps_reihe"):
+                    merged["eps_reihe"] = _w["eps_reihe"]
+                if _w.get("umsatz_reihe"):
+                    merged["umsatz_reihe"] = _w["umsatz_reihe"]
+                if _w.get("gewinn_reihe"):
+                    merged["gewinn_reihe"] = _w["gewinn_reihe"]
+                # eps_trailing aus roic ableiten, falls keine Quelle es lieferte
+                if not merged.get("eps_trailing"):
+                    if _w.get("eps_trailing_hist"):
+                        merged["eps_trailing"] = _w["eps_trailing_hist"]
+                        _roic_felder.append("eps_trailing")
+                    elif merged.get("net_income") and merged.get("shares_out"):
+                        merged["eps_trailing"] = merged["net_income"] / merged["shares_out"]
+                        _roic_felder.append("eps_trailing")
+                merged["_roic_felder"] = sorted(set(_roic_felder))
+            except Exception:
+                pass
         # Historisches KGV-Band: bisher bei ALLEN Titeln leer (FMP-Quote),
         # dadurch lief relval.py ins Leere. roic liefert es aus Jahres-EPS
         # plus Jahresschlusskursen - nur bei deep, kostet 2 Extra-Abrufe.
@@ -696,6 +757,42 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         merged["_vollstaendig"] = bool(_roic_aktiv and _kern_da >= 3)
     else:
         merged["_vollstaendig"] = True     # flache Abrufe: kein roic-Anspruch
+    # ------------------------------------------------------------------
+    # LUECKENFUELLER. Grundsatz: roic ist Primaerquelle, yfinance/Finnhub
+    # decken ab, was roic gar nicht fuehrt. Fehlt danach immer noch ein
+    # kritisches Feld, wird FMP gezielt nachgeladen - vorher lief FMP nur,
+    # wenn roic den Titel NICHT abdeckte. Genau das war die Luecke: roic
+    # fuehrt weder Analystenziele noch Forward-EPS noch Buchwert je Aktie,
+    # also blieben diese Felder bei roic-abgedeckten Titeln einfach leer.
+    #
+    # Nur bei deep, und nur wenn wirklich etwas fehlt - das FMP-Tageslimit
+    # bleibt damit fuer die Faelle reserviert, in denen es gebraucht wird.
+    # ------------------------------------------------------------------
+    # Nur noch das, was roic wirklich NICHT fuehrt: Schaetzungen, Analysten-
+    # konsens und Beta. Alles andere liefert bundle() selbst - eine frueher
+    # laengere Liste hier waere reine Verschwendung des FMP-Tageslimits.
+    _LUECKEN_KRITISCH = ("eps_forward", "target_mean", "analyst_count", "beta",
+                         "book_value_ps", "hist_pe_median")
+    if deep and R:
+        _fehlt = [k for k in _LUECKEN_KRITISCH if merged.get(k) in (None, 0)]
+        if _fehlt:
+            try:
+                _F = _fmp_bundle(ticker) or {}
+                _gefuellt = []
+                for _k in _fehlt:
+                    if _F.get(_k) is not None:
+                        merged[_k] = _F[_k]
+                        _gefuellt.append(_k)
+                if _gefuellt:
+                    merged["_fmp_luecken"] = sorted(_gefuellt)
+            except Exception:
+                pass
+            merged["_offene_luecken"] = sorted(
+                k for k in _fehlt if merged.get(k) in (None, 0))
+
+    # Feld -> Quelle, damit im Zweifel nachvollziehbar ist, woher eine Zahl
+    # stammt (reine Diagnose, aendert keine Berechnung).
+    merged["_feldquellen"] = _feldquellen(merged)
     return merged
 
 

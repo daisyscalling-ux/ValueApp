@@ -385,3 +385,158 @@ prüfbar und daher offen:
 - `relval.historical_band()` mit echtem `roic.pe_history()`-Output
 - der `dashboard.py`-Block als Ganzes: kompiliert und die Renderfunktionen sind
   headless geprüft, aber im laufenden Streamlit mit echten roic-Daten war er nie
+
+---
+
+## Bugreport: „NVDA, MU, Citi zeigen plötzlich 50 % Downside"
+
+**Nicht die Bewertung ist falsch, es fehlen Daten.** Nachgestellt:
+
+| NVDA | Playbook | Fair Value | Upside |
+|---|---|---|---|
+| mit allen Quellen | inflection | 186,53 | +3,6 % |
+| ohne `revenue_growth`/`earnings_growth` | **quality** | 146,03 | −18,9 % |
+| ohne FMP **und** Finnhub | quality | 88,43 | **−50,9 %** |
+
+Der Mechanismus läuft in zwei Stufen:
+
+1. `revenue_growth` und `earnings_growth` kommen aus FMPs `financial-growth`.
+   Fehlen sie, stuft `classify_playbook()` einen Wachstumstitel als
+   **Qualitätstitel** ein. Damit gelten andere Gewichte: statt
+   `fwd_pe`/`fwd_composite`/`analyst` zählen `dcf` und `justified_pe`.
+2. Weitere Felder fallen weg, die Methoden werden aussortiert, die Gewichte
+   renormieren auf den Rest. Bei hoch bewerteten Titeln liegt dieser Rest weit
+   unter dem Kurs.
+
+Deshalb trifft es genau NVDA und MU (Wachstum, hohe Multiples) und Citi
+(`financial` lebt von `pb`/`book_value_ps`), nicht aber ruhige Standardwerte.
+
+### Ursache
+
+Mit hoher Wahrscheinlichkeit die `config.py` aus dem Paket, in dem ich die
+API-Keys auf `""` gesetzt hatte. Prüfen:
+
+```bash
+grep -n "FINNHUB_API_KEY\|FMP_API_KEY" config.py
+```
+
+Steht dort `os.getenv("FINNHUB_API_KEY", "")`, ist es die leere Fassung — dann
+die `config.py` aus dem aktuellen Paket nehmen oder die Keys als
+Umgebungsvariable setzen.
+
+### Gegenprüfung
+
+```bash
+python3 diagnose_quellen.py NVDA MU C
+```
+
+Zeigt pro Titel, welche Schlüssel gesetzt sind, welche kritischen Felder
+ankommen, welches Playbook daraus folgt und wie stark der Fair Value ohne die
+Zusatzquellen abweichen würde.
+
+### Damit das nie wieder still passiert
+
+`valuation.datenqualitaet(fund, preset)` ist neu und hängt als
+`v["datenqualitaet"]` im Rückgabe-Dict. Es meldet:
+
+- welche Felder fehlen und welche Methode das lahmlegt
+- wie viel Methodengewicht dadurch ausfällt
+- **ob die Playbook-Einstufung auf wackligen Daten steht** — das ist die
+  gefährlichste Lücke, weil sie sich nicht als Fehler zeigt, sondern als
+  plausibel aussehender falscher Fair Value
+
+Die Warnung steht im Bewertungsblock **über** der Fair-Value-Zahl, nicht
+darunter. Bei NVDA ohne Zusatzquellen erscheint:
+
+> **Datenbasis kritisch** · 55 % Gewicht fehlt
+> Playbook-Einstufung unsicher: revenue_growth, earnings_growth fehlt …
+
+Das ist unabhängig von meinen sechs Bausteinen nützlich: die Schwäche steckt in
+`classify_playbook()` und war vorher genauso da, nur unsichtbar.
+
+---
+
+## Quellenpriorität: roic zuerst
+
+### Korrektur meiner vorherigen Aussage
+
+Ich hatte behauptet, roic liefere elf kritische Felder nicht. **Das war falsch.**
+Ich hatte nur das Dict-Literal in `bundle()` ausgewertet und den zweiten Teil der
+Funktion übersehen, in dem weitere Felder per `out["…"] = …` gesetzt werden.
+
+Tatsächlich liefert `bundle()` **55 Felder**, darunter alle, die ich als fehlend
+bezeichnet hatte: `pb`, `ev_ebitda`, `ps`, `pe_trailing`, `book_value_ps`,
+`eps_trailing`, `revenue_growth`, `hist_pe_median`.
+
+Wirklich nicht bei roic — und das bleibt so:
+
+| Feld | Warum |
+|---|---|
+| `eps_forward` | Schätzung, keine Historie |
+| `target_mean` | Analystenkonsens |
+| `analyst_count` | Analystenkonsens |
+| `beta` | Marktstatistik, keine Fundamentalkennzahl |
+
+### Was tatsächlich fehlte — und jetzt drin ist
+
+**1. `earnings_growth`** war als einziges der beiden Wachstumsfelder nicht
+gesetzt, obwohl `income_annual(limit=2)` in `bundle()` bereits abgerufen wird.
+Jetzt aus EPS zweier Abschlüsse berechnet, mit Nettogewinn als Rückfall.
+Kostet keinen zusätzlichen Abruf.
+
+**2. `bundle_light()` hatte gar kein Wachstum.** Der breite Scan läuft mit
+`deep=False`, also mit dem Light-Bundle — dort fehlten `revenue_growth` und
+`earnings_growth` vollständig, die Playbook-Einstufung hing damit an
+yfinance/Finnhub/FMP. Genau der Pfad, der NVDA und MU auf −50 % geschickt hat.
+Jetzt ein vierter Abruf (`income_annual`) und beide Felder gesetzt. Ein
+400-Titel-Scan kostet 1.600 statt 1.200 Abrufe, rund 7 statt 5 Minuten.
+
+**3. Echte Multiple-Jahresreihen.** `hist_pe_median` war bisher das
+Durchschnitts-KGV des *letzten* Geschäftsjahres — als Median-Ersatz brauchbar,
+aber kein Verlauf. `multiples_historie()` existierte bereits ungenutzt und
+liefert zehn Jahre je KGV, EV/EBITDA, KUV und KBV. `bundle()` mappt jetzt
+`hist_pe_werte`, `hist_ev_ebitda_werte` und `hist_pb_werte`.
+
+Damit rechnet `relval.perzentil()` ein **gemessenes** Perzentil statt der
+Schätzung mit angenommener 35-%-Streuung — und der offene Punkt „EV/EBITDA-
+Historie fehlt noch" aus dem Abschnitt zu Punkt 4 ist erledigt.
+
+**4. FMP nur noch für echte Lücken.** Vorher: `if deep and not R` — deckte roic
+den Titel ab, lief FMP nie, auch nicht für Felder, die roic nicht führt. Jetzt
+wird FMP gezielt für die vier oben genannten Felder nachgeladen, wenn sie nach
+roic + yfinance + Finnhub immer noch fehlen.
+
+### Kette
+
+```
+1. roic.bundle()        55 Felder, gewinnen feldweise gegen alles andere
+2. roic.wachstum()      füllt Lücken und liefert die Mehrjahresreihen
+                        (überschreibt bundle() NICHT)
+3. yfinance/Finnhub     nur was roic gar nicht führt
+4. FMP                  nur die danach noch fehlenden kritischen Felder
+5. _offene_luecken      was auch dann fehlt, wird ausgewiesen
+```
+
+### Neue Diagnosefelder im `fund`-Dict
+
+| Feld | Inhalt |
+|---|---|
+| `_feldquellen` | `{feld: "roic" \| "fmp (Luecke)" \| "yfinance/finnhub"}` |
+| `_fmp_luecken` | welche Felder FMP nachgeliefert hat |
+| `_offene_luecken` | was auch danach fehlt |
+
+```bash
+python3 diagnose_quellen.py NVDA MU C
+```
+
+### Offen
+
+Der `analyst`-Anker (15 % nominal, effektiv 28,5 %) und `eps_forward` bleiben
+dauerhaft von yfinance/FMP abhängig. Das lässt sich nicht über roic lösen.
+
+### Ungetestet
+
+Die roic-Aufrufe laufen hier nicht (kein Schlüssel, kein Netzwerk). Die neuen
+Feld-Mappings sind gegen die Struktur der bestehenden `_g()`-Aufrufe gebaut und
+kompilieren, aber die tatsächlichen Antwortfelder von `multiples_historie()`
+habe ich nicht gegen die Live-API geprüft.

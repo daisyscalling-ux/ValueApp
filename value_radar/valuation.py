@@ -889,6 +889,11 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     except Exception:
         _dcf_diagnose = None
 
+    try:
+        _datenqualitaet = datenqualitaet(fund, preset)
+    except Exception:
+        _datenqualitaet = None
+
     return {
         "ticker": fund.get("ticker"),
         "price": price,
@@ -928,6 +933,7 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         # --- Diagnostik und Herkunft (siehe Abschnitt am Dateiende) -----------
         "herkunft": _herkunft,
         "dcf_diagnose": _dcf_diagnose,
+        "datenqualitaet": _datenqualitaet,
     }
 
 
@@ -1000,6 +1006,85 @@ def datenaktualitaet(fund, naechster_termin_tage=None) -> dict:
     else:
         out["hinweis"] = f"nächster Termin in {t} Tagen"
     return out
+
+# ---------------------------------------------------------------------------
+# Datenqualitaet - warum ein Fair Value ploetzlich anders aussieht
+# ---------------------------------------------------------------------------
+
+#: Welche fund-Felder eine Methode zwingend braucht.
+_FELDBEDARF = {
+    "justified_pe": ["eps_trailing", "roe", "gross_margin"],
+    "fwd_pe": ["eps_forward"],
+    "fwd_composite": ["eps_forward"],
+    "hist_pe": ["eps_forward", "hist_pe_median"],
+    "ev_ebitda": ["ebitda", "ev_ebitda"],
+    "dcf": ["free_cashflow", "shares_out"],
+    "pb": ["book_value_ps", "pb"],
+    "epv": ["operating_margin", "revenue"],
+    "analyst": ["target_mean", "analyst_count"],
+}
+
+#: Ohne diese Felder kippt classify_playbook lautlos in ein anderes Playbook -
+#: und damit in ein voellig anderes Gewichtungsschema. Das ist die
+#: gefaehrlichste Datenluecke, weil sie sich nicht als Fehler zeigt, sondern
+#: als plausibel aussehender, aber falscher Fair Value.
+_PLAYBOOK_KRITISCH = ["revenue_growth", "earnings_growth"]
+
+
+def datenqualitaet(fund, preset: str = "quality") -> dict:
+    """Welche Felder fehlen, und was bedeutet das fuer die Bewertung?
+
+    Hintergrund: Faellt eine Datenquelle aus (abgelaufener API-Schluessel,
+    Rate-Limit, Anbieterausfall), verschwinden einzelne Felder still. Die
+    Bewertung rechnet dann mit weniger Methoden weiter und liefert eine Zahl,
+    die aussieht wie immer - aber auf einer anderen Grundlage steht. Bei
+    Wachstumstiteln kann der Fair Value dadurch um mehr als die Haelfte
+    abweichen, ohne dass sich am Unternehmen etwas geaendert hat.
+    """
+    fehlt_je_methode = {}
+    for m, felder in _FELDBEDARF.items():
+        f = [k for k in felder if fund.get(k) in (None, 0)]
+        if f:
+            fehlt_je_methode[m] = f
+
+    gewichte = _WEIGHTS.get(preset, _WEIGHTS["quality"])
+    ausgefallen = [m for m in fehlt_je_methode if m in gewichte]
+    verlust = sum(gewichte.get(m, 0) for m in ausgefallen)
+    gesamt = sum(gewichte.values()) or 1.0
+
+    pb_luecken = [k for k in _PLAYBOOK_KRITISCH if fund.get(k) is None]
+
+    warnungen = []
+    if pb_luecken:
+        warnungen.append(
+            "Playbook-Einstufung unsicher: " + ", ".join(pb_luecken) + " fehlt. "
+            "Ohne Wachstumsdaten wird ein Wachstumstitel als Qualitaetstitel "
+            "eingestuft - mit anderen Gewichten und deutlich niedrigerem Fair Value.")
+    if verlust / gesamt > 0.35:
+        warnungen.append(
+            f"{verlust / gesamt:.0%} des Methodengewichts entfallen mangels Daten "
+            f"({', '.join(ausgefallen)}). Der Fair Value stuetzt sich auf einen "
+            f"Bruchteil der vorgesehenen Methoden.")
+    if fund.get("target_mean") is None and gewichte.get("analyst", 0) > 0:
+        warnungen.append("Kein Analystenziel vorhanden - der Marktanker fehlt.")
+
+    if not warnungen:
+        stufe, ton = "vollstaendig", "gruen"
+    elif pb_luecken or verlust / gesamt > 0.5:
+        stufe, ton = "kritisch", "rot"
+    else:
+        stufe, ton = "eingeschraenkt", "gelb"
+
+    return {
+        "stufe": stufe,
+        "ton": ton,
+        "gewichtsverlust": round(verlust / gesamt, 3),
+        "ausgefallene_methoden": ausgefallen,
+        "fehlende_felder": fehlt_je_methode,
+        "playbook_luecken": pb_luecken,
+        "warnungen": warnungen,
+    }
+
 
 # ==========================================================================
 # BEWERTUNGS-DIAGNOSTIK, HERKUNFT UND SZENARIEN

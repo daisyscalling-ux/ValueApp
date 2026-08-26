@@ -4098,16 +4098,33 @@ if nav == "Einzelanalyse":
                         return out
 
                     _reihen = _bewertung_reihen(ticker)
-                    with st.expander("\U0001f9ee BEWERTUNG IM DETAIL \u2014 was der "
-                                     "Kurs verlangt, Szenarien, Herkunft des Werts",
-                                     expanded=False):
-                        _bs.rendern(f, v, preset=ep, ticker=ticker, peer_funds=None,
-                                    pe_hist=_reihen.get("pe_hist"),
-                                    umsatz_reihe=_reihen.get("umsatz"),
-                                    eps_reihe=_reihen.get("eps"),
-                                    fcf_reihe=_reihen.get("fcf"),
-                                    ni_reihe=_reihen.get("ni"),
-                                    waehrung=cur, theme="dunkel")
+
+                    # Bewusst NICHT in einem Expander: Terminalwert-Anteil,
+                    # Herkunft des Fair Value und das Reverse-DCF-Urteil sind
+                    # genau die Warnungen, die man nicht wegklicken koennen soll.
+                    # Nur das Wachstum-x-Cash-Gitter bleibt eingeklappt.
+                    _bs.rendern(f, v, preset=ep, ticker=ticker, peer_funds=None,
+                                pe_hist=_reihen.get("pe_hist"),
+                                umsatz_reihe=_reihen.get("umsatz"),
+                                eps_reihe=_reihen.get("eps"),
+                                fcf_reihe=_reihen.get("fcf"),
+                                ni_reihe=_reihen.get("ni"),
+                                waehrung=cur, theme="dunkel")
+
+                    # Datenherkunft sichtbar machen: fehlt eine Reihe, fehlt der
+                    # zugehoerige Abschnitt - dann soll man wissen warum.
+                    _quellen = [
+                        ("KGV-Historie", _reihen.get("pe_hist")),
+                        ("Umsatzreihe", _reihen.get("umsatz")),
+                        ("EPS-Reihe", _reihen.get("eps")),
+                        ("Cashflow-Reihe", _reihen.get("fcf")),
+                    ]
+                    _fehlt = [n for n, w in _quellen if not w]
+                    if _fehlt:
+                        st.caption("Nicht verf\u00fcgbar f\u00fcr diesen Titel: "
+                                   + ", ".join(_fehlt)
+                                   + " \u2014 die davon abh\u00e4ngigen Abschnitte "
+                                     "fehlen deshalb.")
                 except Exception as _e_bw:
                     st.caption(f"Bewertungsdetails nicht verf\u00fcgbar ({_e_bw}).")
 

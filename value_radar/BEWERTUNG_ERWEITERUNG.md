@@ -83,20 +83,36 @@ wie vorher — alle bestehenden Aufrufe in `dashboard.py` laufen weiter.
 
 ## Einbau in die Einzelanalyse — erledigt
 
-`dashboard.py` ist eingebaut: **ein Hunk, +51 Zeilen, nichts gelöscht**
-(8.673 → 8.724). Der Block sitzt direkt vor `left, right = st.columns([1, 1])`
-in der Einzelanalyse und besteht aus drei Teilen:
+`dashboard.py` ist eingebaut: **ein Hunk, +62 Zeilen, nichts gelöscht.** Der Block
+sitzt direkt vor `left, right = st.columns([1, 1])` in der Einzelanalyse.
 
-1. einer gecachten Ladefunktion `_bewertung_reihen(ticker)` für die
-   Historienreihen (roic zuerst, yfinance als Rückfall),
-2. einem `st.expander("🧮 BEWERTUNG IM DETAIL …")`,
-3. dem Aufruf `bewertung_seite.rendern(...)`.
+Er rendert **inline, nicht in einem Expander**. Terminalwert-Anteil, Herkunft des
+Fair Value und das Reverse-DCF-Urteil sind genau die Warnungen, die man nicht
+wegklicken können soll. Nur das Wachstum-×-Cash-Gitter bleibt eingeklappt.
 
-Alles in `try/except`. Fehlt `bewertung_seite.py` oder wirft etwas, erscheint
-eine Caption-Zeile und die Seite läuft weiter.
+### So prüfst du, ob die neue Version läuft
 
-Alle Zusatzreihen sind optional. Fehlt eine, fällt der zugehörige Abschnitt
-still weg statt zu raten — das ist Absicht.
+```bash
+grep -c bewertung_seite dashboard.py     # muss 2 ergeben
+```
+
+In der App erscheinen in der Einzelanalyse unterhalb der Kennzahlen-Expander
+fünf neue Abschnittsüberschriften in Bernstein:
+
+```
+1  INNERER WERT
+2  WOHER DER WERT KOMMT
+3  REVERSE DCF  was der Kurs verlangt
+4  SZENARIEN  je Methode
+5  BEWERTUNGSHISTORIE  eigenes Perzentil
+```
+
+Ohne jede Historienreihe (roic aus, yfinance leer) bleiben 1, 2, 4 und ein
+verkürztes 5 übrig — es ist also nie komplett leer. Darunter steht dann eine
+Zeile, welche Reihen gefehlt haben und welche Abschnitte deshalb entfallen sind.
+
+Falls du nichts siehst: App neu starten bzw. neu deployen. Streamlit lädt
+geänderte Module erst beim Neustart.
 
 ### Warum die Optik trotzdem nicht in `dashboard.py` liegt
 
@@ -316,7 +332,7 @@ sichtbar.
 
 Nichts bricht durch die neuen Dateinamen. Der Grund ist mechanisch:
 
-- **`dashboard.py` bekommt genau einen Hunk** (+51 Zeilen, nichts gelöscht).
+- **`dashboard.py` bekommt genau einen Hunk** (+62 Zeilen, nichts gelöscht).
   Alles darin steckt in `try/except`.
 - **Kein bestehendes Modul importiert die neuen Dateien.** Geprüft mit
   `grep`: `schaetzguete.py`, `ui_bewertung.py` und `bewertung_seite.py` werden

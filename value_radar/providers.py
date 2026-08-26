@@ -1147,6 +1147,34 @@ def get_last_earnings_surprise(ticker: str):
         return None
 
 
+def get_eps_history(ticker: str, limit: int = 12) -> list[tuple]:
+    """Volle EPS-Schaetzungs-/Ist-Reihe, aelteste zuerst.
+
+    get_last_earnings_surprise() liest dieselbe Quelle, wirft aber alles ausser
+    der letzten Ueberraschung weg. Fuer die Schaetzguete (schaetzguete.py) wird
+    die ganze Reihe gebraucht: eine einzelne Ueberraschung sagt nichts darueber,
+    ob der Konsens bei diesem Titel generell traegt.
+
+    Rueckgabe: [(schaetzung, berichtet), ...] oder [].
+    """
+    if yf is None or not ticker:
+        return []
+    try:
+        ed = yf.Ticker(ticker).earnings_dates
+        if ed is None or ed.empty:
+            return []
+        spalten = list(ed.columns)
+        est_c = next((c for c in spalten if "estimate" in str(c).lower()), None)
+        act_c = next((c for c in spalten if "reported" in str(c).lower()), None)
+        if not est_c or not act_c:
+            return []
+        df = ed[[est_c, act_c]].dropna().sort_index()      # aelteste zuerst
+        paare = [(float(a), float(b)) for a, b in df.itertuples(index=False, name=None)]
+        return paare[-limit:]
+    except Exception:
+        return []
+
+
 def get_technicals(ticker: str) -> dict:
     """RSI(14), SMA20/50/200, Distanz zu SMA200, Volumen-/Strukturtrend."""
     out = {}

@@ -16,7 +16,8 @@ Fair Value = gewichteter Blend; zusaetzlich wird die Bewertungsspanne (min-max)
 ausgewiesen, damit die Streuung sichtbar bleibt.
 """
 from __future__ import annotations
-from typing import Optional
+from typing import Dict, List, Optional, Sequence, Tuple
+import math
 import config
 
 V = config.VALUATION
@@ -813,6 +814,14 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
             elif fv < price * config.FAIR_VALUE_MIN_MULT:
                 fv, capped = price * config.FAIR_VALUE_MIN_MULT, True
 
+    # Herkunftsanalyse VOR der Anzeige-Reduktion: sie muss den vollen Core
+    # sehen, nicht die drei angezeigten Methoden. Faellt still aus, wenn das
+    # Zusatzmodul fehlt.
+    try:
+        _herkunft = herkunft(core, weights)
+    except Exception:
+        _herkunft = None
+
     # Anzeige auf die 3 dem Ergebnis naechsten Methoden reduzieren (repraesentativ)
     if fv and len(avail) > 3:
         near = sorted(avail.items(), key=lambda kv: abs(kv[1] - fv))[:3]
@@ -874,6 +883,12 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     _netnet = net_net_wert(fund)
     _unter_netnet = bool(_netnet and price and price < _netnet)
 
+    # Terminalwert-Anteil und impliziertes Terminal-Multiple des DCF.
+    try:
+        _dcf_diagnose = dcf_diagnose(fund, preset)
+    except Exception:
+        _dcf_diagnose = None
+
     return {
         "ticker": fund.get("ticker"),
         "price": price,
@@ -910,6 +925,9 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "wacc": round(wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt")), 4),
         "szenarien": szenario_werte(fund, preset),
         "annahmen": dcf_annahmen(fund, preset),
+        # --- Diagnostik und Herkunft (siehe Abschnitt am Dateiende) -----------
+        "herkunft": _herkunft,
+        "dcf_diagnose": _dcf_diagnose,
     }
 
 
@@ -982,3 +1000,877 @@ def datenaktualitaet(fund, naechster_termin_tage=None) -> dict:
     else:
         out["hinweis"] = f"nächster Termin in {t} Tagen"
     return out
+
+# ==========================================================================
+# BEWERTUNGS-DIAGNOSTIK, HERKUNFT UND SZENARIEN
+# ==========================================================================
+
+# ---------------------------------------------------------------------------
+# Schwellen
+# ---------------------------------------------------------------------------
+
+TERMINAL_ANTEIL_WARN = 0.75    # ab hier ist der DCF faktisch eine Terminalwert-Wette
+MULTIPLE_ANTEIL_WARN = 0.60    # ab hier haengt der Fair Value an Bewertungsniveaus
+MARKT_ANTEIL_WARN = 0.25       # ab hier traegt der Analystenkonsens zu viel
+CONVERSION_GRENZEN = (0.50, 1.30)
+
+
+# ---------------------------------------------------------------------------
+# Herkunft des Fair Value  (Selbstkritik)
+# ---------------------------------------------------------------------------
+
+#: Woraus jede Methode ihren Wert zieht. Der Analystenkonsens ist bewusst eine
+#: eigene Kategorie: er ist weder Cashflow noch Multiple, sondern Marktmeinung -
+#: und damit genau das, wogegen der Fair Value spaeter gemessen werden soll.
+METHODEN_HERKUNFT: Dict[str, str] = {
+    "justified_pe": "multiple",
+    "fwd_pe": "multiple",
+    "fwd_composite": "multiple",
+    "hist_pe": "multiple",
+    "ev_ebitda": "multiple",
+    "pb": "substanz",
+    "epv": "ertragskraft",
+    "dcf": "cashflow",
+    "analyst": "markt",
+    "fallback": "notbehelf",
+}
+
+HERKUNFT_LABEL = {
+    "multiple": "Multiple-Annahmen",
+    "cashflow": "Cashflow-Prognose",
+    "ertragskraft": "Ertragskraft (EPV)",
+    "substanz": "Substanz (Buchwert)",
+    "markt": "Analystenkonsens",
+    "notbehelf": "Notbehelf",
+    "unbekannt": "nicht zugeordnet",
+}
+
+HERKUNFT_FARBE = {
+    "multiple": "#FFB000", "cashflow": "#3FB950", "ertragskraft": "#4FA8DE",
+    "substanz": "#8A7CC8", "markt": "#6B7686", "notbehelf": "#F85149",
+    "unbekannt": "#6B7686",
+}
+
+
+def herkunft(core: Dict[str, float], weights: Dict[str, float]) -> Optional[dict]:
+    """Zerlegt den geblendeten Fair Value nach Herkunft der Annahme.
+
+    `core` und `weights` sind exakt die Objekte, die valuation.fair_value()
+    intern verwendet - dadurch stimmt die Zerlegung mit dem angezeigten Wert
+    ueberein statt ihn nachzubauen.
+
+    Gegenstueck zum Terminalwert-Anteil: Wenn im Quality-Playbook 30 % Gewicht
+    auf justified_pe und 25 % auf ev_ebitda liegen, stammen ueber die Haelfte
+    des Fair Value aus angenommenen Bewertungsniveaus - dieselbe Schieflage,
+    die AlphaSpread vorgeworfen wird, wenn dort der Multiples-Wert als Headline
+    steht. Diese Funktion macht sie sichtbar, statt sie zu bestreiten.
+    """
+    if not core:
+        return None
+    wsum = sum(weights.get(k, 0.15) for k in core)
+    if not wsum:
+        return None
+
+    beitrag = {k: core[k] * weights.get(k, 0.15) / wsum for k in core}
+    fv = sum(beitrag.values())
+    if not fv:
+        return None
+
+    nach_herkunft: Dict[str, float] = {}
+    for k, b in beitrag.items():
+        h = METHODEN_HERKUNFT.get(k, "unbekannt")
+        nach_herkunft[h] = nach_herkunft.get(h, 0.0) + b / fv
+
+    mult = nach_herkunft.get("multiple", 0.0)
+    markt = nach_herkunft.get("markt", 0.0)
+
+    # Effektives gegen nominelles Gewicht: Weil fair_value() Methoden
+    # herausfiltert und die Gewichte danach renormiert, kann eine Methode
+    # deutlich schwerer wiegen als im Playbook vorgesehen. Der Analystenanker
+    # mit nominell 15 % landet so schnell bei 30 % - eine Verschiebung, die
+    # bisher nirgends sichtbar war.
+    w_gesamt = sum(weights.values()) or 1.0
+    verschiebung = {}
+    for k in core:
+        nominal = weights.get(k, 0.15) / w_gesamt
+        effektiv = beitrag[k] / fv
+        if nominal > 0 and (effektiv / nominal > 1.5 or effektiv / nominal < 0.6):
+            verschiebung[k] = {"nominal": round(nominal, 3),
+                               "effektiv": round(effektiv, 3),
+                               "faktor": round(effektiv / nominal, 2)}
+
+    hinweise: List[str] = []
+    for k, d in verschiebung.items():
+        if d["faktor"] > 1.5:
+            hinweise.append(
+                f"'{k}' wiegt effektiv {d['effektiv']:.0%} statt der vorgesehenen "
+                f"{d['nominal']:.0%} - andere Methoden wurden herausgefiltert.")
+    if mult > MULTIPLE_ANTEIL_WARN:
+        hinweise.append(
+            f"{mult:.0%} des Fair Value stammen aus angenommenen Bewertungsniveaus. "
+            f"Der Wert reagiert damit staerker auf Multiple-Annahmen als auf die "
+            f"operative Entwicklung.")
+    if markt > MARKT_ANTEIL_WARN:
+        hinweise.append(
+            f"{markt:.0%} des Fair Value stammen aus dem Analystenkonsens. "
+            f"Ein Fair Value, der den Markt zu stark einpreist, kann nicht mehr "
+            f"unabhaengig gegen den Markt gemessen werden.")
+    if "notbehelf" in nach_herkunft:
+        hinweise.append("Keine Methode lieferte ein plausibles Ergebnis - der Wert "
+                        "ist ein gegen den Kurs geklammerter Notbehelf.")
+
+    return {
+        "fair_value": round(fv, 2),
+        "nach_herkunft": {k: round(v, 4) for k, v in
+                          sorted(nach_herkunft.items(), key=lambda kv: -kv[1])},
+        "nach_methode": {k: round(v / fv, 4) for k, v in
+                         sorted(beitrag.items(), key=lambda kv: -kv[1])},
+        "multiple_anteil": round(mult, 4),
+        "markt_anteil": round(markt, 4),
+        "gewichtsverschiebung": verschiebung,
+        "hinweise": hinweise,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Punkt 2 - DCF-Diagnostik
+# ---------------------------------------------------------------------------
+
+def _dcf_teile(fcf, shares, net_debt, g1, g_term, r, years) -> dict:
+    """Exakte Nachbildung von valuation.dcf_two_stage, aber mit offengelegten
+    Bestandteilen. Jede Aenderung dort muss hier nachgezogen werden."""
+    pv, cf = 0.0, float(fcf)
+    verlauf = []
+    for t in range(1, years + 1):
+        g_t = g1 + (g_term - g1) * (t - 1) / (years - 1)
+        cf *= (1 + g_t)
+        bw = cf / ((1 + r) ** t)
+        pv += bw
+        verlauf.append({"jahr": t, "wachstum": g_t, "fcf": cf, "barwert": bw})
+    terminal_roh = cf * (1 + g_term) / (r - g_term)
+    terminal_bw = terminal_roh / ((1 + r) ** years)
+    equity = pv + terminal_bw - (net_debt or 0.0)
+    gesamt = pv + terminal_bw
+    return {
+        "barwert_explizit": pv,
+        "terminal_roh": terminal_roh,
+        "terminal_barwert": terminal_bw,
+        "terminal_anteil": (terminal_bw / gesamt) if gesamt else None,
+        "fcf_endjahr": cf,
+        "equity": equity,
+        "wert_je_aktie": equity / shares if (shares and equity > 0) else None,
+        "verlauf": verlauf,
+    }
+
+
+def dcf_diagnose(fund, preset: str = "quality") -> Optional[dict]:
+    """Terminalwert-Anteil und impliziertes Terminal-Multiple.
+
+    Beim Gordon-Terminal ist das Terminal-Multiple nicht sichtbar, sondern
+    steckt in (1+g)/(r-g). Genau deshalb wird es hier ausgerechnet: Ein DCF,
+    dessen Wert zu 80 % im Terminalwert steckt, ist keine Cashflow-Bewertung,
+    sondern eine Wette darauf, dass der Markt in zehn Jahren dieses Multiple
+    bezahlt. Das gehoert vor die Klammer, nicht in eine Fussnote.
+    """
+
+    if preset == "cyclical":
+        return None
+    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    if not fcf or not shares or fcf <= 0:
+        return None
+
+    years = max(int(V.get("projection_years", 10)), 2)
+    g_term = V["terminal_growth"]
+    g1 = fund.get("revenue_growth")
+    if g1 is None:
+        g1 = fund.get("earnings_growth") or 0.06
+    cap = 0.25 if preset == "inflection" else 0.16
+    g1 = max(min(g1, cap), -0.03)
+    r = wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt"))
+    if r - g_term < 0.045:
+        r = g_term + 0.045
+
+    net_debt = fund.get("net_debt") or 0.0
+    teile = _dcf_teile(fcf, shares, net_debt, g1, g_term, r, years)
+
+    # Terminal-Multiple: wie viele Endjahres-Cashflows der Terminalwert wert ist.
+    mult_genutzt = (1 + g_term) / (r - g_term)
+
+    # Was verlangt der Kurs? Barwert der expliziten Jahre ist fix; loese nach M.
+    price = fund.get("price")
+    mult_impliziert = None
+    if price and price > 0:
+        ziel_equity = price * shares + net_debt
+        rest = ziel_equity - teile["barwert_explizit"]
+        if rest > 0 and teile["fcf_endjahr"]:
+            mult_impliziert = rest * ((1 + r) ** years) / teile["fcf_endjahr"]
+
+    # Heutiges FCF-Multiple als Bodenhaftung.
+    mcap = fund.get("market_cap") or (price * shares if price else None)
+    mult_heute = (mcap / fcf) if (mcap and fcf) else None
+
+    hinweise: List[str] = []
+    ta = teile["terminal_anteil"]
+    if ta and ta > TERMINAL_ANTEIL_WARN:
+        hinweise.append(
+            f"{ta:.0%} des DCF-Werts stecken im Terminalwert. Das Modell ist im Kern "
+            f"eine Wette auf das Endmultiple, nicht auf die naechsten {years} Jahre.")
+    if mult_impliziert and mult_genutzt and mult_impliziert > mult_genutzt * 1.25:
+        hinweise.append(
+            f"Der Kurs verlangt ein Terminal-Multiple von {mult_impliziert:.1f}x auf den "
+            f"Endjahres-Cashflow; das Modell unterstellt {mult_genutzt:.1f}x.")
+    if mult_impliziert and mult_impliziert < 0:
+        hinweise.append("Der Kurs liegt unter dem Barwert der expliziten Prognosejahre - "
+                        "der Markt preist den Terminalwert faktisch mit null.")
+    if r - g_term <= 0.046:
+        hinweise.append("Diskontsatz wurde auf den Mindestabstand zum Terminalwachstum "
+                        "angehoben - der DCF ist hier besonders empfindlich.")
+
+    return {
+        "wert_je_aktie": (round(teile["wert_je_aktie"], 2)
+                          if teile["wert_je_aktie"] else None),
+        "terminal_anteil": round(ta, 4) if ta else None,
+        "terminal_lastig": bool(ta and ta > TERMINAL_ANTEIL_WARN),
+        "barwert_explizit": teile["barwert_explizit"],
+        "terminal_barwert": teile["terminal_barwert"],
+        "fcf_endjahr": teile["fcf_endjahr"],
+        "multiple_genutzt": round(mult_genutzt, 1),
+        "multiple_impliziert": (round(mult_impliziert, 1)
+                                if mult_impliziert is not None else None),
+        "multiple_heute": round(mult_heute, 1) if mult_heute else None,
+        "wacc": round(r, 4),
+        "wachstum_start": round(g1, 4),
+        "terminal_growth": g_term,
+        "jahre": years,
+        "hinweise": hinweise,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Punkt 6 - Cash-Conversion
+# ---------------------------------------------------------------------------
+
+def conversion_aus_historie(fcf_reihe: Sequence[float],
+                            ni_reihe: Sequence[float]) -> Optional[dict]:
+    """Median und Streuung von FCF/Nettogewinn.
+
+    Der Median ist der Treiber, die Streuung ist das Warnsignal: eine stark
+    schwankende Conversion ist die quantitative Fassung von Dorseys
+    Cashflow-vs-Gewinn-Divergenz (Lucent-Muster).
+    """
+    q = []
+    for fcf, ni in zip(fcf_reihe or [], ni_reihe or []):
+        try:
+            fcf, ni = float(fcf), float(ni)
+        except (TypeError, ValueError):
+            continue
+        if not (math.isfinite(fcf) and math.isfinite(ni)) or ni <= 0:
+            continue
+        q.append(fcf / ni)
+    if not q:
+        return None
+    q_sort = sorted(q)
+    n = len(q_sort)
+    med = q_sort[n // 2] if n % 2 else (q_sort[n // 2 - 1] + q_sort[n // 2]) / 2
+    mittel = sum(q) / n
+    sd = math.sqrt(sum((x - mittel) ** 2 for x in q) / n) if n > 1 else 0.0
+
+    warnung = None
+    if med < 0.6:
+        warnung = ("Nur ein kleiner Teil des ausgewiesenen Gewinns kommt als freier "
+                   "Cashflow an - Gewinnqualitaet pruefen.")
+    elif sd > 0.35:
+        warnung = ("Die Cash-Conversion schwankt stark - der Fair Value reagiert "
+                   "empfindlich darauf, welches Jahr als Basis dient.")
+
+    return {
+        "median": round(max(CONVERSION_GRENZEN[0], min(CONVERSION_GRENZEN[1], med)), 3),
+        "median_roh": round(med, 3),
+        "streuung": round(sd, 3),
+        "min": round(min(q), 3),
+        "max": round(max(q), 3),
+        "n": n,
+        "warnung": warnung,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Punkt 3 - Bear/Base/Bull je Methode
+# ---------------------------------------------------------------------------
+
+SZENARIEN = ("bear", "base", "bull")
+SZENARIO_LABEL = {"bear": "Bear Case", "base": "Base Case", "bull": "Bull Case"}
+
+#: Sekundaere Treiber schwingen nur anteilig aus. Ohne diese Daempfung wuerde
+#: das Bear-Szenario dasselbe Risiko dreifach zaehlen: schwaechere Operative,
+#: niedrigeres Bewertungsniveau UND hoehere Kapitalkosten sind grossenteils
+#: dieselbe Aussage.
+SEKUNDAER_DAEMPFUNG = 0.5
+
+
+def _playbook_gewicht(preset: str, methode: str) -> float:
+    """Gewicht einer Methode im Playbook; unbekannte Keys neutral bei 0.15 -
+    genau wie in valuation.fair_value()."""
+    w = _WEIGHTS.get(preset, _WEIGHTS["quality"])
+    return w.get(methode, 0.15)
+
+
+def _szenario_fund(fund: dict, szenario: str, g_delta: float,
+                   op_delta: float, bewertungs_delta: float,
+                   beta_delta: float) -> dict:
+    """Kopie des fund-Dicts mit verschobenen PRIMITIVEN Treibern.
+
+    Bewusst nicht die Methodenergebnisse verschieben, sondern die Eingangs-
+    groessen - dann rechnen ALLE Methoden aus valuation.py das Szenario
+    selbst durch, ohne dass ihre Logik dupliziert wird.
+    """
+    if szenario == "base":
+        return dict(fund)
+
+    vz = -1.0 if szenario == "bear" else 1.0
+    d = SEKUNDAER_DAEMPFUNG
+    f = dict(fund)
+
+    # --- primaer: Wachstum ---------------------------------------------------
+    for k in ("revenue_growth", "earnings_growth"):
+        if f.get(k) is not None:
+            f[k] = f[k] + vz * g_delta
+
+    # --- primaer: operative Ausfuehrung (Marge/Cash) -------------------------
+    op = 1.0 + vz * op_delta
+    for k in ("free_cashflow", "ebitda", "eps_forward", "eps_trailing", "net_income"):
+        if f.get(k) is not None:
+            f[k] = f[k] * op
+    if f.get("operating_margin") is not None:
+        f["operating_margin"] = f["operating_margin"] * op
+
+    # --- sekundaer: Bewertungsniveau -----------------------------------------
+    bw = 1.0 + vz * bewertungs_delta * d
+    for k in ("hist_pe_median", "ev_ebitda"):
+        if f.get(k) is not None:
+            f[k] = f[k] * bw
+
+    # --- sekundaer: Kapitalkosten ueber Beta ---------------------------------
+    if f.get("beta") is not None:
+        f["beta"] = max(0.3, f["beta"] - vz * beta_delta * d)
+
+    # Analystenziel bleibt unveraendert: es ist eine externe Konsensaussage,
+    # kein Modelltreiber. Dass es die Spanne daempft, ist gewollt.
+    return f
+
+
+def szenario_matrix(fund: dict, peer_funds=None, preset: str = "quality") -> Optional[dict]:
+    """Bear/Base/Bull je Bewertungsmethode - nicht nur fuer den DCF.
+
+    Ruft valuation.fair_value() dreimal mit verschobenen Eingangsgroessen auf.
+    Dadurch bleibt die Rechenlogik an genau einer Stelle und die Szenarien
+    koennen nicht von der Hauptbewertung abdriften.
+
+    Rueckgabe:
+        {"methoden": {"dcf": {"bear":..,"base":..,"bull":..}, ...},
+         "blend":    {"bear":..,"base":..,"bull":..},
+         "upside":   {...}, "treiber": {...}, "preis": ..}
+    """
+
+    price = fund.get("price")
+    if not price:
+        return None
+
+    # Unsicherheit skaliert mit dem erwarteten Wachstum (Damodaran): schneller
+    # wachsende Firmen sind schwerer zu prognostizieren.
+    g = fund.get("revenue_growth")
+    if g is None:
+        g = fund.get("earnings_growth") or 0.06
+    g_delta = max(0.03, abs(g) * 0.5)
+    op_delta = 0.12 if preset != "inflection" else 0.18
+    bew_delta = 0.20
+    beta_delta = 0.25
+
+    methoden: Dict[str, Dict[str, Optional[float]]] = {}
+    blend: Dict[str, Optional[float]] = {}
+    upside: Dict[str, Optional[float]] = {}
+    ergebnisse = {}
+
+    for sz in SZENARIEN:
+        f_sz = _szenario_fund(fund, sz, g_delta, op_delta, bew_delta, beta_delta)
+        try:
+            v = fair_value(f_sz, peer_funds, preset)
+        except Exception:
+            v = None
+        ergebnisse[sz] = v
+        if not v:
+            blend[sz] = upside[sz] = None
+            continue
+        blend[sz] = v.get("fair_value")
+        upside[sz] = v.get("upside_pct")
+        for k, val in (v.get("methods") or {}).items():
+            methoden.setdefault(k, {})[sz] = val
+
+    # Methoden ohne Base-Wert wieder entfernen: sie tragen keine Aussage.
+    methoden = {k: {sz: d.get(sz) for sz in SZENARIEN}
+                for k, d in methoden.items() if d.get("base") is not None}
+
+    if blend.get("base") is None:
+        return None
+
+    # --- Konsistenzpruefung ------------------------------------------------
+    # Faellt eine Methode im Bear-Fall weg (z. B. DCF bei negativem Eigenkapital),
+    # renormiert fair_value() die Gewichte auf die verbliebenen - und der
+    # Bear-Wert kann dadurch HOEHER ausfallen als der Base-Wert. Das ist kein
+    # Rechenfehler, sondern ein Artefakt des Methodenausfalls. Es zu verstecken
+    # waere schlimmer als es zu zeigen: also beides ausweisen.
+    gemeinsam = [k for k, d in methoden.items()
+                 if all(d.get(sz) is not None for sz in SZENARIEN)]
+    fehlend = {sz: [k for k, d in methoden.items() if d.get(sz) is None]
+               for sz in SZENARIEN}
+
+    blend_konsistent: Dict[str, Optional[float]] = {}
+    if gemeinsam:
+        w_ges = sum(_playbook_gewicht(preset, k) for k in gemeinsam)
+        for sz in SZENARIEN:
+            if w_ges:
+                blend_konsistent[sz] = round(sum(
+                    methoden[k][sz] * _playbook_gewicht(preset, k)
+                    for k in gemeinsam) / w_ges, 2)
+            else:
+                blend_konsistent[sz] = None
+
+    warnungen: List[str] = []
+    for sz in ("bear", "bull"):
+        if fehlend[sz]:
+            warnungen.append(
+                f"Im {SZENARIO_LABEL[sz]} entfaellt {', '.join(fehlend[sz])}; die "
+                f"Gewichte verteilen sich auf die uebrigen Methoden. Der "
+                f"{SZENARIO_LABEL[sz]}-Wert ist dadurch nicht direkt mit dem Base "
+                f"Case vergleichbar - dafuer die Zeile 'nur gemeinsame Methoden'.")
+    if (blend.get("bear") or 0) > (blend.get("base") or 0):
+        warnungen.append(
+            "Der Bear-Wert liegt ueber dem Base-Wert. Ursache ist der "
+            "Methodenausfall, nicht ein besseres Szenario.")
+
+    werte = [w for w in blend.values() if w]
+    kurs_pos = None
+    kurs_ausserhalb = None
+    if len(werte) > 1 and max(werte) > min(werte):
+        roh = (price - min(werte)) / (max(werte) - min(werte)) * 100
+        kurs_pos = round(max(0.0, min(100.0, roh)), 0)
+        if roh > 100:
+            kurs_ausserhalb = "ueber allen Szenarien"
+        elif roh < 0:
+            kurs_ausserhalb = "unter allen Szenarien"
+
+    return {
+        "methoden": methoden,
+        "blend": blend,
+        "blend_konsistent": blend_konsistent or None,
+        "gemeinsame_methoden": gemeinsam,
+        "fehlende_methoden": {k: v for k, v in fehlend.items() if v},
+        "warnungen": warnungen,
+        "upside": upside,
+        "preis": price,
+        "spanne_pct": (round((max(werte) - min(werte)) / blend["base"] * 100, 0)
+                       if len(werte) > 1 and blend["base"] else None),
+        "kurs_position": kurs_pos,
+        "kurs_ausserhalb": kurs_ausserhalb,
+        "treiber": {
+            "wachstum_pp": round(g_delta * 100, 1),
+            "operativ_pct": round(op_delta * 100, 0),
+            "bewertung_pct": round(bew_delta * SEKUNDAER_DAEMPFUNG * 100, 0),
+            "beta_pp": round(beta_delta * SEKUNDAER_DAEMPFUNG, 2),
+            "daempfung": SEKUNDAER_DAEMPFUNG,
+        },
+        "ergebnisse": ergebnisse,
+    }
+
+# ==========================================================================
+# REVERSE DCF MIT REGIME-BEWUSSTEM KORRIDOR
+# ==========================================================================
+
+# ---------------------------------------------------------------------------
+# Regime-Gewichte
+# ---------------------------------------------------------------------------
+
+#: Gewicht der Anker je Playbook. Wird ueber die vorhandenen Anker renormiert.
+PLAYBOOK_GEWICHTE: Dict[str, Dict[str, float]] = {
+    # Zykliker: die lange Historie ist die ehrlichste Referenz - sie enthaelt
+    # mindestens einen vollen Zyklus.
+    "cyclical":   {"cagr_10j": 0.40, "cagr_5j": 0.25, "cagr_3j": 0.15, "konsens": 0.20},
+    # Qualitaet: gleichmaessiger, der Konsens ist brauchbar.
+    "quality":    {"cagr_10j": 0.20, "cagr_5j": 0.30, "cagr_3j": 0.25, "konsens": 0.25},
+    # Inflection: die Vergangenheit ist per Definition nicht die These.
+    "inflection": {"cagr_10j": 0.10, "cagr_5j": 0.20, "cagr_3j": 0.30, "konsens": 0.40},
+    # Finanzwerte: Kreditzyklen laufen lang, kurze Fenster taeuschen.
+    "financial":  {"cagr_10j": 0.35, "cagr_5j": 0.30, "cagr_3j": 0.15, "konsens": 0.20},
+}
+
+ANKER_LABEL = {
+    "cagr_3j": "3J Historie",
+    "cagr_5j": "5J Historie",
+    "cagr_10j": "10J+ Historie",
+    "konsens": "Analystenkonsens",
+    "modell": "Aktuelles DCF-Modell",
+    "impliziert": "Vom Kurs verlangt",
+}
+
+URTEIL_TEXT = {
+    "konservativ": ("Konservativ eingepreist",
+                    "Der Kurs verlangt weniger, als das Unternehmen historisch geliefert hat."),
+    "fair": ("Plausibel eingepreist",
+             "Die eingepreiste Erwartung liegt in der unteren Haelfte des Korridors."),
+    "anspruchsvoll": ("Anspruchsvoll, aber erreichbar",
+                      "Der Kurs verlangt mehr als den Erwartungswert, bleibt aber im Korridor."),
+    "zu_optimistisch": ("Ueber dem realistisch Lieferbaren",
+                        "Der Kurs verlangt mehr, als das Unternehmen im Betrachtungsfenster "
+                        "je erreicht hat."),
+}
+
+URTEIL_TON = {"konservativ": "gruen", "fair": "gruen",
+              "anspruchsvoll": "gelb", "zu_optimistisch": "rot"}
+
+
+# ---------------------------------------------------------------------------
+# Korridor
+# ---------------------------------------------------------------------------
+
+class Korridor:
+    __slots__ = ("tief", "mitte", "hoch", "anker", "gewichte", "playbook")
+
+    def __init__(self, tief, mitte, hoch, anker, gewichte, playbook):
+        self.tief, self.mitte, self.hoch = tief, mitte, hoch
+        self.anker, self.gewichte, self.playbook = anker, gewichte, playbook
+
+    def position(self, x: Optional[float]) -> str:
+        if x is None:
+            return "fair"
+        if x > self.hoch:
+            return "zu_optimistisch"
+        if x > self.mitte:
+            return "anspruchsvoll"
+        if x >= self.tief:
+            return "fair"
+        return "konservativ"
+
+    def as_dict(self) -> dict:
+        return {"tief": round(self.tief, 4), "mitte": round(self.mitte, 4),
+                "hoch": round(self.hoch, 4),
+                "anker": {k: round(v, 4) for k, v in self.anker.items()},
+                "gewichte": {k: round(v, 3) for k, v in self.gewichte.items()},
+                "playbook": self.playbook}
+
+
+def rd_korridor(anker: Dict[str, Optional[float]], playbook: str = "quality",
+             breite: float = 1.0) -> Optional[Korridor]:
+    """Gewichteter Erwartungskorridor aus den vorhandenen Ankern.
+
+    mitte = gewichteter Mittelwert
+    tief  = mitte - breite x gewichtete Standardabweichung
+    hoch  = mitte + breite x gewichtete Standardabweichung
+
+    Anschliessend auf die tatsaechlich beobachteten Extremwerte begrenzt: der
+    Korridor soll nie mehr behaupten, als die Datenlage hergibt.
+    """
+    pb = playbook if playbook in PLAYBOOK_GEWICHTE else "quality"
+    basis = PLAYBOOK_GEWICHTE[pb]
+
+    nutzbar = {k: float(v) for k, v in (anker or {}).items()
+               if v is not None and k in basis and math.isfinite(float(v))}
+    if not nutzbar:
+        return None
+
+    summe = sum(basis[k] for k in nutzbar)
+    gew = {k: basis[k] / summe for k in nutzbar}
+
+    mitte = sum(gew[k] * nutzbar[k] for k in nutzbar)
+    sd = math.sqrt(sum(gew[k] * (nutzbar[k] - mitte) ** 2 for k in nutzbar))
+
+    lo_beob, hi_beob = min(nutzbar.values()), max(nutzbar.values())
+    if len(nutzbar) > 1:
+        tief = max(lo_beob, mitte - breite * sd)
+        hoch = min(hi_beob, mitte + breite * sd)
+    else:
+        tief, hoch = mitte * 0.8, mitte * 1.2
+
+    if hoch - tief < 1e-6:                     # zwei fast identische Anker
+        tief, hoch = mitte - abs(mitte) * 0.15, mitte + abs(mitte) * 0.15
+
+    return Korridor(tief, mitte, hoch, nutzbar, gew, pb)
+
+
+# ---------------------------------------------------------------------------
+# DCF-Loeser (Struktur identisch zu valuation.dcf_two_stage)
+# ---------------------------------------------------------------------------
+
+def _wert_roh(fcf, shares, net_debt, g1, g_term, r, years) -> Optional[float]:
+    """Wie _wert_je_aktie, aber ohne die Positiv-Bedingung - fuer die Bisektion.
+    Ohne diese Fassung liefert der untere Suchrand None (negatives Eigenkapital)
+    und die Loesung wird faelschlich als 'nicht loesbar' gemeldet."""
+    if not shares:
+        return None
+    pv, cf = 0.0, float(fcf)
+    for t in range(1, years + 1):
+        g_t = g1 + (g_term - g1) * (t - 1) / (years - 1)
+        cf *= (1 + g_t)
+        pv += cf / ((1 + r) ** t)
+    terminal = cf * (1 + g_term) / (r - g_term) / ((1 + r) ** years)
+    return (pv + terminal - (net_debt or 0.0)) / shares
+
+
+def _wert_je_aktie(fcf, shares, net_debt, g1, g_term, r, years) -> Optional[float]:
+    pv, cf = 0.0, float(fcf)
+    for t in range(1, years + 1):
+        g_t = g1 + (g_term - g1) * (t - 1) / (years - 1)
+        cf *= (1 + g_t)
+        pv += cf / ((1 + r) ** t)
+    terminal = cf * (1 + g_term) / (r - g_term) / ((1 + r) ** years)
+    equity = pv + terminal - (net_debt or 0.0)
+    return equity / shares if (shares and equity > 0) else None
+
+
+def _basis(fund, preset: str) -> Optional[dict]:
+
+    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    price = fund.get("price")
+    if not fcf or not shares or not price or fcf <= 0:
+        return None
+    years = max(int(V.get("projection_years", 10)), 2)
+    g_term = V["terminal_growth"]
+    r = wacc(fund.get("beta"), fund.get("market_cap"), fund.get("total_debt"))
+    if r - g_term < 0.045:
+        r = g_term + 0.045
+    g1 = fund.get("revenue_growth")
+    if g1 is None:
+        g1 = fund.get("earnings_growth") or 0.06
+    cap = 0.25 if preset == "inflection" else 0.16
+    return {"fcf": float(fcf), "shares": float(shares),
+            "net_debt": float(fund.get("net_debt") or 0.0),
+            "price": float(price), "years": years, "g_term": g_term, "r": r,
+            "g1_modell": max(min(g1, cap), -0.03)}
+
+
+def _loese(fn, ziel: float, lo: float, hi: float, schritte: int = 90) -> Optional[float]:
+    """Bisektion fuer monoton steigende fn. None, wenn ziel ausserhalb liegt."""
+    f_lo, f_hi = fn(lo), fn(hi)
+    if f_lo is None or f_hi is None:
+        return None
+    if not (f_lo - 1e-9 <= ziel <= f_hi + 1e-9):
+        return None
+    for _ in range(schritte):
+        mid = (lo + hi) / 2.0
+        v = fn(mid)
+        if v is None or v < ziel:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+def impliziertes_wachstum(fund, preset: str = "quality") -> Optional[float]:
+    """Startwachstum g1, das den aktuellen Kurs rechtfertigt (mit Abklingen)."""
+    b = _basis(fund, preset)
+    if not b:
+        return None
+    fn = lambda g: _wert_roh(b["fcf"], b["shares"], b["net_debt"],  # noqa: E731
+                             g, b["g_term"], b["r"], b["years"])
+    return _loese(fn, b["price"], -0.25, 0.70)
+
+
+def implizierte_cash_basis(fund, preset: str = "quality") -> Optional[float]:
+    """Faktor auf den heutigen Free Cashflow, der den Kurs rechtfertigt.
+
+    1,00 = der Kurs ist mit dem heutigen FCF und dem Modellwachstum erklaerbar.
+    1,40 = der Kurs verlangt 40 % mehr Cash-Basis als heute vorhanden ist.
+    Das ist die zweite Achse: sie faengt genau den Fall, in dem nicht das
+    Wachstum, sondern das Ausgangsniveau des Cashflows gestreckt wird.
+    """
+    b = _basis(fund, preset)
+    if not b:
+        return None
+    fn = lambda f: _wert_roh(b["fcf"] * f, b["shares"], b["net_debt"],  # noqa: E731
+                             b["g1_modell"], b["g_term"], b["r"], b["years"])
+    return _loese(fn, b["price"], 0.02, 12.0)
+
+
+# ---------------------------------------------------------------------------
+# Anker aus der Historie
+# ---------------------------------------------------------------------------
+
+def cagr(reihe: Sequence[float], jahre: Optional[int] = None) -> Optional[float]:
+    """CAGR aus einer Reihe (aeltester Wert zuerst)."""
+    xs = [float(v) for v in (reihe or [])
+          if v is not None and math.isfinite(float(v)) and float(v) > 0]
+    if len(xs) < 2:
+        return None
+    if jahre is not None:
+        xs = xs[-(jahre + 1):]
+        if len(xs) < 2:
+            return None
+    return (xs[-1] / xs[0]) ** (1.0 / (len(xs) - 1)) - 1.0
+
+
+def wachstums_anker(umsatz_reihe: Sequence[float],
+                    konsens: Optional[float] = None) -> Dict[str, Optional[float]]:
+    """Ankerdict aus einer Jahresumsatzreihe (aeltester Wert ZUERST).
+
+    Achtung: roic.kennzahl_historie und providers.get_financials liefern
+    'recent first' - vor dem Aufruf umdrehen.
+    """
+    return {"cagr_3j": cagr(umsatz_reihe, 3),
+            "cagr_5j": cagr(umsatz_reihe, 5),
+            "cagr_10j": cagr(umsatz_reihe, 10) or cagr(umsatz_reihe),
+            "konsens": konsens}
+
+
+def anker_aus_fund(fund, historie: Optional[List[dict]] = None,
+                   fin: Optional[dict] = None) -> Dict[str, Optional[float]]:
+    """Bequemer Weg: Anker aus roic.kennzahl_historie ODER providers.get_financials.
+
+    historie: Liste aus roic.kennzahl_historie(t) - Felder 'jahr', 'revenue'
+    fin:      dict aus providers.get_financials(t) - Feld 'revenue' (recent first)
+    """
+    umsatz: List[float] = []
+    if historie:
+        rows = [z for z in historie if z.get("revenue")]
+        rows.sort(key=lambda z: str(z.get("jahr") or ""))
+        umsatz = [float(z["revenue"]) for z in rows]
+    elif fin and fin.get("revenue"):
+        umsatz = [float(x) for x in reversed(fin["revenue"]) if x]
+
+    konsens = fund.get("revenue_growth_next") or fund.get("earnings_growth")
+    if konsens is None:
+        konsens = fund.get("revenue_growth")
+    return wachstums_anker(umsatz, konsens)
+
+
+# ---------------------------------------------------------------------------
+# Benchmark-Tabelle und Gitter
+# ---------------------------------------------------------------------------
+
+def _benchmark(b: dict, kor: Korridor, impliziert: Optional[float],
+               g_modell: Optional[float]) -> List[dict]:
+    zeilen = []
+    eintraege = list(kor.anker.items())
+    if g_modell is not None:
+        eintraege.append(("modell", g_modell))
+
+    for key, g in eintraege:
+        w = _wert_je_aktie(b["fcf"], b["shares"], b["net_debt"], g,
+                           b["g_term"], b["r"], b["years"])
+        zeilen.append({
+            "key": key, "label": ANKER_LABEL.get(key, key), "treiber": g,
+            "wert": round(w, 2) if w else None,
+            "upside": round((w - b["price"]) / b["price"] * 100, 1) if w else None,
+            "im_korridor": kor.tief <= g <= kor.hoch,
+            "notiz": "",
+        })
+    if impliziert is not None:
+        zeilen.append({
+            "key": "impliziert", "label": ANKER_LABEL["impliziert"],
+            "treiber": impliziert, "wert": round(b["price"], 2), "upside": 0.0,
+            "im_korridor": kor.tief <= impliziert <= kor.hoch,
+            "notiz": "= heutiger Kurs",
+        })
+    zeilen.sort(key=lambda z: z["treiber"])
+    return zeilen
+
+
+def rd_gitter(b: dict, g_bereich: Optional[Tuple[float, float]] = None,
+           cash_bereich: Optional[Tuple[float, float]] = None,
+           schritte: int = 8, g_imp: Optional[float] = None,
+           cash_imp: Optional[float] = None) -> dict:
+    """Wert je Aktie ueber Wachstum x Cash-Basis, plus Iso-Linie Wert == Kurs.
+
+    Hier ist der Single-Assumption-Ansatz blind: Ein Kurs kann bei plausiblem
+    Wachstum UND plausibler Cash-Basis unerreichbar sein, weil er beide
+    gleichzeitig am oberen Rand verlangt.
+    """
+    # Bereiche um die eingepreisten Werte legen: ein festes Raster von 0-16 %
+    # zeigt bei einem Titel, der 28 % verlangt, nur rote Felder und keine
+    # Iso-Linie - also gar nichts.
+    if g_bereich is None:
+        obergrenze = max(0.16, (g_imp or 0.0) * 1.15, (b["g1_modell"] or 0) * 2)
+        g_bereich = (0.00, min(obergrenze, 0.45))
+    if cash_bereich is None:
+        cash_bereich = (0.7, max(1.6, (cash_imp or 1.0) * 1.15))
+
+    gs = [g_bereich[0] + (g_bereich[1] - g_bereich[0]) * i / (schritte - 1)
+          for i in range(schritte)]
+    cs = [cash_bereich[0] + (cash_bereich[1] - cash_bereich[0]) * i / (schritte - 1)
+          for i in range(schritte)]
+
+    werte, iso = [], []
+    for c in cs:
+        reihe = [_wert_je_aktie(b["fcf"] * c, b["shares"], b["net_debt"], g,
+                                b["g_term"], b["r"], b["years"]) for g in gs]
+        werte.append(reihe)
+        fn = lambda g, _c=c: _wert_roh(b["fcf"] * _c, b["shares"],  # noqa: E731
+                                       b["net_debt"], g, b["g_term"],
+                                       b["r"], b["years"])
+        iso.append(_loese(fn, b["price"], -0.30, 0.90))
+
+    return {"wachstum": gs, "cash_basis": cs, "werte": werte,
+            "iso_wachstum": iso, "preis": b["price"]}
+
+
+# ---------------------------------------------------------------------------
+# Hauptfunktion
+# ---------------------------------------------------------------------------
+
+def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
+                preset: str = "quality", mit_gitter: bool = True) -> Optional[dict]:
+    """Vollstaendiger Reverse DCF mit Urteil.
+
+    fund    bestehendes fund-Dict aus providers.get_fundamentals
+    anker   {"cagr_3j":.., "cagr_5j":.., "cagr_10j":.., "konsens":..}
+            (siehe anker_aus_fund)
+    preset  quality | cyclical | inflection | financial
+    """
+    b = _basis(fund, preset)
+    if not b:
+        return None
+    kor = rd_korridor(anker, preset)
+    if not kor:
+        return None
+
+    g_imp = impliziertes_wachstum(fund, preset)
+    cash_imp = implizierte_cash_basis(fund, preset)
+    urteil = kor.position(g_imp)
+    titel, unter = URTEIL_TEXT[urteil]
+
+    hinweise: List[str] = []
+    if g_imp is not None and g_imp > kor.hoch:
+        hinweise.append(
+            f"Eingepreist sind {g_imp * 100:.1f} % Startwachstum. Der realistische "
+            f"Korridor ({kor.tief * 100:.1f}-{kor.hoch * 100:.1f} %) endet darunter.")
+    if preset in ("cyclical", "financial") and "cagr_10j" in kor.anker:
+        hinweise.append(
+            f"Playbook {preset}: die 10J-Historie ({kor.anker['cagr_10j'] * 100:.1f} %) "
+            f"wiegt im Korridor am schwersten, weil sie einen vollen Zyklus abdeckt.")
+    beide = bool(g_imp is not None and g_imp > kor.mitte
+                 and cash_imp is not None and cash_imp > 1.10)
+    if beide:
+        hinweise.append(
+            "Wachstum und Cash-Basis sind gleichzeitig gestreckt. Einzelne Treiber "
+            "zu testen unterschaetzt hier, wie viel der Kurs verlangt.")
+    if g_imp is None:
+        hinweise.append("Der Kurs liegt ausserhalb des loesbaren Wachstumsbereichs - "
+                        "das Modell traegt diesen Titel nicht.")
+
+    return {
+        "preis": b["price"],
+        "playbook": preset,
+        "impliziertes_wachstum": round(g_imp, 4) if g_imp is not None else None,
+        "implizierte_cash_basis": round(cash_imp, 3) if cash_imp is not None else None,
+        "korridor": kor.as_dict(),
+        "urteil": urteil,
+        "urteil_titel": titel,
+        "urteil_text": unter,
+        "urteil_ton": URTEIL_TON[urteil],
+        "beide_gestreckt": beide,
+        "zeilen": _benchmark(b, kor, g_imp, b["g1_modell"]),
+        "gitter": (rd_gitter(b, g_imp=g_imp, cash_imp=cash_imp)
+                   if mit_gitter else None),
+        "hinweise": hinweise,
+        "modell": {"wacc": round(b["r"], 4), "jahre": b["years"],
+                   "terminal_growth": b["g_term"],
+                   "g1_modell": round(b["g1_modell"], 4)},
+    }

@@ -19,6 +19,9 @@ import os
 #                 aktiv (deep), um das Gratis-Tageslimit (~250 Calls) zu schonen.
 #   4) Stooq/EZB (schlüsselfreie Absicherung für Kurshistorie & Wechselkurse)
 # ---------------------------------------------------------------------------
+# Fallback-Schluessel nur, solange das Repo privat ist. Wird es jemals
+# oeffentlich geschaltet oder geforkt, muessen beide vorher raus UND neu
+# ausgestellt werden - ein spaeterer Commit entfernt sie nicht aus der Historie.
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "d8tpv3pr01qhcnk5g5k0d8tpv3pr01qhcnk5g5kg")
 FMP_API_KEY = os.getenv("FMP_API_KEY", "EdKxdl3ePaj2DxycU4AyhVWJwVfvl8F5")
 ALPHAVANTAGE_API_KEY = os.getenv("ALPHAVANTAGE_API_KEY", "")
@@ -30,6 +33,21 @@ TIINGO_API_KEY = os.getenv("TIINGO_API_KEY", "")
 # Schluessel NUR ueber Umgebungsvariable bzw. Streamlit-Secrets setzen -
 # nicht hier eintragen (das Repo ist oeffentlich einsehbar gewesen).
 ROIC_API_KEY = os.getenv("ROIC_API_KEY", "")
+
+
+def fehlende_keys() -> list[str]:
+    """Welche Schluessel sind nicht gesetzt? Fuer eine Hinweiszeile im Dashboard.
+
+    Ohne Schluessel bricht nichts - providers.py prueft jeden Aufruf. Aber es
+    ist besser, das einmal sichtbar zu machen, als sich ueber duenne Daten zu
+    wundern.
+    """
+    return [name for name, wert in (
+        ("FINNHUB_API_KEY", FINNHUB_API_KEY),
+        ("FMP_API_KEY", FMP_API_KEY),
+        ("TIINGO_API_KEY", TIINGO_API_KEY),
+        ("ROIC_API_KEY", ROIC_API_KEY),
+    ) if not wert]
 # Europa-Freigabe: erst umlegen, wenn test_roic_live.py auf .DE/.L-Tickern
 # sauber durchlaeuft. Stand Juli 2026: Support hat GBP-Kursbehandlung und
 # Buchwert als fehlerhaft bestaetigt; v3 in geschlossenem Test.

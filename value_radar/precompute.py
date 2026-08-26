@@ -25,7 +25,7 @@ from __future__ import annotations
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
-CODE_VERSION = "2026-07-29-be"   # bei jeder Aenderung hochzaehlen
+CODE_VERSION = "2026-07-29-bg"   # bei jeder Aenderung hochzaehlen
 
 # Analysten-Historie fuer die Value-Trap-Trenderkennung. In run() aus dem
 # Speicher geladen, waehrend des Laufs von score_ticker fortgeschrieben, am

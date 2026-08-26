@@ -4060,6 +4060,57 @@ if nav == "Einzelanalyse":
                                icon="\u26a0\ufe0f")
 
                 st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
+                # ============================================================
+                # BEWERTUNG IM DETAIL — Reverse DCF, Szenarien, Herkunft
+                # Rendering liegt in ui_bewertung.py / bewertung_seite.py,
+                # damit dieser Block hier schlank bleibt. Faellt das Modul aus,
+                # laeuft die Seite unveraendert weiter.
+                # ============================================================
+                try:
+                    import bewertung_seite as _bs
+
+                    @st.cache_data(ttl=21600, show_spinner=False)
+                    def _bewertung_reihen(t):
+                        """Historienreihen fuer Reverse DCF, Perzentil und
+                        Schaetzguete. Alles optional - was fehlt, faellt weg."""
+                        out = {"pe_hist": None, "umsatz": None, "eps": None,
+                               "fcf": None, "ni": None}
+                        try:
+                            import roic as _r
+                            if _r.enabled() and _r.multiples_ok(t):
+                                out["pe_hist"] = _r.pe_history(t, 10)
+                            if _r.enabled():
+                                hist = _r.kennzahl_historie(t, 12) or []
+                                hist = sorted(hist, key=lambda z: str(z.get("jahr") or ""))
+                                out["umsatz"] = [z["revenue"] for z in hist if z.get("revenue")]
+                                out["eps"] = [z["eps"] for z in hist if z.get("eps")]
+                                out["ni"] = [z["net_income"] for z in hist
+                                             if z.get("net_income")]
+                        except Exception:
+                            pass
+                        if not out["umsatz"]:
+                            try:                      # Rueckfall auf yfinance
+                                fin = providers.get_financials(t) or {}
+                                out["umsatz"] = list(reversed(fin.get("revenue") or [])) or None
+                                out["fcf"] = list(reversed(fin.get("fcf") or [])) or None
+                            except Exception:
+                                pass
+                        return out
+
+                    _reihen = _bewertung_reihen(ticker)
+                    with st.expander("\U0001f9ee BEWERTUNG IM DETAIL \u2014 was der "
+                                     "Kurs verlangt, Szenarien, Herkunft des Werts",
+                                     expanded=False):
+                        _bs.rendern(f, v, preset=ep, ticker=ticker, peer_funds=None,
+                                    pe_hist=_reihen.get("pe_hist"),
+                                    umsatz_reihe=_reihen.get("umsatz"),
+                                    eps_reihe=_reihen.get("eps"),
+                                    fcf_reihe=_reihen.get("fcf"),
+                                    ni_reihe=_reihen.get("ni"),
+                                    waehrung=cur, theme="dunkel")
+                except Exception as _e_bw:
+                    st.caption(f"Bewertungsdetails nicht verf\u00fcgbar ({_e_bw}).")
+
                 left, right = st.columns([1, 1])
 
                 with left:

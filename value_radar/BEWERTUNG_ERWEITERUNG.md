@@ -1,0 +1,371 @@
+# Bewertungserweiterung für Value Radar
+
+Sechs Bausteine aus dem AlphaSpread-Abgleich, gebaut gegen den tatsächlichen
+Code — nicht mehr gegen eine angenommene Schnittstelle.
+
+## Was sich gegenüber meinem ersten Entwurf geändert hat
+
+Zwei Annahmen von mir waren falsch, und beide hätten den Einbau gesprengt:
+
+**1. Das DCF-Modell.** Ich hatte Umsatz × Marge × Exit-Multiple angenommen (so
+rechnet AlphaSpread). `dcf_two_stage` rechnet aber FCF-basiert mit linear
+abklingendem Wachstum und Gordon-Terminal. Damit gibt es kein sichtbares
+Exit-Multiple — es steckt versteckt in `(1+g)/(r−g)`. Genau das rechnet
+`bewertung_x.dcf_diagnose()` jetzt aus und stellt es dem heutigen FCF-Multiple
+gegenüber. Die zweite Achse im Reverse DCF ist entsprechend nicht die
+Netto-Marge, sondern der **Faktor auf den heutigen Free Cashflow**.
+
+**2. Die Optik.** `dashboard.py` ist ein dunkles Terminal-Layout
+(`#0A0E14`, JetBrains Mono, Bernstein-Akzent) — und definiert bereits `.vr-card`
+und `.row` global. Meine weißen AlphaSpread-Karten hätten die bestehenden Karten
+überschrieben und wären mitten in einer dunklen App als Fehler gelesen worden.
+Übernommen ist deshalb der **Aufbau** (Großzahl mit Vergleichsbalken,
+Treiberliste, Urteilskasten, Korridorleiste, Referenztabelle, Szenario-
+Umschalter), nicht die Farbwelt. Alle Klassen sind `va-` präfixiert.
+
+Wer trotzdem hell will: `ui_bewertung.inject_css("hell")`. Die Vorschau hat
+einen Umschalter in der Sidebar, damit du beides nebeneinander siehst.
+Meine Empfehlung ist dunkel — ein Stilbruch auf einer von vierzig Seiten sieht
+nicht nach AlphaSpread aus, sondern nach halbfertigem Redesign.
+
+---
+
+## Dateien
+
+**Drei bestehende Dateien überschreiben** (Namen unverändert):
+
+| Datei | vorher → nachher | Was dazugekommen ist |
+|---|---|---|
+| `valuation.py` | 984 → 1.877 Zeilen | Diagnostik, Herkunft, Szenarien, Cash-Conversion, Reverse-DCF-Korridor |
+| `relval.py` | 122 → 325 Zeilen | echtes Perzentil; `historical_band()` nutzt es, wenn Jahreswerte da sind |
+| `providers.py` | +30 Zeilen | `get_eps_history()` — volle EPS-Reihe statt nur letzter Überraschung |
+
+**Drei neue Dateien:**
+
+| Datei | Zweck |
+|---|---|
+| `schaetzguete.py` | Trefferquote des Konsens → Gewicht für Forward-EPS |
+| `ui_bewertung.py` | Darstellung (`va-` präfixiert, kollidiert nicht mit `dashboard.py`) |
+| `bewertung_seite.py` | Einbau-Funktion + eigenständige Vorschau |
+
+Plus `test_bewertung_diagnose.py` (dein `test_bewertung.py` bleibt unberührt).
+
+Alles läuft ohne neue Abhängigkeiten. `bewertung_x.py`, `reverse_dcf.py` und
+`bewertungshistorie.py` aus der ersten Fassung gibt es nicht mehr — der Code
+sitzt jetzt dort, wo die verwandte Logik schon lag.
+
+```bash
+python3 test_bewertung_diagnose.py          # Logik prüfen, kein Netzwerk nötig
+streamlit run bewertung_seite.py            # Vorschau mit ETN-Zahlen
+```
+
+### Neue Namen in `valuation.py`
+
+`herkunft` · `dcf_diagnose` · `conversion_aus_historie` · `szenario_matrix` ·
+`rd_korridor` · `impliziertes_wachstum` · `implizierte_cash_basis` ·
+`wachstums_anker` · `anker_aus_fund` · `reverse_dcf_analyse` · `cagr`
+
+Die bestehende `reverse_dcf_implied_growth()` bleibt unverändert. Die neue
+Analyse heißt bewusst `reverse_dcf_analyse()`, damit beide nicht verwechselt
+werden — sie beantworten verschiedene Fragen (siehe unten).
+
+### Neue Namen in `relval.py`
+
+`perzentil` · `kgv_historie` · `ev_ebitda_historie` · `urteil` ·
+`multiple_band` · `bericht`
+
+`historical_band(f, pe_hist_werte=None)` hat einen zweiten Parameter bekommen
+und gibt neu `pctile_quelle` zurück: `"gemessen (10 Jahre)"` oder
+`"geschaetzt (nur Median bekannt)"`. Ohne den Parameter verhält sie sich exakt
+wie vorher — alle bestehenden Aufrufe in `dashboard.py` laufen weiter.
+
+---
+
+## Einbau in die Einzelanalyse — erledigt
+
+`dashboard.py` ist eingebaut: **ein Hunk, +51 Zeilen, nichts gelöscht**
+(8.673 → 8.724). Der Block sitzt direkt vor `left, right = st.columns([1, 1])`
+in der Einzelanalyse und besteht aus drei Teilen:
+
+1. einer gecachten Ladefunktion `_bewertung_reihen(ticker)` für die
+   Historienreihen (roic zuerst, yfinance als Rückfall),
+2. einem `st.expander("🧮 BEWERTUNG IM DETAIL …")`,
+3. dem Aufruf `bewertung_seite.rendern(...)`.
+
+Alles in `try/except`. Fehlt `bewertung_seite.py` oder wirft etwas, erscheint
+eine Caption-Zeile und die Seite läuft weiter.
+
+Alle Zusatzreihen sind optional. Fehlt eine, fällt der zugehörige Abschnitt
+still weg statt zu raten — das ist Absicht.
+
+### Warum die Optik trotzdem nicht in `dashboard.py` liegt
+
+Das ist eine bewusste Abweichung von deinem bisherigen Muster — im Rest der App
+steht die Darstellung direkt in `dashboard.py`. Gründe für den Schnitt:
+
+- `dashboard.py` hat 8.673 Zeilen. Weitere 600 machen es schlechter, nicht besser.
+- `ui_bewertung.py` lässt sich ohne Streamlit-Server rendern (genau so sind die
+  Vorschau-HTMLs entstanden). Innerhalb von `dashboard.py` wäre das unmöglich.
+- Rückbau ist eine Dateilöschung plus ein Hunk, kein Diff durch 8.700 Zeilen.
+
+Der Preis: CSS liegt jetzt an zwei Stellen. Deshalb ist **jede Regel unter `.va`
+gekapselt** — geprüft, kein einziger globaler Selektor. Insbesondere gibt es
+keine `stRadio`-Regel, die sonst jeden Radio-Button der App mitgestaltet hätte.
+Der Szenario-Umschalter sieht damit aus wie deine übrigen `st.radio`-Leisten
+(z. B. die Zeitraumwahl im Chart).
+
+**Achtung Sortierung:** `roic.kennzahl_historie` und `providers.get_financials`
+liefern *recent first*. `reverse_dcf.wachstums_anker()` erwartet *ältester Wert
+zuerst*. `reverse_dcf.anker_aus_fund()` dreht selbst.
+
+---
+
+## Punkt 1 — Reverse DCF mit Urteil
+
+`valuation.reverse_dcf_implied_growth()` liefert bereits eine Zahl, aber ohne
+Maßstab. Neu ist der Korridor, gegen den sie gemessen wird:
+
+```python
+anker = valuation.anker_aus_fund(fund, historie=roic.kennzahl_historie(t))
+rd = valuation.reverse_dcf_analyse(fund, anker, preset)
+
+rd["impliziertes_wachstum"]     # was der Kurs verlangt
+rd["implizierte_cash_basis"]    # zweite Achse: Faktor auf den heutigen FCF
+rd["korridor"]                  # tief / mitte / hoch, regime-gewichtet
+rd["urteil"]                    # konservativ | fair | anspruchsvoll | zu_optimistisch
+rd["zeilen"]                    # Referenztabelle
+rd["gitter"]                    # Wachstum × Cash-Basis inkl. Iso-Linie
+rd["beide_gestreckt"]           # True, wenn beide Treiber über der Mitte liegen
+```
+
+Der Korridor gewichtet 3J/5J/10J/Konsens nach Playbook
+(`PLAYBOOK_GEWICHTE`). Bei `cyclical` und `financial` dominiert die lange
+Historie, weil sie einen vollen Zyklus abdeckt; bei `inflection` der Konsens,
+weil die Vergangenheit dort per Definition nicht die These ist.
+
+Konsistenzhinweis: Mein Löser bildet die **Abkling-Struktur** von
+`dcf_two_stage` ab, die bestehende Funktion rechnet mit **konstantem** g. Für
+ETN: 28,2 % (Abkling) vs. 16,1 % (konstant). Beide stimmen — sie beantworten
+verschiedene Fragen. Vergleichbar mit dem DCF ist nur die Abkling-Variante;
+die alte bleibt als grobe Zweitmeinung nutzbar.
+
+---
+
+## Punkt 2 — Terminalwert-Anteil und implizites Terminal-Multiple
+
+```python
+d = v["dcf_diagnose"]
+d["terminal_anteil"]        # 0.543 bei ETN
+d["multiple_genutzt"]       # 15.4x — steckt in (1+g)/(r-g)
+d["multiple_impliziert"]    # 58.1x — was der Kurs verlangt
+d["multiple_heute"]         # 40.8x — was heute bezahlt wird
+d["hinweise"]               # fertige Warntexte für die Ampel
+```
+
+`d["hinweise"]` gehört in die Zeile „Auf einen Blick", nicht in eine
+aufklappbare Kachel — ab `TERMINAL_ANTEIL_WARN = 0.75` steht dort, dass das
+Modell im Kern eine Multiple-Wette ist.
+
+---
+
+## Punkt 3 — Bear / Base / Bull je Methode
+
+```python
+m = valuation.szenario_matrix(fund, peer_funds, preset)
+m["methoden"]["justified_pe"]["bull"]
+m["blend"]                  # Bear/Base/Bull des geblendeten Fair Value
+m["blend_konsistent"]       # nur Methoden, die in ALLEN Szenarien tragen
+m["warnungen"]
+```
+
+Statt die Methoden nachzubauen, werden die **primitiven Treiber** im
+`fund`-Dict verschoben (`revenue_growth`, `eps_forward`, `ebitda`,
+`free_cashflow` primär; `hist_pe_median`, `ev_ebitda`, `beta` sekundär und auf
+50 % gedämpft) und `valuation.fair_value()` dreimal aufgerufen. Damit bleibt die
+Rechenlogik an genau einer Stelle und kann nicht abdriften.
+
+Das Analystenziel bleibt in allen Szenarien unverändert — es ist eine externe
+Konsensaussage, kein Modelltreiber. Dass es die Spanne dämpft, ist gewollt.
+
+**Ein Fund, den der Test gehoben hat und den du kennen musst:** Bei ETN fällt
+der DCF im Bear Case weg (negatives Eigenkapital), `fair_value()` renormiert die
+Gewichte auf die verbliebenen Methoden — und der Bear-Wert (252,57) landet
+**über** dem Base-Wert (247,02). Das ist kein Rechenfehler, sondern ein Artefakt
+des Methodenausfalls. Deshalb gibt es `blend_konsistent`, das nur die in allen
+drei Szenarien vorhandenen Methoden verwendet: 193,52 / 238,66 / 284,39 — monoton
+und interpretierbar. Beide Zeilen werden angezeigt, samt Warnung. Das zu
+verstecken wäre schlimmer gewesen, als es zu zeigen.
+
+---
+
+## Punkt 4 — Echtes Bewertungs-Perzentil
+
+`relval._pctile_from_median()` schätzte das Perzentil aus dem Median und einer
+**angenommenen** Streuung von 35 %. Die Funktion bleibt als Rückfall drin, aber
+`historical_band()` nimmt jetzt die echten Jahreswerte, sobald sie vorliegen —
+und schreibt in `pctile_quelle`, welcher Weg genutzt wurde:
+
+```python
+b = relval.bericht(fund, roic.pe_history(ticker, 10), ev_hist)
+b["kgv"]["perzentil"]["teuer_pct"]    # 100.0 bei ETN
+b["kgv"]["rueckkehrwert"]             # Median-KGV × EPS = 213,31
+b["urteil"]                           # Attraktiv / Neutral / Unattraktiv
+b["band"]                             # P25/Median/P75 für die Szenarien
+```
+
+Bei ETN liegen alte Schätzung (98.) und echtes Perzentil (100.) nah beieinander
+— das ist kein Beleg für die Schätzung, sondern der Fall, in dem sie zufällig
+passt. Interessant wird der Unterschied bei Titeln mit sehr enger oder sehr
+weiter Bewertungsspanne, wo die 35-%-Annahme systematisch danebenliegt.
+
+Unter vier Jahreswerten gibt das Modul bewusst **kein** Perzentil zurück,
+sondern nur den Rückkehrwert. Lieber keine Zahl als eine erfundene.
+
+**Kopplung zu Punkt 3:** `b["band"]` (bei ETN 18,5 / 21,7 / 27,7) gehört als
+Bewertungsniveau in die Szenarien — dann wird es aus der eigenen Historie
+abgeleitet statt gesetzt. Das war im ursprünglichen Plan nicht vorgesehen und
+ist die sauberere Kopplung.
+
+---
+
+## Punkt 5 — Schätzgüte des Konsens
+
+`providers.get_last_earnings_surprise()` liest bereits `earnings_dates`, wirft
+aber alles außer der letzten Überraschung weg. `providers.get_eps_history()`
+gibt die volle Reihe zurück; `get_last_earnings_surprise()` bleibt unverändert:
+
+```python
+q = schaetzguete.fuer_ticker(ticker)
+q["sterne"]              # 1..5
+q["konsens_gewicht"]     # 0.35..1.0
+q["bias"]                # optimistisch | konservativ | neutral
+
+bl = schaetzguete.geblendetes_eps(fund["eps_forward"], eps_reihe, q)
+schaetzguete.anwenden_auf_fund(fund, q, eps_reihe)   # setzt eps_forward
+```
+
+Der Konsens geht bisher ungewichtet in `justified_pe`, `fwd_pe` und `hist_pe`
+ein. `konsens_gewicht` stutzt ihn gegen eine log-lineare Trendfortschreibung;
+bei systematisch optimistischem Konsens wird zusätzlich um die mittlere
+Verfehlung korrigiert, statt nur abzuwerten — eine Schätzung, die immer 5 % zu
+hoch liegt, ist nach der Korrektur brauchbar.
+
+Untergrenze 0,35: Auch ein schwacher Konsens kennt die Guidance.
+
+---
+
+## Punkt 6 — Cash-Conversion sichtbar
+
+```python
+cc = valuation.conversion_aus_historie(fcf_reihe, ni_reihe)
+cc["median"]      # Treiber
+cc["streuung"]    # Warnsignal
+cc["warnung"]
+```
+
+Die Streuung ist die quantitative Fassung von Dorseys
+Cashflow-vs-Gewinn-Divergenz: eine stark schwankende Conversion ist das
+Warnsignal, nicht der Mittelwert.
+
+---
+
+## Die Selbstkritik, jetzt gemessen
+
+`v["herkunft"]` zerlegt den Fair Value nach Herkunft der Annahme. Für ETN im
+Quality-Playbook:
+
+| Herkunft | Anteil |
+|---|---|
+| Multiple-Annahmen | 53,1 % |
+| **Analystenkonsens** | **28,5 %** |
+| Cashflow-Prognose | 18,4 % |
+
+Der Analystenanker ist mit 15 % vorgesehen und wiegt effektiv **28,5 %** — weil
+`fair_value()` Methoden herausfiltert und die Gewichte danach renormiert. Das
+stand bisher nirgends. `herkunft()["gewichtsverschiebung"]` weist jede Methode
+aus, deren effektives Gewicht um mehr als das 1,5-fache vom nominellen abweicht.
+
+Das ist der unbequeme Teil: Ein Fair Value, der zu 28 % aus dem Analystenkonsens
+besteht, kann nicht mehr unabhängig gegen den Markt gemessen werden — und genau
+das ist laut Kommentar in `_WEIGHTS` das erklärte Ziel des reduzierten
+Analystengewichts. Die Renormierung unterläuft die eigene Absicht. Ob du die
+Schwelle senkst, den Filter änderst oder das Analystengewicht bei Ausfall
+anderer Methoden deckelst, ist eine Entscheidung — aber sie war bisher nicht
+sichtbar.
+
+---
+
+## Offene Punkte
+
+- **`revenue_growth_next`** existiert im `fund`-Dict nicht. `anker_aus_fund()`
+  fällt deshalb auf `earnings_growth` zurück. Wenn `providers` einen echten
+  Forward-Umsatzkonsens liefern kann, wird der Korridor besser.
+- **EV/EBITDA-Historie** gibt es noch nicht als Jahresreihe;
+  `bewertungshistorie.ev_ebitda_historie()` ist vorbereitet, braucht aber eine
+  Quelle (roic `multiples` mit `period_type=annual` liefert sie vermutlich).
+- **`test_bewertung.py`** existiert bereits im Repo und ist unberührt; meine
+  Tests liegen in `test_bewertung_diagnose.py`.
+- **`valuation.py` hat jetzt 1.877 Zeilen.** Das ist der Preis der
+  Zusammenführung. Wenn es unübersichtlich wird, ist der Reverse-DCF-Abschnitt
+  am Dateiende der natürliche Schnitt für eine spätere Auslagerung — er hat
+  keine Abhängigkeit zum Rest ausser `wacc()` und `V`.
+
+---
+
+## Was beim Hochladen passiert
+
+Nichts bricht durch die neuen Dateinamen. Der Grund ist mechanisch:
+
+- **`dashboard.py` bekommt genau einen Hunk** (+51 Zeilen, nichts gelöscht).
+  Alles darin steckt in `try/except`.
+- **Kein bestehendes Modul importiert die neuen Dateien.** Geprüft mit
+  `grep`: `schaetzguete.py`, `ui_bewertung.py` und `bewertung_seite.py` werden
+  nur untereinander importiert. Für den Rest der App sind sie unsichtbar.
+- **Die drei überschriebenen Dateien behalten ihre öffentliche API.**
+  `historical_band()` hat einen optionalen zweiten Parameter bekommen,
+  `get_last_earnings_surprise()` und `reverse_dcf_implied_growth()` sind
+  unverändert. Alle 27 lokalen Importe von `dashboard.py` lösen weiter auf.
+
+Sichtbar wird der neue Block in der Einzelanalyse unter
+„🧮 BEWERTUNG IM DETAIL" (zugeklappt). Alles andere sieht aus wie vorher.
+
+### Vollständige Änderungsliste
+
+```
+geändert:  config.py  dashboard.py  providers.py  relval.py  valuation.py
+neu:       schaetzguete.py  ui_bewertung.py  bewertung_seite.py
+           test_bewertung_diagnose.py  BEWERTUNG_ERWEITERUNG.md
+unberührt: die übrigen 55 Dateien
+```
+
+## API-Keys
+
+Die Fallback-Schlüssel für Finnhub und FMP stehen wieder in `config.py`, da das
+Repo privat ist. `config.fehlende_keys()` ist neu dazugekommen und meldet, welche
+Schlüssel nicht gesetzt sind — nützlich für eine Hinweiszeile im Dashboard.
+
+Wenn das Repo jemals öffentlich geschaltet oder geforkt wird: beide Schlüssel
+vorher entfernen **und neu ausstellen**. Ein späterer Commit entfernt sie nicht
+aus der Git-Historie. Der Kommentar bei `ROIC_API_KEY` deutet darauf hin, dass
+das schon einmal passiert ist.
+
+## Laufzeit
+
+`dcf_diagnose()` und `herkunft()` laufen jetzt bei jedem `fair_value()`-Aufruf
+mit. Gemessen: 0,153 → 0,181 ms je Aufruf (+18 %). Bei einem Screener-Lauf
+über 500 Titel sind das 0,01 Sekunden zusätzlich — irrelevant gegenüber der
+Netzwerkzeit.
+
+`szenario_matrix()` ruft `fair_value()` dreimal auf und wird deshalb **nur in
+der Einzelanalyse** verwendet, nicht im Screener.
+
+## Was noch nicht mit echten Daten lief
+
+Getestet ist alles gegen ein synthetisches `fund`-Dict. Ohne Netzwerk nicht
+prüfbar und daher offen:
+
+- `providers.get_eps_history()` — braucht yfinance
+- `schaetzguete.fuer_ticker()` — hängt daran
+- `relval.historical_band()` mit echtem `roic.pe_history()`-Output
+- der `dashboard.py`-Block als Ganzes: kompiliert und die Renderfunktionen sind
+  headless geprüft, aber im laufenden Streamlit mit echten roic-Daten war er nie

@@ -734,6 +734,16 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     def _plausible(v):
         return True if not price else (0.25 * price <= v <= 4.0 * price)
     sane = {k: v for k, v in raw.items() if _plausible(v)}
+    # Was der Plausibilitaetsfilter aussortiert, wird protokolliert. Faellt eine
+    # Methode mit 30 % Gewicht heraus, verteilt sich ihr Gewicht auf den Rest -
+    # der Fair Value steht dann auf einer voellig anderen Grundlage, ohne dass
+    # das bisher irgendwo sichtbar war.
+    _verworfen = {k: {"wert": round(v, 2),
+                      "vs_kurs": round((v / price - 1) * 100, 1) if price else None,
+                      "gewicht": weights.get(k),
+                      "grund": ("unter 0,25x Kurs" if price and v < 0.25 * price
+                                else "ueber 4x Kurs")}
+                  for k, v in raw.items() if k not in sane}
 
     # 3) Ausreisser gegen den Median der plausiblen Methoden entfernen: nur was
     #    im Band [Median/2, Median*2] liegt, bildet den "Core". So kann eine
@@ -742,6 +752,12 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         med0 = _median(list(sane.values()))
         core = {k: v for k, v in sane.items()
                 if med0 and (med0 / 2.0) <= v <= (med0 * 2.0)}
+        for k, v in sane.items():
+            if k not in core:
+                _verworfen[k] = {"wert": round(v, 2),
+                                 "vs_kurs": round((v / price - 1) * 100, 1) if price else None,
+                                 "gewicht": weights.get(k),
+                                 "grund": f"mehr als Faktor 2 vom Median ({med0:.0f}) entfernt"}
         if len(core) < 2:
             core = dict(sane)
     else:
@@ -891,6 +907,20 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
 
     try:
         _datenqualitaet = datenqualitaet(fund, preset)
+        # Verworfene Methoden sind kein Datenproblem, aber dieselbe Klasse von
+        # stiller Verschiebung - deshalb in dieselbe Warnzeile.
+        if _datenqualitaet and _verworfen:
+            _schwer = {k: d for k, d in _verworfen.items() if (d.get("gewicht") or 0) >= 0.20}
+            if _schwer:
+                _txt = ", ".join(f"{k} ({d['wert']}, {d['vs_kurs']:+.0f} % zum Kurs, "
+                                 f"{d['gewicht']:.0%} Gewicht)" for k, d in _schwer.items())
+                _datenqualitaet["warnungen"].append(
+                    f"Als unplausibel verworfen: {_txt}. Das Gewicht verteilt sich auf "
+                    f"die uebrigen Methoden - der Fair Value beruht damit auf weniger "
+                    f"Verfahren als vorgesehen.")
+                if _datenqualitaet["ton"] == "gruen":
+                    _datenqualitaet["ton"] = "gelb"
+                    _datenqualitaet["stufe"] = "eingeschraenkt"
     except Exception:
         _datenqualitaet = None
 
@@ -934,6 +964,7 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "herkunft": _herkunft,
         "dcf_diagnose": _dcf_diagnose,
         "datenqualitaet": _datenqualitaet,
+        "verworfene_methoden": _verworfen or None,
     }
 
 

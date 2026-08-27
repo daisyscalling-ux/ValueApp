@@ -66,6 +66,13 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
     # Datenluecken zuerst: ein Fair Value auf halber Datenbasis sieht genauso
     # aus wie einer auf voller - deshalb muss die Warnung VOR die Zahl.
     dq = v.get("datenqualitaet")
+    vw = v.get("verworfene_methoden") or {}
+    if vw:
+        zeilen = [(f'{METHODEN_LABEL.get(k, k)} ({(d.get("gewicht") or 0):.0%} Gewicht)',
+                   f'{ui.de(d["wert"], 2)} \u00b7 {d["vs_kurs"]:+.0f} % zum Kurs '
+                   f'\u00b7 {d["grund"]}')
+                  for k, d in vw.items()]
+        ui.treiber_panel([("Verworfene Methoden", zeilen)])
     if dq and dq.get("warnungen"):
         ui.urteil_box(
             titel=f'Datenbasis {dq["stufe"]}',

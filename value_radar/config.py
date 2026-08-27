@@ -5,6 +5,85 @@ Alles hier ist bewusst anpassbar. Werte sind Startpunkte, keine Wahrheiten.
 from __future__ import annotations
 import os
 
+
+# ---------------------------------------------------------------------------
+# Schluessel-Aufloesung: Umgebungsvariable -> .streamlit/secrets.toml
+#
+# Streamlit stellt secrets.toml nur INNERHALB einer laufenden Streamlit-App
+# bereit. Skripte wie precompute.py, warum_fair_value.py oder main.py laufen
+# ausserhalb - dort war jeder Schluessel leer, obwohl er in den Secrets stand.
+# Folge: Die App rechnete mit roic-Daten, die Skripte ohne. Zwei verschiedene
+# Fair Values fuer denselben Titel, ohne dass die Ursache sichtbar war.
+#
+# _key() liest deshalb zusaetzlich secrets.toml direkt. Damit liefern App und
+# Kommandozeile dieselben Zahlen.
+# ---------------------------------------------------------------------------
+_SECRETS_CACHE = None
+
+
+def _secrets() -> dict:
+    global _SECRETS_CACHE
+    if _SECRETS_CACHE is not None:
+        return _SECRETS_CACHE
+    _SECRETS_CACHE = {}
+    # 1) Datei direkt lesen - deterministisch und ohne Nebenwirkung.
+    #    (Der Streamlit-Weg wuerde die Secrets zusaetzlich nach os.environ
+    #    exportieren und damit die Herkunftsanzeige verfaelschen.)
+    try:
+        import tomllib
+    except ImportError:                       # Python < 3.11
+        try:
+            import tomli as tomllib           # type: ignore
+        except ImportError:
+            return _SECRETS_CACHE
+    for pfad in (os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              ".streamlit", "secrets.toml"),
+                 os.path.join(os.getcwd(), ".streamlit", "secrets.toml"),
+                 os.path.expanduser("~/.streamlit/secrets.toml")):
+        try:
+            with open(pfad, "rb") as fh:
+                daten = tomllib.load(fh)
+            _SECRETS_CACHE = {k: v for k, v in daten.items()
+                              if isinstance(v, (str, int, float))}
+            if _SECRETS_CACHE:
+                break
+        except Exception:
+            continue
+    if not _SECRETS_CACHE:                    # 2) letzte Chance: laufende App
+        try:
+            import streamlit as _st
+            _SECRETS_CACHE = {k: v for k, v in _st.secrets.items()
+                              if isinstance(v, (str, int, float))}
+        except Exception:
+            pass
+    return _SECRETS_CACHE
+
+
+#: Herkunft je Schluessel, zum Zeitpunkt der Aufloesung festgehalten.
+#: Nachtraeglich laesst sich das nicht mehr sauber feststellen: Streamlit
+#: exportiert geladene Secrets zusaetzlich nach os.environ, ein spaeteres
+#: os.getenv() wuerde sie faelschlich als Umgebungsvariable ausweisen.
+_KEY_QUELLE = {}
+
+
+def _key(name: str, fallback: str = "") -> str:
+    """Umgebungsvariable, sonst secrets.toml, sonst Fallback."""
+    wert = os.getenv(name)
+    if wert:
+        _KEY_QUELLE[name] = "Umgebungsvariable"
+        return wert
+    wert = _secrets().get(name)
+    if wert:
+        _KEY_QUELLE[name] = "secrets.toml"
+        return str(wert)
+    _KEY_QUELLE[name] = "Fallback im Code" if fallback else "FEHLT"
+    return fallback
+
+
+def schluessel_quelle(name: str) -> str:
+    """Woher kam der Schluessel? Fuer die Diagnoseskripte."""
+    return _KEY_QUELLE.get(name, "unbekannt")
+
 # ---------------------------------------------------------------------------
 # API-Keys (optional). Per Umgebungsvariable setzen, z.B.:
 #   export FINNHUB_API_KEY="..."   /   export FMP_API_KEY="..."
@@ -22,17 +101,17 @@ import os
 # Fallback-Schluessel nur, solange das Repo privat ist. Wird es jemals
 # oeffentlich geschaltet oder geforkt, muessen beide vorher raus UND neu
 # ausgestellt werden - ein spaeterer Commit entfernt sie nicht aus der Historie.
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "d8tpv3pr01qhcnk5g5k0d8tpv3pr01qhcnk5g5kg")
-FMP_API_KEY = os.getenv("FMP_API_KEY", "EdKxdl3ePaj2DxycU4AyhVWJwVfvl8F5")
-ALPHAVANTAGE_API_KEY = os.getenv("ALPHAVANTAGE_API_KEY", "")
+FINNHUB_API_KEY = _key("FINNHUB_API_KEY", "d8tpv3pr01qhcnk5g5k0d8tpv3pr01qhcnk5g5kg")
+FMP_API_KEY = _key("FMP_API_KEY", "EdKxdl3ePaj2DxycU4AyhVWJwVfvl8F5")
+ALPHAVANTAGE_API_KEY = _key("ALPHAVANTAGE_API_KEY", "")
 # Tiingo: saubere Kurse + verlaessliche Waehrung (EOD + US-Intraday via IEX).
 # Nur Preis/Waehrung - KEINE Fundamentaldaten (im Gratis-Tarif nicht enthalten).
-TIINGO_API_KEY = os.getenv("TIINGO_API_KEY", "")
+TIINGO_API_KEY = _key("TIINGO_API_KEY", "")
 
 # --- roic.ai (Individual, 300 Abrufe/min) --------------------------------
 # Schluessel NUR ueber Umgebungsvariable bzw. Streamlit-Secrets setzen -
 # nicht hier eintragen (das Repo ist oeffentlich einsehbar gewesen).
-ROIC_API_KEY = os.getenv("ROIC_API_KEY", "")
+ROIC_API_KEY = _key("ROIC_API_KEY", "")
 
 
 def fehlende_keys() -> list[str]:

@@ -540,3 +540,112 @@ Die roic-Aufrufe laufen hier nicht (kein Schlüssel, kein Netzwerk). Die neuen
 Feld-Mappings sind gegen die Struktur der bestehenden `_g()`-Aufrufe gebaut und
 kompilieren, aber die tatsächlichen Antwortfelder von `multiples_historie()`
 habe ich nicht gegen die Live-API geprüft.
+
+
+---
+
+## „NVDA liegt immer noch bei −65 %"
+
+### Der Wert selbst ist nicht kaputt
+
+Mit vollständigen Daten und realistischen NVDA-Zahlen (Kurs 180, Umsatz 200 Mrd,
+FCF 75 Mrd, EPS fwd 6,50) rechnet der Code:
+
+```
+Playbook inflection · Fair Value 202,09 · Upside +12,3 % · Datenbasis vollständig
+   fwd_pe          225,23   (+25,1 %)   Gewicht 30 %
+   fwd_composite   166,58    (−7,5 %)   Gewicht 25 %
+   dcf                  --              Gewicht 30 %   <-- fällt aus
+   analyst         215,00   (+19,4 %)   Gewicht 15 %
+```
+
+−65 % entsteht nur, wenn Felder fehlen: ohne `revenue_growth`/`earnings_growth`
+fällt die Einstufung von `inflection` auf `quality`, und damit greifen
+`dcf` (30 %) und `justified_pe` (30 %) statt der Forward-Multiples.
+
+### Drei Pfade, drei Datenstände
+
+Wo du die Zahl siehst, entscheidet, welcher Code überhaupt läuft:
+
+| Ansicht | Datenquelle | betroffen von meinen Fixes? |
+|---|---|---|
+| Einzelanalyse | `get_fundamentals(t, deep=True)`, Cache 1 h | ja, nach App-Neustart |
+| Screener / Radar / Watchlist | `store.get_snapshot()` aus `precompute.py` | **nein**, bis precompute neu läuft |
+| Vergleichstabellen | `get_fundamentals(t, deep=False)` | ja, aber über `bundle_light` |
+
+**Das ist der wahrscheinlichste Grund.** `precompute.py` läuft mit
+`SCAN_DEEP = False` und schreibt Fair Value und Upside in den Store. Das
+Dashboard liest sie von dort. Wurde der Snapshot erzeugt, während die Keys leer
+waren oder `bundle_light` noch kein Wachstum lieferte, steht dort weiterhin
+−65 % — unabhängig davon, was ich in `valuation.py` ändere.
+
+Abhilfe: `precompute.py` einmal neu laufen lassen. Vorher `dashboard.py`
+neu starten (der 1-Stunden-Cache in `load_fundamentals` und `_DEEP_CACHE`
+überleben ein Browser-Reload).
+
+### Das Werkzeug für die Antwort
+
+```bash
+python3 warum_fair_value.py NVDA            # Einzelanalyse-Pfad
+python3 warum_fair_value.py NVDA --flach    # Scan-Pfad
+```
+
+Zeigt in einer Ausgabe: Schlüssel → Quellen je Feld → offene Lücken →
+Einstufung samt Eingangsgrößen → **jede Methode einzeln mit ihrem Gewicht**
+→ Fair Value und Herkunft. Fällt eine gewichtete Methode aus, steht dort
+`<-- fällt aus!`.
+
+Damit ist in einem Durchlauf entschieden, ob das Modell so rechnet oder ob
+Daten fehlen — und welche.
+
+### Nebenbefund
+
+Bei NVDA fällt der **DCF mit 30 % Gewicht aus**, obwohl alle Daten da sind.
+Grund: negative Nettoverschuldung und ein FCF, der gegen die Marktkapitalisierung
+winzig ist. Der Fair Value stützt sich damit auf `fwd_pe` und `analyst` —
+Herkunft: 77 % Multiple, 23 % Markt, 0 % Cashflow. Das ist bei einem Titel
+dieser Größe eine Aussage, die man kennen sollte; sie steht jetzt in der
+Herkunftszeile.
+
+
+---
+
+## Warum App und Kommandozeile verschiedene Werte lieferten
+
+Der ROIC-Schlüssel liegt in `.streamlit/secrets.toml`. `config.py` las Schlüssel
+aber nur über `os.getenv()`. Streamlit stellt `secrets.toml` **nur innerhalb einer
+laufenden Streamlit-App** bereit — Skripte wie `precompute.py`, `main.py` oder
+`warum_fair_value.py` laufen außerhalb und sahen dort gar nichts.
+
+Folge: **Die App rechnete mit roic-Daten, jedes Skript ohne.** Zwei verschiedene
+Fair Values für denselben Titel, ohne dass die Ursache irgendwo sichtbar war. Das
+erklärt auch den Widerspruch NVDA App −64,5 % gegen Skript +88,7 % — es waren nie
+dieselben Daten.
+
+Besonders unangenehm: **`precompute.py` ist so ein Skript.** Der Snapshot, den das
+Dashboard für Screener, Radar und Watchlist liest, wurde also ohne roic erzeugt.
+
+### Behoben
+
+`config._key()` löst jetzt in dieser Reihenfolge auf:
+
+```
+1. Umgebungsvariable
+2. .streamlit/secrets.toml   (Projektordner, CWD, ~/.streamlit)
+3. Fallback im Code
+```
+
+Die Datei wird direkt mit `tomllib` gelesen, nicht über Streamlit — sonst würden
+die Secrets zusätzlich nach `os.environ` exportiert und die Herkunftsanzeige
+verfälscht.
+
+`config.schluessel_quelle("ROIC_API_KEY")` gibt aus, woher der Schlüssel kam:
+`Umgebungsvariable` / `secrets.toml` / `Fallback im Code` / `FEHLT`.
+`warum_fair_value.py` zeigt das jetzt in Abschnitt 1.
+
+### Zu prüfen bleibt
+
+Damit rechnen App und Skripte erstmals mit denselben Daten. Was NVDA dann
+tatsächlich ergibt, ist offen — die −64,5 % aus der App wurden **mit** roic
+gerechnet, die +88,7 % ohne. Welcher Wert näher an der Wahrheit liegt, zeigt
+erst ein Lauf mit gleicher Datenbasis.

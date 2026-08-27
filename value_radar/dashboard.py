@@ -385,9 +385,30 @@ def load_fundamentals_deep(t):
         if _t.time() - _zeit < _ttl:
             return _daten
     _daten = providers.get_fundamentals(t, deep=True)
-    _voll = bool(_daten and _daten.get("_vollstaendig", True))
+    # Kein Default True mehr: Wenn providers das Feld nicht setzt, ist der
+    # Abruf im Zweifel unvollstaendig und wird kurz gecacht. Andersherum
+    # klebte eine Datenluecke eine Stunde lang.
+    _voll = bool(_daten and _daten.get("_vollstaendig", False))
     _DEEP_CACHE[t] = (_t.time(), _daten, _voll)
     return _daten
+
+
+def deep_cache_info(t):
+    """Alter und Vollstaendigkeit des Cache-Eintrags - fuer die Anzeige.
+
+    Zeigt, ob zwei Oberflaechen denselben Datenstand sehen. Genau hier lag
+    die Ursache dafuer, dass Portfolio und Einzelanalyse fuer dieselbe Aktie
+    verschiedene Upsides anzeigten.
+    """
+    import time as _t
+    _hit = _DEEP_CACHE.get(t)
+    if not _hit:
+        return None
+    _zeit, _daten, _voll = _hit
+    return {"alter_s": int(_t.time() - _zeit), "vollstaendig": _voll,
+            "luecke_prognose": (_daten or {}).get("_luecke_prognose") or [],
+            "luecke_kern": (_daten or {}).get("_luecke_kern") or [],
+            "quellen": (_daten or {}).get("data_sources")}
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_intel(t, name=None): return intel_mod.gather(t, name=name)
 @st.cache_data(ttl=900, show_spinner=False)

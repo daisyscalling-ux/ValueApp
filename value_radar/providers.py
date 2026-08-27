@@ -753,8 +753,19 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
                        "market_cap", "revenue")
         _roic_aktiv = bool(merged.get("_roic"))
         _kern_da = sum(1 for k in _kernfelder if merged.get(k) is not None)
-        # vollstaendig, wenn roic aktiv war UND die Mehrheit der Kernfelder da ist
-        merged["_vollstaendig"] = bool(_roic_aktiv and _kern_da >= 3)
+        # ZWEITE Bedingung, neu: Alle bisherigen Kernfelder liefert roic selbst.
+        # Damit galt ein Abruf als "vollstaendig", sobald roic antwortete - auch
+        # wenn eps_forward und target_mean fehlten. Genau die beiden tragen im
+        # inflection-Playbook aber 70 % des Methodengewichts. Folge: ein
+        # einzelner yfinance-Ausfall wurde eine STUNDE lang gecacht (statt 60 s)
+        # und dieselbe Aktie zeigte je nach Aufrufzeitpunkt voellig andere
+        # Upsides - hier +80 %, dort -65 %.
+        _prognosefelder = ("eps_forward", "target_mean")
+        _prog_da = sum(1 for k in _prognosefelder if merged.get(k))
+        merged["_vollstaendig"] = bool(_roic_aktiv and _kern_da >= 3
+                                       and _prog_da == len(_prognosefelder))
+        merged["_luecke_kern"] = [k for k in _kernfelder if merged.get(k) is None]
+        merged["_luecke_prognose"] = [k for k in _prognosefelder if not merged.get(k)]
     else:
         merged["_vollstaendig"] = True     # flache Abrufe: kein roic-Anspruch
     # ------------------------------------------------------------------

@@ -12,7 +12,7 @@ Funktion, sondern eine Datei wurde beim Hochladen vergessen.
 import importlib
 import sys
 
-ERWARTET = "2026.08.27"
+ERWARTET = "2026.08.29"
 
 MODULE = {
     "ui_bewertung": ["sparkline", "kennzahl_kacheln", "news_karte",

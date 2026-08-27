@@ -714,3 +714,63 @@ sondern die Konsequenz aus rohem Beta. Ob das für ein Unternehmen mit
 Nettoliquidität und 63 % Nettomarge angemessen ist, ist eine Modellfrage —
 üblich wäre eine Schrumpfung Richtung 1 (Blume: 0,67·β + 0,33 → 1,81 →
 WACC ≈ 13,2 %). Das ändere ich nicht ohne deine Entscheidung.
+
+---
+
+## Punkt 5 und 6 nachgezogen
+
+Beide waren bisher nur Anzeige, nicht Wirkung. Jetzt greifen sie in die Rechnung ein.
+
+### Punkt 5 — Schätzgüte wirkt auf `eps_forward`
+
+`providers.get_fundamentals(deep=True)` wertet die EPS-Historie aus
+(`get_eps_history`, mindestens sechs Quartale), blendet den Konsens gegen eine
+log-lineare Trendfortschreibung und korrigiert bei systematischer Verzerrung um
+die mittlere Verfehlung. Der Rohwert bleibt als `eps_forward_roh` erhalten.
+
+Damit rechnen `fwd_pe`, `fwd_composite` und `hist_pe` erstmals mit einer
+Schätzung, deren Verlässlichkeit geprüft wurde. Beispiel mit einem Konsens, der
+im Schnitt 8,4 % zu hoch lag:
+
+```
+Konsens 11,00 → um Bias korrigiert 10,08 → Trend 9,16 → geblendet 9,84
+Fair Value 218,24 → 208,49
+```
+
+Die Herleitung steht in Abschnitt „Schätzgüte" unter den Sternen: *„Der Konsens
+wurde von 11,00 auf 9,84 gestutzt (−10,5 %). Mit diesem Wert rechnen fwd_pe,
+fwd_composite und hist_pe."*
+
+### Punkt 6 — Cash-Conversion als DCF-Hebel
+
+Neu `valuation.fcf_basis(fund, conversion=None)`. Der DCF rechnet nicht mehr
+blind auf dem gemeldeten TTM-Cashflow, sondern auf **Nettogewinn × üblicher
+Conversion**, sobald eine Historie vorliegt. Grund: Der TTM-Wert schwankt mit
+Working Capital, Steuerstichtagen und Einmaleffekten — ein schwaches Jahr zieht
+den DCF in die Tiefe, ohne dass sich am Geschäft etwas geändert hat.
+
+Die Conversion kommt aus `roic.cashflow_reihe()` (neu, Feldnamen defensiv
+abgedeckt) als Median über bis zu sechs Jahre und landet als
+`fund["cash_conversion"]`. Ohne Historie bleibt es beim gemeldeten Wert.
+
+```
+gemeldeter FCF 1,10 Mrd · Nettogewinn 1,50 Mrd
+  ohne (gemeldet)     Basis 1,10 Mrd                 DCF  93,46
+  Conversion  85 %    Basis 1,27 Mrd (+16 %)         DCF 109,92
+  Conversion 100 %    Basis 1,50 Mrd (+36 %)         DCF 131,08
+  Conversion  60 %    Basis 0,90 Mrd (−18 %)         DCF  74,65
+```
+
+**Der Reverse DCF nutzt dieselbe Basis** — sonst wären die beiden Zahlen nicht
+mehr vergleichbar gewesen.
+
+Nichts davon passiert still: `dcf_diagnose()` gibt `fcf_basis` mit zurück und
+schreibt einen Hinweis, sobald normalisiert wird. Die Treiberliste zeigt
+„Cashflow-Basis 1,27 Mrd *statt 1,10 gemeldet*".
+
+### Was sich dadurch ändert
+
+Beide Eingriffe verändern bestehende Fair Values — Punkt 6 bei jedem Titel mit
+Cashflow-Historie, Punkt 5 bei jedem mit auswertbarer EPS-Historie. Nach dem
+Einspielen also `precompute.py` neu laufen lassen, sonst zeigen Listenansichten
+und Einzelanalyse wieder verschiedene Zahlen.

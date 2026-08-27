@@ -452,6 +452,59 @@ def cashflow_annual(t: str, limit: int = 2):
     return d if isinstance(d, list) else (d or {}).get("data")
 
 
+def cashflow_reihe(t: str, jahre: int = 6) -> dict:
+    """Freier Cashflow und Nettogewinn je Geschaeftsjahr - fuer die
+    Cash-Conversion.
+
+    bundle() nimmt free_cashflow aus dem Enterprise-Value-Endpunkt
+    (ttm_free_cash_flow_firm), also nur den letzten Stand. Fuer die Frage
+    "wie viel vom ausgewiesenen Gewinn kommt ueblicherweise als Cash an"
+    braucht es die Reihe. Feldnamen defensiv abgedeckt, wie ueberall hier.
+
+    Rueckgabe: {"fcf": [...], "ni": [...], "jahre": [...]} - aeltester zuerst.
+    """
+    try:
+        cf = cashflow_annual(t, limit=jahre) or []
+        inc = income_annual(t, limit=jahre) or []
+    except Exception:
+        return {}
+    if not cf or not inc:
+        return {}
+
+    def _jahr(z):
+        return str(_g(z, "fiscal_year", "calendar_year", "year", "period_ending",
+                      "date") or "")[:4]
+
+    cf_map, ni_map = {}, {}
+    for z in cf:
+        if not isinstance(z, dict):
+            continue
+        f = _num(_g(z, "cf_free_cash_flow", "free_cash_flow", "freeCashFlow",
+                    "cf_fcf"))
+        if f is None:
+            ocf = _num(_g(z, "cf_cash_from_operations", "operating_cash_flow",
+                          "cf_net_cash_from_operating_activities",
+                          "netCashProvidedByOperatingActivities"))
+            capex = _num(_g(z, "cf_capital_expenditures", "capital_expenditure",
+                            "capitalExpenditure", "cf_capex"))
+            if ocf is not None and capex is not None:
+                f = ocf - abs(capex)
+        if f is not None:
+            cf_map[_jahr(z)] = f
+    for z in inc:
+        if isinstance(z, dict):
+            n = _num(_g(z, "is_net_income", "net_income", "netIncome"))
+            if n is not None:
+                ni_map[_jahr(z)] = n
+
+    gemeinsam = sorted(set(cf_map) & set(ni_map))
+    if not gemeinsam:
+        return {}
+    return {"jahre": gemeinsam,
+            "fcf": [cf_map[j] for j in gemeinsam],
+            "ni": [ni_map[j] for j in gemeinsam]}
+
+
 def prices_history(t: str, von: str = None, bis: str = None,
                    limit: int = 100, order: str = "ASC"):
     """Tageskurse. Pfad und Parameter laut Doku (v3.0.0):

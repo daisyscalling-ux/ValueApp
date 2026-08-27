@@ -352,10 +352,42 @@ def dcf_annahmen(fund, preset="quality") -> Optional[dict]:
     }
 
 
-def dcf_two_stage(fund, preset="quality") -> Optional[float]:
+def fcf_basis(fund, conversion: Optional[float] = None) -> dict:
+    """Welcher Free Cashflow geht in den DCF - der gemeldete oder ein
+    normalisierter?
+
+    Der gemeldete TTM-Cashflow schwankt mit Working Capital, Steuerstichtagen
+    und Einmaleffekten. Ein einzelnes schwaches Jahr zieht den DCF dann in die
+    Tiefe, ohne dass sich am Geschaeft etwas geaendert hat. Normalisiert heisst:
+    Nettogewinn x uebliche Cash-Conversion (Median mehrerer Jahre).
+
+    Umgestellt wird nur, wenn eine Conversion aus der Historie vorliegt
+    (fund["cash_conversion"], von providers gesetzt) - sonst bleibt es beim
+    gemeldeten Wert. Beide Groessen werden zurueckgegeben, damit die
+    Umstellung sichtbar ist und nicht still passiert.
+    """
+    gemeldet = fund.get("free_cashflow")
+    conv = conversion if conversion is not None else fund.get("cash_conversion")
+    ni = fund.get("net_income")
+    normal = (ni * conv) if (conv and ni and ni > 0) else None
+
+    if normal and normal > 0:
+        basis, quelle = normal, "normalisiert"
+    else:
+        basis, quelle = gemeldet, "gemeldet"
+
+    return {"basis": basis, "gemeldet": gemeldet, "normalisiert": normal,
+            "conversion": conv, "quelle": quelle,
+            "abweichung": ((normal / gemeldet - 1.0)
+                           if (normal and gemeldet and gemeldet > 0) else None)}
+
+
+def dcf_two_stage(fund, preset="quality",
+                  conversion: Optional[float] = None) -> Optional[float]:
     if preset == "cyclical":
         return None
-    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    shares = fund.get("shares_out")
+    fcf = fcf_basis(fund, conversion)["basis"]
     if not fcf or not shares or fcf <= 0:
         return None
     years = max(int(V.get("projection_years", 10)), 2)   # konsistent mit Reverse-DCF
@@ -1327,7 +1359,8 @@ def dcf_diagnose(fund, preset: str = "quality") -> Optional[dict]:
 
     if preset == "cyclical":
         return None
-    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    _basis = fcf_basis(fund)
+    fcf, shares = _basis["basis"], fund.get("shares_out")
     if not fcf or not shares or fcf <= 0:
         return None
 
@@ -1378,7 +1411,15 @@ def dcf_diagnose(fund, preset: str = "quality") -> Optional[dict]:
         hinweise.append("Diskontsatz wurde auf den Mindestabstand zum Terminalwachstum "
                         "angehoben - der DCF ist hier besonders empfindlich.")
 
+    if _basis["quelle"] == "normalisiert" and _basis.get("abweichung") is not None:
+        hinweise.append(
+            f"DCF rechnet mit normalisiertem Cashflow: Nettogewinn x "
+            f"{_basis['conversion']:.0%} Conversion = {_basis['normalisiert']/1e9:.1f} Mrd "
+            f"statt gemeldeter {_basis['gemeldet']/1e9:.1f} Mrd "
+            f"({_basis['abweichung']:+.0%}).")
+
     return {
+        "fcf_basis": _basis,
         "wert_je_aktie": (round(teile["wert_je_aktie"], 2)
                           if teile["wert_je_aktie"] else None),
         "terminal_anteil": round(ta, 4) if ta else None,
@@ -1782,7 +1823,8 @@ def _wert_je_aktie(fcf, shares, net_debt, g1, g_term, r, years) -> Optional[floa
 
 def _basis(fund, preset: str) -> Optional[dict]:
 
-    fcf, shares = fund.get("free_cashflow"), fund.get("shares_out")
+    fcf = fcf_basis(fund)["basis"]
+    shares = fund.get("shares_out")
     price = fund.get("price")
     if not fcf or not shares or not price or fcf <= 0:
         return None

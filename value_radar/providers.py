@@ -849,6 +849,53 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             merged["_fmp_luecken"] = sorted(_gefuellt)
         merged["_offene_luecken"] = sorted(_fehlt)
 
+        # ------------------------------------------------------------------
+        # CASH-CONVERSION (Punkt 6): Median aus FCF/Nettogewinn ueber mehrere
+        # Jahre. Der gemeldete TTM-Cashflow schwankt mit Working Capital und
+        # Einmaleffekten; ein schwaches Jahr zieht den DCF in die Tiefe, ohne
+        # dass sich am Geschaeft etwas geaendert hat. valuation.fcf_basis()
+        # nimmt daraus einen normalisierten Cashflow - und weist die Umstellung
+        # aus, statt sie still zu machen.
+        # ------------------------------------------------------------------
+        if R:
+            try:
+                import valuation as _v
+                _cr = _roic.cashflow_reihe(ticker, 6) or {}
+                if _cr.get("fcf") and _cr.get("ni"):
+                    _cc = _v.conversion_aus_historie(_cr["fcf"], _cr["ni"])
+                    if _cc and _cc.get("n", 0) >= 3:
+                        merged["cash_conversion"] = _cc["median"]
+                        merged["cash_conversion_info"] = _cc
+                        merged["fcf_reihe"] = _cr["fcf"]
+                        merged["ni_reihe"] = _cr["ni"]
+            except Exception:
+                pass
+
+        # ------------------------------------------------------------------
+        # SCHAETZGUETE (Punkt 5): Der Analystenkonsens ging bisher ungewichtet
+        # in fwd_pe, fwd_composite und hist_pe ein - unabhaengig davon, ob er
+        # fuer DIESEN Titel je getroffen hat. Hier wird er gegen eine
+        # Trendfortschreibung geblendet und bei systematischer Verzerrung um
+        # die mittlere Verfehlung korrigiert. Der Rohwert bleibt als
+        # eps_forward_roh erhalten.
+        # ------------------------------------------------------------------
+        if merged.get("eps_forward"):
+            try:
+                import schaetzguete as _sg
+                _paare = get_eps_history(ticker, 12)
+                if len(_paare) >= 6:
+                    _q = _sg.auswerten(_paare)
+                    _hist = merged.get("eps_reihe") or []
+                    if len(_hist) >= 3 and _q.get("n"):
+                        _bl = _sg.geblendetes_eps(merged["eps_forward"], _hist, _q)
+                        if _bl and _bl.get("eps") and _bl["eps"] > 0:
+                            merged["eps_forward_roh"] = merged["eps_forward"]
+                            merged["eps_forward"] = _bl["eps"]
+                            merged["schaetzguete"] = _q
+                            merged["eps_forward_herleitung"] = _bl
+            except Exception:
+                pass
+
     # Feld -> Quelle, damit im Zweifel nachvollziehbar ist, woher eine Zahl
     # stammt (reine Diagnose, aendert keine Berechnung).
     merged["_feldquellen"] = _feldquellen(merged)

@@ -3990,7 +3990,7 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
-                _ERWARTET = "2026.08.27"
+                _ERWARTET = "2026.08.29"
 
                 def _modul_alt(mod, noetig=()):
                     if getattr(mod, "__version__", None) != _ERWARTET:
@@ -4146,7 +4146,7 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.08.27":
+                    if getattr(_bs, "__version__", None) != "2026.08.29":
                         st.warning("Veralteter Dateistand: bewertung_seite.py "
                                    "\u2014 bitte erneut hochladen und die App "
                                    "neu starten.", icon="\u26a0\ufe0f")
@@ -4196,7 +4196,11 @@ if nav == "Einzelanalyse":
                                 fcf_reihe=_reihen.get("fcf"),
                                 ni_reihe=_reihen.get("ni"),
                                 fx=_fx_eur, waehrung="EUR", theme="dunkel",
-                                start_abschnitt=3)
+                                start_abschnitt=3,
+                                # Falls der Umschalter je wieder klemmt: hier
+                                # auf False setzen, dann laedt beim Wechsel
+                                # wieder die ganze Seite - aber er funktioniert.
+                                ohne_reload=True)
 
                     # Datenherkunft sichtbar machen: fehlt eine Reihe, fehlt der
                     # zugehoerige Abschnitt - dann soll man wissen warum.

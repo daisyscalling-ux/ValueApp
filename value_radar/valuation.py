@@ -906,7 +906,7 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         _dcf_diagnose = None
 
     try:
-        _datenqualitaet = datenqualitaet(fund, preset)
+        _datenqualitaet = datenqualitaet(fund, preset, ergebnisse=raw)
         # Verworfene Methoden sind kein Datenproblem, aber dieselbe Klasse von
         # stiller Verschiebung - deshalb in dieselbe Warnzeile.
         if _datenqualitaet and _verworfen:
@@ -1042,17 +1042,27 @@ def datenaktualitaet(fund, naechster_termin_tage=None) -> dict:
 # Datenqualitaet - warum ein Fair Value ploetzlich anders aussieht
 # ---------------------------------------------------------------------------
 
-#: Welche fund-Felder eine Methode zwingend braucht.
+#: Welche Felder eine Methode braucht - NUR fuer die Erklaerung, warum sie
+#: ausgefallen ist. Ob sie ausgefallen ist, wird am tatsaechlichen Ergebnis
+#: abgelesen, nicht an dieser Liste.
+#:
+#: Der Unterschied ist kein Detail: Die erste Fassung hat aus diesen Listen
+#: GESCHLOSSEN, dass eine Methode entfaellt - und lag damit systematisch
+#: falsch. justified_pe_number() braucht nur ein positives EPS; roe und
+#: gross_margin gehen als Bonuspunkte ein, fehlen duerfen sie. multiple_ev_ebitda()
+#: braucht shares_out und ebitda; das eigene ev_ebitda ist optional, ohne es
+#: wird der Sektoranker genommen. Beide wurden deshalb bei fast jedem Titel
+#: faelschlich als "entfaellt mangels Daten" gemeldet.
 _FELDBEDARF = {
-    "justified_pe": ["eps_trailing", "roe", "gross_margin"],
+    "justified_pe": ["eps_trailing"],
     "fwd_pe": ["eps_forward"],
     "fwd_composite": ["eps_forward"],
     "hist_pe": ["eps_forward", "hist_pe_median"],
-    "ev_ebitda": ["ebitda", "ev_ebitda"],
+    "ev_ebitda": ["ebitda", "shares_out"],
     "dcf": ["free_cashflow", "shares_out"],
-    "pb": ["book_value_ps", "pb"],
+    "pb": ["book_value_ps"],
     "epv": ["operating_margin", "revenue"],
-    "analyst": ["target_mean", "analyst_count"],
+    "analyst": ["target_mean"],
 }
 
 #: Ohne diese Felder kippt classify_playbook lautlos in ein anderes Playbook -
@@ -1062,24 +1072,38 @@ _FELDBEDARF = {
 _PLAYBOOK_KRITISCH = ["revenue_growth", "earnings_growth"]
 
 
-def datenqualitaet(fund, preset: str = "quality") -> dict:
-    """Welche Felder fehlen, und was bedeutet das fuer die Bewertung?
+def datenqualitaet(fund, preset: str = "quality",
+                   ergebnisse: Optional[Dict[str, float]] = None) -> dict:
+    """Welche Methoden sind ausgefallen, und was bedeutet das?
 
-    Hintergrund: Faellt eine Datenquelle aus (abgelaufener API-Schluessel,
+    `ergebnisse` sind die TATSAECHLICH berechneten Methodenwerte
+    (valuation.fair_value uebergibt sie). Nur was dort fehlt oder None ist,
+    gilt als ausgefallen. Ohne diese Angabe faellt die Funktion auf die
+    Feldpruefung zurueck - die ist ungenauer und neigt zu Fehlalarmen.
+
+    Hintergrund: Faellt eine Datenquelle aus (abgelaufener Schluessel,
     Rate-Limit, Anbieterausfall), verschwinden einzelne Felder still. Die
     Bewertung rechnet dann mit weniger Methoden weiter und liefert eine Zahl,
-    die aussieht wie immer - aber auf einer anderen Grundlage steht. Bei
-    Wachstumstiteln kann der Fair Value dadurch um mehr als die Haelfte
-    abweichen, ohne dass sich am Unternehmen etwas geaendert hat.
+    die aussieht wie immer - aber auf einer anderen Grundlage steht.
     """
+    gewichte = _WEIGHTS.get(preset, _WEIGHTS["quality"])
+
+    if ergebnisse is not None:
+        ausgefallen = [m for m in gewichte
+                       if gewichte.get(m, 0) > 0 and not ergebnisse.get(m)]
+    else:
+        ausgefallen = [m for m in gewichte
+                       if gewichte.get(m, 0) > 0
+                       and any(fund.get(k) in (None, 0)
+                               for k in _FELDBEDARF.get(m, []))]
+
+    # Warum? Nur fuer die tatsaechlich ausgefallenen Methoden nachschlagen.
     fehlt_je_methode = {}
-    for m, felder in _FELDBEDARF.items():
-        f = [k for k in felder if fund.get(k) in (None, 0)]
+    for m in ausgefallen:
+        f = [k for k in _FELDBEDARF.get(m, []) if fund.get(k) in (None, 0)]
         if f:
             fehlt_je_methode[m] = f
 
-    gewichte = _WEIGHTS.get(preset, _WEIGHTS["quality"])
-    ausgefallen = [m for m in fehlt_je_methode if m in gewichte]
     verlust = sum(gewichte.get(m, 0) for m in ausgefallen)
     gesamt = sum(gewichte.values()) or 1.0
 
@@ -1091,11 +1115,23 @@ def datenqualitaet(fund, preset: str = "quality") -> dict:
             "Playbook-Einstufung unsicher: " + ", ".join(pb_luecken) + " fehlt. "
             "Ohne Wachstumsdaten wird ein Wachstumstitel als Qualitaetstitel "
             "eingestuft - mit anderen Gewichten und deutlich niedrigerem Fair Value.")
-    if verlust / gesamt > 0.35:
+    # "dcf faellt aus" ohne Nennung eines fehlenden Feldes ist ebenfalls eine
+    # Aussage - dann liegt es nicht an den Daten, sondern am Modell (negatives
+    # Eigenkapital, EBITDA <= 0, unloesbarer Terminalwert). Beides muss man
+    # unterscheiden koennen.
+    _ohne_grund = [m for m in ausgefallen if m not in fehlt_je_methode]
+    if _ohne_grund and verlust / gesamt <= 0.35:
         warnungen.append(
-            f"{verlust / gesamt:.0%} des Methodengewichts entfallen mangels Daten "
-            f"({', '.join(ausgefallen)}). Der Fair Value stuetzt sich auf einen "
-            f"Bruchteil der vorgesehenen Methoden.")
+            f"Ohne Ergebnis, obwohl die Daten vorliegen: {', '.join(_ohne_grund)}. "
+            f"Ursache liegt im Modell, nicht in der Datenlage.")
+    if verlust / gesamt > 0.35:
+        _mit_grund = ", ".join(
+            (f"{m} (ohne {', '.join(fehlt_je_methode[m])})" if m in fehlt_je_methode
+             else m) for m in ausgefallen)
+        warnungen.append(
+            f"{verlust / gesamt:.0%} des Methodengewichts entfallen: {_mit_grund}. "
+            f"Der Fair Value stuetzt sich auf einen Bruchteil der vorgesehenen "
+            f"Methoden.")
     if fund.get("target_mean") is None and gewichte.get("analyst", 0) > 0:
         warnungen.append("Kein Analystenziel vorhanden - der Marktanker fehlt.")
 

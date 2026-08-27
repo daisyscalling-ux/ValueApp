@@ -49,101 +49,125 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
             eps_reihe: Optional[Sequence[float]] = None,
             fcf_reihe: Optional[Sequence[float]] = None,
             ni_reihe: Optional[Sequence[float]] = None,
-            waehrung: str = "USD", theme: str = "dunkel",
+            fx: float = 1.0, waehrung: str = "USD", theme: str = "dunkel",
             start_abschnitt: int = 1) -> None:
     """Rendert den kompletten Bewertungsblock.
 
-    fund   fund-Dict aus providers.get_fundamentals
-    v      Rueckgabe von valuation.fair_value(fund, peer_funds, preset)
+    fund       fund-Dict aus providers.get_fundamentals
+    v          Rueckgabe von valuation.fair_value(fund, peer_funds, preset)
+    fx         Umrechnungsfaktor von der Handelswaehrung in `waehrung`.
+               Gerechnet wird weiter in der Handelswaehrung - nur die ANZEIGE
+               wird umgerechnet. Verhaeltniszahlen (Multiples, Wachstum,
+               Perzentile) bleiben unberuehrt, sie sind waehrungsunabhaengig.
+    waehrung   Anzeigewaehrung, z. B. "EUR"
     """
+    def _w(x):
+        """Betrag in die Anzeigewaehrung."""
+        return x * fx if isinstance(x, (int, float)) and x is not None else x
     ui.inject_css(theme)
-    n = start_abschnitt
+    n = start_abschnitt + 2      # 1 und 2 vergibt das Fragment
     preis = fund.get("price")
 
     # =======================================================================
-    # 1 - Innerer Wert, mit Szenario-Umschalter
+    # 1 + 2 als Fragment: Beim Umschalten Bear/Base/Bull wird nur dieser Teil
+    # neu gezeichnet, nicht die ganze Seite. Ohne st.fragment (Streamlit < 1.33)
+    # laeuft es wie bisher - dann laedt die Seite eben neu.
     # =======================================================================
-    # Datenluecken zuerst: ein Fair Value auf halber Datenbasis sieht genauso
-    # aus wie einer auf voller - deshalb muss die Warnung VOR die Zahl.
-    dq = v.get("datenqualitaet")
-    vw = v.get("verworfene_methoden") or {}
-    if vw:
-        zeilen = [(f'{METHODEN_LABEL.get(k, k)} ({(d.get("gewicht") or 0):.0%} Gewicht)',
-                   f'{ui.de(d["wert"], 2)} \u00b7 {d["vs_kurs"]:+.0f} % zum Kurs '
-                   f'\u00b7 {d["grund"]}')
-                  for k, d in vw.items()]
-        ui.treiber_panel([("Verworfene Methoden", zeilen)])
-    if dq and dq.get("warnungen"):
-        ui.urteil_box(
-            titel=f'Datenbasis {dq["stufe"]}',
-            text=" ".join(dq["warnungen"]),
-            ton=dq["ton"],
-            chip=(f'{dq["gewichtsverlust"]:.0%} Gewicht fehlt'
-                  if dq.get("gewichtsverlust") else ""))
-
-    ui.abschnitt(n, "Innerer Wert")
-    n += 1
-
+    # Die Szenariomatrix kostet drei fair_value-Laeufe und haengt NICHT am
+    # gewaehlten Szenario - deshalb einmal vorab, ausserhalb des Fragments.
+    # Sonst wuerde jeder Klick auf Bear/Bull sie neu berechnen.
     matrix = valuation.szenario_matrix(fund, peer_funds, preset)
-    sz = ui.szenario_umschalter("va_sz", index=1) if matrix else "base"
 
-    wert = (matrix["blend"].get(sz) if matrix else v.get("fair_value")) or v.get("fair_value")
-    v_sz = (matrix.get("ergebnisse", {}).get(sz) if matrix else None) or v
-    mos = v.get("margin_of_safety") or 0.20
-    einstieg = wert * (1 - mos) if wert else None
-    abweichung = ((preis - wert) / wert) if (wert and preis) else None
+    _frag = getattr(st, "fragment", None)
 
-    teile = " \u00b7 ".join(
-        f'{METHODEN_LABEL.get(k, k)} {ui.de(val, 0)}'
-        for k, val in (v_sz.get("methods") or {}).items())
+    def _wert_und_herkunft():
+        # =======================================================================
+        # 1 - Innerer Wert, mit Szenario-Umschalter
+        # =======================================================================
+        # Datenluecken zuerst: ein Fair Value auf halber Datenbasis sieht genauso
+        # aus wie einer auf voller - deshalb muss die Warnung VOR die Zahl.
+        dq = v.get("datenqualitaet")
+        vw = v.get("verworfene_methoden") or {}
+        if vw:
+            zeilen = [(f'{METHODEN_LABEL.get(k, k)} ({(d.get("gewicht") or 0):.0%} Gewicht)',
+                       f'{ui.de(_w(d["wert"]), 2)} \u00b7 {d["vs_kurs"]:+.0f} % zum Kurs '
+                       f'\u00b7 {d["grund"]}')
+                      for k, d in vw.items()]
+            ui.treiber_panel([("Verworfene Methoden", zeilen)])
+        if dq and dq.get("warnungen"):
+            ui.urteil_box(
+                titel=f'Datenbasis {dq["stufe"]}',
+                text=" ".join(dq["warnungen"]),
+                ton=dq["ton"],
+                chip=(f'{dq["gewichtsverlust"]:.0%} Gewicht fehlt'
+                      if dq.get("gewichtsverlust") else ""))
 
-    farbe = ui.C["red"] if (abweichung or 0) >= 0 else ui.C["green"]
-    fall_kurz = {"bear": "Bear", "base": "Base", "bull": "Bull"}[sz]
-    richtung = "ueberbewertet" if (abweichung or 0) >= 0 else "unterbewertet"
+        ui.abschnitt(start_abschnitt, "Innerer Wert")
 
-    text = (
-        f'Der geblendete innere Wert liegt im {fall_kurz} Case bei '
-        f'<b>{ui.geld(wert, waehrung)}</b>. Gegenueber dem Kurs von '
-        f'{ui.geld(preis, waehrung)} erscheint die Aktie '
-        f'<b style="color:{farbe}">{richtung} um '
-        f'{abs(abweichung or 0) * 100:.0f} %</b>.<br><br>'
-        f'<span style="color:{ui.C["muted"]}">Playbook '
-        f'{PLAYBOOK_LABEL.get(preset, preset)} \u00b7 {teile}</span><br><br>'
-        f'<b>Einstieg</b> bei {mos:.0%} risikoadjustierter Sicherheitsmarge: '
-        f'<b>{ui.geld(einstieg, waehrung)}</b>')
+        sz = ui.szenario_umschalter("va_sz", index=1) if matrix else "base"
 
-    ui.wert_kopf(
-        titel=f'{ticker or fund.get("ticker", "")} Innerer Wert',
-        fall=f'{fall_kurz} Case', wert=wert, preis=preis, waehrung=waehrung,
-        akzent="amber", balken_label="Innerer Wert", text_html=text)
+        wert = (matrix["blend"].get(sz) if matrix else v.get("fair_value")) or v.get("fair_value")
+        v_sz = (matrix.get("ergebnisse", {}).get(sz) if matrix else None) or v
+        mos = v.get("margin_of_safety") or 0.20
+        einstieg = wert * (1 - mos) if wert else None
+        abweichung = ((preis - wert) / wert) if (wert and preis) else None
 
-    # =======================================================================
-    # 2 - Woher der Wert kommt
-    # =======================================================================
-    ui.abschnitt(n, "Woher der Wert kommt")
-    n += 1
-    ui.diagnose_karte(v.get("dcf_diagnose"), v.get("herkunft"))
+        teile = " \u00b7 ".join(
+            f'{METHODEN_LABEL.get(k, k)} {ui.de(_w(val), 0)}'
+            for k, val in (v_sz.get("methods") or {}).items())
 
-    d = v.get("dcf_diagnose")
-    if d:
-        cc = (valuation.conversion_aus_historie(fcf_reihe, ni_reihe)
-              if (fcf_reihe and ni_reihe) else None)
-        bloecke = [("DCF-Annahmen", [
-            ("Startwachstum", ui.pct(d.get("wachstum_start"))),
-            ("Terminalwachstum", ui.pct(d.get("terminal_growth"))),
-            ("Prognosezeitraum", f'{d.get("jahre")} Jahre'),
-            ("WACC", ui.pct(d.get("wacc"))),
-        ])]
-        if cc:
-            bloecke.append(("Cash-Conversion (FCF / Nettogewinn)", [
-                ("Median", ui.pct(cc["median"], 0)),
-                ("Streuung", ui.de(cc["streuung"], 2)),
-                ("Spanne", f'{ui.de(cc["min"], 2)} \u2013 {ui.de(cc["max"], 2)}'),
-                ("Jahre", str(cc["n"])),
-            ]))
-        ui.treiber_panel(bloecke)
-        if cc and cc.get("warnung"):
-            ui.hinweise([cc["warnung"]])
+        farbe = ui.C["red"] if (abweichung or 0) >= 0 else ui.C["green"]
+        fall_kurz = {"bear": "Bear", "base": "Base", "bull": "Bull"}[sz]
+        richtung = "ueberbewertet" if (abweichung or 0) >= 0 else "unterbewertet"
+
+        text = (
+            f'Der geblendete innere Wert liegt im {fall_kurz} Case bei '
+            f'<b>{ui.geld(_w(wert), waehrung)}</b>. Gegenueber dem Kurs von '
+            f'{ui.geld(_w(preis), waehrung)} erscheint die Aktie '
+            f'<b style="color:{farbe}">{richtung} um '
+            f'{abs(abweichung or 0) * 100:.0f} %</b>.<br><br>'
+            f'<span style="color:{ui.C["muted"]}">Playbook '
+            f'{PLAYBOOK_LABEL.get(preset, preset)} \u00b7 {teile}</span><br><br>'
+            f'<b>Einstieg</b> bei {mos:.0%} risikoadjustierter Sicherheitsmarge: '
+            f'<b>{ui.geld(_w(einstieg), waehrung)}</b>')
+
+        ui.wert_kopf(
+            titel=f'{ticker or fund.get("ticker", "")} Innerer Wert',
+            fall=f'{fall_kurz} Case', wert=_w(wert), preis=_w(preis), waehrung=waehrung,
+            akzent="amber", balken_label="Innerer Wert", text_html=text)
+
+        # =======================================================================
+        # 2 - Woher der Wert kommt
+        # =======================================================================
+        ui.abschnitt(start_abschnitt + 1, "Woher der Wert kommt")
+        ui.diagnose_karte(v.get("dcf_diagnose"), v.get("herkunft"))
+
+        d = v.get("dcf_diagnose")
+        if d:
+            cc = (valuation.conversion_aus_historie(fcf_reihe, ni_reihe)
+                  if (fcf_reihe and ni_reihe) else None)
+            bloecke = [("DCF-Annahmen", [
+                ("Startwachstum", ui.pct(d.get("wachstum_start"))),
+                ("Terminalwachstum", ui.pct(d.get("terminal_growth"))),
+                ("Prognosezeitraum", f'{d.get("jahre")} Jahre'),
+                ("WACC", ui.pct(d.get("wacc"))),
+            ])]
+            if cc:
+                bloecke.append(("Cash-Conversion (FCF / Nettogewinn)", [
+                    ("Median", ui.pct(cc["median"], 0)),
+                    ("Streuung", ui.de(cc["streuung"], 2)),
+                    ("Spanne", f'{ui.de(cc["min"], 2)} \u2013 {ui.de(cc["max"], 2)}'),
+                    ("Jahre", str(cc["n"])),
+                ]))
+            ui.treiber_panel(bloecke)
+            if cc and cc.get("warnung"):
+                ui.hinweise([cc["warnung"]])
+
+
+    if callable(_frag):
+        _frag(_wert_und_herkunft)()
+    else:
+        _wert_und_herkunft()
 
     # =======================================================================
     # 3 - Reverse DCF
@@ -184,9 +208,13 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
                                impliziert=rd["impliziertes_wachstum"],
                                marker=marker)
         ui.hinweise(rd["hinweise"])
-        ui.benchmark_tabelle(rd["zeilen"], waehrung=waehrung)
+        _zeilen = [dict(z, wert=_w(z.get("wert"))) for z in rd["zeilen"]]
+        ui.benchmark_tabelle(_zeilen, waehrung=waehrung)
         with st.expander("Beide Treiber gleichzeitig pruefen (Wachstum \u00d7 Cash-Basis)"):
-            ui.gitter_tabelle(rd["gitter"], waehrung)
+            _g = rd["gitter"]
+            _g_eur = dict(_g, preis=_w(_g["preis"]),
+                          werte=[[_w(x) for x in reihe] for reihe in _g["werte"]])
+            ui.gitter_tabelle(_g_eur, waehrung)
 
     # =======================================================================
     # 4 - Szenarien je Methode
@@ -194,7 +222,15 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
     if matrix:
         ui.abschnitt(n, "Szenarien", "je Methode")
         n += 1
-        ui.szenario_tabelle(matrix, METHODEN_LABEL, waehrung)
+        _m_eur = dict(matrix)
+        _m_eur["preis"] = _w(matrix["preis"])
+        _m_eur["methoden"] = {k: {sz: _w(x) for sz, x in d.items()}
+                              for k, d in matrix["methoden"].items()}
+        _m_eur["blend"] = {sz: _w(x) for sz, x in matrix["blend"].items()}
+        if matrix.get("blend_konsistent"):
+            _m_eur["blend_konsistent"] = {sz: _w(x)
+                                          for sz, x in matrix["blend_konsistent"].items()}
+        ui.szenario_tabelle(_m_eur, METHODEN_LABEL, waehrung)
 
     # =======================================================================
     # 5 - Bewertungshistorie
@@ -203,7 +239,12 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
     if bericht.get("kgv") or bericht.get("ev_ebitda"):
         ui.abschnitt(n, "Bewertungshistorie", "eigenes Perzentil")
         n += 1
-        ui.perzentil_kacheln(bericht)
+        _b_eur = dict(bericht)
+        for _k in ("kgv", "ev_ebitda"):
+            if _b_eur.get(_k) and _b_eur[_k].get("rueckkehrwert"):
+                _b_eur[_k] = dict(_b_eur[_k],
+                                  rueckkehrwert=_w(_b_eur[_k]["rueckkehrwert"]))
+        ui.perzentil_kacheln(_b_eur)
         band = bericht.get("band")
         if band:
             ui.hinweise([

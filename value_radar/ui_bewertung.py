@@ -52,6 +52,11 @@ C = dict(DUNKEL)
 
 TON = {"gruen": "green", "gelb": "amber", "rot": "red", "grau": "muted"}
 
+#: Waehrungszeichen fuer die Grosszahl. Ohne Eintrag wird der Code gezeigt -
+#: besser ein sperriges "CHF" als ein falsches "$".
+WAEHRUNGSZEICHEN = {"EUR": "\u20ac", "USD": "$", "GBP": "\u00a3",
+                    "JPY": "\u00a5", "CHF": "CHF"}
+
 
 def _farbe(ton: str) -> str:
     return C.get(TON.get(ton, "muted"), C["muted"])
@@ -255,7 +260,8 @@ def wert_kopf(*, titel: str, fall: str, wert: Optional[float], preis: Optional[f
         f'  <div>'
         f'    <div class="va-kick">{_e(titel)}<span>{_e(fall)}</span></div>'
         f'    <div class="va-big va-num" style="color:{farbe};margin:8px 0 2px;">'
-        f'<span class="cur">$</span>{de(wert, 2)}</div>'
+        f'<span class="cur">{_e(WAEHRUNGSZEICHEN.get(waehrung, waehrung))}</span>'
+        f'{de(wert, 2)}</div>'
         f'    {badge}'
         f'    <div class="va-bars">'
         f'      <div class="va-bar">'
@@ -596,6 +602,112 @@ def sterne_karte(guete: dict, blend: Optional[dict] = None) -> None:
         f'{_e(guete.get("label", ""))}</div></div>'
         f'  <div><div class="va-list">{liste}</div></div>'
         f'</div></div>')
+
+
+def sparkline(werte: Sequence[float], farbe: Optional[str] = None,
+              breite: int = 150, hoehe: int = 30) -> str:
+    """Winziger Verlauf als SVG. Gibt HTML zurueck, rendert nicht selbst.
+
+    Eine Prozentangabe sagt, DASS sich etwas geaendert hat. Der Verlauf sagt,
+    ob es eine Wende oder eine Fortsetzung ist - bei Eaton war genau das der
+    Punkt: Umsatz weiter steigend, Nettoergebnis bereits drehend. In einer
+    Tabelle nebeneinander uebersieht man das.
+    """
+    xs = [float(v) for v in (werte or [])
+          if v is not None and isinstance(v, (int, float))]
+    if len(xs) < 3:
+        return ""
+    lo, hi = min(xs), max(xs)
+    spanne = (hi - lo) or (abs(hi) or 1.0)
+    n = len(xs)
+    farbe = farbe or (C["green"] if xs[-1] >= xs[0] else C["red"])
+
+    pkt = []
+    for i, v in enumerate(xs):
+        x = i / (n - 1) * (breite - 2) + 1
+        y = hoehe - 2 - (v - lo) / spanne * (hoehe - 6)
+        pkt.append(f"{x:.1f},{y:.1f}")
+    linie = " ".join(pkt)
+    flaeche = f"1,{hoehe - 1} {linie} {breite - 1},{hoehe - 1}"
+    lx, ly = pkt[-1].split(",")
+
+    return (
+        f'<svg viewBox="0 0 {breite} {hoehe}" width="100%" height="{hoehe}" '
+        f'preserveAspectRatio="none" style="display:block;margin-top:8px;">'
+        f'<polygon points="{flaeche}" fill="{farbe}" opacity="0.13"/>'
+        f'<polyline points="{linie}" fill="none" stroke="{farbe}" '
+        f'stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>'
+        f'<circle cx="{lx}" cy="{ly}" r="2.2" fill="{farbe}"/>'
+        f'</svg>')
+
+
+def kennzahl_kacheln(items: Sequence[Dict]) -> None:
+    """Kennzahlen-Kacheln mit Verlauf, Vorjahresdelta und 3J/5J/10J-Chips.
+
+    items: {label, value, delta, chips:[(text, wert)], reihe:[...],
+            negative:bool}
+      value    fertig formatierte Grosszahl (String)
+      delta    Veraenderung zum Vorjahr als Dezimalzahl, optional
+      reihe    Jahreswerte aeltester zuerst, fuer die Sparkline
+    """
+    tiles = []
+    for it in items:
+        d = it.get("delta")
+        if d is None:
+            dl = ""
+        else:
+            col, soft = ((C["green"], C["gruen_weich"]) if d >= 0
+                         else (C["red"], C["rot_weich"]))
+            dl = (f'<span class="va-delta" style="background:{soft};color:{col};">'
+                  f'{d * 100:+.0f} %</span>')
+        chips = "".join(
+            f'<span>{_e(c)} <b style="color:{C["green"] if v >= 0 else C["red"]};">'
+            f'{v * 100:+.0f} %</b></span>' for c, v in (it.get("chips") or []))
+        neg = it.get("negative")
+        spark = sparkline(it.get("reihe") or [], C["red"] if neg else None)
+        farbe = C["red"] if neg else C["cyan"]
+        tiles.append(
+            f'<div class="va-tile">{dl}'
+            f'<div class="big va-num" style="color:{farbe};">{_e(it["value"])}</div>'
+            f'<div class="cap">{_e(it["label"])}</div>'
+            f'{spark}<div class="chips">{chips}</div></div>')
+    _md(f'<div class="va-tiles">{"".join(tiles)}</div>')
+
+
+def news_karte(eintraege: Sequence[Dict], kopfzeile: str = "",
+               sichtbar: int = 5) -> None:
+    """Meldungen als zweispaltige Karte statt als Liste im Aufklapper.
+
+    eintraege: {titel, quelle, datum, url}
+    Die Kopfzeile fasst das Gesamtbild - zwoelf Schlagzeilen beantworten
+    nicht, ob gerade etwas los ist.
+    """
+    if not eintraege:
+        return
+    zeilen = []
+    for n in eintraege[:sichtbar]:
+        titel = _e(str(n.get("titel") or "").strip())
+        if not titel:
+            continue
+        quelle = _e(str(n.get("quelle") or "").strip())
+        datum = _e(str(n.get("datum") or "")[:10])
+        url = n.get("url")
+        inhalt = (f'<a href="{_e(str(url))}" target="_blank" rel="noopener" '
+                  f'style="color:{C["fg"]};text-decoration:none;">{titel}</a>'
+                  if url else titel)
+        zeilen.append(
+            f'<div style="display:grid;grid-template-columns:92px 1fr;gap:12px;'
+            f'padding:10px 0;border-bottom:1px solid {C["line"]};">'
+            f'<div style="font-size:11px;color:{C["muted"]};line-height:1.5;">'
+            f'{datum}<br><span style="color:{C["muted"]};">{quelle}</span></div>'
+            f'<div style="font-size:13px;line-height:1.5;color:{C["fg"]};">'
+            f'{inhalt}</div></div>')
+    if not zeilen:
+        return
+    zeilen[-1] = zeilen[-1].replace(f'border-bottom:1px solid {C["line"]};', "")
+    kopf = (f'<div class="sub" style="margin-bottom:2px;">{_e(kopfzeile)}</div>'
+            if kopfzeile else "")
+    _md(f'<div class="va-card"><h4>Nachrichten</h4>{kopf}{"".join(zeilen)}</div>')
 
 
 def hinweise(texte: Sequence[str]) -> None:

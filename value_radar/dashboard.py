@@ -3980,6 +3980,38 @@ if nav == "Einzelanalyse":
                                f"{int((v.get('margin_of_safety') or 0)*100)}% "
                                f"(Schmidlin: unsichere Titel brauchen mehr Marge).")
 
+                # ============================================================
+                # KENNZAHLEN + NACHRICHTEN, sichtbar statt zugeklappt.
+                # Das Faktische zuerst, die Modellrechnung danach. Die
+                # ausfuehrlichen Aufklapper weiter unten bleiben - das hier
+                # ist die Uebersicht, nicht ihr Ersatz.
+                # ============================================================
+                try:
+                    import kennzahl_kacheln as _kk
+                    import ui_bewertung as _uib
+
+                    @st.cache_data(ttl=21600, show_spinner=False)
+                    def _kopf_daten(t):
+                        hist, news = [], []
+                        try:
+                            import roic as _r
+                            if _r.enabled():
+                                hist = _r.kennzahl_historie(t, 12) or []
+                                if _r.covers(t):
+                                    news = _r.news(t, 12) or []
+                        except Exception:
+                            pass
+                        return {"hist": hist, "news": news}
+
+                    _kd = _kopf_daten(ticker)
+                    if _kd["hist"] or _kd["news"]:
+                        _uib.inject_css("dunkel")
+                        _kk.rendern(_kd["hist"], _kd["news"],
+                                    fx=fx_to_eur(f.get("currency") or "USD") or 1.0,
+                                    waehrung="EUR", nummer_start=1)
+                except Exception as _e_kk:
+                    st.caption(f"Kennzahlen-\u00dcbersicht nicht verf\u00fcgbar ({_e_kk}).")
+
                 # =====================================================
                 # DETAILS AUF ABRUF: alle Kennzahl-Erklaerungen in EINEM
                 # zugeklappten Block. Kurz oben, tief auf Wunsch.
@@ -4070,15 +4102,12 @@ if nav == "Einzelanalyse":
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
                 _vtw = q.get("value_trap_warnung") or []
                 if _vtw:
+                    # Kurz halten: die Einzelgruende stehen ausgeklappt darunter,
+                    # die Erklaerung wiederholt sich sonst auf jeder Seite.
                     st.warning("**M\u00f6gliche Value-Trap** \u2013 selbst pr\u00fcfen, "
-                               "bevor du kaufst:\n\n" +
-                               "\n".join(f"\u2022 {w}" for w in _vtw) +
-                               "\n\n\u201eZu g\u00fcnstig\u201c bedeutet oft, dass der "
-                               "Markt etwas wei\u00df, das die Kennzahlen noch nicht "
-                               "zeigen \u2013 oder dass der Fair Value auf fehlerhaften "
-                               "Daten beruht. Der Titel bleibt als Idee im Screener, "
-                               "der Score ist nur leicht ged\u00e4mpft.",
-                               icon="\u26a0\ufe0f")
+                               "bevor du kaufst.", icon="\u26a0\ufe0f")
+                    with st.expander(f"Gr\u00fcnde ({len(_vtw)})", expanded=False):
+                        st.markdown("\n".join(f"\u2022 {w}" for w in _vtw))
 
                 st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
                 # ============================================================
@@ -4124,13 +4153,17 @@ if nav == "Einzelanalyse":
                     # Herkunft des Fair Value und das Reverse-DCF-Urteil sind
                     # genau die Warnungen, die man nicht wegklicken koennen soll.
                     # Nur das Wachstum-x-Cash-Gitter bleibt eingeklappt.
+                    # In EUR anzeigen: die Kacheln oben rechnen ebenfalls um,
+                    # zwei Waehrungen auf einer Seite sind nicht lesbar.
+                    _fx_eur = fx_to_eur(f.get("currency") or "USD") or 1.0
                     _bs.rendern(f, v, preset=ep, ticker=ticker, peer_funds=None,
                                 pe_hist=_reihen.get("pe_hist"),
                                 umsatz_reihe=_reihen.get("umsatz"),
                                 eps_reihe=_reihen.get("eps"),
                                 fcf_reihe=_reihen.get("fcf"),
                                 ni_reihe=_reihen.get("ni"),
-                                waehrung=cur, theme="dunkel")
+                                fx=_fx_eur, waehrung="EUR", theme="dunkel",
+                                start_abschnitt=3)
 
                     # Datenherkunft sichtbar machen: fehlt eine Reihe, fehlt der
                     # zugehoerige Abschnitt - dann soll man wissen warum.

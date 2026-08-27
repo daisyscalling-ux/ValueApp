@@ -773,22 +773,70 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     # laengere Liste hier waere reine Verschwendung des FMP-Tageslimits.
     _LUECKEN_KRITISCH = ("eps_forward", "target_mean", "analyst_count", "beta",
                          "book_value_ps", "hist_pe_median")
-    if deep and R:
+    if deep:
         _fehlt = [k for k in _LUECKEN_KRITISCH if merged.get(k) in (None, 0)]
-        if _fehlt:
+        _gefuellt = []
+
+        # a) FMP-Bundle (Margen, Multiples, Buchwert)
+        if _fehlt and R:
             try:
                 _F = _fmp_bundle(ticker) or {}
-                _gefuellt = []
-                for _k in _fehlt:
+                for _k in list(_fehlt):
                     if _F.get(_k) is not None:
                         merged[_k] = _F[_k]
                         _gefuellt.append(_k)
-                if _gefuellt:
-                    merged["_fmp_luecken"] = sorted(_gefuellt)
+                        _fehlt.remove(_k)
             except Exception:
                 pass
-            merged["_offene_luecken"] = sorted(
-                k for k in _fehlt if merged.get(k) in (None, 0))
+
+        # b) Analystenziel ueber Finnhub.
+        #    target_mean und analyst_count kamen bisher AUSSCHLIESSLICH von
+        #    yfinance (_merge_sources: A.get("target_mean")). Ist yfinance
+        #    blockiert - auf gehosteten Umgebungen der Normalfall, Yahoo sperrt
+        #    Rechenzentrums-IPs - faellt damit der komplette Analystenanker weg.
+        #    Im inflection-Playbook sind das 15 % Gewicht, zusammen mit dem von
+        #    eps_forward abhaengigen fwd_pe/fwd_composite sogar 70 %.
+        if any(k in _fehlt for k in ("target_mean", "analyst_count")) and config.FINNHUB_API_KEY:
+            try:
+                _pt = _fh("stock/price-target", {"symbol": ticker}) or {}
+                _tm = _num(_pt.get("targetMean"))
+                if _tm and _tm > 0 and merged.get("target_mean") in (None, 0):
+                    merged["target_mean"] = _tm
+                    merged["target_high"] = _num(_pt.get("targetHigh")) or merged.get("target_high")
+                    merged["target_low"] = _num(_pt.get("targetLow")) or merged.get("target_low")
+                    _gefuellt.append("target_mean (finnhub)")
+                    if "target_mean" in _fehlt:
+                        _fehlt.remove("target_mean")
+                if merged.get("analyst_count") in (None, 0):
+                    _rec = _fh("stock/recommendation", {"symbol": ticker}) or []
+                    if isinstance(_rec, list) and _rec:
+                        _r0 = _rec[0]
+                        _n = sum(_num(_r0.get(x)) or 0 for x in
+                                 ("strongBuy", "buy", "hold", "sell", "strongSell"))
+                        if _n:
+                            merged["analyst_count"] = _n
+                            _gefuellt.append("analyst_count (finnhub)")
+                            if "analyst_count" in _fehlt:
+                                _fehlt.remove("analyst_count")
+            except Exception:
+                pass
+
+        # c) Forward-EPS ueber FMPs Analystenschaetzungen.
+        if "eps_forward" in _fehlt and config.FMP_API_KEY:
+            try:
+                _ae = _fmp_get(f"analyst-estimates/{ticker}", {"limit": 1}) or []
+                if isinstance(_ae, list) and _ae:
+                    _e = _num(_ae[0].get("estimatedEpsAvg"))
+                    if _e and _e > 0:
+                        merged["eps_forward"] = _e
+                        _gefuellt.append("eps_forward (fmp)")
+                        _fehlt.remove("eps_forward")
+            except Exception:
+                pass
+
+        if _gefuellt:
+            merged["_fmp_luecken"] = sorted(_gefuellt)
+        merged["_offene_luecken"] = sorted(_fehlt)
 
     # Feld -> Quelle, damit im Zweifel nachvollziehbar ist, woher eine Zahl
     # stammt (reine Diagnose, aendert keine Berechnung).

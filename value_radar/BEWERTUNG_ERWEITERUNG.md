@@ -649,3 +649,68 @@ Damit rechnen App und Skripte erstmals mit denselben Daten. Was NVDA dann
 tatsächlich ergibt, ist offen — die −64,5 % aus der App wurden **mit** roic
 gerechnet, die +88,7 % ohne. Welcher Wert näher an der Wahrheit liegt, zeigt
 erst ein Lauf mit gleicher Datenbasis.
+
+
+---
+
+## Was der Screenshot der laufenden App zeigt
+
+Drei Befunde, zwei davon Fehler in meinem Code.
+
+### 1. Die Ursache: 70 % Methodengewicht fehlen
+
+Die rote Warnzeile sagt es selbst: `fwd_pe`, `fwd_composite` und `analyst`
+fallen aus. Im `inflection`-Playbook sind das 30 + 25 + 15 = **70 % des
+Gewichts**. Übrig bleiben DCF und Forward-Composite-Reste.
+
+Grund: `eps_forward` und `target_mean` kommen in `_merge_sources()`
+**ausschließlich von yfinance** (`A.get("target_mean")`). Ist yfinance nicht
+erreichbar — auf gehosteten Umgebungen der Normalfall, Yahoo sperrt
+Rechenzentrums-IPs — fällt beides weg und mit ihm der halbe Fair Value.
+
+Auf deinem Rechner lief yfinance (der CLI-Lauf hatte `eps_forward 13,81` und
+`target_mean 305,79`), in der App nicht. Daher die Differenz.
+
+**Behoben:** Der Lückenfüller holt jetzt
+- `target_mean`, `target_high`, `target_low` über Finnhub `stock/price-target`
+- `analyst_count` über Finnhub `stock/recommendation`
+- `eps_forward` über FMP `analyst-estimates`
+
+Wirkung mit sonst identischen Daten:
+
+| | Fair Value | Upside |
+|---|---|---|
+| ohne `eps_forward` / `target_mean` | 143,79 | −31,4 % |
+| mit beiden | 395,64 | +88,7 % |
+
+### 2. Mein Fehler: Korridor aus drei Boomjahren
+
+Der Reverse-DCF-Block meldete **„Konservativ eingepreist"** bei einem Kurs, der
+**87,7 % Umsatzwachstum pro Jahr über zehn Jahre** verlangt. Das ist so falsch,
+wie eine Aussage sein kann.
+
+Ursache: Die Anker kamen aus vier Jahren NVDA-Historie — 3J-CAGR 83 %. Damit lag
+das eingepreiste Wachstum *unter* der Historie und wurde als konservativ
+eingestuft. Zusätzlich wurde derselbe Wert unter dem Etikett **„10J+ Historie"**
+geführt, obwohl keine zehn Jahre vorlagen. Das ist keine Näherung, das ist eine
+Falschaussage.
+
+**Behoben:**
+- `cagr_3j` erst ab 4 Jahren, `cagr_5j` ab 6, `cagr_10j` ab 9 Jahren — sonst
+  wird der Anker gar nicht gesetzt statt falsch beschriftet
+- `rd_korridor()` gibt `None` zurück, wenn weniger als zwei Anker vorliegen —
+  ein Anker ergibt keinen Korridor, sondern eine Zahl mit erfundener Streuung
+- neue Grenze `IMPLIZIT_ABSURD = 0.40`: über 40 % p. a. über zehn Jahre lautet
+  das Urteil immer „über dem realistisch Lieferbaren", egal wo die kurze
+  Historie liegt
+- die Einzelanalyse lässt den Abschnitt bei dünner Historie ganz weg und sagt
+  warum
+
+### 3. Offen: der DCF und das rohe Beta
+
+`WACC 15,4 %` bei Beta 2,215 ergibt ein Terminal-Multiple von **8,0x**, während
+der Kurs 40,8x verlangt. Der DCF liefert deshalb 71 USD. Das ist keine Panne,
+sondern die Konsequenz aus rohem Beta. Ob das für ein Unternehmen mit
+Nettoliquidität und 63 % Nettomarge angemessen ist, ist eine Modellfrage —
+üblich wäre eine Schrumpfung Richtung 1 (Blume: 0,67·β + 0,33 → 1,81 →
+WACC ≈ 13,2 %). Das ändere ich nicht ohne deine Entscheidung.

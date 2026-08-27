@@ -149,10 +149,17 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
     # 3 - Reverse DCF
     # =======================================================================
     anker = valuation.wachstums_anker(umsatz_reihe or [],
-                                 konsens=fund.get("revenue_growth_next"))
+                                      konsens=fund.get("revenue_growth_next"))
     rd = None
-    if any(anker.get(k) is not None for k in ("cagr_3j", "cagr_5j", "cagr_10j")):
+    if sum(1 for k in ("cagr_3j", "cagr_5j", "cagr_10j", "konsens")
+           if anker.get(k) is not None) >= 2:
         rd = valuation.reverse_dcf_analyse(fund, anker, preset)
+    elif umsatz_reihe:
+        ui.hinweise([
+            f"Reverse DCF uebersprungen: nur {anker.get('_jahre', 0)} Jahre "
+            f"Umsatzhistorie. Ein Korridor aus so wenigen Punkten beschreibt die "
+            f"letzte Phase, nicht den Zyklus - und wuerde einen teuren Kurs als "
+            f"konservativ ausweisen."])
 
     if rd:
         ui.abschnitt(n, "Reverse DCF", "was der Kurs verlangt")

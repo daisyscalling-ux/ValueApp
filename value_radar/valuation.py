@@ -1690,7 +1690,9 @@ def rd_korridor(anker: Dict[str, Optional[float]], playbook: str = "quality",
 
     nutzbar = {k: float(v) for k, v in (anker or {}).items()
                if v is not None and k in basis and math.isfinite(float(v))}
-    if not nutzbar:
+    if len(nutzbar) < 2:
+        # Ein einzelner Anker ergibt keinen Korridor, sondern eine Zahl mit
+        # erfundener Streuung. Lieber kein Urteil als ein falsches.
         return None
 
     summe = sum(basis[k] for k in nutzbar)
@@ -1823,6 +1825,17 @@ def cagr(reihe: Sequence[float], jahre: Optional[int] = None) -> Optional[float]
     return (xs[-1] / xs[0]) ** (1.0 / (len(xs) - 1)) - 1.0
 
 
+#: Unter so vielen Jahren ist ein "historischer Korridor" keine Historie,
+#: sondern eine Momentaufnahme. Bei NVDA lieferten drei Boomjahre einen
+#: Korridor von 68-100 % p. a. - und der Kurs, der 88 % verlangt, wurde
+#: dadurch als "konservativ eingepreist" ausgewiesen. Genau falsch herum.
+MIN_ANKER_JAHRE = 5
+
+#: Oberhalb dieser Rate ist die Frage nicht mehr, ob der Kurs im Korridor
+#: liegt, sondern ob das Modell den Titel ueberhaupt tragen kann.
+IMPLIZIT_ABSURD = 0.40
+
+
 def wachstums_anker(umsatz_reihe: Sequence[float],
                     konsens: Optional[float] = None) -> Dict[str, Optional[float]]:
     """Ankerdict aus einer Jahresumsatzreihe (aeltester Wert ZUERST).
@@ -1830,10 +1843,21 @@ def wachstums_anker(umsatz_reihe: Sequence[float],
     Achtung: roic.kennzahl_historie und providers.get_financials liefern
     'recent first' - vor dem Aufruf umdrehen.
     """
-    return {"cagr_3j": cagr(umsatz_reihe, 3),
-            "cagr_5j": cagr(umsatz_reihe, 5),
-            "cagr_10j": cagr(umsatz_reihe, 10) or cagr(umsatz_reihe),
-            "konsens": konsens}
+    xs = [v for v in (umsatz_reihe or []) if v]
+    n = len(xs)
+    out = {"konsens": konsens}
+    if n >= 4:
+        out["cagr_3j"] = cagr(xs, 3)
+    if n >= 6:
+        out["cagr_5j"] = cagr(xs, 5)
+    # Nur als 10J-Anker ausweisen, wenn es auch ungefaehr zehn Jahre sind.
+    # Vorher wurde bei drei Jahren stillschweigend dieselbe Zahl unter dem
+    # Etikett "10J+ Historie" gefuehrt - das ist eine Falschaussage, keine
+    # Naeherung.
+    if n >= 9:
+        out["cagr_10j"] = cagr(xs, 10) or cagr(xs)
+    out["_jahre"] = n
+    return out
 
 
 def anker_aus_fund(fund, historie: Optional[List[dict]] = None,
@@ -1950,6 +1974,12 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
     g_imp = impliziertes_wachstum(fund, preset)
     cash_imp = implizierte_cash_basis(fund, preset)
     urteil = kor.position(g_imp)
+    if g_imp is not None and g_imp > IMPLIZIT_ABSURD:
+        # Ueber 40 % p. a. ueber zehn Jahre hat kein Unternehmen der Groesse
+        # je geliefert. Dass die Historie zufaellig noch hoeher liegt (drei
+        # Boomjahre), macht den Kurs nicht konservativ - es macht den
+        # Korridor unbrauchbar.
+        urteil = "zu_optimistisch"
     titel, unter = URTEIL_TEXT[urteil]
 
     hinweise: List[str] = []
@@ -1970,6 +2000,17 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
     if g_imp is None:
         hinweise.append("Der Kurs liegt ausserhalb des loesbaren Wachstumsbereichs - "
                         "das Modell traegt diesen Titel nicht.")
+    if g_imp is not None and g_imp > IMPLIZIT_ABSURD:
+        hinweise.append(
+            f"Eingepreist sind {g_imp * 100:.0f} % Startwachstum ueber "
+            f"{b['years']} Jahre. Das hat kein Unternehmen dieser Groesse je "
+            f"geliefert - unabhaengig davon, wo die kurze Historie liegt.")
+    _n = (anker or {}).get("_jahre")
+    if _n and _n < MIN_ANKER_JAHRE:
+        hinweise.append(
+            f"Nur {_n} Jahre Umsatzhistorie verfuegbar. Ein Korridor daraus "
+            f"beschreibt die letzte Phase, nicht den Zyklus - das Urteil ist "
+            f"entsprechend schwach.")
 
     return {
         "preis": b["price"],

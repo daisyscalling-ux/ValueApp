@@ -19,7 +19,10 @@ Zwei Verwendungen:
        streamlit run bewertung_seite.py
 """
 
+
 from __future__ import annotations
+
+__version__ = "2026.08.27"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
 
 from typing import List, Optional, Sequence
 

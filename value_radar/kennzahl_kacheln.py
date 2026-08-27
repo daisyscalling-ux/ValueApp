@@ -9,7 +9,10 @@ Die bestehenden Aufklapper "FINANZKENNZAHLEN" und "PROFIL, NACHRICHTEN, PEERS"
 bleiben unangetastet - sie sind der Tiefgang, das hier ist die Uebersicht.
 """
 
+
 from __future__ import annotations
+
+__version__ = "2026.08.27"
 
 from typing import Dict, List, Optional, Sequence
 

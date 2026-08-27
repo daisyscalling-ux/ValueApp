@@ -15,7 +15,10 @@ Reine Praesentation: jede Funktion nimmt fertige Werte aus valuation,
 relval und schaetzguete entgegen und rendert sie.
 """
 
+
 from __future__ import annotations
+
+__version__ = "2026.08.27"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple

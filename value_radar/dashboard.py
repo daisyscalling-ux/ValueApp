@@ -3986,9 +3986,34 @@ if nav == "Einzelanalyse":
                 # ausfuehrlichen Aufklapper weiter unten bleiben - das hier
                 # ist die Uebersicht, nicht ihr Ersatz.
                 # ============================================================
+                # Vor dem Aufruf pruefen, ob die Zusatzmodule auf dem Stand
+                # sind. Ohne diese Pruefung erscheint sonst eine kryptische
+                # AttributeError-Meldung, obwohl schlicht eine Datei beim
+                # Hochladen vergessen wurde - genau das ist zweimal passiert.
+                _ERWARTET = "2026.08.27"
+
+                def _modul_alt(mod, noetig=()):
+                    if getattr(mod, "__version__", None) != _ERWARTET:
+                        return True
+                    return any(not hasattr(mod, x) for x in noetig)
+
                 try:
                     import kennzahl_kacheln as _kk
                     import ui_bewertung as _uib
+
+                    _veraltet = [
+                        n for n, m, f in (
+                            ("ui_bewertung.py", _uib,
+                             ("kennzahl_kacheln", "news_karte", "sparkline")),
+                            ("kennzahl_kacheln.py", _kk, ("rendern",)),
+                        ) if _modul_alt(m, f)]
+                    if _veraltet:
+                        st.warning("Veralteter Dateistand: "
+                                   + ", ".join(_veraltet)
+                                   + f" \u2014 erwartet wird {_ERWARTET}. "
+                                     "Bitte diese Dateien erneut hochladen und "
+                                     "die App neu starten.", icon="\u26a0\ufe0f")
+                        raise RuntimeError("Modulstand veraltet")
 
                     @st.cache_data(ttl=21600, show_spinner=False)
                     def _kopf_daten(t):
@@ -4009,6 +4034,8 @@ if nav == "Einzelanalyse":
                         _kk.rendern(_kd["hist"], _kd["news"],
                                     fx=fx_to_eur(f.get("currency") or "USD") or 1.0,
                                     waehrung="EUR", nummer_start=1)
+                except RuntimeError:
+                    pass                       # Hinweis steht bereits oben
                 except Exception as _e_kk:
                     st.caption(f"Kennzahlen-\u00dcbersicht nicht verf\u00fcgbar ({_e_kk}).")
 
@@ -4119,6 +4146,12 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
+                    if getattr(_bs, "__version__", None) != "2026.08.27":
+                        st.warning("Veralteter Dateistand: bewertung_seite.py "
+                                   "\u2014 bitte erneut hochladen und die App "
+                                   "neu starten.", icon="\u26a0\ufe0f")
+                        raise RuntimeError("Modulstand veraltet")
+
                     @st.cache_data(ttl=21600, show_spinner=False)
                     def _bewertung_reihen(t):
                         """Historienreihen fuer Reverse DCF, Perzentil und
@@ -4179,6 +4212,8 @@ if nav == "Einzelanalyse":
                                    + ", ".join(_fehlt)
                                    + " \u2014 die davon abh\u00e4ngigen Abschnitte "
                                      "fehlen deshalb.")
+                except RuntimeError:
+                    pass                       # Hinweis steht bereits oben
                 except Exception as _e_bw:
                     st.caption(f"Bewertungsdetails nicht verf\u00fcgbar ({_e_bw}).")
 

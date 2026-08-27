@@ -32,6 +32,11 @@ DUNKEL = {
     "red": "#F85149", "cyan": "#58C4DD", "violet": "#A78BFA",
     "rot_weich": "#331A19", "gruen_weich": "#16301C", "gelb_weich": "#332708",
     "track": "#0D1219",
+    # Eigene, kraeftigere Toene NUR fuer die Luecke im Balkenpaar. Die weichen
+    # Toene oben sind fuer Kastenhintergruende gedacht und gehen auf dunklem
+    # Grund praktisch unter - als Flaeche, die eine Differenz zeigen soll,
+    # taugen sie nicht.
+    "luecke_rot": "#7A2620", "luecke_gruen": "#1F6B39",
 }
 
 HELL = {
@@ -40,6 +45,7 @@ HELL = {
     "red": "#E0342C", "cyan": "#1B8FD1", "violet": "#7C5CD6",
     "rot_weich": "#FBDDD5", "gruen_weich": "#D8F0E2", "gelb_weich": "#FBEBD2",
     "track": "#F1F3F7",
+    "luecke_rot": "#F2B4A6", "luecke_gruen": "#8FD9AC",
 }
 
 C = dict(DUNKEL)
@@ -90,7 +96,9 @@ _CSS = """
   margin-bottom:5px;overflow:hidden;}
 .va-bar .fill{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;
   padding:0 9px;font-size:11.5px;font-weight:700;letter-spacing:.5px;}
-.va-bar .rest{position:absolute;top:0;bottom:0;}
+.va-bar .rest{position:absolute;top:0;bottom:0;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;color:#F2F5F9;
+  letter-spacing:.5px;}
 .va-bar .val{position:absolute;right:9px;top:50%%;transform:translateY(-50%%);
   font-size:11.5px;font-weight:700;}
 .va-badge{display:inline-block;padding:3px 8px;font-size:10.5px;font-weight:700;
@@ -232,7 +240,14 @@ def wert_kopf(*, titel: str, fall: str, wert: Optional[float], preis: Optional[f
 
     top = max(w, p) or 1.0
     bw, bp = 100.0 * w / top, 100.0 * p / top
-    luecke = C["rot_weich"] if p >= w else C["gruen_weich"]
+    luecke = C["luecke_rot"] if p >= w else C["luecke_gruen"]
+    # Beschriftung in die Luecke: eine Farbflaeche allein sagt nicht, wie gross
+    # der Abstand ist.
+    if wert and preis:
+        _d = (p - w) / w * 100
+        luecke_txt = f"{abs(_d):.0f} %"
+    else:
+        luecke_txt = ""
 
     _md(
         f'<div class="va-card"><div class="va-split">'
@@ -244,13 +259,15 @@ def wert_kopf(*, titel: str, fall: str, wert: Optional[float], preis: Optional[f
         f'    {badge}'
         f'    <div class="va-bars">'
         f'      <div class="va-bar">'
-        f'        <div class="rest" style="left:{bw:.1f}%;width:{max(0.0, bp - bw):.1f}%;'
-        f'background:{luecke};"></div>'
+        f'        <div class="rest va-num" style="left:{bw:.1f}%;'
+        f'width:{max(0.0, bp - bw):.1f}%;background:{luecke};">'
+        f'{luecke_txt if bp > bw else ""}</div>'
         f'        <div class="fill va-num" style="width:{bw:.1f}%;background:{farbe};'
         f'color:{C["bg"]};">{_e(balken_label)}</div></div>'
         f'      <div class="va-bar">'
-        f'        <div class="rest" style="left:{bp:.1f}%;width:{max(0.0, bw - bp):.1f}%;'
-        f'background:{luecke};"></div>'
+        f'        <div class="rest va-num" style="left:{bp:.1f}%;'
+        f'width:{max(0.0, bw - bp):.1f}%;background:{luecke};">'
+        f'{luecke_txt if bw > bp else ""}</div>'
         f'        <div class="fill va-num" style="width:{bp:.1f}%;background:{C["line"]};'
         f'color:{C["fg"]};">Kurs<span class="val">{_e(geld(preis, waehrung))}</span>'
         f'</div></div>'

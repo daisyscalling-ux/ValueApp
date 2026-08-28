@@ -774,3 +774,43 @@ Beide Eingriffe verändern bestehende Fair Values — Punkt 6 bei jedem Titel mi
 Cashflow-Historie, Punkt 5 bei jedem mit auswertbarer EPS-Historie. Nach dem
 Einspielen also `precompute.py` neu laufen lassen, sonst zeigen Listenansichten
 und Einzelanalyse wieder verschiedene Zahlen.
+
+---
+
+## Zwischenspeicher und Quartalsberichte
+
+Die Anreicherungen (Schätzgüte, Cash-Conversion) liegen in `store` mit 45 Tagen
+Haltbarkeit, damit ein fehlgeschlagener Zusatzabruf den Fair Value nicht kippt.
+
+**Zeit allein reicht als Kriterium nicht.** Ein Quartalsbericht fällt mit rund
+50 % Wahrscheinlichkeit in ein 45-Tage-Fenster. Danach sind neue Zahlen da, der
+Zwischenspeicher liefert aber weiter die alten — stabil, aber falsch. Das wäre
+die schlechtere Sorte Unzuverlässigkeit gewesen.
+
+Deshalb trägt jeder Eintrag zusätzlich einen **Berichtsmarker**:
+
+```python
+store.anreicherung_marker(fund)   # "9.83|30000.0"  = TTM-EPS | TTM-Umsatz in Mio
+```
+
+Beide ändern sich mit jedem Bericht. Weicht der Marker ab, gilt der Eintrag als
+überholt und wird neu berechnet — unabhängig vom Alter. Bewusst gerundet, damit
+Rundungsdifferenzen zwischen zwei Anbietern keine Neuberechnung auslösen:
+
+```
+Marker vorher      9.83|30000.0
+nach dem Bericht  10.41|31200.0   -> Eintrag verworfen, Neuberechnung
+Rundungsrauschen   9.8299|30000.4 -> Eintrag bleibt gültig
+```
+
+Die **letzte Basis-Signatur** wird bewusst OHNE Marker gelesen (90 Tage). Sie
+soll auch über einen Bericht hinweg vergleichbar bleiben — dann steht in der
+Meldung, dass sich die Grundlage geändert hat, statt dass der Vergleich stumm
+von vorn anfängt.
+
+### Was der Marker nicht abdeckt
+
+Er erkennt einen Bericht daran, dass sich TTM-Gewinn oder TTM-Umsatz ändern.
+Ein Bericht, der beide exakt unverändert lässt, würde durchrutschen — praktisch
+ausgeschlossen, aber nicht theoretisch. Und er reagiert erst, wenn der Anbieter
+die neuen TTM-Werte ausliefert, nicht am Tag der Veröffentlichung.

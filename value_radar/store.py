@@ -152,6 +152,64 @@ def _save_aux(d: dict) -> bool:
         return False
 
 
+# ---------------------------------------------------------------------------
+# Langlebiger Zwischenspeicher fuer Anreicherungen (Schaetzguete,
+# Cash-Conversion). Beide aendern sich hoechstens quartalsweise, haengen aber
+# an Zusatzabrufen, die mal klappen und mal nicht. Ohne Persistenz bekommt
+# derselbe Titel je nach Glueck einen anderen Fair Value - genau das ist
+# passiert: Meta +20 % vor dem Neustart, +4 % danach.
+# ---------------------------------------------------------------------------
+
+def get_anreicherung(ticker: str, art: str, max_alter_tage: int = 45,
+                     marker=None):
+    """Gespeicherte Anreicherung - wenn sie weder zu alt noch ueberholt ist.
+
+    `marker` ist der Grund, warum die Zeitgrenze allein nicht reicht: Ein
+    Quartalsbericht faellt mit rund 50 % Wahrscheinlichkeit in ein 45-Tage-
+    Fenster. Danach sind neue Zahlen da, der Zwischenspeicher liefert aber
+    weiter die alten - stabile, aber falsche Werte. Genau das waere die
+    schlechtere Sorte Unzuverlaessigkeit.
+
+    Als Marker eignet sich alles, was sich mit jedem Bericht aendert
+    (TTM-Gewinn je Aktie, TTM-Umsatz). Weicht er ab, gilt der Eintrag als
+    ueberholt und wird neu berechnet.
+    """
+    import time
+    d = _load_aux().get("anreicherung", {}).get(f"{art}:{(ticker or '').upper()}")
+    if not isinstance(d, dict):
+        return None
+    ts = d.get("_ts")
+    if not ts or (time.time() - ts) > max_alter_tage * 86400:
+        return None
+    if marker is not None and d.get("_marker") is not None:
+        if str(d["_marker"]) != str(marker):
+            return None                       # neuer Bericht -> neu rechnen
+    return d.get("wert")
+
+
+def set_anreicherung(ticker: str, art: str, wert, marker=None) -> bool:
+    import time
+    d = _load_aux()
+    d.setdefault("anreicherung", {})[f"{art}:{(ticker or '').upper()}"] = {
+        "_ts": time.time(), "_marker": marker, "wert": wert}
+    return _save_aux(d)
+
+
+def anreicherung_marker(fund: dict) -> str:
+    """Kennzeichen des aktuellen Berichtsstands.
+
+    TTM-Gewinn je Aktie und TTM-Umsatz aendern sich mit jedem Quartalsbericht.
+    Bewusst gerundet: winzige Rundungsdifferenzen zwischen zwei Anbietern
+    sollen keine Neuberechnung ausloesen, ein echter Bericht schon.
+    """
+    def _r(x, stellen):
+        try:
+            return round(float(x), stellen)
+        except (TypeError, ValueError):
+            return None
+    return f"{_r(fund.get('eps_trailing'), 2)}|{_r((fund.get('revenue') or 0) / 1e6, 0)}"
+
+
 def get_watchlist() -> list:
     wl = _load_aux().get("watchlist", [])
     return wl if isinstance(wl, list) else []

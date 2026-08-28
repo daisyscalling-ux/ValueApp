@@ -997,6 +997,7 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         "dcf_diagnose": _dcf_diagnose,
         "datenqualitaet": _datenqualitaet,
         "verworfene_methoden": _verworfen or None,
+        "basis": basis_signatur(fund, preset, avail.keys() if avail else []),
     }
 
 
@@ -1674,6 +1675,66 @@ def szenario_matrix(fund: dict, peer_funds=None, preset: str = "quality") -> Opt
         },
         "ergebnisse": ergebnisse,
     }
+
+# ---------------------------------------------------------------------------
+# Rechengrundlage festhalten
+# ---------------------------------------------------------------------------
+
+#: Felder, deren An- oder Abwesenheit den Fair Value verschiebt. Nicht ihre
+#: WERTE - nur ob sie da waren. Ein Kurs aendert sich staendig, aber ob
+#: cash_conversion vorlag oder nicht, entscheidet ueber die halbe Rechnung.
+_BASIS_FELDER = ("eps_forward", "target_mean", "cash_conversion",
+                 "schaetzguete", "hist_pe_median", "revenue_growth",
+                 "earnings_growth", "ebitda", "free_cashflow", "book_value_ps")
+
+
+def basis_signatur(fund, preset: str, methoden=None) -> dict:
+    """Woraus wurde dieser Fair Value gerechnet?
+
+    Zweck: Wenn derselbe Titel nach einem Neustart einen anderen Wert zeigt,
+    soll man SEHEN, was sich geaendert hat - nicht raten. Verglichen wird die
+    Grundlage, nicht das Ergebnis.
+    """
+    return {
+        "playbook": preset,
+        "felder": sorted(k for k in _BASIS_FELDER if fund.get(k)),
+        "methoden": sorted(methoden or []),
+        "eps_gestutzt": bool(fund.get("eps_forward_roh")),
+        "fcf_basis": (fcf_basis(fund) or {}).get("quelle"),
+        "roic": bool(fund.get("_roic")),
+    }
+
+
+def basis_vergleich(jetzt: dict, vorher: Optional[dict]) -> Optional[dict]:
+    """Was hat sich gegenueber dem letzten Lauf geaendert?"""
+    if not vorher or not jetzt:
+        return None
+    weg = [k for k in vorher.get("felder", []) if k not in jetzt.get("felder", [])]
+    neu_da = [k for k in jetzt.get("felder", []) if k not in vorher.get("felder", [])]
+    m_weg = [m for m in vorher.get("methoden", []) if m not in jetzt.get("methoden", [])]
+    m_neu = [m for m in jetzt.get("methoden", []) if m not in vorher.get("methoden", [])]
+    pb = (vorher.get("playbook") != jetzt.get("playbook"))
+    fb = (vorher.get("fcf_basis") != jetzt.get("fcf_basis"))
+
+    if not (weg or neu_da or m_weg or m_neu or pb or fb):
+        return None
+
+    texte = []
+    if pb:
+        texte.append(f"Playbook {vorher['playbook']} -> {jetzt['playbook']}")
+    if weg:
+        texte.append("Daten fehlen jetzt: " + ", ".join(weg))
+    if neu_da:
+        texte.append("Daten neu vorhanden: " + ", ".join(neu_da))
+    if m_weg:
+        texte.append("Methoden entfallen: " + ", ".join(m_weg))
+    if m_neu:
+        texte.append("Methoden neu dabei: " + ", ".join(m_neu))
+    if fb:
+        texte.append(f"Cashflow-Basis {vorher.get('fcf_basis')} -> {jetzt.get('fcf_basis')}")
+    return {"geaendert": True, "texte": texte,
+            "verlaesslich": not (weg or m_weg or pb)}
+
 
 # ==========================================================================
 # REVERSE DCF MIT REGIME-BEWUSSTEM KORRIDOR

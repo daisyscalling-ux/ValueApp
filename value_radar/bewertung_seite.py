@@ -22,7 +22,7 @@ Zwei Verwendungen:
 
 from __future__ import annotations
 
-__version__ = "2026.08.29"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
+__version__ = "2026.08.31"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
 
 from typing import List, Optional, Sequence
 
@@ -159,6 +159,42 @@ _ABSCHNITT_WERT_FRAGMENT = (st.fragment(_abschnitt_wert)
                             if hasattr(st, "fragment") else None)
 
 
+def _basis_warnung(ticker: str, v: dict) -> None:
+    """Meldet, wenn sich die Rechengrundlage seit dem letzten Aufruf geaendert hat.
+
+    Damit ist ein springender Fair Value kein Raetsel mehr: Entweder die
+    Grundlage ist gleich - dann ist die Bewegung echt - oder es steht dort,
+    welches Feld gefehlt hat.
+    """
+    if not ticker or not v.get("basis"):
+        return
+    try:
+        import store as _store
+        import valuation as _v
+        # Die letzte Basis absichtlich OHNE Marker lesen: Sie soll auch nach
+        # einem Bericht noch vergleichbar sein - dann steht in der Meldung,
+        # dass sich die Grundlage geaendert hat, statt dass sie stumm neu
+        # anfaengt.
+        alt_eintrag = _store.get_anreicherung(ticker, "letzte_basis",
+                                              max_alter_tage=90) or {}
+        diff = _v.basis_vergleich(v["basis"], alt_eintrag.get("basis"))
+        if diff:
+            frueher = alt_eintrag.get("fair_value")
+            kopf = "Rechengrundlage hat sich geaendert"
+            if frueher and v.get("fair_value"):
+                kopf += (f": Fair Value {ui.de(frueher, 2)} \u2192 "
+                         f"{ui.de(v['fair_value'], 2)}")
+            ui.urteil_box(titel=kopf, text=" \u00b7 ".join(diff["texte"]),
+                          ton="gelb" if diff["verlaesslich"] else "rot",
+                          chip="nicht vergleichbar" if not diff["verlaesslich"]
+                          else "erweitert")
+        _store.set_anreicherung(ticker, "letzte_basis",
+                                {"basis": v["basis"],
+                                 "fair_value": v.get("fair_value")})
+    except Exception:
+        pass
+
+
 def rendern(fund: dict, v: dict, preset: str = "quality",
             ticker: Optional[str] = None, peer_funds=None,
             pe_hist: Optional[dict] = None,
@@ -197,6 +233,8 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
             "preset": preset, "ticker": ticker, "waehrung": waehrung,
             "start_abschnitt": start_abschnitt, "w": _w,
             "fcf_reihe": fcf_reihe, "ni_reihe": ni_reihe}
+    _basis_warnung(ticker or fund.get("ticker"), v)
+
     if ohne_reload and _ABSCHNITT_WERT_FRAGMENT is not None:
         _ABSCHNITT_WERT_FRAGMENT(_ctx)
     else:

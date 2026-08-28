@@ -762,8 +762,17 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         # Upsides - hier +80 %, dort -65 %.
         _prognosefelder = ("eps_forward", "target_mean")
         _prog_da = sum(1 for k in _prognosefelder if merged.get(k))
+        # DRITTE Bedingung: Die Anreicherungen veraendern den Fair Value. Fehlt
+        # eine, ist das Ergebnis nicht mit einem angereicherten vergleichbar -
+        # also kurz cachen und beim naechsten Aufruf erneut versuchen, statt es
+        # eine Stunde festzuschreiben.
+        _anreicherung_da = bool(merged.get("cash_conversion")) and \
+            (bool(merged.get("schaetzguete")) or not merged.get("eps_forward"))
         merged["_vollstaendig"] = bool(_roic_aktiv and _kern_da >= 3
-                                       and _prog_da == len(_prognosefelder))
+                                       and _prog_da == len(_prognosefelder)
+                                       and _anreicherung_da)
+        merged["_luecke_anreicherung"] = [
+            k for k in ("cash_conversion", "schaetzguete") if not merged.get(k)]
         merged["_luecke_kern"] = [k for k in _kernfelder if merged.get(k) is None]
         merged["_luecke_prognose"] = [k for k in _prognosefelder if not merged.get(k)]
     else:
@@ -857,19 +866,35 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         # nimmt daraus einen normalisierten Cashflow - und weist die Umstellung
         # aus, statt sie still zu machen.
         # ------------------------------------------------------------------
-        if R:
+        # Persistiert, weil sie nur quartalsweise wechselt. Ohne das haengt der
+        # DCF davon ab, ob EIN Zusatzabruf gerade geklappt hat - und derselbe
+        # Titel zeigt nach einem Neustart einen anderen Fair Value.
+        _cc = None
+        _marker = None
+        try:
+            import store as _store
+            _marker = _store.anreicherung_marker(merged)
+            _cc = _store.get_anreicherung(ticker, "conversion", marker=_marker)
+        except Exception:
+            _store = None
+        if _cc is None and R:
             try:
                 import valuation as _v
                 _cr = _roic.cashflow_reihe(ticker, 6) or {}
                 if _cr.get("fcf") and _cr.get("ni"):
-                    _cc = _v.conversion_aus_historie(_cr["fcf"], _cr["ni"])
-                    if _cc and _cc.get("n", 0) >= 3:
-                        merged["cash_conversion"] = _cc["median"]
-                        merged["cash_conversion_info"] = _cc
-                        merged["fcf_reihe"] = _cr["fcf"]
-                        merged["ni_reihe"] = _cr["ni"]
+                    _neu = _v.conversion_aus_historie(_cr["fcf"], _cr["ni"])
+                    if _neu and _neu.get("n", 0) >= 3:
+                        _cc = dict(_neu, fcf_reihe=_cr["fcf"], ni_reihe=_cr["ni"])
+                        if _store:
+                            _store.set_anreicherung(ticker, "conversion", _cc,
+                                                    marker=_marker)
             except Exception:
                 pass
+        if _cc:
+            merged["cash_conversion"] = _cc.get("median")
+            merged["cash_conversion_info"] = _cc
+            merged["fcf_reihe"] = _cc.get("fcf_reihe")
+            merged["ni_reihe"] = _cc.get("ni_reihe")
 
         # ------------------------------------------------------------------
         # SCHAETZGUETE (Punkt 5): Der Analystenkonsens ging bisher ungewichtet
@@ -879,22 +904,44 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         # die mittlere Verfehlung korrigiert. Der Rohwert bleibt als
         # eps_forward_roh erhalten.
         # ------------------------------------------------------------------
+        # Ebenfalls persistiert: Die Trefferquote des Konsens aendert sich
+        # quartalsweise, nicht stuendlich. Ohne Persistenz wird eps_forward mal
+        # gestutzt und mal nicht - und fwd_pe schwankt entsprechend.
         if merged.get("eps_forward"):
+            _q = None
+            _marker2 = None
             try:
-                import schaetzguete as _sg
-                _paare = get_eps_history(ticker, 12)
-                if len(_paare) >= 6:
-                    _q = _sg.auswerten(_paare)
+                import store as _store2
+                _marker2 = _store2.anreicherung_marker(merged)
+                _q = _store2.get_anreicherung(ticker, "schaetzguete",
+                                              marker=_marker2)
+            except Exception:
+                _store2 = None
+            if _q is None:
+                try:
+                    import schaetzguete as _sg
+                    _paare = get_eps_history(ticker, 12)
+                    if len(_paare) >= 6:
+                        _q = _sg.auswerten(_paare)
+                        _q.pop("reihe", None)          # Rohdaten nicht speichern
+                        if _store2:
+                            _store2.set_anreicherung(ticker, "schaetzguete", _q,
+                                                     marker=_marker2)
+                except Exception:
+                    _q = None
+            if _q and _q.get("n"):
+                try:
+                    import schaetzguete as _sg2
                     _hist = merged.get("eps_reihe") or []
-                    if len(_hist) >= 3 and _q.get("n"):
-                        _bl = _sg.geblendetes_eps(merged["eps_forward"], _hist, _q)
+                    if len(_hist) >= 3:
+                        _bl = _sg2.geblendetes_eps(merged["eps_forward"], _hist, _q)
                         if _bl and _bl.get("eps") and _bl["eps"] > 0:
                             merged["eps_forward_roh"] = merged["eps_forward"]
                             merged["eps_forward"] = _bl["eps"]
                             merged["schaetzguete"] = _q
                             merged["eps_forward_herleitung"] = _bl
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
     # Feld -> Quelle, damit im Zweifel nachvollziehbar ist, woher eine Zahl
     # stammt (reine Diagnose, aendert keine Berechnung).

@@ -26,7 +26,7 @@ NICHT in den Vorfilter. Fuer die breite Vorauswahl gibt es vorfilter().
 
 from __future__ import annotations
 
-__version__ = "2026.08.31"
+__version__ = "2026.09.01"
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional

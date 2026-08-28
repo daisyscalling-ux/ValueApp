@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.08.31"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.01"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple

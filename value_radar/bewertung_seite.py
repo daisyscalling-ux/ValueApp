@@ -22,7 +22,7 @@ Zwei Verwendungen:
 
 from __future__ import annotations
 
-__version__ = "2026.08.31"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
+__version__ = "2026.09.01"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
 
 from typing import List, Optional, Sequence
 
@@ -84,7 +84,14 @@ def _abschnitt_wert(ctx: dict) -> None:
 
     ui.abschnitt(ab, "Innerer Wert")
 
-    sz = ui.szenario_umschalter("va_sz", index=1) if matrix else "base"
+    if matrix:
+        sz = ui.szenario_umschalter("va_sz", index=1)
+    else:
+        # Ohne Szenariomatrix gaebe es nichts umzuschalten - dann lieber
+        # keinen Schalter als einen wirkungslosen.
+        sz = "base"
+        ui.hinweise(["Szenarien nicht verfuegbar: Der Titel laesst sich nur "
+                     "im Base Case rechnen."])
 
     wert = (matrix["blend"].get(sz) if matrix else v.get("fair_value")) or v.get("fair_value")
     v_sz = (matrix.get("ergebnisse", {}).get(sz) if matrix else None) or v
@@ -204,7 +211,7 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
             fcf_reihe: Optional[Sequence[float]] = None,
             ni_reihe: Optional[Sequence[float]] = None,
             fx: float = 1.0, waehrung: str = "USD", theme: str = "dunkel",
-            start_abschnitt: int = 1, ohne_reload: bool = True) -> None:
+            start_abschnitt: int = 1, ohne_reload: bool = False) -> None:
     """Rendert den kompletten Bewertungsblock.
 
     fund       fund-Dict aus providers.get_fundamentals
@@ -227,8 +234,20 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
     # Sonst wuerde jeder Klick auf Bear/Bull sie neu berechnen.
     matrix = valuation.szenario_matrix(fund, peer_funds, preset)
 
-    # Fragment: beim Umschalten Bear/Base/Bull nur diesen Teil neu zeichnen.
-    # Ohne st.fragment oder mit ohne_reload=False laeuft es wie vorher.
+    # ------------------------------------------------------------------
+    # ohne_reload STANDARDMAESSIG AUS.
+    #
+    # Zwei Anlaeufe mit st.fragment sind gescheitert - erst als verschachtelte
+    # Closure, dann auf Modulebene. Der Grund liegt nicht an der Registrierung:
+    # Ein Fragment kann beim Neulauf nur in Container schreiben, die es SELBST
+    # angelegt hat. Der Bewertungsblock sitzt in der Einzelanalyse tief in
+    # Tabs und with-Bloecken, die ausserhalb entstehen - der Neulauf laeuft
+    # dann ins Leere, und im Browser passiert genau: nichts.
+    #
+    # Ein Umschalter, der nichts tut, ist schlechter als einer, der die Seite
+    # neu laedt. Wer es erneut versuchen will, setzt ohne_reload=True - aber
+    # bitte erst, nachdem der Block aus den aeusseren Containern heraus ist.
+    # ------------------------------------------------------------------
     _ctx = {"v": v, "fund": fund, "matrix": matrix, "preis": preis,
             "preset": preset, "ticker": ticker, "waehrung": waehrung,
             "start_abschnitt": start_abschnitt, "w": _w,

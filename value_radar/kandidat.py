@@ -26,7 +26,7 @@ NICHT in den Vorfilter. Fuer die breite Vorauswahl gibt es vorfilter().
 
 from __future__ import annotations
 
-__version__ = "2026.09.01"
+__version__ = "2026.09.02"
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -286,6 +286,11 @@ GATES = {
         "altman_kein_distress": True,
         "kurs_urteil_verboten": ("zu_optimistisch",),
         "multiple_anteil_max": 0.75,
+        # Ein Value-Treffer ohne Abschlag zum Fair Value ist keiner. Ohne diese
+        # Grenze trugen im Test die uebrigen Bausteine (Perzentil, Reverse DCF)
+        # Titel mit -10 % Upside in die Liste - fachlich vertretbar, aber unter
+        # der Ueberschrift "Value" irrefuehrend.
+        "upside_min": 0.0,
     },
     "momentum": {
         "datenstufe_max": "eingeschraenkt",
@@ -346,6 +351,13 @@ def gate_pruefen(k: Kandidat, profil: str = "value") -> List[str]:
         if k.multiple_anteil > g["multiple_anteil_max"]:
             raus.append(f"Fair Value zu {k.multiple_anteil:.0%} aus "
                         f"Multiple-Annahmen")
+
+    if g.get("upside_min") is not None:
+        u = k.upside
+        if u is None:
+            raus.append("kein Upside berechenbar")
+        elif u <= g["upside_min"]:
+            raus.append(f"kein Abschlag zum Fair Value (Upside {u:+.0f} %)")
 
     if g.get("rsi_max") is not None:
         rsi = k.momentum.get("rsi")

@@ -1,9 +1,11 @@
 """
 messlatte.py - Etappe 0: Ausgangswert der Entdeckungsschicht festhalten.
 
-    python3 messlatte.py              # Bilanz anzeigen
-    python3 messlatte.py --einfrieren # Stand als Vergleichsbasis speichern
-    python3 messlatte.py --vergleich  # aktueller Stand gegen den eingefrorenen
+    python3 messlatte.py               # Bilanz anzeigen
+    python3 messlatte.py --diagnose    # warum ist die Bilanz leer?
+    python3 messlatte.py --einfrieren  # Stand als Vergleichsbasis speichern
+    python3 messlatte.py --vergleich   # aktueller Stand gegen den eingefrorenen
+    python3 messlatte.py --backtest AAPL MSFT ...   # Ersatzbasis aus Historie
 
 Warum das VOR den Aenderungen kommt:
     Screener, Momentum und Radar werden in den naechsten Etappen strenger.
@@ -29,6 +31,8 @@ import sys
 from datetime import datetime
 
 QUELLEN = ["Screener", "Momentum", "Radar"]
+BT_DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "messlatte_backtest.json")
 DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                      "messlatte_basis.json")
 
@@ -51,6 +55,130 @@ def _wilson(treffer: int, n: int, z: float = 1.96) -> tuple:
     rand = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / nenner
     return (round(max(0.0, mitte - rand) * 100, 1),
             round(min(1.0, mitte + rand) * 100, 1))
+
+
+# ---------------------------------------------------------------------------
+# Diagnose: warum ist die Bilanz leer?
+# ---------------------------------------------------------------------------
+
+def diagnose() -> None:
+    """Leere Bilanz hat drei moegliche Ursachen - sie sehen gleich aus.
+
+      1. Es wurde nie aufgezeichnet (precompute.py lief nicht)
+      2. Aufgezeichnet wurde woanders (Backend Sheet vs. Datei)
+      3. Alle Signale sind juenger als 14 Tage
+
+    Ohne diese Unterscheidung sucht man am falschen Ende.
+    """
+    import store
+    print(f"\n{'=' * 72}\nDIAGNOSE\n{'=' * 72}")
+    print(f"  Speicher-Backend: {store.backend()}")
+    if store.backend() != "sheet":
+        print("     Achtung: precompute.py schreibt in dasselbe Backend. Laeuft")
+        print("     precompute in der Cloud (Sheet) und dieses Skript lokal")
+        print("     (Datei), sieht jedes eine andere Ablage.")
+
+    try:
+        roh = store.get_signals() or []
+    except Exception as e:
+        print(f"  Signale nicht lesbar: {e}")
+        return
+    print(f"  Signale im Speicher: {len(roh)}")
+    if not roh:
+        print("\n  -> Es wurde noch nie aufgezeichnet.")
+        print("     trackrecord.record() wird AUSSCHLIESSLICH von precompute.py")
+        print("     aufgerufen (Zeile ~1537). Ohne precompute-Lauf entsteht")
+        print("     kein Tagebuch - die Einzelanalyse und der Screener im")
+        print("     Dashboard schreiben nichts mit.")
+        print("\n     Zwei Wege:")
+        print("       a) precompute.py laufen lassen und ab jetzt aufzeichnen")
+        print("          (Ergebnis erst in ~4 Wochen auswertbar)")
+        print("       b) Ersatzbasis aus der Historie:")
+        print("          python3 messlatte.py --backtest AAPL MSFT NVDA ...")
+        return
+
+    from datetime import datetime as _dt
+    alter = []
+    for e in roh:
+        d = e.get("datum") or e.get("date")
+        try:
+            alter.append((_dt.now() - _dt.fromisoformat(str(d)[:19])).days)
+        except Exception:
+            continue
+    if alter:
+        alter.sort()
+        reif = sum(1 for a in alter if a >= 14)
+        print(f"  Aeltestes {max(alter)} Tage, juengstes {min(alter)} Tage")
+        print(f"  Davon mindestens 14 Tage alt: {reif}")
+        if reif == 0:
+            print("\n  -> Alle Signale sind zu frisch. In "
+                  f"{14 - max(alter)} Tagen ist die erste Auswertung moeglich.")
+    quellen = {}
+    for e in roh:
+        quellen[e.get("quelle") or "?"] = quellen.get(e.get("quelle") or "?", 0) + 1
+    print(f"  Nach Quelle: {quellen}")
+
+
+# ---------------------------------------------------------------------------
+# Ersatzbasis aus dem Backtest
+# ---------------------------------------------------------------------------
+
+def backtest_basis(ticker_liste, von_jahr=2019, bis_jahr=2024,
+                   pro_jahr=2) -> dict:
+    """Baseline aus der Historie statt aus dem Tagebuch.
+
+    backtest.py spielt die ECHTE fair_value-Logik auf historischen Daten nach,
+    mit Schutz gegen Look-ahead (Jahreszahlen gelten erst vier Monate nach
+    Geschaeftsjahresende als bekannt). Das ist kein Ersatz fuer echte Signale,
+    aber es beantwortet dieselbe Frage - "trifft unsere Bewertung?" - und zwar
+    heute statt in vier Wochen.
+
+    Wichtige Einschraenkung: Der Backtest misst die BEWERTUNG, nicht die
+    Auswahl. Er sagt nichts darueber, ob Screener oder Radar die richtigen
+    Titel vorgeschlagen haetten - nur, ob der Fair Value fuer die
+    uebergebenen Titel getragen hat.
+    """
+    import backtest as bt
+    import roic
+    import valuation
+
+    if not roic.enabled():
+        return {"fehler": "roic inaktiv - Backtest braucht Kurs- und "
+                          "Jahreshistorie"}
+
+    stichtage = bt.jahres_stichtage(von_jahr, bis_jahr, pro_jahr)
+    alle = []
+    for i, t in enumerate(ticker_liste, 1):
+        try:
+            zeilen = bt.einzeltest(roic, valuation, t, stichtage)
+        except Exception as e:
+            print(f"  [{i}/{len(ticker_liste)}] {t}: Fehler {e}")
+            continue
+        alle.extend(zeilen)
+        print(f"  [{i}/{len(ticker_liste)}] {t}: {len(zeilen)} Stichtage")
+
+    if not alle:
+        return {"fehler": "keine auswertbaren Stichtage"}
+
+    erg = bt.auswertung(alle)
+    return {"zeitpunkt": datetime.now().isoformat(timespec="seconds"),
+            "titel": list(ticker_liste), "stichtage": len(stichtage),
+            "zeilen": len(alle), "auswertung": erg}
+
+
+def zeige_backtest(b: dict) -> None:
+    print(f"\n{'=' * 72}\nERSATZBASIS AUS DER HISTORIE\n{'=' * 72}")
+    if b.get("fehler"):
+        print(f"  {b['fehler']}")
+        return
+    a = b.get("auswertung") or {}
+    print(f"  {len(b['titel'])} Titel \u00b7 {b['stichtage']} Stichtage \u00b7 "
+          f"{b['zeilen']} auswertbare Zeilen")
+    for k, v in a.items():
+        if isinstance(v, (int, float, str)) or v is None:
+            print(f"    {k:28s} {v}")
+    print("\n  Das misst die BEWERTUNG, nicht die Auswahl - ob Screener und")
+    print("  Radar die richtigen Titel vorgeschlagen haetten, sagt es nicht.")
 
 
 def aufnehmen() -> dict:
@@ -157,6 +285,24 @@ def vergleiche(jetzt: dict) -> None:
 
 
 if __name__ == "__main__":
+    if "--diagnose" in sys.argv:
+        diagnose()
+        sys.exit(0)
+
+    if "--backtest" in sys.argv:
+        i = sys.argv.index("--backtest")
+        titel = [a.upper() for a in sys.argv[i + 1:] if not a.startswith("--")]
+        if not titel:
+            print("  Titel angeben: python3 messlatte.py --backtest AAPL MSFT ...")
+            sys.exit(1)
+        b = backtest_basis(titel)
+        zeige_backtest(b)
+        if not b.get("fehler"):
+            with open(BT_DATEI, "w", encoding="utf-8") as fh:
+                json.dump(b, fh, indent=2, ensure_ascii=False)
+            print(f"\n  Gespeichert: {BT_DATEI}")
+        sys.exit(0)
+
     try:
         jetzt = aufnehmen()
     except Exception as e:
@@ -172,3 +318,6 @@ if __name__ == "__main__":
         else:
             print("\n  Zum Festhalten als Vergleichsbasis:")
             print("     python3 messlatte.py --einfrieren")
+            if not (jetzt.get("gesamt") or {}).get("n"):
+                print("\n  Bilanz ist leer. Ursache finden:")
+                print("     python3 messlatte.py --diagnose")

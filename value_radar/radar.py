@@ -16,6 +16,8 @@ Alles degradiert sauber: fehlt eine Quelle, faellt nur ihr Beitrag weg.
 """
 from __future__ import annotations
 
+__version__ = "2026.09.19"   # additiver Score, Altersabschlag
+
 # Themen-Universen fuer den engen, schnellen Scan
 THEMES = {
     "Memory & Semis": ["MU", "NVDA", "AMD", "AVGO", "MRVL", "LRCX", "AMAT", "KLAC",
@@ -241,6 +243,31 @@ def catalyst_flag(closes, price=None, fair_value=None):
     return {"trigger": trig, "info": info, "warning": warning}
 
 
+def _frische(datum, voll_tage: int = 14, aus_tage: int = 90) -> float:
+    """Gewicht eines Ereignisses nach seinem Alter: 1,0 frisch bis 0,0 alt.
+
+    Ohne Datum wird 1,0 angenommen - lieber ein Ereignis zu hoch gewichten als
+    es wegen eines fehlenden Feldes zu verlieren.
+    """
+    if not datum:
+        return 1.0
+    from datetime import datetime
+    for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y/%m/%d"):
+        try:
+            d = datetime.strptime(str(datum)[:len(fmt) + 2].strip(), fmt)
+            break
+        except (ValueError, TypeError):
+            d = None
+    if d is None:
+        return 1.0
+    tage = (datetime.now() - d).days
+    if tage <= voll_tage:
+        return 1.0
+    if tage >= aus_tage:
+        return 0.0
+    return round(1.0 - (tage - voll_tage) / float(aus_tage - voll_tage), 2)
+
+
 def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
     """Berechnet den Radar-Score + Ebenen + konkrete Trigger fuer eine Aktie."""
     triggers = []
@@ -256,14 +283,26 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
     heads_l = [h.lower() for h in (headlines or [])]
 
     # ---- 1) EVENTS ----
+    #
+    # MIT ALTERSABSCHLAG. Ein 8-K von vor drei Monaten ist kein Vorbeben mehr -
+    # der Markt hatte ein Quartal Zeit, es zu verarbeiten. Vorher zaehlte eine
+    # Meldung von gestern genauso wie eine vom Sommer, und der Radar meldete
+    # laengst verarbeitete Ereignisse als frische Signale.
+    #
+    # Voller Wert bis 14 Tage, danach linear auf null bis Tag 90.
     ev = 0
     for f8 in (events_8k or []):
+        gewicht_alter = _frische(f8.get("date"))
+        if gewicht_alter <= 0:
+            continue
         for code in f8.get("items", []):
             wgt = SEC_EVENT_WEIGHT.get(code)
             if wgt:
-                ev += wgt
+                ev += wgt * gewicht_alter
                 from providers import SEC_ITEM_LABELS
-                triggers.append(f"8-K {f8.get('date','')}: {SEC_ITEM_LABELS.get(code, code)}")
+                _alt = "" if gewicht_alter > 0.95 else f" ({gewicht_alter:.0%} Frische)"
+                triggers.append(f"8-K {f8.get('date','')}: "
+                                f"{SEC_ITEM_LABELS.get(code, code)}{_alt}")
     for kind, kws in EVENT_KW.items():
         if any(any(k in h for k in kws) for h in heads_l):
             ev += 14
@@ -366,38 +405,54 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
     if cat_trig:
         triggers.insert(0, cat_trig)
 
-    # ---- Gewichteter Score + Qualitaets-Grundsockel ----
-    # Zwei Bestandteile, die kombiniert werden:
-    #  (A) Ereignis-/Momentum-Score wie bisher (belohnt frische Signale)
-    #  (B) Qualitaets-Grundsockel: gute Fundamentaldaten geben einen soliden
-    #      Basiswert, damit hochwertige Aktien auch OHNE Ereignis sichtbar sind.
-    # Der Score ist das Maximum aus beiden PLUS ein Teil des jeweils anderen -
-    # so dominiert weder Qualitaet die Ereignisse noch umgekehrt.
-    # (A) Ereignis-/Momentum-Score. WICHTIG: auf die tatsaechlich aktiven
-    # Ebenen normalisiert - eine fehlende Ebene (z.B. kein 8-K an diesem Tag)
-    # soll den Score nicht kuenstlich nach unten ziehen. So zaehlt, wie stark
-    # die vorhandenen Signale sind, nicht wie viele zufaellig fehlen.
-    _ev_ebenen = [(events, 0.34), (fundamental, 0.20),
-                  (estimates, 0.26), (accumulation, 0.20)]
-    _aktiv = [(v, w) for v, w in _ev_ebenen if v > 0]
-    _wsum = sum(w for _v, w in _aktiv)
-    ereignis_score = (sum(v * w for v, w in _aktiv) / _wsum) if _wsum else 0.0
-    # Qualitaets-Sockel: bis zu ~65 Punkte allein aus Fundamentalqualitaet
-    quality_sockel = 0.65 * quality
-    # Kombination: der hoehere Wert traegt, der niedrigere haelbt sich dazu.
-    # Der reine Ereignis-Score bleibt aber immer voll erhalten (Untergrenze),
-    # damit Momentum-Plays ohne Qualitaet nicht verschwinden.
-    if ereignis_score >= quality_sockel:
-        score = ereignis_score + 0.35 * quality_sockel
-    else:
-        score = max(ereignis_score, quality_sockel + 0.45 * ereignis_score)
-    score = min(100, score + cat_pts)          # frischer Katalysator obendrauf
-    firing = sum(1 for x in (events, fundamental, estimates, accumulation, quality)
-                 if x >= 40)
+    # ---- Score: additiv, alle Ebenen zaehlen ----
+    #
+    # Die alte Formel hatte vier Probleme gleichzeitig:
+    #
+    #  1. Normalisierung NUR auf aktive Ebenen. Ein Titel mit einem einzigen
+    #     gefeuerten Signal (8-K, events=59) bekam 59 Punkte, einer mit vier
+    #     soliden Ebenen a 50 nur 50. Ein Signal wog mehr als vier
+    #     bestaetigende. Beim Suchen nach dem naechsten Micron ist fehlende
+    #     Bestaetigung aber eine Information, kein Datenfehler.
+    #  2. max(ereignis, sockel + 0.45*ereignis) ist nicht monoton
+    #     interpretierbar - man kann nicht sagen, was ein Punkt bedeutet.
+    #  3. Der Katalysator kam additiv obendrauf,
+    #  4. und dann noch ein Multiplikator 1,22 auf einen bei 100 gedeckelten
+    #     Wert. Oben lief dadurch alles zusammen und die Trennschaerfe ging
+    #     genau dort verloren, wo sie gebraucht wird.
+    #
+    # Jetzt: gewichtete Summe ueber ALLE fuenf Ebenen, fehlende zaehlen als
+    # null. Der Koinzidenzeffekt entsteht dabei von selbst - wer auf mehreren
+    # Ebenen feuert, sammelt mehr Gewicht. Der Zuschlag fuer Mehrfachsignale
+    # ist additiv und klein, damit er die Reihenfolge schaerft statt sie oben
+    # zusammenzudruecken.
+    EBENEN = (("events", events, 0.26), ("estimates", estimates, 0.22),
+              ("accumulation", accumulation, 0.20), ("fundamental", fundamental, 0.14),
+              ("quality", quality, 0.18))
+    score = sum(v * w for _n, v, w in EBENEN)
+
+    # Belegdichte: Wie viele Ebenen hatten ueberhaupt Daten? Eine Ebene mit
+    # null Punkten, weil kein Signal vorliegt, ist etwas anderes als eine, zu
+    # der schlicht nichts geladen werden konnte. Vorher war beides gleich.
+    belegt = sum(1 for _n, v, _w in EBENEN if v > 0)
+    if belegt <= 1:
+        # Ein einzelnes Signal ohne jede Bestaetigung ist ein Hinweis, kein
+        # Fund. Der Score wird gedeckelt statt hochgerechnet.
+        score = min(score, 45.0)
+        triggers.append("nur eine Signalebene belegt - unbestaetigt")
+
+    # Frischer Katalysator: weiterhin additiv, aber begrenzt.
+    score += min(cat_pts, 12)
+
+    firing = sum(1 for _n, v, _w in EBENEN if v >= 40)
     if firing >= 4:
-        score = min(100, score * 1.22); triggers.insert(0, "\u26a1 Mehrfach-Signal (4+ Ebenen)")
+        score += 10
+        triggers.insert(0, "\u26a1 Mehrfach-Signal (4+ Ebenen)")
     elif firing >= 3:
-        score = min(100, score * 1.12); triggers.insert(0, "\u26a1 Mehrfach-Signal (3 Ebenen)")
+        score += 5
+        triggers.insert(0, "\u26a1 Mehrfach-Signal (3 Ebenen)")
+
+    score = max(0.0, min(100.0, score))
 
     return {
         "ticker": fund.get("ticker"),
@@ -408,6 +463,7 @@ def compute(fund, hist_df, eps_rev, insider, events_8k, headlines):
                    "estimates": round(estimates), "accumulation": round(accumulation),
                    "quality": round(quality)},
         "firing": firing,
+        "belegte_ebenen": belegt,
         "catalyst": cat_info,
         "triggers": triggers,
     }

@@ -349,3 +349,67 @@ man ihn an einem unerfüllbaren Maßstab.
 messen, dann entscheiden, ob 4 und 5 überhaupt noch nötig sind. Es kann gut
 sein, dass allein die Umstellung auf vollständige Daten plus Gates den größten
 Teil des Nutzens bringt und der Rest Feinschliff ist.
+
+---
+
+# TEIL 5 — Stand nach Etappe 2 und 3
+
+## Gebaut
+
+| Datei | Zweck |
+|---|---|
+| `kandidat.py` | gemeinsamer Datenvertrag, Vorfilter, Gates |
+| `screener2.py` | vierstufige Pipeline, Rangbildung, Trichter, Kontrolllauf |
+| `screener2_lauf.py` | Kommandozeile mit `--kontrolle`, `--vergleich`, `--parallel` |
+| `messlatte.py` | Etappe 0 — **noch nicht gemessen**, Trackrecord ist leer |
+| `pruefe_*.py` | Diagnose für Dateistand, Beneish, Korridor, Historie |
+
+## Was die acht Fehlersuchrunden gefunden haben
+
+Jede Runde hat einen echten Defekt aufgedeckt, der vorher unsichtbar
+Ergebnisse verzerrt hat:
+
+1. **Gewinnwachstum als Umsatzanker** — `revenue_growth_next` existierte nie,
+   der Rückfall nahm `earnings_growth`. UnitedHealth bekam einen Korridor von
+   −15,7 % bis 11,4 %, Eli Lilly einen bis 95 %.
+2. **Kursverankerte Plausibilität bei Zyklikern** — mid-cycle-Verfahren sagen
+   bewusst 70–85 % unter Kurs und wurden dafür aussortiert. Micron: 80 % des
+   Methodengewichts weg, übrig blieb das Analystenziel.
+3. **Beneish und Altman als Einzelkriterien überfordert** — beide mit bekannt
+   hoher Fehlalarmquote. Jetzt Ausschluss nur mit zweitem, unabhängigem Beleg
+   (TATA bzw. Zinsdeckung), sonst Abzug im Rang.
+4. **Piotroski-Gate bei systemweitem Forensikausfall** — ohne roic fielen 24
+   von 24 Titeln durch, was nichts über die Titel aussagt.
+5. **Stumme Korridorprüfung** — das Gate durfte bei 30 von 30 nicht greifen,
+   sah aber aus wie ein Gate ohne Beanstandung.
+6. **Fünf Jahre Historie sind das Maximum** — roic und FMP liefern nicht mehr.
+   Die Anker wurden auf 1J/2J/3J/4J umgestellt statt weiter zu suchen.
+7. **87 % der Laufzeit an der falschen Stelle gesucht** — zweimal optimiert,
+   bevor gemessen wurde.
+8. **Vorzugsaktien als Treffer** — `BAC-PB` auf Platz eins, weil die
+   namensbasierte Entdopplung sie für die Bank hielt.
+
+## Offene Punkte
+
+**Etappe 0 fehlt weiterhin.** `trackrecord` ist leer, weil `record()` nur von
+`precompute.py` aufgerufen wird. Ohne Ausgangswert lässt sich nicht sagen, ob
+der neue Screener besser trifft — nur, dass seine Begründungen nachprüfbar
+sind. Das ist ein Unterschied.
+
+**39 % des Universums sind nicht bewertbar.** 57 von 146 Titeln scheitern an
+„Datenbasis unzureichend" oder „Modell trägt den Titel nicht" — überwiegend
+ausländische ADRs und OTC-Notierungen (TSM, Toyota, MUFG, Softbank, Tencent).
+Ob das an fehlenden roic-Daten liegt oder an der Bewertungslogik, ist offen.
+
+**Sechs von zehn Treffern sind Banken oder Versicherer.** Bei 146 geprüften
+Titeln ist das keine Zufälligkeit der Prüfmenge mehr. Der Kontrolllauf hat
+gezeigt: Das Ranking selbst ist sektorbreit, die Gates erzeugen die
+Konzentration. Wer mit der Liste arbeitet, trifft eine Sektorwette.
+
+**Laufzeit ist die praktische Grenze.** 20 s je Titel, 49 Minuten für 150.
+Parallelisierung bringt kaum noch etwas, weil roic drosselt (2274 s Stufenzeit
+gegen 2926 s Uhrzeit). Ein marktweiter Lauf über 800 Titel wäre vier Stunden.
+
+**Die Entdopplung entfernt 196 von 354 Titeln (55 %)** und ist nie
+gegengeprüft worden. Wenn sie zu aggressiv ist, verschwinden echte Kandidaten
+still.

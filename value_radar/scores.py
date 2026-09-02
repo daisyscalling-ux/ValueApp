@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """scores.py - Wissenschaftlich etablierte Fundamental-Scores fuer die
 Long/Short-Auswahl. Alle drei arbeiten auf roic-Jahresdaten (mehrjaehrig).
@@ -15,6 +16,8 @@ WICHTIG - Grenzen (aus der Fachliteratur):
   - Braucht zwei Geschaeftsjahre (Vorjahresvergleich). Fehlen Daten -> None.
 """
 from __future__ import annotations
+
+__version__ = "2026.09.19"   # Beneish mit Komponenten, Treibern, TATA-Test
 
 
 def _num(x):
@@ -270,12 +273,55 @@ def beneish_m(akt: dict, vorjahr: dict, sektor: str | None = None,
 
         m = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi
              + 0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
+        _teile = {"DSRI": round(dsri, 3), "GMI": round(gmi, 3),
+                  "AQI": round(aqi, 3), "SGI": round(sgi, 3),
+                  "DEPI": round(depi, 3), "SGAI": round(sgai, 3),
+                  "LVGI": round(lvgi, 3), "TATA": round(tata, 4)}
+        # Beitrag jedes Index zum M-Wert - ohne das laesst sich ein Verdacht
+        # nicht einordnen. Bei stark wachsenden Firmen dominiert der SGI
+        # (Umsatzwachstumsindex) das Ergebnis mechanisch: NVIDIA bekam mit
+        # nahezu verdoppeltem Umsatz allein daraus fast einen ganzen Punkt.
+        _beitrag = {"DSRI": 0.92 * dsri, "GMI": 0.528 * gmi, "AQI": 0.404 * aqi,
+                    "SGI": 0.892 * sgi, "DEPI": 0.115 * depi,
+                    "SGAI": -0.172 * sgai, "TATA": 4.679 * tata,
+                    "LVGI": -0.327 * lvgi}
     except (ZeroDivisionError, TypeError):
         return None
 
     return {
         "m": round(m, 2),
-        "verdaechtig": m > -2.22,     # ueber -2.22 = moegliche Manipulation
+        "teile": _teile,
+        # Ueber dem Normalwert 1 liegende Indizes, nach Beitrag sortiert.
+        "treiber": [k for k, _v in sorted(
+            ((k, v) for k, v in _beitrag.items() if _teile.get(k, 1) > 1.05),
+            key=lambda kv: -kv[1])][:3],
+        # Wachstumsartefakt statt Manipulationsverdacht.
+        #
+        # Erste Fassung verlangte SGI > 1,5 UND groesster Beitrag. Damit fielen
+        # Eli Lilly (M -1,91) und Western Digital (M -0,25) durch, obwohl bei
+        # beiden die Treiber SGI und DEPI heissen - also Umsatzsprung und
+        # Abschreibungsprofil, beides Wachstums- und Investitionsfolgen.
+        #
+        # Der tragfaehigere Test ist TATA: der Anteil der Abgrenzungen an der
+        # Bilanzsumme. Genau dort zeigt sich Ergebnismanipulation - Gewinn, der
+        # nicht durch operativen Cashflow gedeckt ist. Ist TATA unauffaellig
+        # (Gewinn cashgedeckt), hat der Verdacht keine Substanz, egal wie hoch
+        # die wachstumsgetriebenen Indizes stehen.
+        "wachstumsgetrieben": bool(
+            tata < 0.03                                   # Gewinn cashgedeckt
+            and max(_beitrag, key=_beitrag.get) in ("SGI", "DEPI", "AQI")
+            and sgi > 1.15),
+        "tata_unauffaellig": bool(tata < 0.03),
+        # Zwei Schwellen, weil in der Literatur zwei gebraeuchlich sind:
+        #   -2.22  empfindlich, faengt mehr, irrt oefter -> als WARNSIGNAL
+        #   -1.78  Beneishs Standardgrenze                -> fuer AUSSCHLUESSE
+        # Der Unterschied ist nicht akademisch: Eli Lilly liegt mit -1.91
+        # dazwischen. Unter der empfindlichen Grenze gilt es als verdaechtig,
+        # unter Beneishs eigener nicht.
+        "verdaechtig": m > -2.22,
+        "verdaechtig_streng": m > -1.78,
+        "schwelle_warnung": -2.22,
+        "schwelle_streng": -1.78,
         "indizes": {"DSRI": round(dsri, 2), "GMI": round(gmi, 2),
                     "SGI": round(sgi, 2), "TATA": round(tata, 3)},
     }

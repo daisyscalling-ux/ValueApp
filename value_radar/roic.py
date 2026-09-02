@@ -25,6 +25,8 @@ Schluessel: python test_roic_live.py
 """
 from __future__ import annotations
 
+__version__ = "2026.09.19"   # umsatz_reihe, cashflow_reihe, wachstum
+
 import json
 import threading
 import time
@@ -848,6 +850,36 @@ def pe_history(t: str, jahre: int = 10) -> dict:
         "spanne_tief": round(min(tiefs), 1) if tiefs else None,
         "n": len(werte),
     }
+
+
+def umsatz_reihe(t: str, jahre: int = 15) -> list:
+    """Moeglichst lange Umsatzhistorie, aufsteigend nach Jahr.
+
+    kennzahl_historie() lieferte im Praxistest nur fuenf Jahre. Damit kommen
+    im Reverse DCF hoechstens zwei Anker zusammen (3J-CAGR und Konsens) - der
+    regime-gewichtete Vergleich ueber 3/5/10 Jahre laeuft dann leer, und der
+    "Korridor" ist nur noch der Abstand zwischen zwei Zahlen.
+
+    income_annual() geht weiter zurueck. Beide Quellen werden nach
+    Geschaeftsjahr zusammengefuehrt.
+
+    Rueckgabe: [{"jahr": "2016", "revenue": 1.2e10}, ...]
+    """
+    umsatz = {}
+    try:
+        for z in (kennzahl_historie(t, jahre) or []):
+            j, r = str(z.get("jahr") or "")[:4], z.get("revenue")
+            if j and r:
+                umsatz[j] = float(r)
+    except Exception:
+        pass
+    # income_annual wurde hier frueher zusaetzlich abgerufen. Der Test zeigte:
+    # Beide Endpunkte liefern exakt dieselben fuenf Jahre (2021-2025), bei
+    # jedem geprueften Titel. limit=15 wird durchgereicht, roic liefert
+    # trotzdem nicht mehr - das ist eine Grenze des Anbieters.
+    # Der Zusatzabruf hat die Screener-Laufzeit von 8,5 s auf 18,7 s je Titel
+    # verdoppelt und keinen einzigen Anker hinzugefuegt. Deshalb raus.
+    return [{"jahr": j, "revenue": umsatz[j]} for j in sorted(umsatz)]
 
 
 def wachstum(t: str, jahre: int = 6) -> dict:

@@ -16,6 +16,8 @@ Fair Value = gewichteter Blend; zusaetzlich wird die Bewertungsspanne (min-max)
 ausgewiesen, damit die Streuung sichtbar bleibt.
 """
 from __future__ import annotations
+
+__version__ = "2026.09.19"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
 from typing import Dict, List, Optional, Sequence, Tuple
 import math
 import config
@@ -105,6 +107,50 @@ def classify_playbook(fund) -> str:
 
     # 4) Standard
     return "quality"
+
+
+def zyklisch_aus_margen(margen, aktuelle_marge=None,
+                        schwelle: float = 0.40) -> dict:
+    """Zyklizitaet aus der Margenschwankung statt aus dem Branchenlabel.
+
+    Warum das noetig ist: `_CYCLICAL_INDUSTRIES` enthaelt "memory", aber die
+    Branchenangabe fuer Micron lautet schlicht "Semiconductors". Der
+    Musterzykliker der Halbleiterwelt wurde deshalb als Wachstumstitel
+    eingestuft - mit gewinnbasierten Verfahren auf Gipfelgewinnen, also genau
+    dem Fehler, den das cyclical-Playbook vermeiden soll.
+
+    Dieselbe Regel steckt bereits in backtest.py und hat dort funktioniert;
+    sie fehlte nur im laufenden Betrieb. Variationskoeffizient der Netto-
+    margen ueber mindestens vier Jahre; ueber 0,4 gilt als deutlich zyklisch.
+
+    Liegt die aktuelle Marge klar ueber dem Zyklusschnitt, ist zusaetzlich
+    Gipfelverdacht angezeigt - dann sind Gewinnmultiplikatoren am
+    truegerischsten.
+    """
+    xs = [float(m) for m in (margen or [])
+          if m is not None and math.isfinite(float(m))]
+    if len(xs) < 4:
+        return {"zyklisch": False, "grund": "weniger als vier Jahre Margen"}
+
+    schnitt = sum(xs) / len(xs)
+    if abs(schnitt) < 0.001:
+        return {"zyklisch": False, "grund": "Durchschnittsmarge nahe null"}
+    std = (sum((m - schnitt) ** 2 for m in xs) / len(xs)) ** 0.5
+    vk = std / abs(schnitt)
+
+    gipfel = (aktuelle_marge is not None and aktuelle_marge > schnitt * 1.25)
+    return {
+        "zyklisch": vk > schwelle,
+        "variationskoeffizient": round(vk, 2),
+        "schnitt_marge": round(schnitt, 4),
+        "aktuelle_marge": (round(aktuelle_marge, 4)
+                           if aktuelle_marge is not None else None),
+        "gipfelverdacht": bool(vk > schwelle and gipfel),
+        "jahre": len(xs),
+        "grund": (f"Margen schwanken um {vk:.0%} des Schnitts"
+                  if vk > schwelle else
+                  f"Margen stabil ({vk:.0%} Schwankung)"),
+    }
 
 
 def wacc(beta, market_cap, total_debt, tax_rate=None) -> float:
@@ -763,8 +809,36 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     # 2) Plausibilitaets-Filter gegen den Kurs: Ein einzelner Fair Value, der
     #    <0.25x oder >4x Kurs impliziert, stammt fast immer aus einer fuer diese
     #    Aktie ungeeigneten Methode (neg. EBITDA, Blasen-KGV, DCF ohne FCF). Raus.
+    # ------------------------------------------------------------------
+    # PLAUSIBILITAET: Der Filter verankerte bisher fest am Kurs (0,25x bis 4x)
+    # und unterstellte damit, dass der Markt ungefaehr recht hat. Fuer einen
+    # Zykliker am Gewinngipfel ist das genau verkehrt: Dort sagen die
+    # mid-cycle-Verfahren bewusst 70-85 % unter Kurs - und wurden dafuer
+    # aussortiert. Bei Micron fielen so ueber 80 % des Methodengewichts weg,
+    # und uebrig blieb ausgerechnet das Analystenziel.
+    #
+    # Zwei Korrekturen:
+    #   1. Zykliker bekommen ein weiteres Band. Ein Faktor 8 zwischen Tal und
+    #      Gipfel ist im Speichergeschaeft normal, kein Datenfehler.
+    #   2. Sind sich die Verfahren EINIG, dass der Wert weit unter dem Kurs
+    #      liegt (Median unter 0,3x Kurs), ist der Kurs kein brauchbarer Anker
+    #      mehr. Dann greift nur noch der Median-Filter weiter unten - denn
+    #      Uebereinstimmung mehrerer Verfahren ist ein Befund, kein Ausrutscher.
+    # ------------------------------------------------------------------
+    _untergrenze = 0.12 if preset == "cyclical" else 0.25
+    _obergrenze = 5.0 if preset == "cyclical" else 4.0
+
+    _roh_werte = sorted(v for v in raw.values()
+                        if v is not None and math.isfinite(v) and v > 0)
+    _median_roh = (_roh_werte[len(_roh_werte) // 2] if _roh_werte else None)
+    _kurs_taugt_als_anker = not (price and _median_roh
+                                 and _median_roh < 0.30 * price)
+
     def _plausible(v):
-        return True if not price else (0.25 * price <= v <= 4.0 * price)
+        if not price or not _kurs_taugt_als_anker:
+            return True
+        return _untergrenze * price <= v <= _obergrenze * price
+
     sane = {k: v for k, v in raw.items() if _plausible(v)}
     # Was der Plausibilitaetsfilter aussortiert, wird protokolliert. Faellt eine
     # Methode mit 30 % Gewicht heraus, verteilt sich ihr Gewicht auf den Rest -
@@ -773,8 +847,9 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
     _verworfen = {k: {"wert": round(v, 2),
                       "vs_kurs": round((v / price - 1) * 100, 1) if price else None,
                       "gewicht": weights.get(k),
-                      "grund": ("unter 0,25x Kurs" if price and v < 0.25 * price
-                                else "ueber 4x Kurs")}
+                      "grund": (f"unter {_untergrenze:.2f}x Kurs"
+                                if price and v < _untergrenze * price
+                                else f"ueber {_obergrenze:.0f}x Kurs")}
                   for k, v in raw.items() if k not in sane}
 
     # 3) Ausreisser gegen den Median der plausiblen Methoden entfernen: nur was
@@ -942,6 +1017,41 @@ def fair_value(fund, peer_funds=None, preset="quality") -> dict:
         # Verworfene Methoden sind kein Datenproblem, aber dieselbe Klasse von
         # stiller Verschiebung - deshalb in dieselbe Warnzeile.
         if _datenqualitaet and _verworfen:
+            # Wie viel Gewicht ist insgesamt weg - verworfen UND ausgefallen?
+            _weg = sum((d.get("gewicht") or 0) for d in _verworfen.values())
+            _weg += sum(weights.get(m, 0)
+                        for m in _datenqualitaet.get("ausgefallene_methoden", []))
+            _ges = sum(weights.values()) or 1.0
+            _anteil_weg = _weg / _ges
+
+            # Ab der Haelfte ist es keine Bewertung mehr, sondern eine
+            # Hochrechnung aus dem Rest. Bei CrowdStrike fielen fwd_pe (30 %)
+            # und fwd_composite (25 %) weg, weil das GAAP-Ergebnis bei einem
+            # Umsatz von 4 Mrd nahe null liegt - der ausgewiesene Fair Value
+            # stammte dann aus DCF und Analystenziel allein.
+            #
+            # Eine Zahl auf 45 % der vorgesehenen Verfahren sieht genauso aus
+            # wie eine auf 100 % - deshalb wird sie hier ausdruecklich als
+            # nicht belastbar gekennzeichnet, statt sie stillschweigend
+            # weiterzureichen.
+            if not _kurs_taugt_als_anker:
+                _datenqualitaet["warnungen"].append(
+                    "Alle Verfahren liegen weit unter dem Kurs - der Kurs wurde "
+                    "deshalb nicht als Plausibilitaetsanker benutzt. Das ist "
+                    "kein Datenfehler, sondern die Aussage des Modells.")
+                _datenqualitaet["kurs_kein_anker"] = True
+
+            if _anteil_weg >= 0.50:
+                _datenqualitaet["nicht_belastbar"] = True
+                _datenqualitaet["gewicht_weg"] = round(_anteil_weg, 3)
+                _datenqualitaet["stufe"] = "nicht belastbar"
+                _datenqualitaet["ton"] = "rot"
+                _datenqualitaet["warnungen"].insert(0, (
+                    f"{_anteil_weg:.0%} der vorgesehenen Verfahren tragen nicht. "
+                    f"Der ausgewiesene Fair Value stammt aus dem Rest und ist "
+                    f"keine belastbare Groesse - dieses Modell traegt den Titel "
+                    f"nicht."))
+
             _schwer = {k: d for k, d in _verworfen.items() if (d.get("gewicht") or 0) >= 0.20}
             if _schwer:
                 _txt = ", ".join(f"{k} ({d['wert']}, {d['vs_kurs']:+.0f} % zum Kurs, "
@@ -1098,6 +1208,25 @@ _FELDBEDARF = {
     "analyst": ["target_mean"],
 }
 
+#: Felder, die nicht nur DA, sondern POSITIV sein muessen. Die Pruefung auf
+#: `in (None, 0)` liess negative Werte durch - bei CrowdStrike meldete die
+#: Diagnose deshalb "ev_ebitda ohne Ergebnis, obwohl die Daten vorliegen",
+#: obwohl das EBITDA schlicht negativ war. Die Methode verlangt > 0.
+_MUSS_POSITIV = {"ebitda", "eps_trailing", "eps_forward", "free_cashflow",
+                 "book_value_ps", "shares_out", "hist_pe_median", "revenue"}
+
+
+def _feld_fehlt(fund, k: str) -> bool:
+    v = fund.get(k)
+    if v is None:
+        return True
+    if k in _MUSS_POSITIV:
+        try:
+            return float(v) <= 0
+        except (TypeError, ValueError):
+            return True
+    return v == 0
+
 #: Ohne diese Felder kippt classify_playbook lautlos in ein anderes Playbook -
 #: und damit in ein voellig anderes Gewichtungsschema. Das ist die
 #: gefaehrlichste Datenluecke, weil sie sich nicht als Fehler zeigt, sondern
@@ -1127,20 +1256,29 @@ def datenqualitaet(fund, preset: str = "quality",
     else:
         ausgefallen = [m for m in gewichte
                        if gewichte.get(m, 0) > 0
-                       and any(fund.get(k) in (None, 0)
+                       and any(_feld_fehlt(fund, k)
                                for k in _FELDBEDARF.get(m, []))]
 
     # Warum? Nur fuer die tatsaechlich ausgefallenen Methoden nachschlagen.
     fehlt_je_methode = {}
     for m in ausgefallen:
-        f = [k for k in _FELDBEDARF.get(m, []) if fund.get(k) in (None, 0)]
+        f = [k for k in _FELDBEDARF.get(m, []) if _feld_fehlt(fund, k)]
         if f:
-            fehlt_je_methode[m] = f
+            _detail = []
+            for k in f:
+                v = fund.get(k)
+                _detail.append(k if v is None else f"{k} = {v:,.2f}".replace(",", " "))
+            fehlt_je_methode[m] = _detail
 
     verlust = sum(gewichte.get(m, 0) for m in ausgefallen)
     gesamt = sum(gewichte.values()) or 1.0
 
-    pb_luecken = [k for k in _PLAYBOOK_KRITISCH if fund.get(k) is None]
+    # classify_playbook nimmt revenue_growth und faellt nur ersatzweise auf
+    # earnings_growth zurueck. Fehlt NUR earnings_growth, ist die Einstufung
+    # nicht gefaehrdet - die Warnung war zu laut. Bei einem Verlustjahr ist
+    # earnings_growth ohnehin nicht sinnvoll berechenbar.
+    pb_luecken = ([k for k in _PLAYBOOK_KRITISCH if fund.get(k) is None]
+                  if fund.get("revenue_growth") is None else [])
 
     warnungen = []
     if pb_luecken:
@@ -1745,6 +1883,12 @@ def basis_vergleich(jetzt: dict, vorher: Optional[dict]) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 
 #: Gewicht der Anker je Playbook. Wird ueber die vorhandenen Anker renormiert.
+#: Gewichte fuer die kurzen Anker. Sie kommen dazu, weil die Datenlage keine
+#: langen zulaesst - nicht weil sie besser waeren. Kurze Fenster reagieren
+#: staerker auf Einmaleffekte, deshalb wiegen sie ueberall weniger als die
+#: laengeren, die tatsaechlich vorhanden sind.
+_KURZ_GEWICHTE = {"cagr_1j": 0.10, "cagr_2j": 0.15, "cagr_4j": 0.25}
+
 PLAYBOOK_GEWICHTE: Dict[str, Dict[str, float]] = {
     # Zykliker: die lange Historie ist die ehrlichste Referenz - sie enthaelt
     # mindestens einen vollen Zyklus.
@@ -1758,6 +1902,9 @@ PLAYBOOK_GEWICHTE: Dict[str, Dict[str, float]] = {
 }
 
 ANKER_LABEL = {
+    "cagr_1j": "letztes Jahr",
+    "cagr_2j": "2J Historie",
+    "cagr_4j": "4J Historie",
     "cagr_3j": "3J Historie",
     "cagr_5j": "5J Historie",
     "cagr_10j": "10J+ Historie",
@@ -1767,6 +1914,11 @@ ANKER_LABEL = {
 }
 
 URTEIL_TEXT = {
+    "basis_unklar": ("Cashflow-Basis zu niedrig fuer eine Aussage",
+                     "Der Kurs liesse sich nur mit unrealistischem Wachstum "
+                     "erklaeren - wahrscheinlicher ist ein voruebergehend "
+                     "gedruecktes Ergebnis als eine Blase. Der Reverse DCF "
+                     "traegt diesen Titel nicht."),
     "konservativ": ("Konservativ eingepreist",
                     "Der Kurs verlangt weniger, als das Unternehmen historisch geliefert hat."),
     "fair": ("Plausibel eingepreist",
@@ -1779,7 +1931,8 @@ URTEIL_TEXT = {
 }
 
 URTEIL_TON = {"konservativ": "gruen", "fair": "gruen",
-              "anspruchsvoll": "gelb", "zu_optimistisch": "rot"}
+              "anspruchsvoll": "gelb", "zu_optimistisch": "rot",
+              "basis_unklar": "grau"}
 
 
 # ---------------------------------------------------------------------------
@@ -1824,7 +1977,8 @@ def rd_korridor(anker: Dict[str, Optional[float]], playbook: str = "quality",
     Korridor soll nie mehr behaupten, als die Datenlage hergibt.
     """
     pb = playbook if playbook in PLAYBOOK_GEWICHTE else "quality"
-    basis = PLAYBOOK_GEWICHTE[pb]
+    basis = dict(PLAYBOOK_GEWICHTE[pb])
+    basis.update(_KURZ_GEWICHTE)
 
     nutzbar = {k: float(v) for k, v in (anker or {}).items()
                if v is not None and k in basis and math.isfinite(float(v))}
@@ -1846,8 +2000,19 @@ def rd_korridor(anker: Dict[str, Optional[float]], playbook: str = "quality",
     else:
         tief, hoch = mitte * 0.8, mitte * 1.2
 
-    if hoch - tief < 1e-6:                     # zwei fast identische Anker
-        tief, hoch = mitte - abs(mitte) * 0.15, mitte + abs(mitte) * 0.15
+    # MINDESTBREITE. Liegen die Anker eng beieinander - eine Firma mit sehr
+    # gleichmaessigem Wachstum -, schrumpft der Korridor auf einen Punkt. Dann
+    # gilt jede Abweichung nach oben sofort als "zu optimistisch", und das Gate
+    # wird beliebig streng. Im Test ergaben zwoelf Jahre stetiges Wachstum
+    # einen Korridor von 6,4 % bis 6,5 %.
+    #
+    # Prognosen sind nicht auf Zehntelprozente genau. Zwei Prozentpunkte oder
+    # ein Viertel des Mittelwerts - je nachdem, was groesser ist - ist die
+    # Untergrenze dessen, was noch eine Aussage traegt.
+    _min_breite = max(0.02, abs(mitte) * 0.25)
+    if hoch - tief < _min_breite:
+        halb = _min_breite / 2.0
+        tief, hoch = mitte - halb, mitte + halb
 
     return Korridor(tief, mitte, hoch, nutzbar, gew, pb)
 
@@ -1985,17 +2150,33 @@ def wachstums_anker(umsatz_reihe: Sequence[float],
     xs = [v for v in (umsatz_reihe or []) if v]
     n = len(xs)
     out = {"konsens": konsens}
-    if n >= 4:
-        out["cagr_3j"] = cagr(xs, 3)
-    if n >= 6:
-        out["cagr_5j"] = cagr(xs, 5)
-    # Nur als 10J-Anker ausweisen, wenn es auch ungefaehr zehn Jahre sind.
-    # Vorher wurde bei drei Jahren stillschweigend dieselbe Zahl unter dem
-    # Etikett "10J+ Historie" gefuehrt - das ist eine Falschaussage, keine
-    # Naeherung.
-    if n >= 9:
-        out["cagr_10j"] = cagr(xs, 10) or cagr(xs)
+
+    # ANKER AN DIE VERFUEGBARE HISTORIE ANPASSEN.
+    #
+    # Der urspruengliche Entwurf sah 3J/5J/10J vor. Beide Datenquellen liefern
+    # aber genau fuenf Geschaeftsjahre - roic wie FMP, an sechs Titeln geprueft.
+    # Damit gab es nie mehr als zwei Anker, der Korridor stand auf zu wenig
+    # Grundlage und das Gate durfte bei KEINEM Titel ausschliessen.
+    #
+    # Statt weiter nach Daten zu suchen, die es nicht gibt: die Anker an das
+    # anpassen, was da ist. Fuenf Jahrespunkte ergeben vier Intervalle, also
+    # 1J-, 2J-, 3J- und 4J-Raten. Die sind untereinander korreliert - bei einem
+    # Zykliker wie Devon (+57 %, -20 %, +4 %, +8 %) aber keineswegs gleich.
+    # Genau aus dieser Streuung entsteht die Korridorbreite.
+    #
+    # Was damit NICHT mehr geht: der Vergleich ueber einen vollen Zyklus. Die
+    # Playbook-Gewichtung "Zykliker -> lange Historie schwerer" laeuft bei vier
+    # Jahren weitgehend ins Leere. Das ist eine Einschraenkung der Datenlage,
+    # keine der Methode - und sie gehoert benannt statt kaschiert.
+    for jahre, name in ((1, "cagr_1j"), (2, "cagr_2j"),
+                        (3, "cagr_3j"), (4, "cagr_4j"),
+                        (5, "cagr_5j"), (10, "cagr_10j")):
+        if n >= jahre + 1:
+            w = cagr(xs, jahre)
+            if w is not None:
+                out[name] = w
     out["_jahre"] = n
+    out["_spanne_jahre"] = max(0, n - 1)
     return out
 
 
@@ -2014,10 +2195,26 @@ def anker_aus_fund(fund, historie: Optional[List[dict]] = None,
     elif fin and fin.get("revenue"):
         umsatz = [float(x) for x in reversed(fin["revenue"]) if x]
 
-    konsens = fund.get("revenue_growth_next") or fund.get("earnings_growth")
-    if konsens is None:
+    # KONSENS-ANKER: nur eine echte UMSATZ-Prognose, sonst gar keiner.
+    #
+    # Vorher stand hier ein Rueckfall auf earnings_growth. Da
+    # revenue_growth_next in keinem Datensatz existierte, wurde damit IMMER
+    # das Gewinnwachstum als Anker fuer das Umsatzwachstum benutzt - zwei
+    # verschiedene Groessen. Die Folgen waren grotesk:
+    #   UnitedHealth  Umsatz +12 %, Gewinn -16 %  -> Korridor -15,7 % bis 11,4 %
+    #   Eli Lilly     Umsatz +45 %, Gewinn +95 %  -> Korridor 36,5 % bis 95,0 %
+    # Ein Korridor mit Obergrenze 95 % Jahreswachstum ueber zehn Jahre bewertet
+    # nichts mehr. Lieber ein Anker weniger als ein falscher.
+    konsens = fund.get("revenue_growth_next")
+    if konsens is None and umsatz and fund.get("revenue_growth") is not None:
+        # Letzte gemessene Jahresrate ist zumindest dieselbe Groesse.
         konsens = fund.get("revenue_growth")
-    return wachstums_anker(umsatz, konsens)
+    anker = wachstums_anker(umsatz, konsens)
+    anker["_konsens_quelle"] = ("Umsatzprognose"
+                               if fund.get("revenue_growth_next") is not None
+                               else ("letzte Jahresrate" if konsens is not None
+                                     else "keiner"))
+    return anker
 
 
 # ---------------------------------------------------------------------------
@@ -2112,8 +2309,51 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
 
     g_imp = impliziertes_wachstum(fund, preset)
     cash_imp = implizierte_cash_basis(fund, preset)
+    # ------------------------------------------------------------------
+    # GEDRUECKTE BASIS von UEBERBEWERTUNG unterscheiden.
+    #
+    # Der Loeser sucht das Wachstum, das den Kurs rechtfertigt - ausgehend vom
+    # HEUTIGEN Cashflow. Ist der zyklisch gedrueckt, braucht er absurde Raten.
+    # Im 30-Titel-Lauf: Dow Chemical 69 %, Estee Lauder 67 %, Steel Dynamics
+    # 48 % Umsatzwachstum pro Jahr ueber zehn Jahre. Kein Markt preist das ein.
+    #
+    # Die Aussage ist dann nicht "der Kurs ist absurd", sondern "die Basis
+    # taugt nicht als Ausgangspunkt". Beides als "zu teuer" zu melden ist
+    # falsch - und trifft ausgerechnet die Titel, die ein Value-Filter finden
+    # soll: solche mit voruebergehend gedruecktem Ergebnis.
+    #
+    # Faustregel: Verlangt der Kurs mehr als das Dreifache der Korridor-
+    # obergrenze, ist die Basis die wahrscheinlichere Erklaerung.
+    # Achtung bei schrumpfenden Firmen: Dort ist die Korridorobergrenze negativ
+    # (Dow: -1,9 %). Eine Bedingung "hoch > 0" wuerde genau die Faelle
+    # ausschliessen, um die es geht. Deshalb wird die Obergrenze bei 2 %
+    # gebodet, bevor sie verdreifacht wird.
+    _obergrenze = max(kor.hoch, 0.02)
+    _weit_drueber = bool(g_imp is not None
+                         and g_imp > max(3.0 * _obergrenze, 0.25))
+
+    # Hohes eingepreistes Wachstum entsteht auf ZWEI Wegen, und die Hoehe
+    # allein trennt sie nicht:
+    #   a) der Kurs ist teuer      -> Costco, Marge normal, FCF-Rendite 1,7 %
+    #   b) die Basis ist gedrueckt -> Dow, Marge eingebrochen
+    # Der Unterscheider ist die MARGE, nicht die implizierte Rate. Liegt die
+    # aktuelle Marge deutlich unter dem eigenen Mehrjahresschnitt, ist der
+    # Ausgangspunkt gedrueckt; liegt sie normal, ist der Kurs schlicht hoch.
+    #
+    # Die Zahlen dafuer liegen bereits vor: providers legt _zyklus_diagnose an
+    # (Schnitt- und aktuelle Marge). Ohne diese Angabe wird NICHT auf
+    # "gedrueckt" erkannt - im Zweifel bleibt es bei "zu optimistisch", weil
+    # das die vorsichtigere Aussage ist.
+    _zd = fund.get("_zyklus_diagnose") or {}
+    _akt, _schnitt = _zd.get("aktuelle_marge"), _zd.get("schnitt_marge")
+    _marge_gedrueckt = bool(_akt is not None and _schnitt
+                            and _schnitt > 0 and _akt < 0.75 * _schnitt)
+    basis_gedrueckt = bool(_weit_drueber and _marge_gedrueckt)
+
     urteil = kor.position(g_imp)
-    if g_imp is not None and g_imp > IMPLIZIT_ABSURD:
+    if basis_gedrueckt:
+        urteil = "basis_unklar"
+    elif g_imp is not None and g_imp > IMPLIZIT_ABSURD:
         # Ueber 40 % p. a. ueber zehn Jahre hat kein Unternehmen der Groesse
         # je geliefert. Dass die Historie zufaellig noch hoeher liegt (drei
         # Boomjahre), macht den Kurs nicht konservativ - es macht den
@@ -2126,10 +2366,12 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
         hinweise.append(
             f"Eingepreist sind {g_imp * 100:.1f} % Startwachstum. Der realistische "
             f"Korridor ({kor.tief * 100:.1f}-{kor.hoch * 100:.1f} %) endet darunter.")
-    if preset in ("cyclical", "financial") and "cagr_10j" in kor.anker:
+    _spanne = (anker or {}).get("_spanne_jahre") or 0
+    if preset in ("cyclical", "financial") and _spanne < 8:
         hinweise.append(
-            f"Playbook {preset}: die 10J-Historie ({kor.anker['cagr_10j'] * 100:.1f} %) "
-            f"wiegt im Korridor am schwersten, weil sie einen vollen Zyklus abdeckt.")
+            f"Playbook {preset}, aber nur {_spanne} Jahre Umsatzhistorie. Der "
+            f"Korridor deckt keinen vollen Zyklus ab - fuer einen Zykliker ist "
+            f"das die schwaechste Stelle des Urteils.")
     beide = bool(g_imp is not None and g_imp > kor.mitte
                  and cash_imp is not None and cash_imp > 1.10)
     if beide:
@@ -2139,7 +2381,18 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
     if g_imp is None:
         hinweise.append("Der Kurs liegt ausserhalb des loesbaren Wachstumsbereichs - "
                         "das Modell traegt diesen Titel nicht.")
-    if g_imp is not None and g_imp > IMPLIZIT_ABSURD:
+    if basis_gedrueckt:
+        hinweise.append(
+            f"Der Kurs verlangt rechnerisch {g_imp * 100:.0f} % Wachstum, und "
+            f"die Marge liegt mit {_akt:.1%} deutlich unter dem Schnitt von "
+            f"{_schnitt:.1%}. Der heutige Cashflow ({b['fcf'] / 1e9:.2f} Mrd) "
+            f"taugt damit nicht als Ausgangspunkt - das ist keine Aussage "
+            f"ueber den Kurs.")
+    elif _weit_drueber and not _marge_gedrueckt:
+        hinweise.append(
+            f"Der Kurs verlangt {g_imp * 100:.0f} % Wachstum bei normaler Marge. "
+            f"Hier ist der Kurs hoch, nicht die Basis niedrig.")
+    elif g_imp is not None and g_imp > IMPLIZIT_ABSURD:
         hinweise.append(
             f"Eingepreist sind {g_imp * 100:.0f} % Startwachstum ueber "
             f"{b['years']} Jahre. Das hat kein Unternehmen dieser Groesse je "
@@ -2162,6 +2415,21 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
         "urteil_text": unter,
         "urteil_ton": URTEIL_TON[urteil],
         "beide_gestreckt": beide,
+        "basis_gedrueckt": basis_gedrueckt,
+        "weit_ueber_korridor": _weit_drueber,
+        "marge_gedrueckt": _marge_gedrueckt,
+        "anker_anzahl": len(kor.anker),
+        "konsens_quelle": (anker or {}).get("_konsens_quelle"),
+        "historie_jahre": (anker or {}).get("_jahre"),
+        # Wie viele Jahre deckt der laengste Anker ab? Bei vier Jahren ist der
+        # Korridor eine Momentaufnahme, kein Zyklusvergleich - bei einem
+        # Zykliker ist das eine echte Einschraenkung des Urteils.
+        "spanne_jahre": (anker or {}).get("_spanne_jahre"),
+        # Zwei Anker sind das Minimum, aber kein Korridor im gemeinten Sinn:
+        # Der regime-gewichtete Vergleich ueber 3/5/10 Jahre braucht mehr als
+        # eine Historienrate plus einen Konsenswert. Mit weniger als drei
+        # Ankern taugt das Urteil als Hinweis, nicht als Ausschlussgrund.
+        "belastbar": len(kor.anker) >= 3,
         "zeilen": _benchmark(b, kor, g_imp, b["g1_modell"]),
         "gitter": (rd_gitter(b, g_imp=g_imp, cash_imp=cash_imp)
                    if mit_gitter else None),

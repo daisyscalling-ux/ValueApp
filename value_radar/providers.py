@@ -9,6 +9,8 @@ das restliche System läuft weiter.
 Alle Netzwerk-Calls sind defensiv in try/except gekapselt.
 """
 from __future__ import annotations
+
+__version__ = "2026.09.19"   # umsatz_historie, Anreicherungs-Cache mit Marker
 from typing import Any, Optional
 import math
 import time
@@ -904,6 +906,30 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         # die mittlere Verfehlung korrigiert. Der Rohwert bleibt als
         # eps_forward_roh erhalten.
         # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # ZYKLIZITAET AUS DEN DATEN. Das Branchenlabel reicht nicht: Microns
+        # Branche heisst "Semiconductors", nicht "memory" - der Musterzykliker
+        # wurde deshalb als Wachstumstitel eingestuft und mit gewinnbasierten
+        # Verfahren auf Gipfelgewinnen bewertet. Die Regel steckte schon in
+        # backtest.py und fehlte nur im laufenden Betrieb.
+        # ------------------------------------------------------------------
+        if R and merged.get("_ist_zyklisch") is None:
+            try:
+                import valuation as _v2
+                _hist = _roic.kennzahl_historie(ticker, 10) or []
+                _margen = [z.get("profit_margin") for z in _hist
+                           if z.get("profit_margin") is not None]
+                if len(_margen) >= 4:
+                    _akt = None
+                    if merged.get("net_income") and merged.get("revenue"):
+                        _akt = merged["net_income"] / merged["revenue"]
+                    _z = _v2.zyklisch_aus_margen(_margen, _akt)
+                    merged["_zyklus_diagnose"] = _z
+                    if _z.get("zyklisch"):
+                        merged["_ist_zyklisch"] = True
+            except Exception:
+                pass
+
         # Ebenfalls persistiert: Die Trefferquote des Konsens aendert sich
         # quartalsweise, nicht stuendlich. Ohne Persistenz wird eps_forward mal
         # gestutzt und mal nicht - und fwd_pe schwankt entsprechend.
@@ -1423,6 +1449,100 @@ def get_eps_history(ticker: str, limit: int = 12) -> list[tuple]:
         return paare[-limit:]
     except Exception:
         return []
+
+
+#: Merkt sich, ob FMP ueberhaupt Umsatzhistorie liefert. Zwei Fehlversuche
+#: reichen als Beleg - danach wird der Anbieter fuer diesen Zweck uebersprungen.
+_FMP_HISTORIE_TOT: dict = {}
+
+
+def _fmp_stable(path, params=None):
+    """FMP ueber den neuen /stable/-Pfad.
+
+    Der alte /api/v3/-Pfad antwortet mit manchen Schluesseln nicht mehr - im
+    Test lieferte income-statement fuer DVN und LLY gar nichts, wodurch die
+    Umsatzhistorie auf roics fuenf Jahre zurueckfiel und der Reverse-DCF-
+    Korridor auf zwei Ankern stand.
+    """
+    if not config.FMP_API_KEY or requests is None or _is_down("fmp"):
+        return None
+    p = dict(params or {})
+    p["apikey"] = config.FMP_API_KEY
+    try:
+        r = requests.get(f"https://financialmodelingprep.com/stable/{path}",
+                         params=p, timeout=12)
+        if r.status_code == 200:
+            _ok("fmp")
+            return r.json()
+        if r.status_code in (401, 403):
+            return None
+    except Exception:
+        pass
+    return None
+
+
+def umsatz_historie(ticker: str, jahre: int = 15) -> list:
+    """Lange Umsatzhistorie - roic reicht dafuer nicht.
+
+    roic liefert genau fuenf Geschaeftsjahre, unabhaengig vom limit-Parameter
+    (an sechs Titeln geprueft: DVN, USB, CF, LLY, COST, UNH - alle 2021-2025).
+    Damit kommen im Reverse DCF nur zwei Anker zusammen, der Korridor steht
+    auf zu wenig Grundlage und das Gate darf gar nicht ausschliessen.
+
+    FMPs income-statement geht deutlich weiter zurueck. Reihenfolge:
+      1. FMP  (lange Reihe)
+      2. roic (Rueckfall, fuenf Jahre)
+
+    Rueckgabe: [{"jahr": "2014", "revenue": 1.2e10}, ...] aufsteigend.
+    """
+    reihe = {}
+
+    def _einlesen(d):
+        n = 0
+        for z in d if isinstance(d, list) else []:
+            if not isinstance(z, dict):
+                continue
+            j = str(z.get("calendarYear") or z.get("fiscalYear")
+                    or z.get("date") or "")[:4]
+            r = _num(z.get("revenue"))
+            if j and r and r > 0 and j not in reihe:
+                reihe[j] = float(r)
+                n += 1
+        return n
+
+    # Beide FMP-Pfade werden genau EINMAL je Sitzung probiert. Antwortet
+    # keiner, ist das eine Eigenschaft des Schluessels und aendert sich
+    # innerhalb eines Laufs nicht mehr. Vorher kostete jeder Titel zwei
+    # Fehlversuche mit Zeitablauf - die Screener-Laufzeit verdoppelte sich
+    # dadurch von 8,5 auf 18 Sekunden, ohne einen einzigen Datenpunkt.
+    if config.FMP_API_KEY and not _FMP_HISTORIE_TOT.get("tot"):
+        vorher = len(reihe)
+        try:
+            _einlesen(_fmp_get(f"income-statement/{ticker}", {"limit": jahre}))
+        except Exception:
+            pass
+        if len(reihe) < 6:
+            try:
+                _einlesen(_fmp_stable("income-statement",
+                                      {"symbol": ticker, "limit": jahre}))
+            except Exception:
+                pass
+        if len(reihe) == vorher:
+            _FMP_HISTORIE_TOT["fehlversuche"] = \
+                _FMP_HISTORIE_TOT.get("fehlversuche", 0) + 1
+            if _FMP_HISTORIE_TOT["fehlversuche"] >= 2:
+                _FMP_HISTORIE_TOT["tot"] = True
+    if len(reihe) < 6:
+        try:
+            import roic as _r
+            if _r.enabled():
+                for z in (_r.umsatz_reihe(ticker, jahre) or []):
+                    j = str(z.get("jahr"))[:4]
+                    if j and j not in reihe and z.get("revenue"):
+                        reihe[j] = float(z["revenue"])
+        except Exception:
+            pass
+    return [{"jahr": j, "revenue": reihe[j]} for j in sorted(reihe)][-jahre:]
 
 
 def get_technicals(ticker: str) -> dict:

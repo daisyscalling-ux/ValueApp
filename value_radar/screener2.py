@@ -25,7 +25,7 @@ statt verdaechtig.
 
 from __future__ import annotations
 
-__version__ = "2026.09.02"
+__version__ = "2026.09.19"
 
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence
@@ -67,12 +67,37 @@ def _klemm(x: float, lo: float = 0.0, hi: float = 100.0) -> float:
 
 
 def _b_abschlag(k: kd.Kandidat) -> Optional[float]:
-    """Abstand zum Fair Value. 0 % Upside = 0 Punkte, +60 % = 100."""
+    """Abstand zum Fair Value - gewichtet mit der Verlaesslichkeit des Werts.
+
+    Ein Upside ist nur so gut wie der Fair Value dahinter. Im Kontrolllauf
+    landete NVIDIA mit +89 % auf Platz zwei eines VALUE-Profils: volle 100
+    Punkte fuer einen Abschlag, der aus einem Fair Value stammt, welcher zu
+    83 % aus Multiple-Annahmen besteht und bei dem der DCF als unplausibel
+    verworfen wurde. Die uebrigen Bausteine straften das zwar ab, aber das
+    Abschlagskriterium mit 30 % Gewicht zog es wieder hoch.
+
+    Deshalb wird der Rohwert gedaempft, wenn die Grundlage duenn ist:
+      - Datenbasis eingeschraenkt oder schlechter
+      - Fair Value ueberwiegend aus Multiple-Annahmen
+    Beides zusammen halbiert den Baustein.
+    """
     u = k.upside
-    return None if u is None else _klemm(u / 60.0 * 100.0)
+    if u is None:
+        return None
+    wert = _klemm(u / 60.0 * 100.0)
+
+    faktor = 1.0
+    if k.datenstufe not in ("vollstaendig", "unbekannt"):
+        faktor *= 0.75
+    m = k.multiple_anteil
+    if m is not None and m > 0.60:
+        # linear von 1,0 bei 60 % auf 0,65 bei 90 % Multiple-Anteil
+        faktor *= max(0.65, 1.0 - (m - 0.60) * 1.2)
+    return _klemm(wert * faktor)
 
 
 def _b_kurserwartung(k: kd.Kandidat) -> Optional[float]:
+    """(Doku am Funktionsende - siehe unten.)"""
     """Wo liegt das eingepreiste Wachstum im realistischen Korridor?
 
     Unterhalb der Korridormitte = voll, am oberen Rand = 0. Das ist die
@@ -80,20 +105,33 @@ def _b_kurserwartung(k: kd.Kandidat) -> Optional[float]:
     sondern "was der Kurs verlangt, hat die Firma schon geliefert".
     """
     ke = k.kurserwartung or {}
+    if ke.get("urteil") == "basis_unklar":
+        # Kein Wert statt null Punkte: Ein Baustein ohne Aussage darf den
+        # Score nicht nach unten ziehen. Der Anteil fehlenden Gewichts wird
+        # ohnehin als "Basis" ausgewiesen.
+        return None
     g = ke.get("impliziertes_wachstum")
     kor = ke.get("korridor") or {}
     tief, mitte, hoch = kor.get("tief"), kor.get("mitte"), kor.get("hoch")
     if g is None or mitte is None or hoch is None or tief is None:
         return None
+    def _daempfen(w):
+        # Steht der Korridor auf zwei Ankern, ist er kaum belastbar. Das darf
+        # den Score weder voll nach oben noch voll nach unten treiben.
+        return w if ke.get("belastbar") else 50.0 + (w - 50.0) * 0.5
+
     if g <= tief:
-        return 100.0
+        return _daempfen(100.0)
     if g >= hoch:
-        return 0.0
+        return _daempfen(0.0)
     if g <= mitte:
         anteil = (mitte - g) / (mitte - tief) if mitte > tief else 0.0
-        return _klemm(60.0 + 40.0 * anteil)
-    anteil = (hoch - g) / (hoch - mitte) if hoch > mitte else 0.0
-    return _klemm(60.0 * anteil)
+        wert = _klemm(60.0 + 40.0 * anteil)
+    else:
+        anteil = (hoch - g) / (hoch - mitte) if hoch > mitte else 0.0
+        wert = _klemm(60.0 * anteil)
+
+    return _daempfen(wert)
 
 
 def _b_historie(k: kd.Kandidat) -> Optional[float]:
@@ -109,12 +147,37 @@ def _b_historie(k: kd.Kandidat) -> Optional[float]:
 
 
 def _b_bilanz(k: kd.Kandidat) -> Optional[float]:
+    """Piotroski, gemindert um einen Beneish-Abzug.
+
+    Beneish schliesst nur noch im Extremfall aus (Standardgrenze plus erhoehte
+    Abgrenzungen). Alles darunter gehoert trotzdem ins Ergebnis - aber als
+    Abzug, nicht als Todesurteil. So bleibt ein Titel mit auffaelligem M-Wert
+    sichtbar und faellt im Rang zurueck, statt kommentarlos zu verschwinden.
+    """
     p = (k.forensik.get("piotroski") or {}).get("score")
     if p is None:
         # Finanzwerte: Piotroski nicht definiert. Neutral statt Nullpunkte,
         # sonst faellt der ganze Sektor im Rang zurueck.
-        return 50.0 if k.forensik.get("finanzwert") else None
-    return _klemm(p / 9.0 * 100.0)
+        basis = 50.0 if k.forensik.get("finanzwert") else None
+    else:
+        basis = _klemm(p / 9.0 * 100.0)
+    if basis is None:
+        return None
+
+    b = k.forensik.get("beneish") or {}
+    if b.get("verdaechtig_streng"):
+        basis -= 25.0
+    elif b.get("verdaechtig"):
+        basis -= 10.0
+    tata = (b.get("teile") or {}).get("TATA")
+    if tata is not None and tata > 0.06:
+        basis -= 15.0
+    # Altman schliesst nur noch mit zweitem Beleg aus - der Befund selbst
+    # gehoert trotzdem in den Rang, sonst verschwindet er ganz.
+    a = k.forensik.get("altman") or {}
+    if a.get("gefahr") is True:
+        basis -= 20.0
+    return _klemm(basis)
 
 
 def _b_cashflow_anteil(k: kd.Kandidat) -> Optional[float]:
@@ -124,6 +187,11 @@ def _b_cashflow_anteil(k: kd.Kandidat) -> Optional[float]:
 
 
 def _b_trend(k: kd.Kandidat) -> Optional[float]:
+    """Trendstaerke aus dem Momentum-Modul.
+
+    Der Score dort ist bereits risikoadjustiert und - sofern Sektormediane
+    vorliegen - gegen die Branche bereinigt. Hier wird er nur uebernommen.
+    """
     s = (k.momentum or {}).get("score")
     return None if s is None else _klemm(float(s))
 
@@ -205,12 +273,19 @@ _GRUNDARTEN = (
     ("Beneish", "Bilanzverdacht (Beneish)"),
     ("Altman", "Insolvenzgefahr (Altman)"),
     ("Kurs verlangt", "Kurs verlangt zu viel"),
+    ("Korridor bis", "Kurs verlangt zu viel"),
+    ("Cashflow-Basis", "Reverse DCF ohne Aussage"),
     ("Multiple-Annahmen", "Wert zu stark aus Multiples"),
     ("RSI", "ueberhitzt (RSI)"),
     ("Cashflow", "operativer Cashflow negativ"),
     ("Upside", "kein Abschlag zum Fair Value"),
     ("Score", "kein Score berechenbar"),
+    ("traegt den Titel nicht", "Modell traegt den Titel nicht"),
 )
+
+
+#: Zieht den Abstand aus "... (+3.4 Pp.)" heraus.
+_KNAPP = __import__("re").compile(r"\(\+([\d.]+) Pp\.\)")
 
 
 def _grundart(grund: str) -> str:
@@ -220,12 +295,71 @@ def _grundart(grund: str) -> str:
     return grund.split("(")[0].split("<")[0].strip()
 
 
+def _entdopple(paare):
+    """Mehrfachnotierungen derselben Firma auf eine reduzieren.
+
+    Nach dem flachen Laden liegt der Firmenname vor - darueber laesst sich
+    zusammenfuehren, was ueber das Ticker-Symbol nicht geht. Behalten wird die
+    Heimatnotierung (Ticker ohne Boersensuffix), sonst die mit der groessten
+    Marktkapitalisierung; die Zweitnotierung hat oft duenne Kursdaten.
+    """
+    def _norm(name):
+        n = str(name or "").lower()
+        # Reihenfolge zaehlt: laengere Formen zuerst, sonst bleibt aus
+        # "corporation" ein "oration" stehen.
+        n = n.replace(",", " ").replace(".", " ")
+        # Wortweise entfernen statt per Teilstring: "Limited" und "Ltd" sind
+        # dieselbe Rechtsform, aber Teilstring-Ersetzung macht aus
+        # "BHP Group Limited" ein "bhp limited" und aus "BHP Group Ltd" ein
+        # "bhp" - zwei verschiedene Schluessel fuer dieselbe Firma.
+        weg = {"corporation", "corp", "incorporated", "inc", "company", "co",
+               "holdings", "holding", "group", "plc", "ag", "nv", "sa", "se",
+               "ltd", "limited", "the", "class", "a", "b"}
+        return " ".join(w for w in n.split() if w not in weg)
+
+    best = {}
+    for tk, fd in paare:
+        name = _norm(fd.get("name"))
+        if not name:
+            best[f"__{tk}"] = (tk, fd)          # ohne Namen nicht zusammenfuehren
+            continue
+        heim = "." not in tk
+        mcap = (fd.get("market_cap") or 0) * (fd.get("_fx") or 1.0)
+        alt = best.get(name)
+        if alt is None:
+            best[name] = (tk, fd)
+            continue
+        a_tk, a_fd = alt
+        a_heim = "." not in a_tk
+        a_mcap = (a_fd.get("market_cap") or 0) * (a_fd.get("_fx") or 1.0)
+        # Reihenfolge der Entscheidung: Stammaktie vor Vorzug, dann
+        # Heimatnotierung vor Zweitnotierung, dann Marktkapitalisierung.
+        # Ohne die erste Stufe gewinnt bei gleicher Marktkapitalisierung der
+        # zufaellig erste Eintrag - so kam BAC-PB statt BAC in die Liste.
+        stamm = kd._ist_stammaktie(tk, fd.get("name") or "")
+        a_stamm = kd._ist_stammaktie(a_tk, a_fd.get("name") or "")
+        if (stamm and not a_stamm) or (
+                stamm == a_stamm and ((heim and not a_heim)
+                                      or (heim == a_heim and mcap > a_mcap))):
+            best[name] = (tk, fd)
+    return list(best.values())
+
+
 @dataclass
 class Trichter:
     universum: int = 0
     nach_vorfilter: int = 0
     tief_geprueft: int = 0
     gate_bestanden: int = 0
+    # Wie oft trug der Reverse-DCF-Korridor genug Anker, um ueberhaupt
+    # ausschliessen zu duerfen? Ohne diese Zahl sieht ein stummes Gate genauso
+    # aus wie ein Gate, das nichts zu beanstanden hat.
+    korridor_belastbar: int = 0
+    korridor_anker: Dict[int, int] = field(default_factory=dict)
+    #: (Ticker, Abstand in Prozentpunkten) fuer alle am Korridor Gescheiterten
+    korridor_abstand: List[tuple] = field(default_factory=list)
+    #: Summierte Dauer je Stufe ueber alle tief geprueften Titel
+    zeiten: Dict[str, float] = field(default_factory=dict)
     vorfilter_gruende: Dict[str, int] = field(default_factory=dict)
     gate_gruende: Dict[str, int] = field(default_factory=dict)
     fehler: List[str] = field(default_factory=list)
@@ -246,13 +380,24 @@ class Ergebnis:
     profil: str = "value"
 
 
+#: Welche teuren Zusatzabrufe braucht ein Profil ueberhaupt?
+#: Der erste echte Lauf brauchte 20,8 s je Titel - ein Grossteil davon fuer
+#: Bausteine, die im jeweiligen Profil gar nicht ins Gewicht gehen.
+PROFIL_BEDARF = {
+    "value":      {"momentum": False, "historie": True,  "forensik": True},
+    "momentum":   {"momentum": True,  "historie": False, "forensik": True},
+    "fruehphase": {"momentum": True,  "historie": False, "forensik": True},
+}
+
+
 def lauf(universum: Sequence[str],
          flach_laden: Callable[[str], dict],
          profil: str = "value",
          max_tief: int = 80,
          min_mcap_eur: float = kd.MIN_MARKTKAP_EUR,
          max_mcap_eur: Optional[float] = None,
-         fortschritt: Optional[Callable[[float, str], None]] = None) -> Ergebnis:
+         fortschritt: Optional[Callable[[float, str], None]] = None,
+         parallel: int = 4, gates_aus: bool = False) -> Ergebnis:
     """Vier Stufen. `flach_laden` ist der billige Loader (deep=False).
 
     max_tief begrenzt die teure Stufe. Die Auswahl trifft dabei NICHT der
@@ -279,6 +424,15 @@ def lauf(universum: Sequence[str],
         ueberlebende.append((tk, fd))
         if fortschritt:
             fortschritt(i / max(len(universum), 1), f"Vorfilter {tk}")
+    # Doppelnotierungen raus, BEVOR das teure Budget verbraucht wird.
+    # Im ersten echten Lauf standen HSBA.L neben HSBAL.XC, AZN.L neben AZNL.XC,
+    # NVDA neben NVD.DE - collapse_listings() kann das nicht fangen, weil es
+    # nach Basissymbol gruppiert und "HSBA" != "HSBAL" ist. Nach dem flachen
+    # Laden liegt aber der Firmenname vor, und damit geht es.
+    vorher = len(ueberlebende)
+    ueberlebende = _entdopple(ueberlebende)
+    if vorher > len(ueberlebende):
+        t.vorfilter_gruende["Zweitnotierung"] = vorher - len(ueberlebende)
     t.nach_vorfilter = len(ueberlebende)
 
     # Grosse zuerst: bei begrenztem Budget sind ihre Daten verlaesslicher.
@@ -287,21 +441,81 @@ def lauf(universum: Sequence[str],
     ueberlebende = ueberlebende[:max_tief]
 
     # --- Stufe 3+4: tiefe Pruefung und Gates ---------------------------
-    for i, (tk, _fd) in enumerate(ueberlebende, 1):
-        if fortschritt:
-            fortschritt(i / max(len(ueberlebende), 1),
-                        f"Tiefe Pruefung {tk} ({t.gate_bestanden} Treffer)")
+    #
+    # Die Zeitmessung ergab: 87 % der Laufzeit stecken im Abruf der
+    # Fundamentaldaten (230 von 265 Sekunden bei 30 Titeln). Das ist reine
+    # Wartezeit auf Netzwerkantworten, kein Rechnen - dafuer lohnt
+    # Parallelisierung.
+    #
+    # Bewusst niedrig angesetzt: roic hat ein Minutenlimit, und ein Screener,
+    # der die Quelle ausbremst, hat nichts gewonnen. Vier gleichzeitige Abrufe
+    # sind ein Kompromiss; parallel=1 schaltet zurueck auf nacheinander.
+    bedarf = PROFIL_BEDARF.get(profil, PROFIL_BEDARF["value"])
+
+    def _pruefe_einen(tk):
         try:
-            k = kd.pruefe(tk)
+            return tk, kd.pruefe(tk, mit_momentum=bedarf["momentum"],
+                                 mit_historie=bedarf["historie"],
+                                 mit_forensik=bedarf["forensik"]), None
         except Exception as e:
-            t.fehler.append(f"{tk}: {e}")
+            return tk, None, str(e)
+
+    if parallel > 1 and len(ueberlebende) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=parallel) as pool:
+            roh = list(pool.map(lambda p: _pruefe_einen(p[0]), ueberlebende))
+    else:
+        roh = [_pruefe_einen(tk) for tk, _ in ueberlebende]
+
+    for i, (tk, k, fehler) in enumerate(roh, 1):
+        if fortschritt:
+            fortschritt(i / max(len(roh), 1),
+                        f"Auswertung {tk} ({t.gate_bestanden} Treffer)")
+        if fehler or k is None:
+            t.fehler.append(f"{tk}: {fehler}")
             continue
         t.tief_geprueft += 1
+        for _n, _d in ((k.qualitaet or {}).get("zeiten") or {}).items():
+            t.zeiten[_n] = round(t.zeiten.get(_n, 0.0) + _d, 2)
+        _ke = k.kurserwartung or {}
+        if _ke:
+            _n = _ke.get("anker_anzahl", 0)
+            t.korridor_anker[_n] = t.korridor_anker.get(_n, 0) + 1
+            if _ke.get("belastbar"):
+                t.korridor_belastbar += 1
 
         raus = kd.gate_pruefen(k, profil)
+
+        # KONTROLLLAUF: Gates protokollieren, aber nicht anwenden.
+        #
+        # Die Trefferliste besteht ueber fuenf Laeufe nur aus Banken und
+        # Rohstofftiteln. Zwei Erklaerungen sind moeglich und von aussen nicht
+        # zu unterscheiden: Entweder findet ein Value-Filter in einem teuren
+        # Markt genau das - oder das Profil hat eine strukturelle Neigung zu
+        # niedrigen Multiples, und Qualitaetstitel scheitern systematisch.
+        #
+        # Mit ausgeschalteten Gates rangieren alle Titel nach Score. Fuehren
+        # dann dieselben Zykliker, liegt es am Markt. Tauchen Qualitaetstitel
+        # oben auf, liegt es am Profil.
+        if gates_aus:
+            if raus:
+                for g in raus:
+                    t.gate_gruende[_grundart(g)] = t.gate_gruende.get(_grundart(g), 0) + 1
+            r = rang(k, profil)
+            if r["score"] is not None:
+                t.gate_bestanden += 1
+                erg.treffer.append({**k.as_dict(), "score": r["score"],
+                                    "teile": r["teile"], "score_basis": r["basis"],
+                                    "score_fehlend": r["fehlend"],
+                                    "waere_raus": raus})
+            continue
+
         if raus:
             for g in raus:
                 t.gate_gruende[_grundart(g)] = t.gate_gruende.get(_grundart(g), 0) + 1
+                _m = _KNAPP.search(g)
+                if _m:
+                    t.korridor_abstand.append((k.ticker, float(_m.group(1))))
             erg.ausgeschlossen.append({**k.as_dict(), "gruende": raus})
             continue
 
@@ -363,6 +577,32 @@ def bericht(erg: Ergebnis) -> List[str]:
             sorted(t.gate_gruende.items(), key=lambda x: -x[1])))
     if t.fehler:
         z.append(f"  Fehler bei {len(t.fehler)} Titeln")
+    if t.tief_geprueft:
+        z.append(f"  Reverse-DCF-Korridor belastbar bei "
+                 f"{t.korridor_belastbar} von {t.tief_geprueft} Titeln"
+                 + (f" (Ankerverteilung: "
+                    + ", ".join(f"{n} Anker: {k}x" for n, k in
+                                sorted(t.korridor_anker.items())) + ")"
+                    if t.korridor_anker else ""))
+        if t.korridor_belastbar == 0 and t.tief_geprueft:
+            z.append("  -> Das Gate 'Kurs verlangt zu viel' konnte bei KEINEM "
+                     "Titel greifen. Es fehlt Umsatzhistorie, nicht Strenge.")
+        elif t.korridor_belastbar < t.tief_geprueft * 0.5:
+            z.append("  -> Bei ueber der Haelfte der Titel steht der Korridor "
+                     "auf zu wenig Ankern; dort wirkt das Gate nur daempfend.")
+    if t.korridor_abstand:
+        knapp = sorted(t.korridor_abstand, key=lambda x: x[1])
+        nah = [f"{tk} +{d:.1f}" for tk, d in knapp[:5]]
+        weit = [f"{tk} +{d:.1f}" for tk, d in knapp[-3:]]
+        z.append(f"  Am Korridor gescheitert, knappste: {', '.join(nah)} Pp.")
+        z.append(f"  ... deutlichste: {', '.join(weit)} Pp.")
+        z.append("  Knappe Faelle sind Grenzfaelle der Annahmen, keine klaren "
+                 "Ueberbewertungen - dort lohnt der Einzelblick.")
+    if t.zeiten:
+        gesamt = sum(t.zeiten.values()) or 1.0
+        teile = sorted(t.zeiten.items(), key=lambda x: -x[1])
+        z.append("  Zeit je Stufe: " + ", ".join(
+            f"{n} {d:.0f}s ({d / gesamt * 100:.0f} %)" for n, d in teile))
     duenn = [x for x in erg.treffer if (x.get("score_basis") or 1) < 0.6]
     if duenn:
         z.append(f"  {len(duenn)} Treffer mit duenner Score-Grundlage "

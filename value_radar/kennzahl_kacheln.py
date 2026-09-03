@@ -12,7 +12,7 @@ bleiben unangetastet - sie sind der Tiefgang, das hier ist die Uebersicht.
 
 from __future__ import annotations
 
-__version__ = "2026.09.01"
+__version__ = "2026.09.20"
 
 from typing import Dict, List, Optional, Sequence
 
@@ -49,6 +49,69 @@ def _rate(xs: Sequence[float], jahre: int) -> Optional[float]:
     return neu / alt - 1.0
 
 
+def _einordnung(xs, label: str, negativ_ist_gut: bool = False) -> tuple:
+    """Was sagt der Verlauf - jenseits der letzten Prozentzahl?
+
+    Drei Wachstumsraten nebeneinander (3J/5J/10J) sind Zahlen, keine Aussage.
+    Interessant ist die zweite Ableitung: Beschleunigt sich das Wachstum oder
+    laeuft es aus? Bei Eaton war genau das der Punkt - Umsatz weiter steigend,
+    Nettoergebnis bereits drehend.
+
+    Rueckgabe: (ampel, zusatztext)
+    """
+    xs = [float(v) for v in xs if isinstance(v, (int, float))]
+    if len(xs) < 4:
+        return None, None
+
+    def rate(a, b):
+        return (b / a - 1.0) if a and a > 0 else None
+
+    letzte = rate(xs[-2], xs[-1])
+    vorletzte = rate(xs[-3], xs[-2])
+    if letzte is None or vorletzte is None:
+        return None, None
+
+    # Dreijahresschnitt als Referenz fuer "normal"
+    frueher = [r for r in (rate(xs[i - 1], xs[i]) for i in range(1, len(xs) - 1))
+               if r is not None]
+    schnitt = sum(frueher) / len(frueher) if frueher else 0.0
+
+    delta = letzte - vorletzte
+    if letzte < 0 and vorletzte < 0:
+        return "rot", f"zweites Jahr rueckl\u00e4ufig ({letzte * 100:+.0f} %)"
+    if letzte < 0:
+        return "rot", f"gedreht: von {vorletzte * 100:+.0f} % auf {letzte * 100:+.0f} %"
+    if delta < -0.05:
+        return "gelb", (f"Wachstum verlangsamt sich "
+                        f"({vorletzte * 100:+.0f} % \u2192 {letzte * 100:+.0f} %)")
+    if delta > 0.05:
+        return "gruen", (f"Wachstum zieht an "
+                         f"({vorletzte * 100:+.0f} % \u2192 {letzte * 100:+.0f} %)")
+    if letzte > schnitt * 1.1:
+        return "gruen", f"stetig, ueber dem Schnitt ({schnitt * 100:+.0f} %)"
+    return None, f"stetig um {letzte * 100:+.0f} % pro Jahr"
+
+
+def _marge_einordnung(xs) -> tuple:
+    """Margen: Niveau UND Richtung. Eine fallende hohe Marge ist etwas anderes
+    als eine steigende niedrige."""
+    xs = [float(v) for v in xs if isinstance(v, (int, float))]
+    if len(xs) < 4:
+        return None, None
+    jetzt = xs[-1]
+    schnitt = sum(xs[:-1]) / len(xs[:-1])
+    if schnitt == 0:
+        return None, None
+    ab = jetzt - schnitt
+    if ab < -0.02:
+        return "rot", (f"{abs(ab) * 100:.1f} Pp. unter dem Mehrjahresschnitt "
+                       f"({schnitt * 100:.1f} %)")
+    if ab > 0.02:
+        return "gruen", (f"{ab * 100:.1f} Pp. ueber dem Schnitt "
+                         f"({schnitt * 100:.1f} %) \u2013 Gipfelverdacht pruefen")
+    return None, f"stabil um {schnitt * 100:.1f} %"
+
+
 def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
                          waehrung: str = "EUR") -> List[Dict]:
     """historie: roic.kennzahl_historie(t) - Reihenfolge egal, wird sortiert."""
@@ -71,6 +134,7 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             r = _rate(xs, j)
             if r is not None:
                 chips.append((name, r))
+        ampel, zusatz = _einordnung(xs, label, negativ)
         items.append({
             "label": label,
             "value": _zahl(xs[-1], waehrung, fx),
@@ -78,6 +142,8 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             "chips": chips,
             "reihe": xs,
             "negative": negativ,
+            "ampel": ampel,
+            "zusatz": zusatz,
         })
 
     # Margen als eigene Kachel: Prozentwerte, keine Waehrung
@@ -87,27 +153,39 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
         xs = [float(v) for v in xs if isinstance(v, (int, float))]
         if len(xs) < 3:
             continue
+        ampel, zusatz = _marge_einordnung(xs)
         items.append({
             "label": label,
             "value": ui.pct(xs[-1], 1),
             "delta": None,
-            "chips": [("Spanne", 0)] if False else [],
+            "chips": [],
             "reihe": xs,
             "negative": False,
+            "ampel": ampel,
+            "zusatz": zusatz,
         })
     return items
 
 
 def rendern(historie: Sequence[dict], news: Optional[Sequence[dict]] = None,
             fx: float = 1.0, waehrung: str = "EUR",
-            nummer_start: int = 1) -> int:
-    """Rendert Kacheln und Nachrichten. Gibt die naechste Abschnittsnummer zurueck."""
+            nummer_start: int = 1, bilanz=None, bilanz_zusammenfassung=None) -> int:
+    """Rendert Kacheln, Finanzlage und Nachrichten.
+
+    bilanz  Rueckgabe von kennzahlen.bewerte() - die Bilanzkennzahlen standen
+            bisher ganz unten in einem Aufklapper mit mehreren Tabellen. Hier
+            stehen sie als Kachelstreifen oben; die Tabellen bleiben unten
+            fuer den, der die Schwellen sehen will.
+    """
     n = nummer_start
     items = kacheln_aus_historie(historie, fx, waehrung)
     if items:
         ui.abschnitt(n, "Kennzahlen", "Jahresabschluesse")
         n += 1
         ui.kennzahl_kacheln(items)
+
+    if bilanz:
+        ui.bilanz_streifen(bilanz, bilanz_zusammenfassung)
 
     eintraege = [x for x in (news or []) if x.get("titel")]
     if eintraege:

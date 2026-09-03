@@ -3990,7 +3990,7 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
-                _ERWARTET = "2026.09.01"
+                _ERWARTET = "2026.09.20"
 
                 def _modul_alt(mod, noetig=()):
                     if getattr(mod, "__version__", None) != _ERWARTET:
@@ -4017,23 +4017,33 @@ if nav == "Einzelanalyse":
 
                     @st.cache_data(ttl=21600, show_spinner=False)
                     def _kopf_daten(t):
-                        hist, news = [], []
+                        hist, news, bil, zus = [], [], None, None
                         try:
                             import roic as _r
                             if _r.enabled():
                                 hist = _r.kennzahl_historie(t, 12) or []
                                 if _r.covers(t):
                                     news = _r.news(t, 12) or []
+                                    # Bilanzkennzahlen fuer den Kachelstreifen.
+                                    # Dieselbe Quelle wie der Aufklapper weiter
+                                    # unten, nur einmal geladen.
+                                    import kennzahlen as _kz2
+                                    _roh2 = _r.ratios_alle(t)
+                                    bil = _kz2.bewerte(_roh2)
+                                    zus = _kz2.zusammenfassung(bil) if bil else None
                         except Exception:
                             pass
-                        return {"hist": hist, "news": news}
+                        return {"hist": hist, "news": news,
+                                "bilanz": bil, "bilanz_zus": zus}
 
                     _kd = _kopf_daten(ticker)
-                    if _kd["hist"] or _kd["news"]:
+                    if _kd["hist"] or _kd["news"] or _kd["bilanz"]:
                         _uib.inject_css("dunkel")
                         _kk.rendern(_kd["hist"], _kd["news"],
                                     fx=fx_to_eur(f.get("currency") or "USD") or 1.0,
-                                    waehrung="EUR", nummer_start=1)
+                                    waehrung="EUR", nummer_start=1,
+                                    bilanz=_kd["bilanz"],
+                                    bilanz_zusammenfassung=_kd["bilanz_zus"])
                 except RuntimeError:
                     pass                       # Hinweis steht bereits oben
                 except Exception as _e_kk:
@@ -4146,7 +4156,7 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.09.01":
+                    if getattr(_bs, "__version__", None) != "2026.09.20":
                         st.warning("Veralteter Dateistand: bewertung_seite.py "
                                    "\u2014 bitte erneut hochladen und die App "
                                    "neu starten.", icon="\u26a0\ufe0f")
@@ -4460,8 +4470,23 @@ if nav == "Einzelanalyse":
                 # ============================================================
                 # FINANZKENNZAHLEN — Ampel je Kennzahl, Mehrjahresreihen
                 # ============================================================
-                with st.expander("\U0001f9ee FINANZKENNZAHLEN \u00b7 Bilanz im Detail",
-                                 expanded=False):
+                # ============================================================
+                # DETAILS IN REITERN STATT UNTEREINANDER.
+                #
+                # Vorher lagen hier drei Aufklapper untereinander. Auch
+                # zugeklappt kostet jeder eine Zeile plus Abstand, und man
+                # scrollt an ihnen vorbei, ohne zu wissen, was drin ist. Reiter
+                # kosten eine Zeile statt drei und zeigen sofort, was es gibt.
+                #
+                # st.tabs gibt Container zurueck, in die auch spaeter im Code
+                # geschrieben werden darf - die Bloecke unten behalten deshalb
+                # ihre Bedingungen und ihre Reihenfolge.
+                # ============================================================
+                _dtabs = st.tabs(["\U0001f9ee Finanzlage",
+                                  "\U0001f4d0 Bewertungshistorie",
+                                  "\U0001f4c4 Profil & Nachrichten"])
+
+                with _dtabs[0]:
                     try:
                         import roic as _rk
                         import kennzahlen as _kz
@@ -4635,9 +4660,13 @@ if nav == "Einzelanalyse":
                 except Exception:
                     _rb, _bands_ok = None, False
 
+                if not _bands_ok:
+                    with _dtabs[1]:
+                        st.caption("Fuer diesen Titel liegen keine "
+                                   "Multiple-Historien vor (roic nicht "
+                                   "freigeschaltet oder Pence-Notierung).")
                 if _bands_ok:
-                    with st.expander("\U0001f4d0 BEWERTUNG IM HISTORISCHEN "
-                                     "VERGLEICH", expanded=False):
+                    with _dtabs[1]:
                         @st.cache_data(ttl=21600, show_spinner=False)
                         def _hole_bands(t):
                             return _rb.multiples_historie(t, 10)
@@ -4720,9 +4749,13 @@ if nav == "Einzelanalyse":
                 # ============================================================
                 # UNTERNEHMENSPROFIL, NACHRICHTEN, PEERS, EARNINGS CALL
                 # ============================================================
+                if not (_rb is not None and _rb.enabled() and _rb.covers(ticker)):
+                    with _dtabs[2]:
+                        st.caption("Profil, Nachrichten und Earnings Calls "
+                                   "benoetigen die roic.ai-Anbindung fuer "
+                                   "diesen Titel.")
                 if _rb is not None and _rb.enabled() and _rb.covers(ticker):
-                    with st.expander("\U0001f4c4 PROFIL, NACHRICHTEN, "
-                                     "PEERS & EARNINGS CALL", expanded=False):
+                    with _dtabs[2]:
                         _pv = st.radio(
                             "Ansicht",
                             ["Unternehmen", "Nachrichten",

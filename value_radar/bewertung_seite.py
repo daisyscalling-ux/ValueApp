@@ -22,7 +22,7 @@ Zwei Verwendungen:
 
 from __future__ import annotations
 
-__version__ = "2026.09.01"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
+__version__ = "2026.09.20"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
 
 from typing import List, Optional, Sequence
 

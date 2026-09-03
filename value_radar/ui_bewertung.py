@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.01"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.20"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -644,6 +644,68 @@ def sparkline(werte: Sequence[float], farbe: Optional[str] = None,
         f'</svg>')
 
 
+def bilanz_streifen(bewertet, zusammenfassung=None) -> None:
+    """Finanzkennzahlen als kompakter Kachelstreifen statt als Tabellenblock.
+
+    Die Bilanzkennzahlen standen bisher ganz unten in einem Aufklapper mit
+    mehreren Tabellen - man musste scrollen, oeffnen und lesen, um zu wissen,
+    ob die Finanzlage in Ordnung ist. Hier steht dieselbe Aussage in einer
+    Zeile Kacheln: Wert, Ampel, Name. Die Tabellen bleiben darunter fuer den,
+    der die Schwellen sehen will.
+
+    bewertet: Rueckgabe von kennzahlen.bewerte()
+    """
+    if not bewertet:
+        return
+
+    farbe = {"gruen": C["green"], "gelb": C["amber"], "rot": C["red"],
+             "grau": C["muted"]}
+    kacheln = []
+    for block in bewertet:
+        for z in (block.get("zeilen") or []):
+            amp = z.get("ampel") or "grau"
+            if amp == "grau":
+                continue                       # ohne Bewertung keine Kachel
+            f = farbe.get(amp, C["muted"])
+            kacheln.append(
+                f'<div style="border:1px solid {C["line"]};border-left:3px solid {f};'
+                f'background:{C["panel"]};padding:8px 10px;min-width:0;">'
+                f'<div class="va-num" style="font-size:17px;font-weight:700;'
+                f'color:{f};line-height:1.1;">{_e(z.get("anzeige") or "n/a")}</div>'
+                f'<div style="font-size:10.5px;color:{C["muted"]};margin-top:3px;'
+                f'line-height:1.3;">{_e(z.get("name") or "")}</div></div>')
+
+    if not kacheln:
+        return
+
+    kopf = ""
+    if zusammenfassung:
+        z = zusammenfassung
+        ton = {"solide": C["green"], "gemischt": C["amber"]}.get(
+            str(z.get("urteil", "")).lower(), C["red"])
+        kopf = (f'<div style="display:flex;gap:14px;align-items:baseline;'
+                f'margin-bottom:8px;font-size:12px;">'
+                f'<span style="font-weight:700;color:{ton};font-size:14px;">'
+                f'{_e(str(z.get("urteil", "")).title())}</span>'
+                f'<span style="color:{C["green"]};">{z.get("gruen", 0)} gut</span>'
+                f'<span style="color:{C["amber"]};">{z.get("gelb", 0)} mittel</span>'
+                f'<span style="color:{C["red"]};">{z.get("rot", 0)} bedenklich</span>'
+                f'<span style="color:{C["muted"]};">von {z.get("gesamt", 0)} '
+                f'bewertet</span></div>')
+        if z.get("schwach"):
+            kopf += (f'<div style="font-size:11.5px;color:{C["red"]};'
+                     f'margin-bottom:8px;">Schwachstellen: '
+                     f'{_e(" \u00b7 ".join(z["schwach"]))}</div>')
+
+    _md(f'<div class="va-card"><h4>Finanzlage</h4>'
+        f'<div class="sub">Beurteilt die Bilanz, nicht die Aktie \u2013 eine '
+        f'solide Finanzlage sagt nichts ueber den Kurs.</div>'
+        f'{kopf}'
+        f'<div style="display:grid;'
+        f'grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px;">'
+        f'{"".join(kacheln)}</div></div>')
+
+
 def kennzahl_kacheln(items: Sequence[Dict]) -> None:
     """Kennzahlen-Kacheln mit Verlauf, Vorjahresdelta und 3J/5J/10J-Chips.
 
@@ -652,6 +714,8 @@ def kennzahl_kacheln(items: Sequence[Dict]) -> None:
       value    fertig formatierte Grosszahl (String)
       delta    Veraenderung zum Vorjahr als Dezimalzahl, optional
       reihe    Jahreswerte aeltester zuerst, fuer die Sparkline
+      ampel    "gruen"/"gelb"/"rot" - faerbt den linken Rand
+      zusatz   eine Zeile Einordnung, z. B. "Wachstum verlangsamt sich"
     """
     tiles = []
     for it in items:
@@ -668,12 +732,21 @@ def kennzahl_kacheln(items: Sequence[Dict]) -> None:
             f'{v * 100:+.0f} %</b></span>' for c, v in (it.get("chips") or []))
         neg = it.get("negative")
         spark = sparkline(it.get("reihe") or [], C["red"] if neg else None)
-        farbe = C["red"] if neg else C["cyan"]
+        amp = {"gruen": C["green"], "gelb": C["amber"],
+               "rot": C["red"]}.get(it.get("ampel"))
+        farbe = amp or (C["red"] if neg else C["cyan"])
+        rand = (f"border-left:3px solid {amp};" if amp else "")
+        # Eine Zeile Einordnung schlaegt drei Prozentzahlen: "Wachstum
+        # verlangsamt sich" sagt mehr als "3J +36 %, 5J +57 %, 10J +49 %",
+        # weil es die Richtung der Veraenderung benennt statt ihrer Hoehe.
+        zusatz = (f'<div style="font-size:11px;color:{C["muted"]};'
+                  f'margin-top:6px;line-height:1.35;">{_e(it["zusatz"])}</div>'
+                  if it.get("zusatz") else "")
         tiles.append(
-            f'<div class="va-tile">{dl}'
+            f'<div class="va-tile" style="{rand}">{dl}'
             f'<div class="big va-num" style="color:{farbe};">{_e(it["value"])}</div>'
             f'<div class="cap">{_e(it["label"])}</div>'
-            f'{spark}<div class="chips">{chips}</div></div>')
+            f'{spark}{zusatz}<div class="chips">{chips}</div></div>')
     _md(f'<div class="va-tiles">{"".join(tiles)}</div>')
 
 

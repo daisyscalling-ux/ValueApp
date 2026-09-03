@@ -12,7 +12,7 @@ Funktion, sondern eine Datei wurde beim Hochladen vergessen.
 import importlib
 import sys
 
-ERWARTET = "2026.09.01"          # Bewertungs-/Anzeigeschicht
+ERWARTET = "2026.09.20"          # Bewertungs-/Anzeigeschicht
 ERWARTET_ENTDECKUNG = "2026.09.19"   # Screener, Kandidat, Forensik
 
 #: Module der Entdeckungsschicht - eigener Zyklus, eigener Stand.

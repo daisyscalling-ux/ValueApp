@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.21"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.22"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -704,6 +704,61 @@ def bilanz_streifen(bewertet, zusammenfassung=None) -> None:
         f'<div style="display:grid;'
         f'grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px;">'
         f'{"".join(kacheln)}</div></div>')
+
+
+def gate_karte(erg: dict) -> None:
+    """Pflicht-Gates und Bonuspunkte eines Titels.
+
+    Loest die Scorecard-Darstellung ab. Der Unterschied ist nicht optisch: Die
+    Gates hier sind dieselben, die der Screener anwendet - Einzelanalyse und
+    Trefferliste koennen denselben Titel nicht mehr verschieden beurteilen.
+    """
+    if not erg:
+        return
+    ton = {"gruen": C["green"], "gelb": C["amber"],
+           "rot": C["red"]}.get(erg.get("ton") or "grau", C["muted"])
+
+    raus = erg.get("ausschlussgruende") or []
+    if raus:
+        zeilen = "".join(
+            f'<div style="display:flex;gap:8px;padding:5px 0;font-size:12.5px;">'
+            f'<span style="color:{C["red"]};">\u2715</span>'
+            f'<span style="color:{C["fg"]};">{_e(g)}</span></div>' for g in raus)
+        block = (f'<div style="margin:8px 0 12px;">'
+                 f'<div class="sub" style="margin-bottom:4px;">'
+                 f'Nicht bestanden:</div>{zeilen}</div>')
+    else:
+        block = (f'<div style="margin:8px 0 12px;color:{C["green"]};'
+                 f'font-size:12.5px;">\u2713 Alle Pflicht-Gates bestanden</div>')
+
+    bonus = "".join(
+        f'<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;">'
+        f'<span style="color:{C["green"] if x["ok"] else C["muted"]};">'
+        f'{"\u2713" if x["ok"] else "\u25cb"}</span>'
+        f'<span style="color:{C["fg"] if x["ok"] else C["muted"]};">'
+        f'{_e(x["label"])}</span>'
+        f'<span style="color:{C["muted"]};margin-left:auto;">'
+        f'{_e(x["detail"])}</span></div>' for x in (erg.get("bonus") or []))
+
+    fm = erg.get("fundamentales_momentum") or {}
+    fm_zeile = ""
+    if fm.get("score") is not None:
+        fm_zeile = (f'<div style="margin-top:12px;padding-top:10px;'
+                    f'border-top:1px solid {C["line"]};font-size:12px;">'
+                    f'<b style="color:{C["fg"]};">Fundamentales Momentum '
+                    f'{fm["score"]:.0f}/100</b>'
+                    f'<span style="color:{C["muted"]};"> \u00b7 '
+                    f'{_e(" \u00b7 ".join(fm.get("begruendung") or []))}</span></div>')
+
+    _md(f'<div class="va-card"><h4>Pr\u00fcfung</h4>'
+        f'<div class="sub">Dieselben Gates wie im Screener \u2013 '
+        f'Profil "{_e(erg.get("profil", "value"))}".</div>'
+        f'<div style="font-size:17px;font-weight:700;color:{ton};'
+        f'margin:6px 0 2px;">{_e(erg.get("urteil", ""))}</div>'
+        f'{block}'
+        f'<div class="sub" style="margin-bottom:2px;">Bonus '
+        f'{erg.get("bonus_erfuellt", 0)} von {erg.get("bonus_noetig", 0)} '
+        f'n\u00f6tig:</div>{bonus}{fm_zeile}</div>')
 
 
 def pruef_streifen(kacheln, titel: str = "Kennzahlen im Detail",

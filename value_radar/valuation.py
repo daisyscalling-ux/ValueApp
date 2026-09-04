@@ -17,7 +17,7 @@ ausgewiesen, damit die Streuung sichtbar bleibt.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.19"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
+__version__ = "2026.09.22"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
 from typing import Dict, List, Optional, Sequence, Tuple
 import math
 import config

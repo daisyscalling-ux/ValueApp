@@ -3990,7 +3990,7 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
-                _ERWARTET = "2026.09.21"
+                _ERWARTET = "2026.09.22"
 
                 def _modul_alt(mod, noetig=()):
                     if getattr(mod, "__version__", None) != _ERWARTET:
@@ -4172,7 +4172,7 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.09.21":
+                    if getattr(_bs, "__version__", None) != "2026.09.22":
                         st.warning("Veralteter Dateistand: bewertung_seite.py "
                                    "\u2014 bitte erneut hochladen und die App "
                                    "neu starten.", icon="\u26a0\ufe0f")
@@ -5373,71 +5373,54 @@ if nav == "Einzelanalyse":
             ep = resolve_preset(f)
             comp = scoring.score_stock(f, None, preset=ep)["composite"]
             valu = valuation.fair_value(f, None, ep)
-            m1t = mx.auto_m1_total(sig)
-            m2t = mx.auto_m2_total(sig)
-            _m1c = mx.auto_m1_coverage(sig)
-            _m2c = mx.auto_m2_coverage(sig)
             extras = load_screen_extras(ticker)
             rkey = f"radar_one_{ticker}"
-            res = sc.evaluate(f, valu, comp, m1t, m2t, extras,
-                              intel.get("insider"), intel.get("analyst"),
-                              radar_score=st.session_state.get(rkey))
 
-            st.markdown(f"### Kauf-Scorecard \u2014 {f.get('name','')} `{ticker}`")
-            st.caption(f"Playbook: {ep}{' (automatisch)' if preset.startswith('Auto') else ''}  \u00b7  "
-                       f"Datenbasis: Matrix 1 {_m1c[0]}/{_m1c[1]} \u00b7 Matrix 2 "
-                       f"{_m2c[0]}/{_m2c[1]} Kriterien mit echten Daten. "
-                       "Fehlende Kriterien werden ausgeklammert (nicht als \u201eneutral\u201c "
-                       "mitgez\u00e4hlt) \u2013 bei zu d\u00fcnner Basis gibt es bewusst keinen Wert.")
+            # ============================================================
+            # NEUE PRUEFUNG statt Scorecard + Matrix 1/2.
+            #
+            # Vorher liefen hier zwei unabhaengige Siebe: die Scorecard mit
+            # sechs eigenen Pflicht-Gates und - im Screener - kandidat.
+            # gate_pruefen() mit acht anderen. Derselbe Titel konnte hier
+            # "Kaufkandidat" sein und dort ausgeschlossen werden.
+            #
+            # pruefung.pruefe() ruft dieselben Gates auf wie der Screener.
+            # Widersprueche sind damit ausgeschlossen. Matrix 1 faellt weg
+            # (Inhalte stehen in Finanzlage, Forensik und Momentum), aus
+            # Matrix 2 bleibt das fundamentale Momentum als Bonuskriterium.
+            # ============================================================
+            _neu_ok = False
+            try:
+                import kandidat as _kd
+                import pruefung as _pr
+                import ui_bewertung as _uip
 
-            def mm(v):
-                return "\u2014" if v is None else f"{sym}{de(v*mlt)}"
-            vcol = {"buy": "var(--green)", "watch": "var(--amber)", "drop": "var(--red)"}[res["vkey"]]
-            warn = (f'<div class="meta" style="color:var(--amber);margin-top:4px">\u26a0 RSI '
-                    f'{res["rsi"]:.2f} \u2013 kurzfristig \u00fcberkauft, Einstieg evtl. abwarten</div>'
-                    if res["rsi_warn"] else "")
-            st.markdown(
-                f'<div style="border:1px solid {vcol};border-radius:10px;padding:16px;margin:6px 0 14px">'
-                f'<div style="color:{vcol};font-size:26px;font-weight:800;letter-spacing:.5px">'
-                f'{res["verdict"]}</div>'
-                f'<div class="meta" style="margin-top:4px">Pflicht {res["mand_pass"]}/{res["mand_total"]}'
-                f' erf\u00fcllt  \u00b7  Bonus {res["bonus_count"]}/{res["bonus_total"]}  \u00b7  '
-                f'Fair Value {mm(res["fair_value"])}  \u00b7  Kaufzone \u2264 {mm(res["entry_price"])}</div>'
-                f'{warn}</div>', unsafe_allow_html=True)
+                _k = _kd.pruefe(ticker, fund=f)
+                _hist_um = None
+                try:
+                    import providers as _pv
+                    _hist_um = _pv.umsatz_historie(ticker, 15)
+                except Exception:
+                    pass
+                _erg = _pr.pruefe(_k, "value", historie=_hist_um)
+                _uip.inject_css("dunkel")
+                _uip.gate_karte(_erg)
+                _neu_ok = True
+            except Exception as _e_pr:
+                st.caption(f"Neue Pr\u00fcfung nicht verf\u00fcgbar ({_e_pr}) \u2013 "
+                           f"alte Scorecard als R\u00fcckfall.")
 
-            def gaterow(x, mandatory):
-                mark = "\u2713" if x["ok"] else "\u2715"
-                col = "var(--green)" if x["ok"] else ("var(--red)" if mandatory else "var(--muted)")
-                return (f'<div style="display:flex;justify-content:space-between;gap:10px;'
-                        f'padding:7px 10px;border-bottom:1px solid #1F2733">'
-                        f'<span><b style="color:{col}">{mark}</b>&nbsp;&nbsp;{esc(x["label"])}</span>'
-                        f'<span class="meta" style="white-space:nowrap">{esc(x["detail"])}</span></div>')
-
-            gc = st.columns(2)
-            with gc[0]:
-                st.markdown('<div class="sec-title">PFLICHT-GATES \u00b7 alle n\u00f6tig</div>',
-                            unsafe_allow_html=True)
-                st.markdown("".join(gaterow(x, True) for x in res["mandatory"]), unsafe_allow_html=True)
-            with gc[1]:
-                st.markdown('<div class="sec-title">BONUS \u00b7 Ziel \u2265 3</div>',
-                            unsafe_allow_html=True)
-                st.markdown("".join(gaterow(x, False) for x in res["bonus"]), unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.session_state.get(rkey) is None:
-                if st.button("\u25b6 Radar-Score f\u00fcr diese Aktie berechnen (optional, langsamer)"):
-                    with st.spinner("Radar-Ebenen werden geladen ..."):
-                        rr = radar.compute(f, load_history_full(ticker), load_eps_rev(ticker),
-                                           load_insider(ticker), load_8k(ticker),
-                                           load_event_news(ticker, f.get("name")))
-                        st.session_state[rkey] = rr["score"]
-                    st.rerun()
-            else:
-                st.caption(f"Radar-Score: {st.session_state[rkey]:.2f}  "
-                           "(flie\u00dft als Bonuspunkt ein)")
-
-            st.caption("Hinweis: Die Scorecard ist ein Filter, kein Kaufsignal \u2013 Pflicht-Gates "
-                       "m\u00fcssen alle erf\u00fcllt sein, Bonuspunkte zeigen zus\u00e4tzlichen R\u00fcckenwind.")
+            # Der alte Scorecard-Block stand hier (63 Zeilen). Er hat
+            # Matrix 1 und 2 zu einem zweiten Urteil verrechnet, das dem
+            # des Screeners widersprechen konnte. Ersetzt durch
+            # pruefung.pruefe() oben - dieselben Gates wie im Screener.
+            #
+            # matrices.py und scorecard.py bleiben vorerst auf der Platte,
+            # weil precompute.py und hedgefund.py sie noch aufrufen. Sie
+            # gehoeren in denselben Umbau, aber nicht in denselben Schritt.
+            if not _neu_ok:
+                st.warning("Die Pr\u00fcfung konnte nicht berechnet werden. "
+                           "Details stehen in der Meldung dar\u00fcber.")
     with ea_tabs[2]:
         prep = _prep_for_matrix(ticker)
         if prep is None:

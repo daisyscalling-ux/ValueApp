@@ -41,17 +41,42 @@ def load_all() -> dict:
 
 
 def _write(d: dict) -> bool:
+    """AUDIT-BEFUND S3: Diese Funktion meldete Erfolg, obwohl die Daten
+    unsichtbar blieben.
+
+    Ist das Google Sheet aktiv, wird von DORT gelesen (load_all). Schlug das
+    Schreiben ins Sheet fehl, sicherte diese Funktion lokal und gab True
+    zurueck - der Aufrufer hielt den Vorgang fuer geglueckt, beim naechsten
+    Laden war der Eintrag weg.
+
+    Genau dieser Fehler war in _save_aux() schon behoben, im Hauptpfad aber
+    nicht. Ueber _write laufen save() und damit Watchlist, Portfolio UND die
+    Signalaufzeichnung des Trackrecords - die leere Trackrecord-Bilanz ist
+    dadurch erklaerbar: precompute schrieb, bekam True, und die Daten landeten
+    in einer Datei, aus der nie gelesen wird.
+    """
     g = _sheet()
-    if g is not None:
-        if g.save_all(d):
-            return True
-        # Sheets-Schreiben fehlgeschlagen -> zusaetzlich lokal sichern
+    lokal_ok = False
     try:
         with open(PATH, "w", encoding="utf-8") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=2)
-        return True
+        lokal_ok = True
     except Exception:
-        return False
+        pass
+
+    if g is None:
+        return lokal_ok
+
+    ok = False
+    try:
+        ok = bool(g.save_all(d))
+    except Exception as e:
+        print(f"[store] Google-Sheet-Fehler: {e}")
+    if ok:
+        return True
+    print("[store] Google-Sheet-Speichern FEHLGESCHLAGEN. Die Daten liegen nur "
+          "lokal und sind beim naechsten Laden NICHT sichtbar.")
+    return False
 
 
 def save(name: str, records: list) -> bool:
@@ -184,11 +209,18 @@ def get_anreicherung(ticker: str, art: str, max_alter_tage: int = 45,
     if marker is not None and d.get("_marker") is not None:
         if str(d["_marker"]) != str(marker):
             return None                       # neuer Bericht -> neu rechnen
+    # AUDIT-BEFUND S1: Ein gespeichertes None war von "nicht gefunden" nicht
+    # zu unterscheiden - der Aufrufer haette es bei jedem Lauf neu berechnet.
+    # Deshalb wird None gar nicht erst gespeichert (siehe set_anreicherung).
     return d.get("wert")
 
 
 def set_anreicherung(ticker: str, art: str, wert, marker=None) -> bool:
     import time
+    # AUDIT-BEFUND S1/S2: None speichern waere sinnlos (nicht von "fehlt" zu
+    # unterscheiden), ein leerer Ticker erzeugt einen Muelleintrag "art:".
+    if wert is None or not (ticker or "").strip():
+        return False
     d = _load_aux()
     d.setdefault("anreicherung", {})[f"{art}:{(ticker or '').upper()}"] = {
         "_ts": time.time(), "_marker": marker, "wert": wert}

@@ -16,7 +16,7 @@ Alles degradiert sauber: fehlt eine Quelle, faellt nur ihr Beitrag weg.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.19"   # additiver Score, Altersabschlag
+__version__ = "2026.09.22"   # additiver Score, Altersabschlag
 
 # Themen-Universen fuer den engen, schnellen Scan
 THEMES = {

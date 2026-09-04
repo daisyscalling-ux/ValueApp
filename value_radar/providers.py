@@ -10,7 +10,7 @@ Alle Netzwerk-Calls sind defensiv in try/except gekapselt.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.19"   # umsatz_historie, Anreicherungs-Cache mit Marker
+__version__ = "2026.09.22"   # umsatz_historie, Anreicherungs-Cache mit Marker
 from typing import Any, Optional
 import math
 import time
@@ -232,6 +232,24 @@ def _consensus(*vals):
     return (xs[n // 2 - 1] + xs[n // 2]) / 2.0
 
 
+#: AUDIT-BEFUND C2: Warum liefert FMP nichts? Ohne diesen Merker ist
+#: "kein Schluessel", "toter Schluessel" und "Anbieter gerade weg" von aussen
+#: nicht zu unterscheiden - der Aufrufer wartet in allen drei Faellen gleich
+#: lange auf dasselbe Nichts.
+_FMP_TOT: dict = {}
+
+
+def fmp_status() -> str:
+    """Was ist mit FMP los? Fuer Diagnose und Startmeldungen."""
+    if not config.FMP_API_KEY:
+        return "kein Schluessel hinterlegt"
+    if _FMP_TOT.get("grund"):
+        return _FMP_TOT["grund"]
+    if _is_down("fmp"):
+        return "voruebergehend abgeschaltet (Rate-Limit oder Fehler)"
+    return "aktiv"
+
+
 def _fmp_get(path, params=None):
     """FMP-GET. Ein Retry, mit Circuit-Breaker bei Rate-Limit -> schnell."""
     if not config.FMP_API_KEY or requests is None or _is_down("fmp"):
@@ -247,6 +265,15 @@ def _fmp_get(path, params=None):
                 return r.json()
             if r.status_code == 429:
                 _trip("fmp")
+                return None
+            # AUDIT-BEFUND C2: Ein toter Schluessel sah bisher aus wie eine
+            # leere Antwort. 401/403 heisst aber "dieser Schluessel wird nie
+            # funktionieren" - jeder weitere Versuch kostet nur Zeit. Im
+            # 150-Titel-Lauf waren das zwei Fehlversuche mit Zeitablauf je
+            # Titel, also 300 vergebliche Anfragen.
+            if r.status_code in (401, 403):
+                _trip("fmp")
+                _FMP_TOT["grund"] = f"HTTP {r.status_code} - Schluessel ungueltig"
                 return None
         except Exception:
             pass
@@ -1475,6 +1502,8 @@ def _fmp_stable(path, params=None):
             _ok("fmp")
             return r.json()
         if r.status_code in (401, 403):
+            _trip("fmp")
+            _FMP_TOT["grund"] = f"HTTP {r.status_code} - Schluessel ungueltig"
             return None
     except Exception:
         pass

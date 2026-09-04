@@ -397,34 +397,85 @@ def benchmark_tabelle(zeilen: Iterable[dict], *, treiber_kopf: str = "Startwachs
 
 
 def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
-    """Die Ergaenzung gegenueber dem Vorbild: woher der Wert tatsaechlich kommt."""
+    """Woher der ausgewiesene Wert tatsaechlich kommt.
+
+    Zwei Fragen, die jedes Bewertungsmodell offen laesst:
+      links  - wie viel des Werts liegt jenseits des Prognosezeitraums?
+      rechts - welcher Anteil stammt aus Multiple-Annahmen, welcher aus
+               gerechnetem Cashflow, welcher aus dem Analystenkonsens?
+    """
     from valuation import HERKUNFT_FARBE, HERKUNFT_LABEL, TERMINAL_ANTEIL_WARN
 
     links = '<div class="sub">Kein DCF fuer diesen Titel.</div>'
     if diagnose:
+        # ------------------------------------------------------------------
+        # NEU FORMULIERT. Die alte Fassung stellte drei verschiedene Multiples
+        # nebeneinander ("Terminal-Multiple vom Kurs verlangt 42,4x statt
+        # 17,1x", "Heutiges FCF-Multiple 28,5x") ohne zu sagen, was ein
+        # Terminal-Multiple ist oder warum die Zahlen wichtig sind. Wer den
+        # Begriff nicht kennt, kann daraus nichts entnehmen - und wer ihn
+        # kennt, muss trotzdem raten, welche der drei Zahlen die Aussage
+        # traegt.
+        #
+        # Jetzt: erst der Satz, dann die Zahlen. Die Zahlen belegen die
+        # Aussage, sie ersetzen sie nicht.
+        # ------------------------------------------------------------------
         ta = diagnose.get("terminal_anteil") or 0.0
         f = C["red"] if ta > TERMINAL_ANTEIL_WARN else C["cyan"]
+        jahre = diagnose.get("jahre") or 10
+
+        satz = (f"<b>{ta * 100:.0f} %</b> des berechneten Werts entstehen erst "
+                f"nach Jahr {jahre} \u2013 in einer Zeit, fuer die nicht mehr "
+                f"gerechnet wird, sondern nur noch angenommen, dass es so "
+                f"weitergeht. Die Zahlen darunter sind Vielfache des "
+                f"Jahres-Cashflows.")
+        if ta > TERMINAL_ANTEIL_WARN:
+            satz += (" Bei diesem Anteil ist der Fair Value im Kern eine Wette "
+                     "darauf, wozu die Firma in zehn Jahren bewertet wird "
+                     "\u2013 nicht auf ihren Cashflow bis dahin.")
+
         rows = []
-        if diagnose.get("multiple_impliziert") is not None:
-            gap = diagnose["multiple_impliziert"] > (diagnose["multiple_genutzt"] or 0) * 1.25
+        imp = diagnose.get("multiple_impliziert")
+        gen = diagnose.get("multiple_genutzt")
+        if imp is not None and gen:
+            gap = imp > gen * 1.25
             rows.append(
-                f'<div class="va-r"><span class="k">Terminal-Multiple vom Kurs verlangt</span>'
+                f'<div class="va-r"><span class="k">Kurs unterstellt am '
+                f'Ende</span>'
                 f'<span class="v va-num" style="color:{C["red"] if gap else C["fg"]};">'
-                f'{mult(diagnose["multiple_impliziert"])}'
-                f'<em> statt {mult(diagnose["multiple_genutzt"])}</em></span></div>')
+                f'{mult(imp)}</span></div>')
+            rows.append(
+                f'<div class="va-r"><span class="k">Modell rechnet am Ende '
+                f'mit</span>'
+                f'<span class="v va-num">{mult(gen)}</span></div>')
         if diagnose.get("multiple_heute"):
-            rows.append(f'<div class="va-r"><span class="k">Heutiges FCF-Multiple</span>'
-                        f'<span class="v va-num">{mult(diagnose["multiple_heute"])}'
-                        f'</span></div>')
-        rows.append(f'<div class="va-r"><span class="k">WACC / Terminalwachstum</span>'
-                    f'<span class="v va-num">{pct(diagnose.get("wacc"))} / '
-                    f'{pct(diagnose.get("terminal_growth"))}</span></div>')
+            rows.append(
+                f'<div class="va-r"><span class="k">Bewertung heute</span>'
+                f'<span class="v va-num">{mult(diagnose["multiple_heute"])}'
+                f'</span></div>')
+        rows.append(
+            f'<div class="va-r"><span class="k">Kapitalkosten / unterstelltes '
+            f'Wachstum danach</span>'
+            f'<span class="v va-num">{pct(diagnose.get("wacc"))} / '
+            f'{pct(diagnose.get("terminal_growth"))}</span></div>')
+
+        deutung = ""
+        if imp is not None and gen and imp > gen * 1.25:
+            deutung = (f'<div class="note" style="color:{C["red"]};margin-top:8px;">'
+                       f'Der Kurs setzt darauf, dass die Firma in {jahre} Jahren '
+                       f'{mult(imp)} wert ist \u2013 das Modell haelt {mult(gen)} '
+                       f'fuer angemessen, heute steht sie bei '
+                       f'{mult(diagnose.get("multiple_heute")) if diagnose.get("multiple_heute") else "n/a"}. '
+                       f'Darueber wird gestritten, nicht ueber den Cashflow.</div>')
+
         links = (
-            f'<div class="va-lbl">Terminalwert-Anteil</div>'
+            f'<div class="va-lbl">Wie viel Wert liegt jenseits der Prognose?</div>'
             f'<div class="va-bar" style="height:22px;">'
             f'<div class="fill va-num" style="width:{ta * 100:.1f}%;background:{f};'
             f'color:{C["bg"]};">{ta * 100:.0f} %</div></div>'
-            f'<div class="va-list" style="margin-top:10px;">{"".join(rows)}</div>')
+            f'<div class="note" style="margin-top:8px;line-height:1.5;">{satz}</div>'
+            f'<div class="va-list" style="margin-top:10px;">{"".join(rows)}</div>'
+            f'{deutung}')
 
     rechts = '<div class="sub">Keine Herkunftszerlegung verfuegbar.</div>'
     if herkunft and herkunft.get("nach_herkunft"):
@@ -845,7 +896,10 @@ def kennzahl_kacheln(items: Sequence[Dict]) -> None:
         tiles.append(
             f'<div class="va-tile" style="{rand}">{dl}'
             f'<div class="big va-num" style="color:{farbe};">{_e(it["value"])}</div>'
-            f'<div class="cap">{_e(it["label"])}</div>'
+            f'<div class="cap">{_e(it["label"])}'
+            + (f'<span style="color:{C["muted"]};font-weight:400;"> \u00b7 '
+               f'{_e(it["jahr"])}</span>' if it.get("jahr") else "")
+            + '</div>'
             f'{spark}{zusatz}<div class="chips">{chips}</div></div>')
     _md(f'<div class="va-tiles">{"".join(tiles)}</div>')
 

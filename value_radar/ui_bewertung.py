@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.20"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.21"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -706,6 +706,46 @@ def bilanz_streifen(bewertet, zusammenfassung=None) -> None:
         f'{"".join(kacheln)}</div></div>')
 
 
+def pruef_streifen(kacheln, titel: str = "Kennzahlen im Detail",
+                   untertitel: str = "", fusszeile: str = "") -> None:
+    """Einzelkennzahlen als kompakter Streifen - gleiche Bauart wie
+    bilanz_streifen().
+
+    kacheln: [(Beschriftung, Wert, Farbe, Erklaerung), ...]
+             Farbe als CSS-Wert oder "gruen"/"gelb"/"rot".
+
+    Vorher lagen diese Kennzahlen in einem Raster mit drei Spalten - jede
+    Kachel so breit wie ein Drittel des Bildschirms, fuer eine Zahl mit zwei
+    Stellen. Acht Kennzahlen brauchten drei Reihen und viel Hoehe. Hier passen
+    dieselben acht in eine Reihe, und der Vergleich untereinander wird
+    ueberhaupt erst moeglich.
+    """
+    if not kacheln:
+        return
+    named = {"gruen": C["green"], "gelb": C["amber"], "rot": C["red"],
+             "grau": C["muted"]}
+    teile = []
+    for eintrag in kacheln:
+        lab, wert, farbe, tipp = (list(eintrag) + ["", ""])[:4]
+        f = named.get(farbe, farbe or C["cyan"])
+        teile.append(
+            f'<div title="{_e(tipp)}" style="cursor:help;border:1px solid '
+            f'{C["line"]};border-left:3px solid {f};background:{C["panel"]};'
+            f'padding:8px 10px;min-width:0;">'
+            f'<div class="va-num" style="font-size:17px;font-weight:700;'
+            f'color:{f};line-height:1.1;">{_e(wert)}</div>'
+            f'<div style="font-size:10.5px;color:{C["muted"]};margin-top:3px;'
+            f'line-height:1.3;">{_e(lab)}</div></div>')
+
+    sub = f'<div class="sub">{_e(untertitel)}</div>' if untertitel else ""
+    fuss = (f'<div style="font-size:11px;color:{C["muted"]};margin-top:10px;">'
+            f'{_e(fusszeile)}</div>' if fusszeile else "")
+    _md(f'<div class="va-card"><h4>{_e(titel)}</h4>{sub}'
+        f'<div style="display:grid;'
+        f'grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px;">'
+        f'{"".join(teile)}</div>{fuss}</div>')
+
+
 def kennzahl_kacheln(items: Sequence[Dict]) -> None:
     """Kennzahlen-Kacheln mit Verlauf, Vorjahresdelta und 3J/5J/10J-Chips.
 
@@ -725,7 +765,12 @@ def kennzahl_kacheln(items: Sequence[Dict]) -> None:
         else:
             col, soft = ((C["green"], C["gruen_weich"]) if d >= 0
                          else (C["red"], C["rot_weich"]))
-            dl = (f'<span class="va-delta" style="background:{soft};color:{col};">'
+            # Bezugsjahr im Tooltip: "+18 %" ohne Angabe, WELCHE Jahre
+            # verglichen werden, laesst offen, ob das laufende oder das
+            # letzte abgeschlossene Geschaeftsjahr gemeint ist.
+            _bez = it.get("bezug") or ""
+            dl = (f'<span class="va-delta" title="{_e(_bez)}" '
+                  f'style="background:{soft};color:{col};">'
                   f'{d * 100:+.0f} %</span>')
         chips = "".join(
             f'<span>{_e(c)} <b style="color:{C["green"] if v >= 0 else C["red"]};">'

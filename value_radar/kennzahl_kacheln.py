@@ -12,7 +12,7 @@ bleiben unangetastet - sie sind der Tiefgang, das hier ist die Uebersicht.
 
 from __future__ import annotations
 
-__version__ = "2026.09.20"
+__version__ = "2026.09.21"
 
 from typing import Dict, List, Optional, Sequence
 
@@ -119,6 +119,12 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
                   key=lambda z: str(z["jahr"]))
     if len(rows) < 2:
         return []
+    # Welche Geschaeftsjahre werden verglichen? Ohne diese Angabe steht auf
+    # der Kachel "+18 %" und niemand weiss, ob das laufende oder das letzte
+    # abgeschlossene Jahr gemeint ist.
+    _jahr = str(rows[-1].get("jahr"))[:4]
+    _vorjahr = str(rows[-2].get("jahr"))[:4]
+    _bezug = f"Geschaeftsjahr {_jahr} gegenueber {_vorjahr}"
 
     items: List[Dict] = []
     for key, label, negativ in REIHEN:
@@ -144,6 +150,8 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             "negative": negativ,
             "ampel": ampel,
             "zusatz": zusatz,
+            "jahr": f"GJ {_jahr}",
+            "bezug": _bezug,
         })
 
     # Margen als eigene Kachel: Prozentwerte, keine Waehrung
@@ -163,6 +171,8 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             "negative": False,
             "ampel": ampel,
             "zusatz": zusatz,
+            "jahr": f"GJ {_jahr}",
+            "bezug": _bezug,
         })
     return items
 

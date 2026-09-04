@@ -3990,7 +3990,7 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
-                _ERWARTET = "2026.09.20"
+                _ERWARTET = "2026.09.21"
 
                 def _modul_alt(mod, noetig=()):
                     if getattr(mod, "__version__", None) != _ERWARTET:
@@ -4117,23 +4117,39 @@ if nav == "Einzelanalyse":
                             "anhaltend hoher Profitabilit\u00e4t \u00fcber "
                             f"{_moat['jahre_geprueft']} Jahre. "
                             + " \u00b7 ".join(_det)))
-                    # Kacheln als Raster (3 pro Reihe) rendern
+                    # Kacheln im selben Streifen wie die Finanzlage.
+                    #
+                    # Vorher: Raster mit drei Spalten - jede Kachel ein Drittel
+                    # Bildschirmbreite fuer eine zweistellige Zahl, acht
+                    # Kennzahlen brauchten drei Reihen. Jetzt passen dieselben
+                    # acht in eine Reihe, und sie sind untereinander
+                    # vergleichbar statt verteilt.
                     if _kacheln:
-                        for _r in range(0, len(_kacheln), 3):
-                            _cols = st.columns(3)
-                            for _col, (_lab, _val, _col_c, _tipp) in zip(
-                                    _cols, _kacheln[_r:_r+3]):
-                                _col.markdown(
-                                    f'<div title="{_tipp}" style="cursor:help;'
-                                    f'border:1px solid #222;border-radius:8px;'
-                                    f'padding:8px 10px;margin-bottom:6px">'
-                                    f'<div style="font-size:11px;color:#888">{_lab}</div>'
-                                    f'<div style="font-size:18px;font-weight:600;'
-                                    f'color:{_col_c}">{_val}</div></div>',
-                                    unsafe_allow_html=True)
-                        st.caption("\U0001f4a1 Mit der Maus \u00fcber eine Kachel fahren "
-                                   "zeigt die Erkl\u00e4rung. Kennzahlen aus Schmidlin, "
-                                   "Dorsey, Piotroski/Altman/Beneish \u2013 keine Prognose.")
+                        try:
+                            import ui_bewertung as _uib2
+                            _uib2.inject_css("dunkel")
+                            _uib2.pruef_streifen(
+                                _kacheln,
+                                titel="Kennzahlen im Detail",
+                                untertitel="Schmidlin, Dorsey, Piotroski, "
+                                           "Altman, Beneish \u2013 Momentaufnahme "
+                                           "der Bilanz, keine Prognose.",
+                                fusszeile="Mit der Maus \u00fcber eine Kachel "
+                                          "fahren zeigt die Erkl\u00e4rung.")
+                        except Exception:
+                            for _r in range(0, len(_kacheln), 3):
+                                _cols = st.columns(3)
+                                for _col, (_lab, _val, _col_c, _tipp) in zip(
+                                        _cols, _kacheln[_r:_r+3]):
+                                    _col.markdown(
+                                        f'<div title="{_tipp}" style="cursor:help;'
+                                        f'border:1px solid #222;border-radius:8px;'
+                                        f'padding:8px 10px;margin-bottom:6px">'
+                                        f'<div style="font-size:11px;color:#888">'
+                                        f'{_lab}</div>'
+                                        f'<div style="font-size:18px;font-weight:600;'
+                                        f'color:{_col_c}">{_val}</div></div>',
+                                        unsafe_allow_html=True)
 
                 # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
                 # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
@@ -4156,7 +4172,7 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.09.20":
+                    if getattr(_bs, "__version__", None) != "2026.09.21":
                         st.warning("Veralteter Dateistand: bewertung_seite.py "
                                    "\u2014 bitte erneut hochladen und die App "
                                    "neu starten.", icon="\u26a0\ufe0f")

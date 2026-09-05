@@ -22,7 +22,7 @@ Zwei Verwendungen:
 
 from __future__ import annotations
 
-__version__ = "2026.09.22"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
+__version__ = "2026.09.23"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
 
 from typing import List, Optional, Sequence
 
@@ -258,6 +258,35 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
         _ABSCHNITT_WERT_FRAGMENT(_ctx)
     else:
         _abschnitt_wert(_ctx)
+
+    # =======================================================================
+    # Sektorvergleich - direkt nach der Herkunft, weil beides dieselbe Frage
+    # stellt: Worauf beruht der Wert, und was davon ist Annahme?
+    # =======================================================================
+    try:
+        import sektor as _sk
+        # Segmentebene: trennt Software von Halbleitern, erreicht aber
+        # anders als die Branchenebene genug Titel fuer einen Median.
+        _grp = _sk.segment(fund)
+        _eb = "segment"
+        if not _grp:
+            _grp, _eb = _sk.normalisieren(fund.get("sector")), "sector"
+        if _grp:
+            _verg = _sk.vergleich(_grp, "ev_ebitda", _eb)
+            if _verg.get("heute") is not None:
+                _mult = _sk.anker(_grp, "ev_ebitda", _eb)
+                _za = valuation.zweitanker_bewertung(fund, preset, _mult)
+                ui.abschnitt(n, "Segment", "was der Markt hier zahlt")
+                n += 1
+                ui.sektor_karte(
+                    _verg,
+                    ({"modell": _w(v.get("fair_value")),
+                      "sektor": _w(_za["wert"]),
+                      "kurs": _w(preis)} if _za else None),
+                    _sk.alle_vergleiche("ev_ebitda", _eb),
+                    waehrung)
+    except Exception:
+        pass
 
     # =======================================================================
     # 3 - Reverse DCF

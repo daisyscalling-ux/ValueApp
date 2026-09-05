@@ -25,7 +25,7 @@ statt verdaechtig.
 
 from __future__ import annotations
 
-__version__ = "2026.09.22"
+__version__ = "2026.09.23"
 
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence
@@ -360,6 +360,8 @@ class Trichter:
     korridor_abstand: List[tuple] = field(default_factory=list)
     #: Summierte Dauer je Stufe ueber alle tief geprueften Titel
     zeiten: Dict[str, float] = field(default_factory=dict)
+    #: Wie viele Sektoren/Branchen wurden in diesem Lauf gemessen?
+    sektor_messungen: Dict[str, int] = field(default_factory=dict)
     vorfilter_gruende: Dict[str, int] = field(default_factory=dict)
     gate_gruende: Dict[str, int] = field(default_factory=dict)
     fehler: List[str] = field(default_factory=list)
@@ -532,6 +534,21 @@ def lauf(universum: Sequence[str],
                             "teile": r["teile"], "score_basis": r["basis"],
                             "score_fehlend": r["fehlend"]})
 
+    # Sektormediane aus dem Lauf messen und ablegen. Die Daten liegen ohnehin
+    # vor - der Screener hat gerade 150 Titel mit Sektor und Multiples geladen.
+    # Damit entsteht ab jetzt die Zeitreihe, die uns heute fehlt: Kein Anbieter
+    # im Bestand liefert Sektormediane ueber die Zeit.
+    try:
+        import sektor as _sk
+        _funds = [fd for _tk, fd in ueberlebende if fd.get("sector")]
+        for _ebene in ("sector", "segment"):
+            _m = _sk.messen(_funds, ebene=_ebene)
+            if _m:
+                _sk.speichern(_m, ebene=_ebene)
+                t.sektor_messungen[_ebene] = len(_m)
+    except Exception as _e_sk:
+        t.fehler.append(f"Sektormessung: {_e_sk}")
+
     erg.treffer.sort(key=lambda z: -(z.get("score") or 0))
     return erg
 
@@ -603,6 +620,10 @@ def bericht(erg: Ergebnis) -> List[str]:
         teile = sorted(t.zeiten.items(), key=lambda x: -x[1])
         z.append("  Zeit je Stufe: " + ", ".join(
             f"{n} {d:.0f}s ({d / gesamt * 100:.0f} %)" for n, d in teile))
+    if t.sektor_messungen:
+        z.append("  Sektormediane gemessen: " + ", ".join(
+            f"{k} {v}" for k, v in sorted(t.sektor_messungen.items()))
+            + " \u2013 die Zeitreihe waechst mit jedem Lauf")
     duenn = [x for x in erg.treffer if (x.get("score_basis") or 1) < 0.6]
     if duenn:
         z.append(f"  {len(duenn)} Treffer mit duenner Score-Grundlage "

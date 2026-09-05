@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.22"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.23"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -755,6 +755,110 @@ def bilanz_streifen(bewertet, zusammenfassung=None) -> None:
         f'<div style="display:grid;'
         f'grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px;">'
         f'{"".join(kacheln)}</div></div>')
+
+
+def sektor_karte(verg: dict, zweitwert: Optional[dict] = None,
+                 alle: Optional[Sequence[dict]] = None,
+                 waehrung: str = "EUR") -> None:
+    """Was zahlt der Markt fuer dieses Segment - heute und frueher?
+
+    Die Karte ersetzt keinen Wert. Sie stellt einen zweiten Anker daneben und
+    benennt die Luecke. Ob eine Abwertung zyklisch ist (Chance) oder
+    strukturell (Falle), beantwortet sie ausdruecklich NICHT - das ist die
+    Frage, an der Value Investing haengt, und kein Modell im Bestand kann sie
+    entscheiden. Ein Werkzeug, das so tut, waere schlechter als eines, das die
+    Frage stellt.
+    """
+    if not verg or verg.get("heute") is None:
+        return
+
+    ton = {"gruen": C["green"], "gelb": C["amber"],
+           "rot": C["red"]}.get(verg.get("ton") or "grau", C["muted"])
+    ab = verg.get("abweichung_pct")
+
+    if verg.get("hinweis"):
+        kopf = (f'<div class="note" style="color:{C["muted"]};">'
+                f'{_e(verg["hinweis"])}</div>')
+        balken = ""
+    else:
+        kopf = (f'<div style="font-size:15px;font-weight:700;color:{ton};'
+                f'margin:4px 0 2px;">{_e(verg["gruppe"])} handelt '
+                f'{abs(ab):.0f} % {"unter" if ab < 0 else "ueber"} '
+                f'dem eigenen Schnitt</div>'
+                f'<div class="note" style="color:{C["muted"]};">'
+                f'heute {verg["heute"]:.1f}x \u00b7 Schnitt '
+                f'{verg["schnitt"]:.1f}x \u00b7 aus {verg["messungen"]} '
+                f'Messungen seit {_e(str(verg.get("von"))[:7])}</div>')
+        # Balken: Mitte = Schnitt, Ausschlag nach links/rechts
+        pos = max(0.0, min(100.0, 50.0 + ab / 2.0))
+        balken = (
+            f'<div style="position:relative;height:8px;background:{C["line"]};'
+            f'margin:12px 0 6px;">'
+            f'<div style="position:absolute;left:50%;top:-3px;width:1px;'
+            f'height:14px;background:{C["muted"]};"></div>'
+            f'<div style="position:absolute;left:{min(pos, 50):.1f}%;'
+            f'width:{abs(50 - pos):.1f}%;height:8px;background:{ton};"></div>'
+            f'</div>'
+            f'<div style="display:flex;justify-content:space-between;'
+            f'font-size:10px;color:{C["muted"]};">'
+            f'<span>billiger</span><span>eigener Schnitt</span>'
+            f'<span>teurer</span></div>')
+
+    # Zweiter Anker: derselbe Titel, am gemessenen Sektormultiple gerechnet
+    zweit = ""
+    if zweitwert and zweitwert.get("sektor") and zweitwert.get("modell"):
+        m, sk = zweitwert["modell"], zweitwert["sektor"]
+        kurs = zweitwert.get("kurs")
+        zweit = (
+            f'<div style="margin-top:14px;padding-top:12px;'
+            f'border-top:1px solid {C["line"]};">'
+            f'<div class="va-lbl">Zwei Anker, zwei Antworten</div>'
+            f'<div class="va-list" style="margin-top:6px;">'
+            f'<div class="va-r"><span class="k">Fair Value laut Modell</span>'
+            f'<span class="v va-num">{_e(geld(m, waehrung))}</span></div>'
+            f'<div class="va-r"><span class="k">Fair Value am heutigen '
+            f'Sektormultiple</span>'
+            f'<span class="v va-num" style="color:{ton};">'
+            f'{_e(geld(sk, waehrung))}</span></div>'
+            + (f'<div class="va-r"><span class="k">Kurs</span>'
+               f'<span class="v va-num">{_e(geld(kurs, waehrung))}</span></div>'
+               if kurs else "")
+            + f'</div>'
+            f'<div class="note" style="margin-top:8px;line-height:1.5;">'
+            f'Die Luecke zwischen beiden ist die eigentliche Frage: Kommt die '
+            f'alte Bewertung des Segments zurueck, oder ist sie dauerhaft weg? '
+            f'Das entscheidet nicht die Rechnung, sondern was du ueber das '
+            f'Geschaeft weisst.</div></div>')
+
+    # Quervergleich: ein Segment allein sagt wenig
+    quer = ""
+    if alle and len(alle) >= 3:
+        zeilen = []
+        for v in alle[:8]:
+            a = v.get("abweichung_pct")
+            if a is None:
+                continue
+            f = (C["amber"] if abs(a) >= 20 else C["muted"])
+            eigen = (v.get("gruppe") == verg.get("gruppe"))
+            zeilen.append(
+                f'<div style="display:flex;gap:8px;padding:3px 0;font-size:11.5px;'
+                f'{"font-weight:700;" if eigen else ""}">'
+                f'<span style="color:{C["fg"] if eigen else C["muted"]};">'
+                f'{_e(v["gruppe"])}</span>'
+                f'<span style="margin-left:auto;color:{f};" class="va-num">'
+                f'{a:+.0f} %</span></div>')
+        if zeilen:
+            quer = (f'<div style="margin-top:14px;padding-top:12px;'
+                    f'border-top:1px solid {C["line"]};">'
+                    f'<div class="va-lbl">Alle gemessenen Segmente</div>'
+                    f'<div class="note" style="margin-bottom:6px;">'
+                    f'Gibt nur EIN Segment nach oder der ganze Markt? Das '
+                    f'unterscheidet ein Branchenproblem von einer '
+                    f'Marktbewegung.</div>{"".join(zeilen)}</div>')
+
+    _md(f'<div class="va-card"><h4>Was der Markt fuer dieses Segment zahlt</h4>'
+        f'<div class="sub">Gemessen aus dem eigenen Universum, nicht aus einer '
+        f'festen Tabelle.</div>{kopf}{balken}{zweit}{quer}</div>')
 
 
 def gate_karte(erg: dict) -> None:

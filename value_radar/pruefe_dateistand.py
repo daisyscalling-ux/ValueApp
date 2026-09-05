@@ -12,12 +12,12 @@ Funktion, sondern eine Datei wurde beim Hochladen vergessen.
 import importlib
 import sys
 
-ERWARTET = "2026.09.22"          # Bewertungs-/Anzeigeschicht
-ERWARTET_ENTDECKUNG = "2026.09.22"   # Screener, Kandidat, Forensik
+ERWARTET = "2026.09.23"          # Bewertungs-/Anzeigeschicht
+ERWARTET_ENTDECKUNG = "2026.09.23"   # Screener, Kandidat, Forensik
 
 #: Module der Entdeckungsschicht - eigener Zyklus, eigener Stand.
 ENTDECKUNG = {"kandidat", "screener2", "scores",
-              "valuation", "providers", "relval", "roic", "momentum", "radar", "pruefung", "kennzahlen"}
+              "valuation", "providers", "relval", "roic", "momentum", "radar", "pruefung", "kennzahlen", "sektor"}
 
 MODULE = {
     "valuation": ["zyklisch_aus_margen", "fcf_basis", "reverse_dcf_analyse",
@@ -28,6 +28,7 @@ MODULE = {
     "momentum": ["bausteine", "branchen_mediane", "branchen_mediane_12_1"],
     "radar": ["compute", "_frische"],
     "pruefung": ["pruefe", "fundamentales_momentum"],
+    "sektor": ["messen", "speichern", "vergleich", "anker", "alle_vergleiche"],
     "kennzahlen": ["bewerte", "zusammenfassung", "transkript_kennzahlen",
                    "zusammenfassung_call", "kernstellen"],
     "ui_bewertung": ["sparkline", "kennzahl_kacheln", "news_karte",

@@ -17,7 +17,7 @@ ausgewiesen, damit die Streuung sichtbar bleibt.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.22"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
+__version__ = "2026.09.23"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
 from typing import Dict, List, Optional, Sequence, Tuple
 import math
 import config
@@ -56,7 +56,20 @@ def _eps(fund):
 
 
 def _sector(fund, table):
-    return table.get(fund.get("sector"), table["_default"])
+    """Sektoranker aus einer Tabelle - mit vereinheitlichtem Namen.
+
+    AUDIT-BEFUND SK1: Ohne Vereinheitlichung trafen acht von zwoelf
+    beobachteten Sektornamen die Tabelle nicht und fielen still auf
+    _default. Ein Energiewert bekam dann 11 statt 6, ein Techwert 11 statt
+    16 - unsichtbar, weil ja ein Anker geliefert wurde.
+    """
+    sek = fund.get("sector")
+    try:
+        import sektor as _sk
+        sek = _sk.normalisieren(sek) or sek
+    except Exception:
+        pass
+    return table.get(sek, table["_default"])
 
 
 # Klar zyklische Branchen (yfinance-Industry-Stichwoerter)
@@ -107,6 +120,44 @@ def classify_playbook(fund) -> str:
 
     # 4) Standard
     return "quality"
+
+
+def zweitanker_bewertung(fund, preset: str = "quality",
+                         sektor_multiple: Optional[float] = None) -> Optional[dict]:
+    """Derselbe Titel, gerechnet am HEUTE gemessenen Sektormultiple.
+
+    Ersetzt nichts. Der Fair Value aus fair_value() bleibt, wie er ist - dies
+    hier ist eine zweite Lesart daneben.
+
+    Warum nicht ersetzen: Verankert man den Fair Value am aktuellen
+    Sektormultiple, sagt das Modell bei jedem Sektor genau das, was der Markt
+    ohnehin sagt - fair bewertet. Es koennte nie mehr feststellen, dass ein
+    Sektor zu billig ist, und genau dafuer ist es da. An Adobe gerechnet:
+
+        fester Wert (Tabelle)  16,0x  ->  316 USD  (+19 % zum Kurs)
+        Sektormedian heute     11,0x  ->  216 USD  (-19 %)
+        Sektormedian 2021      28,0x  ->  555 USD  (+109 %)
+
+    Drei Anker, drei Urteile, dieselbe Firma. Die Zahl allein entscheidet
+    nichts - die Frage ist, welcher Anker traegt.
+    """
+    if not sektor_multiple or sektor_multiple <= 0:
+        return None
+    ebitda = fund.get("ebitda")
+    shares = fund.get("shares_out")
+    if not ebitda or ebitda <= 0 or not shares or shares <= 0:
+        return None
+    nd = fund.get("net_debt") or 0.0
+    wert = (sektor_multiple * ebitda - nd) / shares
+    if not math.isfinite(wert) or wert <= 0:
+        return None
+    preis = fund.get("price")
+    return {
+        "wert": round(wert, 2),
+        "multiple": round(sektor_multiple, 2),
+        "upside_pct": (round((wert / preis - 1) * 100, 1) if preis else None),
+        "verfahren": "EV/EBITDA am gemessenen Sektormedian",
+    }
 
 
 def zyklisch_aus_margen(margen, aktuelle_marge=None,

@@ -4011,7 +4011,7 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
-                _ERWARTET = "2026.09.22"
+                _ERWARTET = "2026.09.23"
 
                 def _modul_alt(mod, noetig=()):
                     if getattr(mod, "__version__", None) != _ERWARTET:
@@ -4193,7 +4193,7 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.09.22":
+                    if getattr(_bs, "__version__", None) != "2026.09.23":
                         st.warning("Veralteter Dateistand: bewertung_seite.py "
                                    "\u2014 bitte erneut hochladen und die App "
                                    "neu starten.", icon="\u26a0\ufe0f")

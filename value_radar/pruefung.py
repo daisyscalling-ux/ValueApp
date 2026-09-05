@@ -48,7 +48,7 @@ WAS DAS HIER NICHT TUT
 
 from __future__ import annotations
 
-__version__ = "2026.09.22"
+__version__ = "2026.09.23"
 
 from typing import Dict, List, Optional
 

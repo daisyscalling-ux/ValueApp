@@ -22,7 +22,7 @@ audit_harness.py - also ohne Netz und wiederholbar.
 
 from __future__ import annotations
 
-__version__ = "2026.09.22"
+__version__ = "2026.09.23"
 
 import ast
 import os

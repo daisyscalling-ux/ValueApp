@@ -178,3 +178,60 @@ sondern alles.
 existierte, deutet auf einen abgebrochenen Umbau. In Stufe 8 gehört ein
 systematischer Abgleich dazu: jeder Modulaufruf im Dashboard gegen die
 tatsächlich vorhandenen Funktionen.
+
+## V1 — `justified_pe` rechnete auf der Prognose statt auf dem Ergebnis
+**Muster M1 (falsche Größe benutzt) · mittel · behoben**
+
+`justified_pe` bezog sein EPS über `_eps()`, und das liefert
+`eps_forward or eps_trailing` — also die Analystenschätzung, sobald eine
+vorliegt. Bei Adobe (trailing 14,70 / forward 20,60) ergab das **+109 % statt
++49 %** zum Kurs. Der Wert wurde als unplausibel verworfen, und **30 %
+Methodengewicht fielen weg** — der Fair Value stand danach auf drei statt
+vier Verfahren.
+
+Zwei Gründe, warum dort das laufende Ergebnis gehört:
+
+1. Die Methode fragt „welches KGV verdient dieses Geschäft?" und wendet es auf
+   den Gewinn an. Mit einer Prognose wird daraus ein Forward-Verfahren — und
+   dupliziert `fwd_pe`.
+2. `eps_forward` ist der Analystenkonsens. Nutzt `justified_pe` ihn, stammt
+   ein Teil des Werts aus dem Markt, während die Herkunftszerlegung ihn als
+   reine Multiple-Annahme ausweist. **Die Aufschlüsselung „47 % Multiple ·
+   28 % Markt · 25 % Cashflow" war dadurch falsch.**
+
+*Behoben:* Neue Funktion `_eps_ist()` liefert ausdrücklich `eps_trailing`.
+`peg_ratio` bleibt bei `_eps()` — dort ist die Prognose sachlich richtig.
+
+### Der Preis dieser Korrektur
+
+Sie hilft nicht in jedem Fall. Gemessen an vier Konstellationen:
+
+```
+Fall                       alt (forward)      neu (trailing)
+Adobe-artig (fwd >> ttm)   556  (+109 %)      397  ( +49 %)   besser
+stetig      (fwd ~ ttm)    278  ( +55 %)      265  ( +47 %)   leicht besser
+Erholung    (fwd << ttm)   216  ( +44 %)      324  (+116 %)   SCHLECHTER
+Verlustjahr                       —                  —        unverändert
+```
+
+Bei einem Titel mit fallenden Gewinnen rechnet die Methode jetzt auf dem
+höheren Altgewinn und wird optimistischer. Das ist die logische Folge und
+kein Versehen: `justified_pe` sagt „auf Basis des Erwirtschafteten verdient
+die Firma dieses KGV". Dass die Gewinne fallen, bilden `fwd_pe` und der DCF
+ab — dafür gibt es mehrere Verfahren.
+
+Ob die Korrektur netto hilft, hängt davon ab, wie viele Titel in welcher
+Konstellation stehen. **Das ist mit dem eingefrorenen Datensatz aus
+`audit_harness.py` messbar** und gehört in Stufe 3.
+
+### Nicht behoben: die KGV-Leiter selbst
+
+Sie addiert Sockel 7 + Stabilität max 3 + Burggraben max 14 + Wachstum max 9,
+gedeckelt bei 42. Woher die 7 kommen und warum ein Burggraben genau 14 Punkte
+wert ist, steht nirgends. `hist_pe_median` liegt im Datensatz vor und wird
+**nicht benutzt** — das Modell sagt „27 wäre fair", während der Titel bei 12,9
+handelt und historisch bei 38 stand. Keine der beiden Beobachtungen fließt ein.
+
+Das ist Muster M2 und gehört in Stufe 3. Ich habe es bewusst nicht nebenbei
+geändert: `justified_pe` trägt 30 % Gewicht in zwei von vier Playbooks, und
+eine neue Ankerlogik verschiebt jeden Fair Value im Bestand.

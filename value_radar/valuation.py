@@ -276,8 +276,32 @@ def dynamischer_verschuldungsgrad(fund) -> Optional[float]:
     return round(nd / opcf, 1)
 
 
+def _eps_ist(fund):
+    """Das TATSAECHLICH erzielte Ergebnis je Aktie - nicht die Prognose.
+
+    AUDIT-BEFUND V1: justified_pe rechnete ueber _eps() mit eps_forward,
+    sobald eine Schaetzung vorlag. Bei Adobe (trailing 14,70 / forward 20,60)
+    ergab das +109 % statt +49 % zum Kurs - der Wert wurde als unplausibel
+    verworfen, und 30 % Methodengewicht fielen weg.
+
+    Zwei Gruende, warum hier das laufende Ergebnis gehoert:
+
+      1. Die Methode fragt "welches KGV verdient dieses Geschaeft?" und wendet
+         es auf den Gewinn an. Mit einer Prognose wird daraus ein
+         Forward-Verfahren - und dupliziert damit fwd_pe.
+      2. eps_forward ist der Analystenkonsens. Nutzt justified_pe ihn, stammt
+         ein Teil des Werts aus dem Markt, waehrend die Herkunftszerlegung ihn
+         als reine Multiple-Annahme ausweist. Die Aufschluesselung waere dann
+         schlicht falsch.
+
+    Faellt das laufende Ergebnis negativ aus, gibt die Methode nichts zurueck.
+    Ein gerechtfertigtes KGV auf einen Verlust ist keine Groesse.
+    """
+    return fund.get("eps_trailing")
+
+
 def justified_pe_number(fund, preset="quality") -> Optional[float]:
-    eps = _eps(fund)
+    eps = _eps_ist(fund)
     if not eps or eps <= 0:
         return None
     base = 7.0
@@ -321,7 +345,7 @@ def justified_pe_number(fund, preset="quality") -> Optional[float]:
 
 def justified_pe(fund, preset="quality") -> Optional[float]:
     pe = justified_pe_number(fund, preset)
-    eps = _eps(fund)
+    eps = _eps_ist(fund)
     return pe * eps if (pe and eps and eps > 0) else None
 
 
@@ -1197,7 +1221,7 @@ def datenaktualitaet(fund, naechster_termin_tage=None) -> dict:
 #: wird der Sektoranker genommen. Beide wurden deshalb bei fast jedem Titel
 #: faelschlich als "entfaellt mangels Daten" gemeldet.
 _FELDBEDARF = {
-    "justified_pe": ["eps_trailing"],
+    "justified_pe": ["eps_trailing"],   # seit V1 ausdruecklich trailing
     "fwd_pe": ["eps_forward"],
     "fwd_composite": ["eps_forward"],
     "hist_pe": ["eps_forward", "hist_pe_median"],

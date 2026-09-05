@@ -125,3 +125,30 @@ Kandidaten entstehen — das war der Fehler im Vorgänger.
 *Offen:* `precompute.py` und `hedgefund.py` rufen `matrices` und `scorecard`
 weiterhin auf. Sie gehören in denselben Umbau, aber nicht in denselben
 Schritt — der Trackrecord hängt daran.
+
+## D1 — Earnings-Call-Liste blieb nach dem Zähler stehen
+**Muster M12 (Cache) + M7 (ohne Messung gebaut) · mittel · behoben**
+
+Symptom: „85 aktuelle Calls · 115 ältere darunter" erschien, danach nichts.
+Kein Fehler, keine Meldung — die Seite schien einzufrieren.
+
+Ursache: Die gespeicherten Call-Einträge tragen nur Ticker, Datum und Quartal
+— **keinen Firmennamen**. Die Tabelle löste deshalb bis zu **40 Namen
+nacheinander** über `providers.get_fundamentals()` auf, jeder mit Netzabruf.
+
+`load_firmenname` trug zwar `@st.cache_data(ttl=86400)` und der Docstring
+sagte „24h gecacht" — aber dieser Cache ist **prozessgebunden und nach jedem
+App-Neustart leer**. Genau nach einem Neustart trat der Fehler auf.
+
+*Behoben:*
+- Namen liegen jetzt im dauerhaften Speicher (`store`, 365 Tage). Einmal
+  aufgelöst, überleben sie jeden Neustart.
+- Budget von 40 auf 12 je Durchlauf gesenkt.
+- Spinner während der Auflösung, plus Hinweis, wie viele Namen noch fehlen.
+
+Wirkung: 40 blockierende Abrufe je Neustart → 12 beim ersten Mal, danach
+keine.
+
+*Grundproblem bleibt:* Der Nachtlauf sollte die Namen gleich mitspeichern.
+Dann fällt die Auflösung in der Anzeige ganz weg. Das gehört zu `precompute`
+und damit in Stufe 6 des Audits.

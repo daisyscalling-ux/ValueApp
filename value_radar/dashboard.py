@@ -559,16 +559,37 @@ def search_to_ticker(roh):
     return qv.upper()
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_firmenname(t):
-    """Leichtgewichtige Ticker->Firmenname-Aufloesung, 24h gecacht. Nur fuer
-    die Anzeige (Earnings-Liste), damit dort echte Namen statt Ticker stehen.
-    Nutzt die vorhandene Fundamentaldaten-Aufloesung, faellt auf den Ticker
-    zurueck, wenn nichts gefunden wird."""
+    """Ticker -> Firmenname, dauerhaft gespeichert.
+
+    AUDIT-BEFUND D1: Diese Funktion war mit @st.cache_data versehen und der
+    Docstring sagte "24h gecacht" - aber dieser Cache ist prozessgebunden und
+    nach jedem App-Neustart leer. In der Earnings-Call-Liste wurden dann bis
+    zu 40 Namen NACHEINANDER ueber get_fundamentals() aufgeloest, jeweils mit
+    Netzabruf. Die Seite zeigte die Zeile "85 aktuelle Calls" und blieb
+    danach minutenlang stehen - es sah aus, als laedt sie nicht mehr.
+
+    Firmennamen aendern sich praktisch nie. Sie gehoeren deshalb in den
+    dauerhaften Speicher, nicht in einen Sitzungscache: einmal aufgeloest,
+    ueberlebt der Name jeden Neustart.
+    """
+    try:
+        gespeichert = store.get_anreicherung(t, "name", max_alter_tage=365)
+        if gespeichert:
+            return gespeichert
+    except Exception:
+        pass
     try:
         f = providers.get_fundamentals(t, deep=False)
         nm = (f or {}).get("name")
-        return nm if nm else t
+        if nm and nm != t:
+            try:
+                store.set_anreicherung(t, "name", nm)
+            except Exception:
+                pass
+            return nm
     except Exception:
-        return t
+        pass
+    return t
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_history_full(t):
     h = providers.get_price_history(t, period="1y", interval="1d")
@@ -8425,10 +8446,14 @@ if nav == "Earnings Calls":
                         + (" Deine Titel wurden noch nicht erfasst."
                            if _nur_pf else ""))
             else:
-                # Namen nur fuer die ersten ~40 Zeilen aufloesen (Performance:
-                # jeder Lookup kann beim ersten Mal einen Abruf ausloesen, ist
-                # aber 24h gecacht). Danach bleibt der Ticker stehen.
-                _name_budget = [40]
+                # AUDIT-BEFUND D1: Das Budget lag bei 40. Beim ersten Aufruf
+                # nach einem Neustart sind das 40 Netzabrufe nacheinander,
+                # waehrend die Seite steht. Jetzt: 12 je Durchlauf, und die
+                # aufgeloesten Namen landen dauerhaft im Speicher - nach ein
+                # paar Aufrufen sind alle da und es faellt gar kein Abruf mehr
+                # an. Lieber ein paar Ticker mehr in der ersten Ansicht als
+                # eine Seite, die zu haengen scheint.
+                _name_budget = [12]
 
                 def _tabellenzeile(r, gruppe):
                     _nm = r.get("name")
@@ -8443,8 +8468,17 @@ if nav == "Earnings Calls":
                         "Quartal": (f"{r.get('quartal') or ''} "
                                     f"{r.get('jahr') or ''}").strip() or "\u2014",
                     }
-                _tabelle = ([_tabellenzeile(r, "\U0001f195") for r in _aktuell]
-                            + [_tabellenzeile(r, "") for r in _aelter[:30]])
+                with st.spinner("Firmennamen werden aufgel\u00f6st \u2026"):
+                    _tabelle = ([_tabellenzeile(r, "\U0001f195") for r in _aktuell]
+                                + [_tabellenzeile(r, "") for r in _aelter[:30]])
+                # Noch nicht aufgeloest heisst: In der Spalte steht der Ticker.
+                _ticker_im_satz = {r["ticker"] for r in _aktuell} | \
+                                  {r["ticker"] for r in _aelter[:30]}
+                _offen = sum(1 for z in _tabelle if z["Firma"] in _ticker_im_satz)
+                if _offen:
+                    st.caption(f"{_offen} Namen noch nicht aufgel\u00f6st \u2013 "
+                               f"sie erscheinen beim n\u00e4chsten Aufruf. "
+                               f"Aufgel\u00f6ste Namen bleiben dauerhaft gespeichert.")
                 vr_table(_tabelle,
                          height=min(len(_tabelle) * 40 + 46, 420))
 

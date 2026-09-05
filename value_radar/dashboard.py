@@ -8517,7 +8517,21 @@ if nav == "Earnings Calls":
                 if _tr.get("text"):
                     _tk = st.session_state.get("ec_ticker", "")
                     _txt = _tr["text"]
-                    _mz = _kt.transkript_kennzahlen(_txt)
+                    # AUDIT-BEFUND K1: Hier wurde ungeprueft aufgerufen,
+                    # waehrend zusammenfassung_call() weiter unten mit hasattr()
+                    # abgesichert ist. Fehlte die Funktion, brach die ganze
+                    # Ansicht mit AttributeError ab statt nur ein Teil davon.
+                    if hasattr(_kt, "transkript_kennzahlen"):
+                        _mz = _kt.transkript_kennzahlen(_txt)
+                    else:
+                        st.warning("Die hochgeladene `kennzahlen.py` ist "
+                                   "veraltet \u2013 ihr fehlt "
+                                   "`transkript_kennzahlen`. Der Umfang wird "
+                                   "ersatzweise direkt gez\u00e4hlt.")
+                        _w = len(_txt.split())
+                        _mz = {"zeichen": len(_txt), "woerter": _w,
+                               "lesedauer_min": max(1, round(_w / 200.0)) if _w else 0,
+                               "frageanteil_pct": None}
 
                     _mc = st.columns(3)
                     card(_mc[0], "Umfang", f"{_mz['lesedauer_min']} min",
@@ -8593,7 +8607,8 @@ if nav == "Earnings Calls":
                                         "gefunden \u2013 sieh dir die Kernstellen "
                                         "oder den Volltext an.")
                     elif _av.endswith("Kernstellen"):
-                        _bl = _kt.kernstellen(_txt, max_je_thema=4)
+                        _bl = (_kt.kernstellen(_txt, max_je_thema=4)
+                               if hasattr(_kt, "kernstellen") else [])
                         if not _bl:
                             st.info("Keine Kernstellen gefunden \u2013 das "
                                     "Protokoll ist eventuell sehr kurz.")

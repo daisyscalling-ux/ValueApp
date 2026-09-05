@@ -24,6 +24,8 @@ EINHEITEN (aus der echten roic-Antwort abgeleitet)
   net_debt_to_ebitda, cur_ratio, quick_ratio sind ROHE Verhaeltnisse
 """
 from __future__ import annotations
+
+__version__ = "2026.09.22"   # transkript_kennzahlen ergaenzt
 import re
 
 # ---------------------------------------------------------------------------
@@ -285,6 +287,50 @@ def teile_transkript(text: str) -> dict:
     if pos < 0:
         return {"vortrag": text, "fragen": "", "geteilt": False}
     return {"vortrag": text[:pos], "fragen": text[pos:], "geteilt": True}
+
+
+def transkript_kennzahlen(text: str) -> dict:
+    """Umfang und Aufbau eines Wortprotokolls - ohne jede Deutung.
+
+    AUDIT-BEFUND K1: dashboard.py rief diese Funktion auf, sie existierte
+    aber nicht. Beim Oeffnen eines Earnings Calls brach die Seite mit einem
+    AttributeError ab. Der Aufrufer prueft an anderer Stelle mit hasattr(),
+    ob zusammenfassung_call() vorhanden ist - hier fehlte diese Absicherung,
+    und damit fiel die ganze Ansicht aus statt nur ein Teil.
+
+    Bewusst rein beschreibend: Zeichenzahl, Lesedauer, Anteil des Frageteils.
+    Kein Stimmungswert, keine Bewertung - wer das Protokoll liest, soll
+    wissen, worauf er sich einlaesst, nicht was er davon halten soll.
+
+    Rueckgabe:
+        zeichen           Gesamtlaenge
+        woerter           grobe Wortzahl
+        lesedauer_min     bei 200 Woertern je Minute, mindestens 1
+        frageanteil_pct   Anteil des Q&A-Teils am Protokoll, None wenn die
+                          Trennung nicht gefunden wurde
+        geteilt           ob Vortrag und Frageteil getrennt werden konnten
+    """
+    text = text or ""
+    zeichen = len(text)
+    woerter = len(text.split())
+    # 200 Woerter je Minute ist der ueblich angesetzte Wert fuer stilles Lesen
+    # von Fachtext. Mindestens 1, damit ein kurzer Auszug nicht "0 min" zeigt.
+    lesedauer = max(1, round(woerter / 200.0)) if woerter else 0
+
+    teile = teile_transkript(text)
+    anteil = None
+    if teile.get("geteilt") and zeichen:
+        anteil = round(len(teile["fragen"]) / zeichen * 100)
+
+    return {
+        "zeichen": zeichen,
+        "woerter": woerter,
+        "lesedauer_min": lesedauer,
+        "frageanteil_pct": anteil,
+        "geteilt": bool(teile.get("geteilt")),
+        "vortrag_zeichen": len(teile.get("vortrag") or ""),
+        "fragen_zeichen": len(teile.get("fragen") or ""),
+    }
 
 
 def kernstellen(text: str, max_je_thema: int = 4) -> list:

@@ -152,3 +152,29 @@ keine.
 *Grundproblem bleibt:* Der Nachtlauf sollte die Namen gleich mitspeichern.
 Dann fällt die Auflösung in der Anzeige ganz weg. Das gehört zu `precompute`
 und damit in Stufe 6 des Audits.
+
+## K1 — Aufruf einer Funktion, die es nicht gibt
+**Muster M13 (Anzeige mit eigener Logik) · hoch · behoben**
+
+`dashboard.py` rief beim Öffnen eines Earnings Calls
+`kennzahlen.transkript_kennzahlen()` auf. **Die Funktion existierte nicht.**
+Ergebnis: AttributeError, die gesamte Ansicht brach ab.
+
+Verschärfend: Wenige Zeilen darunter wird `zusammenfassung_call()` sauber mit
+`hasattr()` abgesichert und im Fehlerfall eine verständliche Meldung gezeigt.
+Beim Nachbarn fehlte dieselbe Absicherung — also fiel nicht ein Teil aus,
+sondern alles.
+
+*Behoben:*
+- `transkript_kennzahlen()` in `kennzahlen.py` ergänzt: Zeichen, Wörter,
+  Lesedauer, Anteil des Frageteils. Bewusst rein beschreibend, ohne
+  Stimmungsdeutung.
+- Alle drei `_kt`-Aufrufe im Dashboard sind jetzt mit `hasattr()` abgesichert
+  (`transkript_kennzahlen`, `zusammenfassung_call`, `kernstellen`).
+- `kennzahlen.py` in `pruefe_dateistand.py` aufgenommen, damit eine fehlende
+  Funktion künftig vor dem Start auffällt statt beim Klick.
+
+*Beobachtung fürs Audit:* Dass eine Funktion aufgerufen wird, die nie
+existierte, deutet auf einen abgebrochenen Umbau. In Stufe 8 gehört ein
+systematischer Abgleich dazu: jeder Modulaufruf im Dashboard gegen die
+tatsächlich vorhandenen Funktionen.

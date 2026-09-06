@@ -39,6 +39,7 @@ jobs:
           # --- Pflicht: Datenquellen ---
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           # --- Optional ---
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

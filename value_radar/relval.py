@@ -16,7 +16,7 @@ Das ist Orientierung, kein Present-Value-Beweis - und wird als solche gekennzeic
 """
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # gemessenes Perzentil aus Multiple-Historie
+__version__ = "2026.09.25"   # gemessenes Perzentil aus Multiple-Historie
 
 import math
 from typing import Dict, Optional, Sequence

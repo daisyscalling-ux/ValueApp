@@ -26,7 +26,7 @@ Rauschen.
 
 from __future__ import annotations
 
-__version__ = "2026.09.23"
+__version__ = "2026.09.25"
 
 import ast
 import os

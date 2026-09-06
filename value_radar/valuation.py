@@ -17,7 +17,7 @@ ausgewiesen, damit die Streuung sichtbar bleibt.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
+__version__ = "2026.09.25"   # Anker an 5 Jahre, Plausibilitaet ohne Kursanker
 from typing import Dict, List, Optional, Sequence, Tuple
 import math
 import config
@@ -351,10 +351,26 @@ def _eps_ist(fund):
     return fund.get("eps_trailing")
 
 
-def justified_pe_number(fund, preset="quality") -> Optional[float]:
-    eps = _eps_ist(fund)
-    if not eps or eps <= 0:
-        return None
+def faires_kgv(fund, preset="quality") -> Optional[float]:
+    """Welches KGV verdient dieses Geschaeft - unabhaengig davon, WELCHES
+    Ergebnis man darauf anwendet.
+
+    AUDIT-BEFUND V2 (Folgefehler von V1): Die Leiter steckte in
+    justified_pe_number(), und die gab None zurueck, sobald kein positives
+    LAUFENDES Ergebnis vorlag. Nach der Umstellung auf eps_trailing (V1)
+    lieferte sie damit auch fuer fwd_pe nichts - und fwd_pe rechnete
+    `eps1 * None`, was mit TypeError abbrach. Getroffen hat es genau die
+    Titel mit Verlust im laufenden Jahr und positiver Prognose, also
+    Turnarounds. Im Long-Short-Suchlauf ueber viele Titel war das schnell
+    einer dabei.
+
+    Der Multiplikator selbst haengt nicht am EPS - er kommt aus Rentabilitaet,
+    Marge, Verschuldung und Wachstum. Deshalb steht er jetzt fuer sich, und
+    jede Methode entscheidet selbst, worauf sie ihn anwendet:
+
+        justified_pe -> laufendes Ergebnis (eps_trailing)
+        fwd_pe       -> erwartetes Ergebnis (eps_forward)
+    """
     base = 7.0
     stab = 0.0
     if (fund.get("free_cashflow") or 0) > 0:
@@ -392,6 +408,19 @@ def justified_pe_number(fund, preset="quality") -> Optional[float]:
     cap = (50 if preset == "inflection" else 42 if preset == "quality"
            else 18 if preset == "financial" else 16)
     return max(6.0, min(fair_pe, cap))
+
+
+def justified_pe_number(fund, preset="quality") -> Optional[float]:
+    """Faires KGV, aber nur wenn ein laufendes Ergebnis vorliegt.
+
+    Duenne Huelle um faires_kgv() - beibehalten, weil mehrere Stellen im
+    Projekt diesen Namen benutzen. Die Pruefung auf ein positives Ergebnis
+    gehoert zu justified_pe, nicht zur Leiter.
+    """
+    eps = _eps_ist(fund)
+    if not eps or eps <= 0:
+        return None
+    return faires_kgv(fund, preset)
 
 
 def justified_pe(fund, preset="quality") -> Optional[float]:
@@ -695,7 +724,12 @@ def fwd_pe(fund, preset="quality") -> Optional[float]:
     eps1 = fund.get("eps_forward")
     if not eps1 or eps1 <= 0:
         return None
-    return eps1 * justified_pe_number(fund, preset)
+    # Die Leiter direkt, nicht ueber justified_pe_number: Diese verlangt ein
+    # positives laufendes Ergebnis, das fuer ein FORWARD-Verfahren aber gar
+    # nicht noetig ist. Zusaetzlich gegen None abgesichert - ohne Rentabilitaets-
+    # oder Margendaten kommt keine Leiter zustande.
+    kgv = faires_kgv(fund, preset)
+    return eps1 * kgv if kgv else None
 
 
 def fwd_composite(fund, preset="quality") -> Optional[float]:

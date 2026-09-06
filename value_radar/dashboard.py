@@ -4011,7 +4011,7 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
-                _ERWARTET = "2026.09.23"
+                _ERWARTET = "2026.09.25"
 
                 def _modul_alt(mod, noetig=()):
                     if getattr(mod, "__version__", None) != _ERWARTET:
@@ -4193,7 +4193,7 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.09.23":
+                    if getattr(_bs, "__version__", None) != "2026.09.25":
                         st.warning("Veralteter Dateistand: bewertung_seite.py "
                                    "\u2014 bitte erneut hochladen und die App "
                                    "neu starten.", icon="\u26a0\ufe0f")
@@ -5286,13 +5286,31 @@ if nav == "Einzelanalyse":
                 # EARNINGS: "Wird der Beat bezahlt?" - Surprise vs Kursreaktion.
                 # Zeigt, ob gute Zahlen vom Markt belohnt werden (oft nicht!).
                 # -----------------------------------------------------------
-                with st.expander("\U0001f4c8 Earnings: Wird der Beat bezahlt?",
+                with st.expander("\U0001f4c8 Earnings: Kursreaktion auf Zahlen",
                                  expanded=False):
                     with st.spinner("Lade Earnings-Historie \u2026"):
                         _eh = load_earnings_history(ticker)
                     if not _eh:
-                        st.caption("Keine Earnings-Historie verf\u00fcgbar (Datenquelle "
-                                   "liefert f\u00fcr diesen Titel keine Quartalszahlen).")
+                        # Ohne Analystenkonsens ist "Wird der Beat bezahlt?"
+                        # nicht zu beantworten - roic liefert die Schaetzungen
+                        # nicht. Die TERMINE liegen aber vor, und Tageskurse
+                        # auch. Damit laesst sich eine verwandte Frage klaeren:
+                        # Haelt die erste Reaktion, oder verpufft sie?
+                        try:
+                            import earnings_reaktion as _er
+                            import ui_bewertung as _uier
+
+                            @st.cache_data(ttl=21600, show_spinner=False)
+                            def _reaktion_laden(t):
+                                return _er.erheben(t)
+
+                            with st.spinner("Kursreaktion um die Termine \u2026"):
+                                _rk = _reaktion_laden(ticker)
+                            _uier.inject_css("dunkel")
+                            _uier.earnings_reaktion_karte(_rk)
+                        except Exception as _e_er:
+                            st.caption(f"Kursreaktion nicht berechenbar "
+                                       f"({_e_er}).")
                     else:
                         st.caption("Jeder Punkt ist ein Quartal: **EPS-\u00dcberraschung** "
                                    "(wie stark der Gewinn die Sch\u00e4tzung schlug) gegen "

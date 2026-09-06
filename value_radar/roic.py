@@ -25,7 +25,7 @@ Schluessel: python test_roic_live.py
 """
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # umsatz_reihe, cashflow_reihe, wachstum
+__version__ = "2026.09.25"   # umsatz_reihe, cashflow_reihe, wachstum
 
 import json
 import threading

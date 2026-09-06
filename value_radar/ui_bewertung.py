@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.25"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -757,6 +757,79 @@ def bilanz_streifen(bewertet, zusammenfassung=None) -> None:
         f'{"".join(kacheln)}</div></div>')
 
 
+def earnings_reaktion_karte(erg: dict) -> None:
+    """Wie der Kurs auf Zahlen reagiert - und was davon bleibt.
+
+    Ersetzt "Wird der Beat bezahlt?", das ohne Analystenkonsens leer blieb.
+    Die Karte sagt ausdruecklich, dass sie etwas ANDERES misst: nicht ob ein
+    Beat belohnt wird, sondern ob die Reaktion Bestand hat.
+    """
+    if not erg:
+        return
+    qs = erg.get("quartale") or []
+    if not qs:
+        _md(f'<div class="va-card"><h4>Kursreaktion auf Zahlen</h4>'
+            f'<div class="note" style="color:{C["muted"]};">'
+            f'{_e(erg.get("hinweis") or "keine Daten")}</div></div>')
+        return
+
+    ton = {"gruen": C["green"], "gelb": C["amber"],
+           "rot": C["red"]}.get(erg.get("ton") or "grau", C["muted"])
+
+    if erg.get("urteil"):
+        kopf = (f'<div style="font-size:15px;font-weight:700;color:{ton};'
+                f'margin:4px 0 2px;">{_e(erg["urteil"])}</div>'
+                f'<div class="note" style="color:{C["muted"]};">'
+                f'{erg["n"]} Quartale \u00b7 {erg.get("positiv_pct")} % mit '
+                f'steigendem Kurs \u00b7 mittlerer Ausschlag '
+                f'{erg.get("mittlerer_ausschlag_pct")} % \u00b7 nach einer '
+                f'Woche {erg.get("haltequote_pct")} % gehalten</div>')
+    else:
+        kopf = (f'<div class="note" style="color:{C["muted"]};">'
+                f'{_e(erg.get("hinweis") or "")}</div>')
+
+    zeilen = []
+    for q in qs[:12]:
+        r = q.get("reaktion_pct")
+        w = q.get("nach_woche_pct")
+        m = q.get("nach_monat_pct")
+
+        def z(x):
+            if x is None:
+                return f'<span style="color:{C["muted"]};">\u2013</span>'
+            f = C["green"] if x >= 0 else C["red"]
+            return f'<span style="color:{f};">{x:+.1f} %</span>'
+
+        quartal = (f'Q{q["quartal"]} {q["jahr"]}'
+                   if q.get("quartal") and q.get("jahr") else str(q.get("datum")))
+        zeilen.append(
+            f'<div style="display:grid;grid-template-columns:1.3fr repeat(3,1fr);'
+            f'gap:8px;padding:5px 0;border-bottom:1px solid {C["line"]};'
+            f'font-size:12px;">'
+            f'<span style="color:{C["muted"]};">{_e(quartal)}'
+            f'<span style="color:{C["line"]};"> \u00b7 {_e(str(q.get("datum")))}'
+            f'</span></span>'
+            f'<span class="va-num" style="text-align:right;">{z(r)}</span>'
+            f'<span class="va-num" style="text-align:right;">{z(w)}</span>'
+            f'<span class="va-num" style="text-align:right;">{z(m)}</span></div>')
+    if zeilen:
+        zeilen[-1] = zeilen[-1].replace(f'border-bottom:1px solid {C["line"]};', "")
+
+    kopfzeile = (f'<div style="display:grid;grid-template-columns:1.3fr repeat(3,1fr);'
+                 f'gap:8px;padding:4px 0;font-size:10px;color:{C["muted"]};'
+                 f'text-transform:uppercase;letter-spacing:.5px;">'
+                 f'<span>Quartal</span><span style="text-align:right;">Tag danach'
+                 f'</span><span style="text-align:right;">+1 Woche</span>'
+                 f'<span style="text-align:right;">+1 Monat</span></div>')
+
+    _md(f'<div class="va-card"><h4>Kursreaktion auf Zahlen</h4>'
+        f'<div class="sub">Gemessen ab dem Schluss vor dem Call. Ob die Zahlen '
+        f'ueber oder unter der Erwartung lagen, ist hier NICHT bekannt \u2013 '
+        f'dafuer fehlt der Analystenkonsens. Gemessen wird, ob die erste '
+        f'Reaktion Bestand hat.</div>'
+        f'{kopf}{kopfzeile}{"".join(zeilen)}</div>')
+
+
 def sektor_karte(verg: dict, zweitwert: Optional[dict] = None,
                  alle: Optional[Sequence[dict]] = None,
                  waehrung: str = "EUR") -> None:
@@ -769,7 +842,22 @@ def sektor_karte(verg: dict, zweitwert: Optional[dict] = None,
     entscheiden. Ein Werkzeug, das so tut, waere schlechter als eines, das die
     Frage stellt.
     """
-    if not verg or verg.get("heute") is None:
+    if not verg:
+        return
+    if verg.get("heute") is None:
+        # NICHT still verschwinden. Eine Karte, die ohne Daten einfach fehlt,
+        # ist von einer nicht vorhandenen Funktion nicht zu unterscheiden -
+        # genau das Muster, das an anderer Stelle Stunden gekostet hat.
+        # Stattdessen: sagen, dass es sie gibt und was zu tun ist.
+        _md(f'<div class="va-card"><h4>Was der Markt fuer dieses Segment zahlt'
+            f'</h4><div class="sub">Noch keine Messung fuer '
+            f'<b>{_e(str(verg.get("gruppe") or "dieses Segment"))}</b>.</div>'
+            f'<div class="note" style="margin-top:8px;line-height:1.5;">'
+            f'Die Sektormediane entstehen beim Screener-Lauf aus den dort '
+            f'ohnehin geladenen Titeln. Kein Anbieter liefert sie fertig \u2013 '
+            f'die Zeitreihe muss selbst aufgebaut werden. Nach dem ersten Lauf '
+            f'steht hier der aktuelle Stand, nach vier L\u00e4ufen der '
+            f'Vergleich mit dem eigenen Schnitt.</div></div>')
         return
 
     ton = {"gruen": C["green"], "gelb": C["amber"],

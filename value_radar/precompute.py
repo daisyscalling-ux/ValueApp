@@ -22,6 +22,8 @@ Robust: Jede Sektion ist gekapselt - faellt eine aus, laufen die anderen weiter.
 """
 from __future__ import annotations
 
+__version__ = "2026.09.25"   # Sektormediane im Nachtlauf
+
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
 # erzeugt hat.
@@ -113,10 +115,29 @@ def _berlin_now():
         return dt.datetime.now()
 
 
+def _fuer_sektormessung(f: dict) -> None:
+    """Nur die acht Felder mitnehmen, die der Median braucht.
+
+    score_ticker gibt das fund-Dict nicht zurueck - es wandert in den
+    Snapshot, und der liegt im Google Sheet. Sechzig Felder mal mehrere
+    hundert Titel waeren dort nicht sinnvoll. Deshalb wird hier abgegriffen,
+    wo die Daten ohnehin im Speicher liegen, und nur das Noetige behalten.
+    """
+    if not isinstance(f, dict) or not f.get("sector"):
+        return
+    _GESEHENE_FUNDS.append({
+        "sector": f.get("sector"), "industry": f.get("industry"),
+        "ev_ebitda": f.get("ev_ebitda"), "price": f.get("price"),
+        "eps_trailing": f.get("eps_trailing"), "pb": f.get("pb"),
+        "market_cap": f.get("market_cap"), "revenue": f.get("revenue"),
+    })
+
+
 def score_ticker(t: str, deep: bool = True) -> dict | None:
     """Kennzahlen fuer einen Ticker - identische Logik wie in der App."""
     try:
         f = providers.get_fundamentals(t, deep=deep)
+        _fuer_sektormessung(f)
     except Exception:
         return None
     if not f or not f.get("price"):
@@ -241,6 +262,17 @@ def collect_portfolio_tickers() -> list:
     return out
 
 
+#: Alle fund-Dicts eines Laufs - Grundlage fuer die Sektormediane.
+#:
+#: Der Nachtlauf laedt ohnehin mehrere hundert Titel. Genau daraus lassen sich
+#: die Sektormediane bilden, ohne einen einzigen zusaetzlichen Abruf. Kein
+#: Anbieter im Bestand liefert Sektormediane ueber die Zeit - die Reihe muss
+#: selbst entstehen, und ein taeglicher Lauf ist die richtige Taktung dafuer.
+#: Ein manueller Screener-Lauf waere unregelmaessig und damit als Zeitreihe
+#: unbrauchbar.
+_GESEHENE_FUNDS: list = []
+
+
 def scan_list(tickers, deep=True, label=""):
     res = {}
     for i, t in enumerate(tickers):
@@ -250,6 +282,41 @@ def scan_list(tickers, deep=True, label=""):
         if (i + 1) % 10 == 0:
             print(f"  [{label}] {i+1}/{len(tickers)} ...")
     return res
+
+
+def sektormediane_schreiben() -> None:
+    """Sektor- und Segmentmediane aus dem Lauf ablegen.
+
+    Laeuft am Ende, wenn alle Titel gesehen wurden. Schlaegt es fehl, ist das
+    kein Grund, den Nachtlauf abzubrechen - die Mediane sind eine Zugabe, kein
+    Kernergebnis.
+    """
+    if not _GESEHENE_FUNDS:
+        print("[sektor] keine fund-Daten im Lauf gesammelt - uebersprungen")
+        return
+    try:
+        import sektor as _sk
+    except Exception as e:
+        print(f"[sektor] Modul nicht ladbar: {e}")
+        return
+    for ebene in ("sector", "segment"):
+        try:
+            m = _sk.messen(_GESEHENE_FUNDS, ebene=ebene)
+            n = _sk.speichern(m, ebene=ebene) if m else 0
+            print(f"[sektor] {ebene}: {len(m)} Gruppen gemessen, {n} gespeichert")
+        except Exception as e:
+            print(f"[sektor] {ebene} fehlgeschlagen: {e}")
+    # Welche Branchennamen trifft kein Segmentmuster? Die Musterliste ist
+    # handgepflegt und soll gegen echte Daten gepflegt werden, nicht gegen
+    # Vermutungen.
+    try:
+        offen = _sk.unbekannte_branchen(_GESEHENE_FUNDS, limit=12)
+        if offen:
+            print("[sektor] Branchen ohne Segmentzuordnung (haeufigste):")
+            for b, n, ersatz in offen:
+                print(f"          {b[:44]:44s} {n:3d}x  -> ersatzweise {ersatz}")
+    except Exception:
+        pass
 
 
 _SUFFIX_PRIORITY = {
@@ -1567,6 +1634,14 @@ def run():
     except Exception as _e:
         print(f"[FEHLER] Auto-Depot: {_e}")
         _fehler.append("Auto-Depot")
+
+    # Sektormediane zum Schluss: Erst jetzt sind alle Titel des Laufs gesehen.
+    # Bewusst NACH allem anderen und in einem eigenen try - die Mediane sind
+    # eine Zugabe, kein Kernergebnis, und duerfen den Lauf nicht gefaehrden.
+    try:
+        sektormediane_schreiben()
+    except Exception as _e:
+        print(f"[FEHLER] Sektormediane: {_e}")
 
     if _fehler:
         print(f"=== precompute fertig MIT FEHLERN in: {', '.join(_fehler)} ===")

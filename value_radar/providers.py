@@ -10,7 +10,7 @@ Alle Netzwerk-Calls sind defensiv in try/except gekapselt.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # umsatz_historie, Anreicherungs-Cache mit Marker
+__version__ = "2026.09.25"   # umsatz_historie, Anreicherungs-Cache mit Marker
 from typing import Any, Optional
 import math
 import time

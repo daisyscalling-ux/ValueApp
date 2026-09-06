@@ -235,3 +235,42 @@ handelt und historisch bei 38 stand. Keine der beiden Beobachtungen fließt ein.
 Das ist Muster M2 und gehört in Stufe 3. Ich habe es bewusst nicht nebenbei
 geändert: `justified_pe` trägt 30 % Gewicht in zwei von vier Playbooks, und
 eine neue Ankerlogik verschiebt jeden Fair Value im Bestand.
+
+## V2 — Folgefehler aus V1: `fwd_pe` brach mit TypeError ab
+**Muster M4 · hoch · behoben**
+
+`fwd_pe` rechnete `eps1 * justified_pe_number(fund, preset)`. Nach der
+Umstellung von `justified_pe_number` auf `eps_trailing` (Befund V1) gab diese
+Funktion `None` zurück, sobald **kein positives laufendes Ergebnis** vorlag —
+also genau bei Turnarounds mit Verlust im laufenden Jahr und positiver
+Prognose. `eps1 * None` bricht mit TypeError ab.
+
+Getroffen hat es den Long-Short-Suchlauf: Über viele Titel ist so einer schnell
+dabei, und die ganze Seite fiel aus.
+
+**Mein Fehler bei V1: Ich habe die Aufrufer nicht geprüft.** Die Änderung war
+inhaltlich richtig, aber `justified_pe_number` hatte einen zweiten Nutzer, der
+den Multiplikator ohne die EPS-Bedingung brauchte.
+
+*Behoben:* Die KGV-Leiter steht jetzt als eigene Funktion `faires_kgv()` —
+sie hängt nicht am EPS, sondern an Rentabilität, Marge, Verschuldung und
+Wachstum. Jede Methode entscheidet selbst, worauf sie den Multiplikator
+anwendet:
+
+```
+justified_pe -> laufendes Ergebnis (eps_trailing)
+fwd_pe       -> erwartetes Ergebnis (eps_forward)
+```
+
+`justified_pe_number` bleibt als dünne Hülle bestehen, weil mehrere Stellen
+diesen Namen benutzen.
+
+*Gegenprobe:* 400 zufällig erzeugte Titel über alle vier Playbooks, mit
+fehlenden, negativen und Null-Werten in jedem Feld — kein Abbruch. Zusätzlich
+ein AST-Durchlauf über `valuation.py`: keine weitere Stelle, an der das
+Ergebnis einer möglicherweise `None` liefernden Funktion ungesichert
+weitergerechnet wird.
+
+*Lehre fürs Audit:* Frage 5 des Prüfschemas („Wo wird still gescheitert?")
+reicht nicht. Es braucht eine sechste: **Wer ruft diese Funktion sonst noch
+auf, und verträgt der die neue Rückgabe?**

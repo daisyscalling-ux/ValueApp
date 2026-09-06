@@ -12,23 +12,27 @@ Funktion, sondern eine Datei wurde beim Hochladen vergessen.
 import importlib
 import sys
 
-ERWARTET = "2026.09.23"          # Bewertungs-/Anzeigeschicht
-ERWARTET_ENTDECKUNG = "2026.09.23"   # Screener, Kandidat, Forensik
+ERWARTET = "2026.09.25"          # Bewertungs-/Anzeigeschicht
+ERWARTET_ENTDECKUNG = "2026.09.25"   # Screener, Kandidat, Forensik
 
 #: Module der Entdeckungsschicht - eigener Zyklus, eigener Stand.
 ENTDECKUNG = {"kandidat", "screener2", "scores",
-              "valuation", "providers", "relval", "roic", "momentum", "radar", "pruefung", "kennzahlen", "sektor"}
+              "valuation", "providers", "relval", "roic", "momentum", "radar", "pruefung", "kennzahlen", "sektor", "precompute", "earnings_reaktion"}
 
 MODULE = {
     "valuation": ["zyklisch_aus_margen", "fcf_basis", "reverse_dcf_analyse",
-                  "datenqualitaet", "basis_signatur", "wachstums_anker"],
+                  "datenqualitaet", "basis_signatur", "wachstums_anker",
+                  "faires_kgv", "zweitanker_bewertung"],
     "providers": ["get_eps_history", "get_fundamentals", "umsatz_historie"],
     "relval": ["perzentil", "bericht", "multiple_band"],
     "roic": ["umsatz_reihe", "cashflow_reihe", "wachstum"],
     "momentum": ["bausteine", "branchen_mediane", "branchen_mediane_12_1"],
     "radar": ["compute", "_frische"],
     "pruefung": ["pruefe", "fundamentales_momentum"],
-    "sektor": ["messen", "speichern", "vergleich", "anker", "alle_vergleiche"],
+    "sektor": ["messen", "speichern", "vergleich", "anker", "alle_vergleiche",
+               "segment", "normalisieren", "unbekannte_branchen"],
+    "precompute": ["run", "scan_list", "sektormediane_schreiben"],
+    "earnings_reaktion": ["erheben", "auswerten"],
     "kennzahlen": ["bewerte", "zusammenfassung", "transkript_kennzahlen",
                    "zusammenfassung_call", "kernstellen"],
     "ui_bewertung": ["sparkline", "kennzahl_kacheln", "news_karte",

@@ -24,7 +24,7 @@ der Trefferbilanz nachvollziehbar bleibt, WARUM ein Titel oben stand.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # 12-1 multiplikativ, Vola, Sektorbereinigung
+__version__ = "2026.09.25"   # 12-1 multiplikativ, Vola, Sektorbereinigung
 
 try:
     import providers

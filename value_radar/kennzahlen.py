@@ -25,7 +25,7 @@ EINHEITEN (aus der echten roic-Antwort abgeleitet)
 """
 from __future__ import annotations
 
-__version__ = "2026.09.23"   # transkript_kennzahlen ergaenzt
+__version__ = "2026.09.25"   # transkript_kennzahlen ergaenzt
 import re
 
 # ---------------------------------------------------------------------------

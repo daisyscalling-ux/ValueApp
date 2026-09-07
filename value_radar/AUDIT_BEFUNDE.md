@@ -274,3 +274,44 @@ weitergerechnet wird.
 *Lehre fürs Audit:* Frage 5 des Prüfschemas („Wo wird still gescheitert?")
 reicht nicht. Es braucht eine sechste: **Wer ruft diese Funktion sonst noch
 auf, und verträgt der die neue Rückgabe?**
+
+## W1 — `ROIC_API_KEY` fehlt im GitHub-Workflow
+**Muster M4 · hoch · Änderung liegt bei dir (Workflow-Datei)**
+
+Der `env:`-Block des Nachtlaufs übergibt `FINNHUB_API_KEY`, `FMP_API_KEY`,
+`TIINGO_API_KEY` und `ANTHROPIC_API_KEY` — **aber nicht `ROIC_API_KEY`.**
+
+`config._key()` liest Umgebungsvariable → `secrets.toml` → Rückfall. In der
+GitHub-Umgebung gibt es keine `secrets.toml`, und für roic ist kein Rückfall
+hinterlegt. Also läuft der gesamte Nachtlauf ohne roic:
+
+- keine Jahresabschlüsse → keine Forensik (Piotroski, Altman, Beneish)
+- keine Bewertungshistorie, keine Cash-Conversion
+- keine Earnings-Call-Erkennung
+- `providers.get_fundamentals(deep=True)` fällt auf yfinance + Finnhub zurück
+
+**Folge:** Die im Sheet abgelegten Scores stammen aus anderen Daten als die
+Einzelanalyse, die lokal mit roic rechnet. Derselbe Titel bekommt zwei
+verschiedene Bewertungen, je nachdem wo man hinsieht — dieselbe Klasse Fehler
+wie Befund M-1 (zwei Gate-Systeme), nur eine Ebene tiefer.
+
+*Zu prüfen:* Ob das Secret in GitHub überhaupt hinterlegt ist. Falls nicht,
+zuerst anlegen.
+
+## W2 — Zeitplan-Kommentare beschreiben drei verschiedene Zustände
+**Muster M13 · niedrig · Änderung liegt bei dir**
+
+```
+Kopfkommentar   "2x taeglich" (05:15 und 14:15 UTC)
+Zweiter Block   "Alle 4 Stunden" (2,6,10,14,18,22 UTC)
+cron            "0 6 * * *"  ->  EINMAL taeglich, 06:00 UTC
+```
+
+Beide Kommentare beschreiben Zustände, die es nicht gibt. Wer den Lauf ändern
+will, orientiert sich an einer der beiden Beschreibungen und liegt falsch.
+
+*Sachlich richtig ist der cron:* Einmal täglich reicht. Der Lauf berechnet
+Jahresabschluss-Kennzahlen, Scores und Sektormediane — nichts davon ändert
+sich innerhalb eines Tages. Die Sektormessung ersetzt zudem einen Eintrag
+desselben Tages, statt ihn anzuhängen: Vier Läufe ergäben **einen**
+gespeicherten Punkt bei vierfachem API-Verbrauch.

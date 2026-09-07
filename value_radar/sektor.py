@@ -302,19 +302,38 @@ def messen(funds: Sequence[dict], ebene: str = "sector") -> dict:
 def speichern(mediane: dict, ebene: str = "sector") -> int:
     """Eine Messung ablegen. Eine je Tag reicht - mehr waere Scheingenauigkeit.
 
-    Rueckgabe: Anzahl gespeicherter Gruppen.
+    IN EINEM ZUG, nicht je Gruppe einzeln.
+
+    Erste Fassung rief store.set_anreicherung() in einer Schleife auf - und
+    jeder Aufruf laedt intern den GESAMTEN Zusatzspeicher und schreibt ihn
+    komplett zurueck. Bei 9 Sektoren plus 18 Segmenten waren das 54 volle
+    Uebertragungen hintereinander. Lokal mit Datei-Backend faellt das kaum
+    auf; gegen ein Google Sheet ist es langsam, verbraucht Kontingent und
+    kann mittendrin abbrechen - dann steht die Haelfte drin und die andere
+    nicht, ohne dass es jemand merkt.
+
+    Jetzt: einmal laden, alles aendern, einmal schreiben.
+
+    Rueckgabe: Anzahl gespeicherter Gruppen (0 bei fehlgeschlagenem Schreiben).
     """
     import store
 
+    if not mediane:
+        return 0
     heute = datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        d = store._load_aux()
+    except Exception as e:
+        print(f"[sektor] Speicher nicht lesbar: {e}")
+        return 0
+    eintraege = d.setdefault("anreicherung", {})
+
     n = 0
-    for gruppe, kz in (mediane or {}).items():
-        schluessel = f"{ebene}:{gruppe}"
-        try:
-            reihe = store.get_anreicherung(schluessel, "sektormedian",
-                                           max_alter_tage=3650) or []
-        except Exception:
-            reihe = []
+    for gruppe, kz in mediane.items():
+        schluessel = f"sektormedian:{ebene.upper()}:{str(gruppe).upper()}"
+        alt_eintrag = eintraege.get(schluessel)
+        reihe = (alt_eintrag or {}).get("wert")
         if not isinstance(reihe, list):
             reihe = []
         # Messung desselben Tages ersetzen, nicht anhaengen
@@ -323,13 +342,35 @@ def speichern(mediane: dict, ebene: str = "sector") -> int:
                       **{k: v["median"] for k, v in kz.items()},
                       "n": max(v["n"] for v in kz.values())})
         reihe = sorted(reihe, key=lambda e: e["datum"])[-400:]
-        try:
-            if store.set_anreicherung(schluessel, "sektormedian", reihe):
-                n += 1
-        except Exception:
-            pass
-    _index_ergaenzen(list((mediane or {}).keys()), ebene)
+        eintraege[schluessel] = {"_ts": _jetzt_ts(), "_marker": None,
+                                 "wert": reihe}
+        n += 1
+
+    # Index in denselben Schreibvorgang
+    # Schluesselformat GENAU wie store.set_anreicherung es bildet:
+    #   f"{art}:{ticker.upper()}"  ->  "sektorindex:INDEX-SECTOR"
+    # Eine Abweichung hier bleibt unbemerkt: Geschrieben wird erfolgreich,
+    # gelesen wird woanders, und die Karte bleibt leer.
+    idx_schluessel = f"sektorindex:INDEX-{ebene.upper()}"
+    alt_idx = (eintraege.get(idx_schluessel) or {}).get("wert") or []
+    neu_idx = sorted(set(alt_idx) | set(str(g) for g in mediane))
+    eintraege[idx_schluessel] = {"_ts": _jetzt_ts(), "_marker": None,
+                                 "wert": neu_idx}
+
+    try:
+        if not store._save_aux(d):
+            print(f"[sektor] Schreiben fehlgeschlagen ({ebene}) - "
+                  f"die Messung ist NICHT gespeichert.")
+            return 0
+    except Exception as e:
+        print(f"[sektor] Schreibfehler ({ebene}): {e}")
+        return 0
     return n
+
+
+def _jetzt_ts() -> float:
+    import time
+    return time.time()
 
 
 def lade_reihe(gruppe: str, ebene: str = "sector") -> list:

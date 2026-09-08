@@ -262,6 +262,51 @@ def collect_portfolio_tickers() -> list:
     return out
 
 
+# ---------------------------------------------------------------------------
+# ZEITBUDGET
+#
+# GitHub Actions bricht nach 45 Minuten ab - und zwar hart: Was bis dahin
+# nicht gespeichert wurde, ist weg. Ein Lauf, der bei Minute 44 abbricht,
+# hinterlaesst weniger als einer, der bei Minute 30 aufhoert und den Rest
+# ueberspringt.
+#
+# Ausloeser war das Hinzufuegen des ROIC-Schluessels: Vorher liefen die
+# roic-Pfade gar nicht (kein Schluessel), seither laeuft erstmals der volle
+# Umfang - darunter die Earnings-Call-Suche ueber rund 560 Titel.
+# ---------------------------------------------------------------------------
+import os as _os_modul
+import time as _zeit_modul
+
+_LAUF_START = _zeit_modul.time()
+#: Minuten, nach denen optionale Abschnitte uebersprungen werden. Bewusst
+#: unter der GitHub-Grenze von 45, damit das Speichern noch Zeit hat.
+ZEITBUDGET_MIN = float(_os_modul.getenv("PRECOMPUTE_BUDGET_MIN", "32"))
+
+
+class _Budget(Exception):
+    """Kein Fehler, sondern eine Entscheidung: Dieser Abschnitt entfaellt,
+    damit der Lauf sein Ergebnis noch speichern kann."""
+
+
+def _verbraucht_min() -> float:
+    return (_zeit_modul.time() - _LAUF_START) / 60.0
+
+
+def zeit_knapp(reserve_min: float = 0.0) -> bool:
+    """Ist das Budget aufgebraucht? Optionale Abschnitte fragen das vorher."""
+    return _verbraucht_min() + reserve_min >= ZEITBUDGET_MIN
+
+
+def _budget_melden(abschnitt: str) -> bool:
+    """True, wenn der Abschnitt uebersprungen werden soll."""
+    if zeit_knapp():
+        print(f"[budget] {abschnitt} uebersprungen - {_verbraucht_min():.0f} von "
+              f"{ZEITBUDGET_MIN:.0f} Minuten verbraucht.")
+        return True
+    return False
+
+
+
 #: Alle fund-Dicts eines Laufs - Grundlage fuer die Sektormediane.
 #:
 #: Der Nachtlauf laedt ohnehin mehrere hundert Titel. Genau daraus lassen sich
@@ -1246,6 +1291,10 @@ def run():
     #     Defensiv: ohne Key / bei Fehler bleibt briefing = None.
     briefing_text = None
     try:
+        # Zeitbudget: lieber ohne Briefing fertig werden als bei Minute 45
+        # abgebrochen. Die Meldung steht bereits in _budget_melden.
+        if _budget_melden("KI-Briefing"):
+            raise _Budget()
         import ai_briefing
         news_items = []
         try:
@@ -1259,6 +1308,8 @@ def run():
         if briefing_text:
             store.set_briefing(briefing_text)
             print("[precompute] KI-Briefing erzeugt.")
+    except _Budget:
+        pass                               # Meldung steht schon in _budget_melden
     except Exception as e:
         print(f"[precompute] KI-Briefing uebersprungen: {e}")
 
@@ -1541,14 +1592,22 @@ def run():
         # waeren Megabyte an ungelesenem Text im Speicher.
         _tr_status = {"stand": "", "roic_aktiv": bool(_ROIC_AKTIV)}
         try:
-            if _ROIC_AKTIV:
+            # Der Kommentar oben schaetzt "gut 2 Minuten" fuer 560 Titel. Das
+            # galt, solange roic gar nicht lief. Mit Schluessel ist es der
+            # teuerste Einzelabschnitt - deshalb bekommt er als erster ein
+            # Zeitbudget und einen kleineren Deckel.
+            if _ROIC_AKTIV and not _budget_melden("Earnings-Call-Suche"):
                 _tk_uni = _roic_mod.index_universum()
-                print(f"[transkripte] Universum: {len(_tk_uni)} Titel")
-                _neu = _roic_mod.neue_transkripte(_tk_uni, tage=21, deckel=600)
-                # Diagnose: was liefert transcript_liste fuer bekannte Titel,
-                # die diese Woche gemeldet haben? Zeigt, ob das Problem an der
-                # API-Antwort oder an der Datumslogik liegt.
-                for _dt_t in ("META", "GOOGL", "MSFT", "AMZN", "AAPL"):
+                _deckel = int(_os_modul.getenv("TRANSKRIPT_DECKEL", "600"))
+                print(f"[transkripte] Universum: {len(_tk_uni)} Titel, "
+                      f"Deckel {_deckel}, "
+                      f"{_verbraucht_min():.0f}/{ZEITBUDGET_MIN:.0f} min verbraucht")
+                _neu = _roic_mod.neue_transkripte(_tk_uni, tage=21, deckel=_deckel)
+                # Diagnose ueber fuenf Referenztitel. Sie hat ihren Zweck
+                # erfuellt (die Datumslogik stimmt) und kostet jetzt nur noch
+                # Zeit - deshalb nur noch auf ausdruecklichen Wunsch.
+                for _dt_t in (("META", "GOOGL", "MSFT", "AMZN", "AAPL")
+                              if _os_modul.getenv("TRANSKRIPT_DIAGNOSE") else ()):
                     try:
                         _dl = _roic_mod.transcript_liste(_dt_t, limit=3)
                         if _dl:
@@ -1628,9 +1687,13 @@ def run():
     #    Nutzt dieselben Scans, die oben schon liefen - so wird das Depot
     #    taeglich neu bewertet, ohne dass der Nutzer manuell klicken muss.
     try:
+        if _budget_melden("Auto-Depot"):
+            raise _Budget()
         import autodepot as _ad
         _ad.durchlauf(scan_size=UNIVERSE_SIZE, erlauben_shorts=True)
         print("[autodepot] Depot aktualisiert.")
+    except _Budget:
+        pass                                   # Meldung steht schon
     except Exception as _e:
         print(f"[FEHLER] Auto-Depot: {_e}")
         _fehler.append("Auto-Depot")
@@ -1638,8 +1701,12 @@ def run():
     # Sektormediane zum Schluss: Erst jetzt sind alle Titel des Laufs gesehen.
     # Bewusst NACH allem anderen und in einem eigenen try - die Mediane sind
     # eine Zugabe, kein Kernergebnis, und duerfen den Lauf nicht gefaehrden.
+    # Laeuft IMMER: Die Daten liegen bereits im Speicher, es kostet nur einen
+    # Schreibvorgang. Genau deshalb steht der Aufruf hier und nicht in der
+    # Budgetpruefung.
     try:
         sektormediane_schreiben()
+        print(f"[budget] Gesamtlaufzeit {_verbraucht_min():.1f} Minuten.")
     except Exception as _e:
         print(f"[FEHLER] Sektormediane: {_e}")
 

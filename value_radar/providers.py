@@ -1544,7 +1544,11 @@ def umsatz_historie(ticker: str, jahre: int = 15) -> list:
     # innerhalb eines Laufs nicht mehr. Vorher kostete jeder Titel zwei
     # Fehlversuche mit Zeitablauf - die Screener-Laufzeit verdoppelte sich
     # dadurch von 8,5 auf 18 Sekunden, ohne einen einzigen Datenpunkt.
-    if config.FMP_API_KEY and not _FMP_HISTORIE_TOT.get("tot"):
+    # Auch den allgemeinen FMP-Zustand beachten: Ist der Schluessel tot
+    # (HTTP 401/403), meldet fmp_status() das bereits - dann braucht es hier
+    # keinen weiteren Versuch. Sonst kostet jeder Titel zwei Zeitablaeufe.
+    if (config.FMP_API_KEY and not _FMP_HISTORIE_TOT.get("tot")
+            and not _FMP_TOT.get("grund") and not _is_down("fmp")):
         vorher = len(reihe)
         try:
             _einlesen(_fmp_get(f"income-statement/{ticker}", {"limit": jahre}))

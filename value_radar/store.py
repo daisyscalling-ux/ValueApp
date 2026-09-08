@@ -132,19 +132,60 @@ def import_json(raw, merge: bool = True) -> int:
 AUX_PATH = os.path.join(os.path.expanduser("~"), ".value_radar_aux.json")
 
 
-def _load_aux() -> dict:
+#: AUDIT-BEFUND ST1: _load_aux() liest bei aktivem Google Sheet JEDES MAL das
+#: komplette Blatt. Solange nur Watchlist und Transkripte darauf zugriffen,
+#: war das ein paar Aufrufe je Lauf.
+#:
+#: Mit der Anreicherungs-Persistenz (Cash-Conversion, Schaetzguete, Namen)
+#: fragt providers.get_fundamentals() nun ZWEIMAL JE TITEL nach. Bei rund 600
+#: Titeln im Nachtlauf sind das 1.200 vollstaendige Sheet-Abrufe - der Job lief
+#: dadurch in die 45-Minuten-Grenze von GitHub Actions.
+#:
+#: Der Zusatzspeicher aendert sich waehrend eines Laufs nur durch uns selbst.
+#: Deshalb: einmal lesen, im Prozess halten, bei jedem Schreiben aktualisieren.
+#: Die kurze Haltbarkeit sorgt dafuer, dass die App Aenderungen aus anderen
+#: Prozessen trotzdem binnen einer Minute sieht.
+_AUX_CACHE: dict = {"daten": None, "ts": 0.0}
+_AUX_TTL = 60.0
+
+
+def _load_aux(frisch: bool = False) -> dict:
+    """Zusatzspeicher lesen - aus dem Prozess-Zwischenspeicher, wenn moeglich.
+
+    frisch=True erzwingt einen echten Abruf. Nur dort benutzen, wo eine
+    Aenderung aus einem anderen Prozess sofort sichtbar sein muss.
+    """
+    import time as _t
+    if not frisch and _AUX_CACHE["daten"] is not None:
+        if (_t.time() - _AUX_CACHE["ts"]) < _AUX_TTL:
+            return _AUX_CACHE["daten"]
+
+    d = {}
     g = _sheet()
     if g is not None:
         try:
-            return g.load_aux() or {}
+            d = g.load_aux() or {}
         except Exception:
-            pass
-    try:
-        with open(AUX_PATH, "r", encoding="utf-8") as fh:
-            d = json.load(fh)
-        return d if isinstance(d, dict) else {}
-    except Exception:
-        return {}
+            d = {}
+    if not d:
+        try:
+            with open(AUX_PATH, "r", encoding="utf-8") as fh:
+                x = json.load(fh)
+            d = x if isinstance(x, dict) else {}
+        except Exception:
+            d = {}
+
+    _AUX_CACHE["daten"] = d
+    _AUX_CACHE["ts"] = _t.time()
+    return d
+
+
+def _aux_cache_setzen(d: dict) -> None:
+    """Nach erfolgreichem Schreiben den Zwischenspeicher gleich mitziehen -
+    sonst liest der naechste Aufruf noch den alten Stand."""
+    import time as _t
+    _AUX_CACHE["daten"] = d
+    _AUX_CACHE["ts"] = _t.time()
 
 
 def _save_aux(d: dict) -> bool:
@@ -160,6 +201,7 @@ def _save_aux(d: dict) -> bool:
         except Exception as e:
             print(f"[store] Google-Sheet-Fehler: {e}")
         if ok:
+            _aux_cache_setzen(d)
             return True
         print("[store] Google-Sheet-Speichern FEHLGESCHLAGEN. Daten wurden nur lokal "
               "gesichert und sind beim naechsten Laden nicht sichtbar!")
@@ -172,6 +214,7 @@ def _save_aux(d: dict) -> bool:
     try:
         with open(AUX_PATH, "w", encoding="utf-8") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=2)
+        _aux_cache_setzen(d)
         return True
     except Exception:
         return False

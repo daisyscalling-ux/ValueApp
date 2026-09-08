@@ -1,25 +1,19 @@
 name: value-radar-update
 
-# 2x taeglich (Zeiten in UTC!). Deutschland Sommerzeit = UTC+2, Winterzeit = UTC+1.
-#   05:15 UTC -> 07:15 (Sommer) / 06:15 (Winter)  vor Europa-Eroeffnung
-#   14:15 UTC -> 16:15 / 15:15                     kurz nach US-Eroeffnung
-# Bewusst 2x: schont die Gratis-API-Limits (429er verfaelschen sonst die Scores)
-# und bleibt klar innerhalb der GitHub-Freiminuten.
+# EINMAL taeglich. 06:00 UTC = 08:00 deutscher Sommerzeit, 07:00 Winterzeit.
 on:
   schedule:
-    # Alle 4 Stunden. GitHub Actions laeuft in UTC, die Ziel-Zeiten sind
-    # deutsche Zeit: 4, 8, 12, 16, 20, 24 Uhr. Im SOMMER (MESZ = UTC+2)
-    # entspricht das 2,6,10,14,18,22 UTC. Im WINTER (MEZ = UTC+1) waeren
-    # es 3,7,11,15,19,23 UTC - dann verschieben sich die deutschen Zeiten
-    # um eine Stunde (5,9,13,17,21,1 Uhr). Cron kann keine Zeitzone, daher
-    # ist hier die Sommerzeit fest hinterlegt.
     - cron: "0 6 * * *"
-  workflow_dispatch: {}          # erlaubt manuellen Start per Knopf
+  workflow_dispatch: {}
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 60 statt 45 Minuten: Reine Sicherheitsmarge. Das eigentliche Limit setzt
+    # PRECOMPUTE_BUDGET_MIN weiter unten - der Lauf stoppt sich selbst und
+    # SPEICHERT, statt von GitHub hart abgeschnitten zu werden. Der Unterschied
+    # ist entscheidend: Lauf #162 lief 45m23s und hinterliess nichts.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -33,18 +27,24 @@ jobs:
       - name: Neu berechnen (Scores, Radar, Quantum, Portfolio, Hedgefonds)
         working-directory: value_radar
         env:
-          # --- Pflicht: Speicher (sonst gehen die Ergebnisse verloren) ---
+          # --- Zeitsteuerung ---
+          # Der Lauf bricht seine Scans nach 80 % dieses Budgets ab und nutzt
+          # den Rest zum Speichern. Optionale Abschnitte (Earnings-Call-Suche,
+          # KI-Briefing, Auto-Depot) entfallen vorher.
+          PRECOMPUTE_BUDGET_MIN: "38"
+          # Titel fuer die Earnings-Call-Suche. Der teuerste Einzelabschnitt.
+          TRANSKRIPT_DECKEL: "400"
+          # --- Pflicht: Speicher ---
           GSHEET_ID: ${{ secrets.GSHEET_ID }}
           GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
           # --- Pflicht: Datenquellen ---
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           # --- Optional ---
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AI_BRIEFING_MODEL: ${{ secrets.AI_BRIEFING_MODEL }}
-          # --- Optional: E-Mail-Zusammenfassung ---
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}

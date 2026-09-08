@@ -283,6 +283,31 @@ _LAUF_START = _zeit_modul.time()
 ZEITBUDGET_MIN = float(_os_modul.getenv("PRECOMPUTE_BUDGET_MIN", "32"))
 
 
+_PHASEN: list = []
+
+
+def phase(name: str) -> None:
+    """Zeitstempel je Abschnitt. Beim letzten Mal habe ich zweimal an der
+    falschen Stelle optimiert, weil ich nicht gemessen habe - das hier
+    verhindert die dritte Runde."""
+    jetzt = _verbraucht_min()
+    vorher = _PHASEN[-1][1] if _PHASEN else 0.0
+    _PHASEN.append((name, jetzt))
+    print(f"[phase] {name:34s} {jetzt - vorher:6.1f} min  "
+          f"(gesamt {jetzt:5.1f})")
+
+
+def phasen_bericht() -> None:
+    if not _PHASEN:
+        return
+    print(f"\n{'=' * 60}\nZEITVERBRAUCH\n{'=' * 60}")
+    vorher = 0.0
+    for name, bis in _PHASEN:
+        print(f"  {name:36s} {bis - vorher:6.1f} min")
+        vorher = bis
+    print(f"  {'GESAMT':36s} {vorher:6.1f} min")
+
+
 class _Budget(Exception):
     """Kein Fehler, sondern eine Entscheidung: Dieser Abschnitt entfaellt,
     damit der Lauf sein Ergebnis noch speichern kann."""
@@ -319,13 +344,32 @@ _GESEHENE_FUNDS: list = []
 
 
 def scan_list(tickers, deep=True, label=""):
+    """Titel bewerten - mit harter Zeitgrenze.
+
+    Die Budgetpruefung stand bisher NUR bei den optionalen Abschnitten am
+    Ende. Verbrauchen aber schon die Scans die ganze Zeit, kommt sie nie zum
+    Zug: GitHub bricht bei Minute 45 ab, und der Lauf hinterlaesst nichts.
+    Genau das ist passiert - Lauf #162, 45m23s, abgebrochen.
+
+    Deshalb prueft die Schleife selbst. Ein Scan ueber 400 statt 600 Titel ist
+    ein unvollstaendiges Ergebnis; ein abgebrochener Lauf ist gar keins.
+    """
     res = {}
+    n = len(tickers)
     for i, t in enumerate(tickers):
+        # Reserve: Zeit, die nach den Scans noch fuer Snapshot, Speichern und
+        # Sektormediane bleiben muss. Anteilig statt fest, damit ein kleines
+        # Budget (Testlauf) nicht sofort abbricht.
+        if zeit_knapp(reserve_min=min(6.0, ZEITBUDGET_MIN * 0.2)):
+            print(f"  [{label}] ABBRUCH bei {i}/{n} - Zeitbudget erreicht "
+                  f"({_verbraucht_min():.0f} min). Die bis hier bewerteten "
+                  f"Titel werden gespeichert.")
+            break
         r = score_ticker(t, deep=deep)
         if r:
             res[t] = r
-        if (i + 1) % 10 == 0:
-            print(f"  [{label}] {i+1}/{len(tickers)} ...")
+        if (i + 1) % 25 == 0:
+            print(f"  [{label}] {i+1}/{n} \u00b7 {_verbraucht_min():.1f} min")
     return res
 
 
@@ -1194,10 +1238,13 @@ def run():
                                          label="Watchlist"), {})
 
     # 2) Screener + Radar (bounded, shallow)
+    phase("Vorbereitung")
     print("Screener-Scan ...")
     scr = _abschnitt("Screener", screener_scan, [])
+    phase("Screener-Scan")
     print("Radar-Scan ...")
     rad = _abschnitt("Radar", radar_scan, [])
+    phase("Radar-Scan")
     print("Momentum-Scan ...")
     # Momentum als eigener Nachtlauf-Abschnitt: Top-Titel werden als Signale
     # erfasst und in der Trefferbilanz gegen den Index getestet - so laesst
@@ -1206,6 +1253,7 @@ def run():
                      lambda: momentum_scan(universum=MOM_UNIVERSE_SIZE,
                                            top_n=MOM_TOP), [])
 
+    phase("Momentum-Scan")
     # 3) Aenderungen bestimmen
     changes = []
     changes += diff_changes(old_snaps, holdings, "Portfolio")
@@ -1287,6 +1335,7 @@ def run():
     store.set_changes(feed[:60])
     print(f"{len(changes)} neue Aenderung(en) erkannt.")
 
+    phase("Snapshot + Aenderungen")
     # 5b) KI-Briefing (ein Claude-Aufruf; erklaert News + neue Screener/Radar-Titel).
     #     Defensiv: ohne Key / bei Fehler bleibt briefing = None.
     briefing_text = None
@@ -1313,6 +1362,7 @@ def run():
     except Exception as e:
         print(f"[precompute] KI-Briefing uebersprungen: {e}")
 
+    phase("KI-Briefing")
     # 5c) Fortlaufende Hedgefonds-Papier-Portfolios pruefen/anpassen (2x taeglich)
     try:
         import hedgefund
@@ -1320,6 +1370,7 @@ def run():
     except Exception as e:
         print(f"[precompute] Hedgefonds-Update uebersprungen: {e}")
 
+    phase("Hedgefonds")
     # 5d) Signal-Tagebuch: heutige Screener-/Radar-Signale festhalten (Vorwaerts-Test).
     #     Ehrlich: JEDES Signal wird erfasst, auch die spaeteren Fehlschlaege.
     #     Zusaetzlich das SCORECARD-URTEIL mitschreiben - so laesst sich spaeter
@@ -1676,6 +1727,7 @@ def run():
         print(f"[precompute] Signal-Tagebuch FEHLER: {e}")
         traceback.print_exc()
 
+    phase("Signal-Tagebuch + Transkripte")
     # 6) E-Mail
     try:
         _send_email(changes, holdings, watch, scr, rad, started, briefing_text)
@@ -1683,6 +1735,7 @@ def run():
         print(f"[FEHLER] E-Mail: {_e}")
         _fehler.append("E-Mail")
 
+    phase("E-Mail")
     # 7) Auto-Depot (50k, selbstverwaltet) einen Schritt weiterlaufen lassen.
     #    Nutzt dieselben Scans, die oben schon liefen - so wird das Depot
     #    taeglich neu bewertet, ohne dass der Nutzer manuell klicken muss.
@@ -1706,7 +1759,8 @@ def run():
     # Budgetpruefung.
     try:
         sektormediane_schreiben()
-        print(f"[budget] Gesamtlaufzeit {_verbraucht_min():.1f} Minuten.")
+        phase("Sektormediane")
+        phasen_bericht()
     except Exception as _e:
         print(f"[FEHLER] Sektormediane: {_e}")
 

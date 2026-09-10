@@ -32,6 +32,10 @@ jobs:
           # den Rest zum Speichern. Optionale Abschnitte (Earnings-Call-Suche,
           # KI-Briefing, Auto-Depot) entfallen vorher.
           PRECOMPUTE_BUDGET_MIN: "38"
+          # Obergrenze fuer JEDEN einzelnen Netzabruf. Ohne sie blockiert ein
+          # haengender Server unbegrenzt - im Protokoll von Lauf #164 waren das
+          # stille Pausen von 19, 16 und 10 Minuten.
+          NETZ_TIMEOUT_S: "20"
           # Titel fuer die Earnings-Call-Suche. Der teuerste Einzelabschnitt.
           TRANSKRIPT_DECKEL: "400"
           # --- Pflicht: Speicher ---
@@ -50,4 +54,5 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
+
         run: python precompute.py

@@ -22,7 +22,7 @@ Robust: Jede Sektion ist gekapselt - faellt eine aus, laufen die anderen weiter.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.25"   # Sektormediane im Nachtlauf
+__version__ = "2026.09.26"   # Sektormediane im Nachtlauf
 
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
@@ -1157,7 +1157,64 @@ def _analyse(t):
 
 
 
+def _wachhund_starten() -> None:
+    """Notbremse, falls ein einzelner Abruf haengt.
+
+    Die Budgetpruefung sitzt ZWISCHEN den Titeln. Bleibt ein einzelner
+    Netzabruf haengen, wird sie nie erreicht - und GitHub schneidet den Lauf
+    hart ab. Lauf #164 lief 1h 0m 24s trotz gesetztem Budget.
+
+    Der Wachhund laeuft nebenher. Er beendet den Prozess NICHT: Das wuerde die
+    bis dahin gesammelten Ergebnisse verlieren. Er schreibt den Phasenbericht,
+    damit im Protokoll steht, WO es haengt - die letzte gemeldete Phase ist
+    die Antwort.
+    """
+    import threading
+
+    def wachen():
+        grenze = ZEITBUDGET_MIN * 60 + 120
+        while True:
+            _zeit_modul.sleep(30)
+            verbraucht = _zeit_modul.time() - _LAUF_START
+            if verbraucht > grenze:
+                print(f"\n[wachhund] {verbraucht / 60:.1f} min verbraucht, "
+                      f"Budget {ZEITBUDGET_MIN:.0f} min. Der Lauf haengt in "
+                      f"einem Abschnitt, der die Zeitpruefung nicht erreicht.")
+                phasen_bericht()
+                print("[wachhund] Die LETZTE gemeldete Phase steht oben - der "
+                      "Abschnitt danach ist die Ursache.")
+                return
+
+    threading.Thread(target=wachen, daemon=True, name="budget-wachhund").start()
+
+
+def _startbanner() -> None:
+    """Sagt in der ERSTEN Zeile, welcher Stand laeuft.
+
+    Lauf #164 lief 1h 0m 24s, obwohl PRECOMPUTE_BUDGET_MIN auf 38 stand. Die
+    Umgebungsvariable wirkt aber nur, wenn auch DIESE Datei im Repo liegt -
+    eine geaenderte Workflow-Datei allein reicht nicht. Von aussen sah beides
+    gleich aus: Der Lauf startete, lief, wurde abgeschnitten.
+
+    Fehlt diese Zeile im Protokoll, laeuft die alte precompute.py.
+    """
+    print(f"[stand] precompute {globals().get('__version__', '?')} \u00b7 "
+          f"Zeitbudget {ZEITBUDGET_MIN:.0f} min (PRECOMPUTE_BUDGET_MIN="
+          f"{_os_modul.getenv('PRECOMPUTE_BUDGET_MIN', 'NICHT GESETZT')}) \u00b7 "
+          f"Transkript-Deckel {_os_modul.getenv('TRANSKRIPT_DECKEL', '600')}")
+    for modul in ("sektor", "store"):
+        try:
+            m = __import__(modul)
+            zusatz = (f" \u00b7 Backend {m.backend()}"
+                      if modul == "store" and hasattr(m, "backend") else "")
+            print(f"[stand] {modul}.py {getattr(m, '__version__', '?')}{zusatz}")
+        except Exception as e:
+            print(f"[stand] {modul}.py FEHLT oder defekt: {e}")
+
+
 def run():
+    _startbanner()
+    _wachhund_starten()
     started = _berlin_now()
     # Analysten-Historie laden (fuer die Value-Trap-Trenderkennung). Wird
     # waehrend des Laufs fortgeschrieben und am Ende zurueckgespeichert.

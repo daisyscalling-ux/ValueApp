@@ -6,6 +6,8 @@ Portfolios Neustarts der App ueberleben. Jedes Portfolio ist eine Liste von
 Positionen: {"ticker": str, "value": float, "date": "YYYY-MM-DD" | None}.
 """
 from __future__ import annotations
+
+__version__ = "2026.09.26"   # Aux-Cache, _write meldet Sheet-Fehler
 import json
 import os
 

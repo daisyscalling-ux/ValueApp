@@ -36,7 +36,7 @@ WAS ES NICHT KANN
 
 from __future__ import annotations
 
-__version__ = "2026.09.25"
+__version__ = "2026.09.26"
 
 from datetime import datetime
 from typing import Dict, List, Optional, Sequence

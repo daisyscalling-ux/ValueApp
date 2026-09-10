@@ -138,6 +138,7 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
     try:
         f = providers.get_fundamentals(t, deep=deep)
         _fuer_sektormessung(f)
+        _quelle = (f or {}).get("_quelle")
     except Exception:
         return None
     if not f or not f.get("price"):
@@ -200,6 +201,7 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
                               analyst_skepsis=_askep, analyst_trend=_atrend)
     return {
         "ticker": t,
+        "_quelle": _quelle,
         "name": (f.get("name") or "")[:40],
         "composite": round(comp) if comp is not None else None,
         "fair_value": round(v["fair_value"], 2) if v.get("fair_value") else None,
@@ -356,6 +358,7 @@ def scan_list(tickers, deep=True, label=""):
     """
     res = {}
     n = len(tickers)
+    quellen = {}
     for i, t in enumerate(tickers):
         # Reserve: Zeit, die nach den Scans noch fuer Snapshot, Speichern und
         # Sektormediane bleiben muss. Anteilig statt fest, damit ein kleines
@@ -368,8 +371,17 @@ def scan_list(tickers, deep=True, label=""):
         r = score_ticker(t, deep=deep)
         if r:
             res[t] = r
+            quellen[r.get("_quelle") or "gemischt"] = \
+                quellen.get(r.get("_quelle") or "gemischt", 0) + 1
         if (i + 1) % 25 == 0:
             print(f"  [{label}] {i+1}/{n} \u00b7 {_verbraucht_min():.1f} min")
+    if quellen:
+        # Woher kamen die Daten? Steht hier ueberwiegend etwas anderes als
+        # roic_light, laeuft der Scan weiter ueber yfinance - und das ist von
+        # GitHub aus blockiert.
+        print(f"  [{label}] Quellen: "
+              + ", ".join(f"{k} {v}" for k, v in sorted(quellen.items(),
+                                                        key=lambda x: -x[1])))
     return res
 
 

@@ -562,11 +562,67 @@ def _feldquellen(merged: dict) -> dict:
 
 
 
+#: Felder, ohne die ein Scan nichts anfangen kann. Liefert roic sie, wird
+#: yfinance im flachen Pfad gar nicht erst gefragt.
+_SCAN_PFLICHT = ("price", "market_cap", "sector", "currency")
+
+
+def _roic_zuerst(ticker: str) -> dict:
+    """Flache Kennzahlen aus roic - ohne yfinance.
+
+    AUDIT-BEFUND P1: get_fundamentals() begann IMMER mit yfinance, auch im
+    flachen Pfad. Der Nachtlauf laeuft mit SCAN_DEEP = False, also lief er
+    vollstaendig ueber yfinance - und yfinance wird von GitHub-Rechenzentren
+    blockiert. Im Protokoll von Lauf #164: 61 % der Ausgabe waren
+    yfinance-Fehler, darunter "NETFLIX possibly delisted" und "NVIDIA possibly
+    delisted". Beide sind nicht delisted; das ist Yahoos Blockade-Signatur.
+    Die Laufzeit bestand aus drei stillen Pausen von 19, 16 und 10 Minuten -
+    yfinance-Wiederholungen mit Backoff.
+
+    roic.bundle_light() ist genau fuer diesen Zweck gebaut ("Sparfassung mit 4
+    statt 9 Abrufen - fuer breite Scans") und wurde nie benutzt. Sie liefert
+    Kurs, Waehrung, Sektor, Branche, Margen, Renditen, Umsatz und Multiples.
+
+    Was roic NICHT hat: eps_forward, target_mean, beta. Die kommen weiterhin
+    aus yfinance/Finnhub - aber nur, wenn sie gebraucht werden, nicht als
+    Grundlage fuer alles.
+    """
+    try:
+        import roic as _r
+        if not _r.enabled() or not _r.covers(ticker):
+            return {}
+        b = _r.bundle_light(ticker) or {}
+    except Exception:
+        return {}
+    if not b.get("price"):
+        return {}
+    b["_roic"] = True
+    b["_roic_light"] = True
+    return b
+
+
 def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     """Kombiniert mehrere Datenquellen feldweise zu einem moeglichst verlaesslichen
-    Kennzahlen-Dict. yfinance (Taxonomie-Basis) + Finnhub + (bei deep=True) FMP fuer
-    echten Kennzahlen-Konsens; Stooq als letzte Preis-Absicherung.
-    deep=True nur fuer Einzelanalysen verwenden (FMP-Tageslimit schonen)."""
+    Kennzahlen-Dict.
+
+    Quellenreihenfolge im FLACHEN Pfad (breite Scans):
+        roic.bundle_light  ->  reicht das, ist Schluss
+        sonst yfinance + Finnhub wie bisher
+
+    Im TIEFEN Pfad (Einzelanalyse) bleibt es beim vollen Zusammenspiel:
+    yfinance als Taxonomie-Basis, Finnhub, roic-Bundle als Primaerquelle
+    darueber, plus Anreicherungen.
+    """
+    # Flacher Pfad: erst roic fragen. Deckt es den Titel ab und liefert die
+    # Pflichtfelder, wird yfinance gar nicht erst aufgerufen.
+    if not deep:
+        _rl = _roic_zuerst(ticker)
+        if _rl and all(_rl.get(k) for k in _SCAN_PFLICHT):
+            _rl.setdefault("ticker", ticker)
+            _rl["_vollstaendig"] = False   # Prognosefelder fehlen bewusst
+            _rl["_quelle"] = "roic_light"
+            return _rl
+
     info = {}
     if yf is not None and not _is_down("yfinance"):
         for attempt in range(2):                 # 1 Retry: yfinance faellt oft transient aus

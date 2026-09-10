@@ -1169,6 +1169,65 @@ def _analyse(t):
 
 
 
+def _netz_begrenzen(sekunden: float = 20.0) -> None:
+    """Obergrenze fuer JEDEN Netzabruf im Prozess.
+
+    yfinance, requests und urllib setzen ohne eigene Angabe KEIN Zeitlimit -
+    ein haengender Server blockiert dann unbegrenzt. Genau das erklaert die
+    stillen Pausen von 19, 16 und 10 Minuten im Protokoll von Lauf #164: In
+    dieser Zeit lief ein einziger Aufruf, es gab keine Schleife und damit auch
+    keine Budgetpruefung.
+
+    socket.setdefaulttimeout wirkt auf alles, was darunter liegt - auch auf
+    Bibliotheken, die man nicht selbst aufruft.
+    """
+    import socket
+    socket.setdefaulttimeout(sekunden)
+    print(f"[netz] Zeitlimit je Verbindung: {sekunden:.0f} s")
+
+
+def _harte_grenze_setzen() -> None:
+    """Abbruch, der nicht auf Kooperation angewiesen ist.
+
+    zeit_knapp() muss GEPRUEFT werden. Laeuft der Prozess in einem Abschnitt
+    ohne Pruefung, hilft es nicht. SIGALRM unterbricht dagegen an Ort und
+    Stelle - der Lauf bekommt eine Ausnahme und kann noch speichern, statt von
+    GitHub abgeschnitten zu werden.
+
+    Nur auf Unix verfuegbar; GitHub Actions laeuft auf Ubuntu.
+    """
+    try:
+        import signal
+    except ImportError:
+        return
+    if not hasattr(signal, "SIGALRM"):
+        print("[grenze] SIGALRM nicht verfuegbar - nur kooperatives Budget")
+        return
+
+    grenze_s = int(ZEITBUDGET_MIN * 60 + 180)
+
+    def _schlag(signum, frame):
+        print(f"\n[grenze] HARTE GRENZE nach {grenze_s/60:.0f} min erreicht.")
+        phasen_bericht()
+        print("[grenze] Der Lauf wird hier beendet, damit das bisher "
+              "Berechnete gespeichert werden kann.")
+        raise _Budget("harte Zeitgrenze")
+
+    signal.signal(signal.SIGALRM, _schlag)
+    signal.alarm(grenze_s)
+    print(f"[grenze] Harte Zeitgrenze bei {grenze_s/60:.0f} min gesetzt "
+          f"(Budget {ZEITBUDGET_MIN:.0f} + 3 min Reserve)")
+
+
+def _harte_grenze_loesen() -> None:
+    try:
+        import signal
+        if hasattr(signal, "alarm"):
+            signal.alarm(0)
+    except Exception:
+        pass
+
+
 def _wachhund_starten() -> None:
     """Notbremse, falls ein einzelner Abruf haengt.
 
@@ -1226,6 +1285,8 @@ def _startbanner() -> None:
 
 def run():
     _startbanner()
+    _netz_begrenzen(float(_os_modul.getenv("NETZ_TIMEOUT_S", "20")))
+    _harte_grenze_setzen()
     _wachhund_starten()
     started = _berlin_now()
     # Analysten-Historie laden (fuer die Value-Trap-Trenderkennung). Wird
@@ -2521,5 +2582,27 @@ def filter_boersen(tickers):
 # in der Mitte der Datei - dadurch waren die danach definierten Funktionen
 # zur Laufzeit von run() noch nicht bekannt (NameError: filter_boersen).
 # ============================================================================
+def run_geschuetzt():
+    """run() mit Notausgang.
+
+    Schlaegt die harte Zeitgrenze zu, wird _Budget geworfen - hier aufgefangen,
+    damit der Lauf mit dem endet, was er hat, statt von GitHub abgeschnitten zu
+    werden. Der Unterschied ist nicht kosmetisch: Ein abgeschnittener Lauf
+    hinterlaesst nichts.
+    """
+    try:
+        run()
+    except _Budget as e:
+        print(f"\n=== precompute VORZEITIG BEENDET: {e} ===")
+        print("    Die bis hier gespeicherten Abschnitte bleiben erhalten.")
+        try:
+            sektormediane_schreiben()
+        except Exception as _e:
+            print(f"[FEHLER] Sektormediane: {_e}")
+        phasen_bericht()
+    finally:
+        _harte_grenze_loesen()
+
+
 if __name__ == "__main__":
-    run()
+    run_geschuetzt()

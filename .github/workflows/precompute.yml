@@ -31,6 +31,19 @@ jobs:
           # Der Lauf bricht seine Scans nach 80 % dieses Budgets ab und nutzt
           # den Rest zum Speichern. Optionale Abschnitte (Earnings-Call-Suche,
           # KI-Briefing, Auto-Depot) entfallen vorher.
+          # UMFANG. Gemessen in Lauf #166: 4,9 s je Titel, weil der flache
+          # Pfad ueber yfinance laeuft statt ueber roics Sparfassung. Bei 600
+          # Titeln sind das allein fuer den Screener 49 Minuten.
+          #
+          # Solange das nicht behoben ist, muss die Menge runter. Ein
+          # Zeitbudget gleicht einen langsamen Datenpfad nicht aus - es
+          # schneidet nur ab, und dann fehlen jeden Tag andere Titel.
+          #
+          # 250/150/100 passen rechnerisch in gut 25 Minuten. Sobald der
+          # roic-Pfad greift, koennen die Werte wieder hoch.
+          UNIVERSE_SIZE: "250"
+          MOM_UNIVERSE_SIZE: "150"
+          RADAR_MARKT: "100"
           PRECOMPUTE_BUDGET_MIN: "38"
           # Obergrenze fuer JEDEN einzelnen Netzabruf. Ohne sie blockiert ein
           # haengender Server unbegrenzt - im Protokoll von Lauf #164 waren das

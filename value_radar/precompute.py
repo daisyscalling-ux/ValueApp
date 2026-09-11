@@ -46,6 +46,26 @@ import store
 import notify
 
 
+def _uni_env(name: str, standard: int) -> int:
+    """Universumsgroesse aus der Umgebung, mit Meldung wenn abweichend.
+
+    Damit laesst sich der Lauf ohne Codeaenderung an die verfuegbare Zeit
+    anpassen - und im Protokoll steht, womit gerechnet wurde.
+    """
+    import os as _o
+    roh = _o.getenv(name)
+    if not roh:
+        return standard
+    try:
+        wert = int(roh)
+    except ValueError:
+        return standard
+    if wert != standard:
+        print(f"[umfang] {name} = {wert} (Standard {standard})",
+              file=__import__("sys").stderr, flush=True)
+    return wert
+
+
 def _melde(text: str) -> None:
     """Ausgabe auf stderr statt stdout.
 
@@ -98,7 +118,13 @@ if _ROIC_AKTIV:
     # Mit der Sparfassung (3 Abrufe je Titel in der Vorauswahl) kostet ein
     # 600er-Universum rund 7,5 Minuten statt 20. Das ist der eigentliche
     # Gewinn der bezahlten Anbindung: Breite statt Rationierung.
-    UNIVERSE_SIZE = 600
+    # Ueber Umgebungsvariable steuerbar. Gemessen in Lauf #166: 4,9 s je
+    # Titel, weil der flache Pfad ueber yfinance laeuft statt ueber roics
+    # Sparfassung. 600 Titel sind damit 49 Minuten - nur fuer den Screener.
+    #
+    # Solange das nicht behoben ist, muss die MENGE runter. Ein Zeitbudget
+    # kann einen zu langsamen Datenpfad nicht ausgleichen, es schneidet nur ab.
+    UNIVERSE_SIZE = int(_uni_env("UNIVERSE_SIZE", 600))
     # Vorauswahl bewusst FLACH (Sparfassung, 3 Abrufe je Titel). Die
     # gespeicherten Zahlen bleiben trotzdem deckungsgleich mit der
     # Einzelanalyse, weil _rescore_deep die Top-Titel ohnehin tief
@@ -107,8 +133,8 @@ if _ROIC_AKTIV:
     # kaum verschieben.
     SCAN_DEEP = False
     EARNINGS_DEEP_LIMIT = 150
-    RADAR_MARKT = 250       # Marktschnitt zusaetzlich zu den Themen-Tickern
-    MOM_UNIVERSE_SIZE = 400 # Momentum: breites Feld, damit relative Staerke traegt
+    RADAR_MARKT = int(_uni_env("RADAR_MARKT", 250))
+    MOM_UNIVERSE_SIZE = int(_uni_env("MOM_UNIVERSE_SIZE", 400))
     MOM_TOP = 25            # so viele Momentum-Titel als Signale erfassen
     _melde(f"[roic] AKTIV - Universum {UNIVERSE_SIZE}, "
            f"Top {SCREENER_TOP} tief nachgerechnet.")
@@ -317,24 +343,40 @@ def phase(name: str) -> None:
     jetzt = _verbraucht_min()
     vorher = _PHASEN[-1][1] if _PHASEN else 0.0
     _PHASEN.append((name, jetzt))
-    print(f"[phase] {name:34s} {jetzt - vorher:6.1f} min  "
-          f"(gesamt {jetzt:5.1f})")
+    _melde(f"[phase] {name:34s} {jetzt - vorher:6.1f} min  "
+           f"(gesamt {jetzt:5.1f})")
 
 
 def phasen_bericht() -> None:
     if not _PHASEN:
         return
-    print(f"\n{'=' * 60}\nZEITVERBRAUCH\n{'=' * 60}")
+    _melde(f"\n{'=' * 60}\nZEITVERBRAUCH\n{'=' * 60}")
     vorher = 0.0
     for name, bis in _PHASEN:
-        print(f"  {name:36s} {bis - vorher:6.1f} min")
+        _melde(f"  {name:36s} {bis - vorher:6.1f} min")
         vorher = bis
-    print(f"  {'GESAMT':36s} {vorher:6.1f} min")
+    _melde(f"  {'GESAMT':36s} {vorher:6.1f} min")
 
 
-class _Budget(Exception):
+class _Budget(BaseException):
     """Kein Fehler, sondern eine Entscheidung: Dieser Abschnitt entfaellt,
-    damit der Lauf sein Ergebnis noch speichern kann."""
+    damit der Lauf sein Ergebnis noch speichern kann.
+
+    BEFUND aus Lauf #166: Vorher erbte diese Klasse von Exception. Die harte
+    Zeitgrenze feuerte um 11:21 - und der Lauf machte bis 11:37 weiter:
+
+        11:21  [grenze] HARTE GRENZE nach 41 min erreicht.
+        11:37  [phase] Hedgefonds  18.9 min  (gesamt 57.3)
+
+    Grund: Der Hedgefonds-Block hat ein `except Exception as e`. Die
+    Abbruch-Ausnahme lief genau dort hinein, wurde als gewoehnlicher Fehler
+    protokolliert und verworfen. Der Abbruch war damit wirkungslos - eine
+    Notbremse, die jeder beliebige Fehlerbehandler entschaerft.
+
+    BaseException loest das: `except Exception` faengt sie nicht. Aus demselben
+    Grund erben KeyboardInterrupt und SystemExit davon - ein Abbruch soll sich
+    nicht von einem beilaeufigen try-Block abwuergen lassen.
+    """
 
 
 def _verbraucht_min() -> float:
@@ -349,8 +391,9 @@ def zeit_knapp(reserve_min: float = 0.0) -> bool:
 def _budget_melden(abschnitt: str) -> bool:
     """True, wenn der Abschnitt uebersprungen werden soll."""
     if zeit_knapp():
-        print(f"[budget] {abschnitt} uebersprungen - {_verbraucht_min():.0f} von "
-              f"{ZEITBUDGET_MIN:.0f} Minuten verbraucht.")
+        _melde(f"[budget] {abschnitt} uebersprungen - "
+               f"{_verbraucht_min():.0f} von {ZEITBUDGET_MIN:.0f} Minuten "
+               f"verbraucht.")
         return True
     return False
 
@@ -386,7 +429,7 @@ def scan_list(tickers, deep=True, label=""):
         # Sektormediane bleiben muss. Anteilig statt fest, damit ein kleines
         # Budget (Testlauf) nicht sofort abbricht.
         if zeit_knapp(reserve_min=min(6.0, ZEITBUDGET_MIN * 0.2)):
-            print(f"  [{label}] ABBRUCH bei {i}/{n} - Zeitbudget erreicht "
+            _melde(f"  [{label}] ABBRUCH bei {i}/{n} - Zeitbudget erreicht "
                   f"({_verbraucht_min():.0f} min). Die bis hier bewerteten "
                   f"Titel werden gespeichert.")
             break
@@ -1529,10 +1572,19 @@ def run():
         print(f"[precompute] KI-Briefing uebersprungen: {e}")
 
     phase("KI-Briefing")
-    # 5c) Fortlaufende Hedgefonds-Papier-Portfolios pruefen/anpassen (2x taeglich)
+    # 5c) Fortlaufende Hedgefonds-Papier-Portfolios pruefen/anpassen
+    #
+    # BEFUND aus Lauf #166: Dieser Abschnitt lief 18,9 Minuten - und zwar
+    # NACH dem erschoepften Budget, von Minute 38,3 bis 57,3. Er allein
+    # verursachte die Ueberschreitung. Ich hatte KI-Briefing und Auto-Depot
+    # gebremst, diesen hier uebersehen.
     try:
+        if _budget_melden("Hedgefonds"):
+            raise _Budget("Hedgefonds uebersprungen")
         import hedgefund
         hedgefund.run_all()
+    except _Budget:
+        pass                               # Meldung steht schon
     except Exception as e:
         print(f"[precompute] Hedgefonds-Update uebersprungen: {e}")
 
@@ -1544,6 +1596,8 @@ def run():
     print(f"[trackrecord] Signal-Erfassung startet: {len(scr or [])} Screener-, "
           f"{len(rad or [])} Radar-Treffer vorhanden.")
     try:
+        if _budget_melden("Signal-Tagebuch"):
+            raise _Budget("Signal-Tagebuch uebersprungen")
         import trackrecord
         import scorecard as _sc
         import matrices as _mx
@@ -1888,6 +1942,8 @@ def run():
                       "liest aus dem Sheet und sieht diese Signale daher nicht!")
         except Exception as _e:
             print(f"[trackrecord] Kontrolle fehlgeschlagen: {_e}")
+    except _Budget:
+        pass
     except Exception as e:
         import traceback
         print(f"[precompute] Signal-Tagebuch FEHLER: {e}")
@@ -2629,15 +2685,19 @@ def run_geschuetzt():
     try:
         run()
     except _Budget as e:
-        print(f"\n=== precompute VORZEITIG BEENDET: {e} ===")
-        print("    Die bis hier gespeicherten Abschnitte bleiben erhalten.")
+        # Auf stderr: stdout erreicht das GitHub-Protokoll nicht (Befund L1).
+        # Gerade diese Meldung muss ankommen - sie unterscheidet einen
+        # geordneten Abschluss von einem Abbruch durch GitHub.
+        _melde(f"\n=== precompute VORZEITIG BEENDET: {e} ===")
+        _melde("    Die bis hier gespeicherten Abschnitte bleiben erhalten.")
         try:
             sektormediane_schreiben()
         except Exception as _e:
-            print(f"[FEHLER] Sektormediane: {_e}")
+            _melde(f"[FEHLER] Sektormediane: {_e}")
         phasen_bericht()
     finally:
         _harte_grenze_loesen()
+        _melde(f"[stand] Gesamtlaufzeit {_verbraucht_min():.1f} min")
 
 
 if __name__ == "__main__":

@@ -41,8 +41,25 @@ import datetime as dt
 import providers
 import scoring
 import valuation
+import sys
 import store
 import notify
+
+
+def _melde(text: str) -> None:
+    """Ausgabe auf stderr statt stdout.
+
+    AUDIT-BEFUND L1: In fuenf GitHub-Laeufen erschien im Protokoll KEINE
+    einzige print()-Zeile von precompute - auch nicht die auf Modulebene
+    ("[roic] aktiv ..."), die unbedingt laufen muss. yfinance-Warnungen
+    dagegen waren vollstaendig da. Der Unterschied: yfinance schreibt auf
+    stderr, precompute auf stdout.
+
+    Ich habe daraus zuerst geschlossen, der Code sei nicht im Repo, dann auf
+    Pufferung getippt - beides falsch. Belegt ist nur: stderr kommt an,
+    stdout nicht. Also wird der Kanal benutzt, der nachweislich funktioniert.
+    """
+    print(text, file=sys.stderr, flush=True)
 
 try:
     import radar
@@ -93,9 +110,14 @@ if _ROIC_AKTIV:
     RADAR_MARKT = 250       # Marktschnitt zusaetzlich zu den Themen-Tickern
     MOM_UNIVERSE_SIZE = 400 # Momentum: breites Feld, damit relative Staerke traegt
     MOM_TOP = 25            # so viele Momentum-Titel als Signale erfassen
-    print(f"[roic] aktiv - Universum {UNIVERSE_SIZE}, "
-          f"Top {SCREENER_TOP} tief nachgerechnet.")
+    _melde(f"[roic] AKTIV - Universum {UNIVERSE_SIZE}, "
+           f"Top {SCREENER_TOP} tief nachgerechnet.")
 else:
+    # Ohne roic laeuft ALLES ueber yfinance - und das wird von
+    # GitHub-Rechenzentren blockiert. Die Meldung muss deshalb sichtbar sein,
+    # nicht bloss das Ausbleiben der anderen.
+    _melde("[roic] NICHT AKTIV - enges Universum, Daten nur aus yfinance. "
+           "Pruefe ROIC_API_KEY.")
     SCREENER_TOP = 15       # so viele Screener-Top-Ideen speichern
     RADAR_TOP = 15
     SIGNAL_KANDIDATEN = 40  # ohne roic engeres Feld (API-Limits)
@@ -1183,7 +1205,7 @@ def _netz_begrenzen(sekunden: float = 20.0) -> None:
     """
     import socket
     socket.setdefaulttimeout(sekunden)
-    print(f"[netz] Zeitlimit je Verbindung: {sekunden:.0f} s")
+    _melde(f"[netz] Zeitlimit je Verbindung: {sekunden:.0f} s")
 
 
 def _harte_grenze_setzen() -> None:
@@ -1215,8 +1237,8 @@ def _harte_grenze_setzen() -> None:
 
     signal.signal(signal.SIGALRM, _schlag)
     signal.alarm(grenze_s)
-    print(f"[grenze] Harte Zeitgrenze bei {grenze_s/60:.0f} min gesetzt "
-          f"(Budget {ZEITBUDGET_MIN:.0f} + 3 min Reserve)")
+    _melde(f"[grenze] Harte Zeitgrenze bei {grenze_s/60:.0f} min gesetzt "
+           f"(Budget {ZEITBUDGET_MIN:.0f} + 3 min Reserve)")
 
 
 def _harte_grenze_loesen() -> None:
@@ -1269,21 +1291,35 @@ def _startbanner() -> None:
 
     Fehlt diese Zeile im Protokoll, laeuft die alte precompute.py.
     """
-    print(f"[stand] precompute {globals().get('__version__', '?')} \u00b7 "
-          f"Zeitbudget {ZEITBUDGET_MIN:.0f} min (PRECOMPUTE_BUDGET_MIN="
-          f"{_os_modul.getenv('PRECOMPUTE_BUDGET_MIN', 'NICHT GESETZT')}) \u00b7 "
-          f"Transkript-Deckel {_os_modul.getenv('TRANSKRIPT_DECKEL', '600')}")
+    _melde(f"[stand] precompute {globals().get('__version__', '?')} \u00b7 "
+           f"Zeitbudget {ZEITBUDGET_MIN:.0f} min (PRECOMPUTE_BUDGET_MIN="
+           f"{_os_modul.getenv('PRECOMPUTE_BUDGET_MIN', 'NICHT GESETZT')}) \u00b7 "
+           f"Transkript-Deckel {_os_modul.getenv('TRANSKRIPT_DECKEL', '600')}")
     for modul in ("sektor", "store"):
         try:
             m = __import__(modul)
             zusatz = (f" \u00b7 Backend {m.backend()}"
                       if modul == "store" and hasattr(m, "backend") else "")
-            print(f"[stand] {modul}.py {getattr(m, '__version__', '?')}{zusatz}")
+            _melde(f"[stand] {modul}.py {getattr(m, '__version__', '?')}{zusatz}")
         except Exception as e:
-            print(f"[stand] {modul}.py FEHLT oder defekt: {e}")
+            _melde(f"[stand] {modul}.py FEHLT oder defekt: {e}")
 
 
 def run():
+    # AUDIT-BEFUND L1: Python puffert stdout, sobald die Ausgabe in eine Pipe
+    # geht - und GitHub Actions liest ueber eine Pipe. Der Puffer fasst 8 KB
+    # und wird erst geschrieben, wenn er voll ist. Wird der Prozess vorher
+    # abgeschnitten, ist ALLES darin verloren.
+    #
+    # Genau das ist fuenfmal passiert: Im Protokoll standen ausschliesslich
+    # yfinance-Warnungen (stderr ist immer ungepuffert), keine einzige
+    # print()-Zeile von precompute - weder meine neuen noch die alten. Ich
+    # habe daraus geschlossen, der Code sei nicht im Repo. Er war die ganze
+    # Zeit da; nur seine Ausgabe kam nie an.
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
     _startbanner()
     _netz_begrenzen(float(_os_modul.getenv("NETZ_TIMEOUT_S", "20")))
     _harte_grenze_setzen()

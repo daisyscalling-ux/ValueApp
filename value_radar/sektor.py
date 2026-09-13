@@ -36,7 +36,7 @@ WAS ES NICHT KANN
 
 from __future__ import annotations
 
-__version__ = "2026.09.26"
+__version__ = "2026.09.27"
 
 from datetime import datetime
 from typing import Dict, List, Optional, Sequence
@@ -413,20 +413,36 @@ def vergleich(gruppe: str, kennzahl: str = "ev_ebitda",
     schnitt = _median(frueher)
     ab = (heute / schnitt - 1.0) * 100 if schnitt else None
 
-    if ab is None:
+    # Zeitspanne der Reihe: Ohne sie ist "Schnitt" eine Zahl ohne Bezug.
+    # Liegen alle Messungen in derselben Woche, IST heute der Schnitt - dann
+    # ist jede Abweichung Null, und das als "0 % ueber dem Schnitt" zu melden
+    # taeuscht eine Aussage vor, die es nicht gibt.
+    from datetime import datetime as _dt
+    spanne_tage = 0
+    try:
+        _a = _dt.strptime(str(werte[0][0])[:10], "%Y-%m-%d")
+        _b = _dt.strptime(str(werte[-1][0])[:10], "%Y-%m-%d")
+        spanne_tage = (_b - _a).days
+    except (ValueError, TypeError):
+        pass
+
+    if spanne_tage < 30:
+        urteil, ton = "zu kurzer Zeitraum fuer einen Vergleich", "grau"
+    elif ab is None:
         urteil, ton = "nicht vergleichbar", "grau"
     elif ab <= -AUFFAELLIG_PCT:
-        urteil, ton = "deutlich unter dem eigenen Schnitt", "gelb"
+        urteil, ton = "deutlich guenstiger als sonst", "gelb"
     elif ab >= AUFFAELLIG_PCT:
-        urteil, ton = "deutlich ueber dem eigenen Schnitt", "gelb"
+        urteil, ton = "deutlich teurer als sonst", "gelb"
     else:
-        urteil, ton = "im ueblichen Bereich", "gruen"
+        urteil, ton = "normal bewertet", "gruen"
 
     return {"gruppe": gruppe, "kennzahl": kennzahl, "heute": heute,
             "schnitt": round(schnitt, 2) if schnitt else None,
             "abweichung_pct": round(ab, 1) if ab is not None else None,
             "messungen": len(werte),
             "von": werte[0][0], "bis": werte[-1][0],
+            "spanne_tage": spanne_tage,
             "urteil": urteil, "ton": ton}
 
 

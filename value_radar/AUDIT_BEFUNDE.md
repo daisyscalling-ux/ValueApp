@@ -315,3 +315,61 @@ Jahresabschluss-Kennzahlen, Scores und Sektormediane — nichts davon ändert
 sich innerhalb eines Tages. Die Sektormessung ersetzt zudem einen Eintrag
 desselben Tages, statt ihn anzuhängen: Vier Läufe ergäben **einen**
 gespeicherten Punkt bei vierfachem API-Verbrauch.
+
+## L1 — Fünf Läufe lang die falsche Ursache verfolgt
+**Muster M7 (ohne Messung optimiert) · Lehre, kein Codefehler**
+
+Über fünf GitHub-Läufe hinweg erschien im Protokoll keine einzige
+`print()`-Zeile von `precompute` — auch nicht die auf Modulebene, die
+unbedingt läuft. yfinance-Warnungen dagegen waren vollständig da.
+
+Ich schloss daraus zweimal falsch:
+1. „Die Datei ist nicht im Repo" — sie war es, vollständig und korrekt.
+2. „stdout ist gepuffert" — getestet, alle 400 Zeilen kamen an.
+
+Belegt war nur: **stderr erreicht das Protokoll, stdout nicht.** Nach der
+Umstellung aller Diagnosezeilen auf stderr stand die Antwort sofort da:
+
+```
+[roic] AKTIV - Universum 600, Top 30 tief nachgerechnet.
+[stand] precompute 2026.09.26 · Zeitbudget 38 min
+[grenze] Harte Zeitgrenze bei 41 min gesetzt
+[grenze] HARTE GRENZE nach 41 min erreicht.
+```
+
+Alles lief die ganze Zeit. Nur sehen konnte man es nicht.
+
+*Lehre:* Wenn Diagnose nicht ankommt, ist die erste Frage nicht „läuft der
+Code?", sondern „welcher Ausgabekanal funktioniert nachweislich?". yfinance
+war die ganze Zeit der Beweis, dass stderr durchkommt.
+
+## PC1 — Hedgefonds lief 18,9 Minuten nach erschöpftem Budget
+**Muster M5 · hoch · behoben**
+
+Der Phasenbericht zeigt es eindeutig:
+
+```
+[phase] Snapshot + Aenderungen   0.1 min  (gesamt 38.3)
+[budget] KI-Briefing uebersprungen - 38 von 38 Minuten verbraucht.
+[phase] Hedgefonds              18.9 min  (gesamt 57.3)
+```
+
+Ich hatte KI-Briefing und Auto-Depot gebremst, Hedgefonds übersehen. Dieser
+eine Abschnitt verursachte die Überschreitung allein.
+
+*Behoben:* Alle fünf optionalen Abschnitte prüfen jetzt das Budget —
+Earnings-Call-Suche, Signal-Tagebuch, KI-Briefing, Hedgefonds, Auto-Depot.
+
+## PC2 — Der flache Pfad läuft weiter über yfinance
+**offen · Diagnose eingebaut**
+
+```
+[Screener] Quellen: gemischt 296
+```
+
+Kein einziges `roic_light`. 296 Titel in 24 Minuten sind 4,9 s je Titel — das
+ist yfinance-Tempo, nicht das der Sparfassung mit vier Abrufen.
+
+Warum die Umstellung nicht greift, ist offen. `_roic_zuerst()` meldet den
+Grund jetzt einmalig auf stderr: kein Schlüssel, keine Abdeckung, fehlendes
+Feld oder Ausnahme.

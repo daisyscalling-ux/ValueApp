@@ -566,6 +566,20 @@ def _feldquellen(merged: dict) -> dict:
 #: yfinance im flachen Pfad gar nicht erst gefragt.
 _SCAN_PFLICHT = ("price", "market_cap", "sector", "currency")
 
+#: Warum ist der flache Pfad nicht ueber roic gelaufen? Im Lauf #166 stand in
+#: der Quellenstatistik "gemischt 296" - kein einziges roic_light. Ohne Grund
+#: laesst sich das nicht unterscheiden: kein Schluessel, keine Abdeckung,
+#: fehlendes Feld, Ausnahme. Der Grund wird EINMAL gemeldet, nicht je Titel.
+_ROIC_LIGHT_GRUND: dict = {}
+
+
+def _roic_light_grund(text: str) -> None:
+    if not _ROIC_LIGHT_GRUND.get("gemeldet"):
+        _ROIC_LIGHT_GRUND["gemeldet"] = text
+        import sys as _s
+        print(f"[roic-light] Rueckfall auf yfinance: {text}",
+              file=_s.stderr, flush=True)
+
 
 def _roic_zuerst(ticker: str) -> dict:
     """Flache Kennzahlen aus roic - ohne yfinance.
@@ -589,12 +603,26 @@ def _roic_zuerst(ticker: str) -> dict:
     """
     try:
         import roic as _r
-        if not _r.enabled() or not _r.covers(ticker):
-            return {}
-        b = _r.bundle_light(ticker) or {}
-    except Exception:
+    except Exception as e:
+        _roic_light_grund("roic nicht importierbar: " + str(e))
         return {}
-    if not b.get("price"):
+    if not _r.enabled():
+        _roic_light_grund("roic.enabled() ist False")
+        return {}
+    if not _r.covers(ticker):
+        _roic_light_grund("covers() verneint (Beispiel: " + str(ticker) + ")")
+        return {}
+    try:
+        b = _r.bundle_light(ticker) or {}
+    except Exception as e:
+        _roic_light_grund("bundle_light wirft: " + str(e)[:60])
+        return {}
+    if not b:
+        _roic_light_grund("bundle_light liefert leeres Dict")
+        return {}
+    fehlend = [k for k in _SCAN_PFLICHT if not b.get(k)]
+    if fehlend:
+        _roic_light_grund("bundle_light ohne " + ", ".join(fehlend))
         return {}
     b["_roic"] = True
     b["_roic_light"] = True

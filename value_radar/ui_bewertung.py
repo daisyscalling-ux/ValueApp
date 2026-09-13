@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.25"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.27"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -833,53 +833,66 @@ def earnings_reaktion_karte(erg: dict) -> None:
 def sektor_karte(verg: dict, zweitwert: Optional[dict] = None,
                  alle: Optional[Sequence[dict]] = None,
                  waehrung: str = "EUR") -> None:
-    """Was zahlt der Markt fuer dieses Segment - heute und frueher?
+    """Was zahlt der Markt fuer dieses Segment - in Worten statt in Fachbegriffen.
 
-    Die Karte ersetzt keinen Wert. Sie stellt einen zweiten Anker daneben und
-    benennt die Luecke. Ob eine Abwertung zyklisch ist (Chance) oder
-    strukturell (Falle), beantwortet sie ausdruecklich NICHT - das ist die
-    Frage, an der Value Investing haengt, und kein Modell im Bestand kann sie
-    entscheiden. Ein Werkzeug, das so tut, waere schlechter als eines, das die
-    Frage stellt.
+    Die erste Fassung benutzte durchgehend Begriffe, die sie nie erklaerte:
+    "eigener Schnitt", "Anker", "Sektormultiple". Und sie behauptete eine
+    Aussage, die sie noch gar nicht treffen konnte - "0 % ueber dem eigenen
+    Schnitt", obwohl alle Messungen aus demselben Monat stammten und heute
+    folglich DER Schnitt ist.
+
+    Diese Fassung sagt erst, WAS eine Zahl bedeutet, und nennt sie dann.
     """
     if not verg:
         return
     if verg.get("heute") is None:
-        # NICHT still verschwinden. Eine Karte, die ohne Daten einfach fehlt,
-        # ist von einer nicht vorhandenen Funktion nicht zu unterscheiden -
-        # genau das Muster, das an anderer Stelle Stunden gekostet hat.
-        # Stattdessen: sagen, dass es sie gibt und was zu tun ist.
-        _md(f'<div class="va-card"><h4>Was der Markt fuer dieses Segment zahlt'
-            f'</h4><div class="sub">Noch keine Messung fuer '
-            f'<b>{_e(str(verg.get("gruppe") or "dieses Segment"))}</b>.</div>'
-            f'<div class="note" style="margin-top:8px;line-height:1.5;">'
-            f'Die Sektormediane entstehen beim Screener-Lauf aus den dort '
-            f'ohnehin geladenen Titeln. Kein Anbieter liefert sie fertig \u2013 '
-            f'die Zeitreihe muss selbst aufgebaut werden. Nach dem ersten Lauf '
-            f'steht hier der aktuelle Stand, nach vier L\u00e4ufen der '
-            f'Vergleich mit dem eigenen Schnitt.</div></div>')
+        _md(f'<div class="va-card"><h4>Was zahlt der Markt fuer '
+            f'{_e(str(verg.get("gruppe") or "dieses Segment"))}?</h4>'
+            f'<div class="note" style="margin-top:8px;line-height:1.55;">'
+            f'Dafuer gibt es noch keine Messung. Die Werte entstehen beim '
+            f'naechtlichen Lauf aus den Titeln, die ohnehin geladen werden \u2013 '
+            f'kein Datenanbieter liefert sie fertig. Nach dem ersten Lauf steht '
+            f'hier der aktuelle Stand, nach einigen Wochen laesst sich sagen, '
+            f'ob das viel oder wenig ist.</div></div>')
         return
 
     ton = {"gruen": C["green"], "gelb": C["amber"],
            "rot": C["red"]}.get(verg.get("ton") or "grau", C["muted"])
     ab = verg.get("abweichung_pct")
+    heute = verg["heute"]
+
+    # --- Erklaerung VOR der Zahl ---------------------------------------
+    erklaerung = (
+        f'<div class="note" style="line-height:1.55;margin:6px 0 10px;">'
+        f'Firmen aus diesem Segment kosten an der Boerse derzeit im Mittel das '
+        f'<b style="color:{C["fg"]};">{_e(de(heute, 1))}-fache</b> ihres '
+        f'Jahresgewinns vor Zinsen, Steuern und Abschreibungen. Je hoeher diese '
+        f'Zahl, desto mehr zahlt der Markt fuer denselben Gewinn.</div>')
 
     if verg.get("hinweis"):
-        kopf = (f'<div class="note" style="color:{C["muted"]};">'
-                f'{_e(verg["hinweis"])}</div>')
-        balken = ""
+        vergleich_block = (f'<div class="note" style="color:{C["muted"]};">'
+                           f'{_e(verg["hinweis"])}</div>')
+    elif (verg.get("spanne_tage") or 0) < 30:
+        # Ehrlich statt eindrucksvoll: Aus Messungen weniger Wochen laesst
+        # sich nicht sagen, ob ein Segment teuer oder billig ist.
+        vergleich_block = (
+            f'<div class="note" style="color:{C["muted"]};line-height:1.55;">'
+            f'Ob das viel oder wenig ist, laesst sich noch nicht sagen: Die '
+            f'bisherigen {verg.get("messungen", 0)} Messungen liegen alle '
+            f'innerhalb weniger Tage. Erst wenn die Reihe ueber Monate reicht, '
+            f'hat der Vergleich mit frueher Aussagekraft.</div>')
     else:
-        kopf = (f'<div style="font-size:15px;font-weight:700;color:{ton};'
-                f'margin:4px 0 2px;">{_e(verg["gruppe"])} handelt '
-                f'{abs(ab):.0f} % {"unter" if ab < 0 else "ueber"} '
-                f'dem eigenen Schnitt</div>'
-                f'<div class="note" style="color:{C["muted"]};">'
-                f'heute {verg["heute"]:.1f}x \u00b7 Schnitt '
-                f'{verg["schnitt"]:.1f}x \u00b7 aus {verg["messungen"]} '
-                f'Messungen seit {_e(str(verg.get("von"))[:7])}</div>')
-        # Balken: Mitte = Schnitt, Ausschlag nach links/rechts
+        richtung = "guenstiger" if ab < 0 else "teurer"
+        vergleich_block = (
+            f'<div style="font-size:15px;font-weight:700;color:{ton};'
+            f'margin:2px 0 4px;">Das ist {abs(ab):.0f} % {richtung} als im '
+            f'Durchschnitt der letzten Monate</div>'
+            f'<div class="note" style="color:{C["muted"]};">'
+            f'heute das {_e(de(heute, 1))}-fache, im Mittel seit '
+            f'{_e(str(verg.get("von"))[:7])} das '
+            f'{_e(de(verg["schnitt"], 1))}-fache</div>')
         pos = max(0.0, min(100.0, 50.0 + ab / 2.0))
-        balken = (
+        vergleich_block += (
             f'<div style="position:relative;height:8px;background:{C["line"]};'
             f'margin:12px 0 6px;">'
             f'<div style="position:absolute;left:50%;top:-3px;width:1px;'
@@ -889,65 +902,89 @@ def sektor_karte(verg: dict, zweitwert: Optional[dict] = None,
             f'</div>'
             f'<div style="display:flex;justify-content:space-between;'
             f'font-size:10px;color:{C["muted"]};">'
-            f'<span>billiger</span><span>eigener Schnitt</span>'
-            f'<span>teurer</span></div>')
+            f'<span>billiger als sonst</span><span>wie sonst</span>'
+            f'<span>teurer als sonst</span></div>')
 
-    # Zweiter Anker: derselbe Titel, am gemessenen Sektormultiple gerechnet
+    # --- Zwei Rechenwege ------------------------------------------------
     zweit = ""
     if zweitwert and zweitwert.get("sektor") and zweitwert.get("modell"):
         m, sk = zweitwert["modell"], zweitwert["sektor"]
         kurs = zweitwert.get("kurs")
-        zweit = (
-            f'<div style="margin-top:14px;padding-top:12px;'
-            f'border-top:1px solid {C["line"]};">'
-            f'<div class="va-lbl">Zwei Anker, zwei Antworten</div>'
-            f'<div class="va-list" style="margin-top:6px;">'
-            f'<div class="va-r"><span class="k">Fair Value laut Modell</span>'
-            f'<span class="v va-num">{_e(geld(m, waehrung))}</span></div>'
-            f'<div class="va-r"><span class="k">Fair Value am heutigen '
-            f'Sektormultiple</span>'
-            f'<span class="v va-num" style="color:{ton};">'
-            f'{_e(geld(sk, waehrung))}</span></div>'
-            + (f'<div class="va-r"><span class="k">Kurs</span>'
-               f'<span class="v va-num">{_e(geld(kurs, waehrung))}</span></div>'
-               if kurs else "")
-            + f'</div>'
-            f'<div class="note" style="margin-top:8px;line-height:1.5;">'
-            f'Die Luecke zwischen beiden ist die eigentliche Frage: Kommt die '
-            f'alte Bewertung des Segments zurueck, oder ist sie dauerhaft weg? '
-            f'Das entscheidet nicht die Rechnung, sondern was du ueber das '
-            f'Geschaeft weisst.</div></div>')
 
-    # Quervergleich: ein Segment allein sagt wenig
+        def _zeile(label, wert, erlaeuterung, farbe=None):
+            return (
+                f'<div style="padding:7px 0;border-bottom:1px solid {C["line"]};">'
+                f'<div style="display:flex;justify-content:space-between;'
+                f'align-items:baseline;">'
+                f'<span style="font-size:12.5px;color:{C["fg"]};">{_e(label)}</span>'
+                f'<span class="va-num" style="font-weight:700;'
+                f'color:{farbe or C["fg"]};">{_e(geld(wert, waehrung))}</span></div>'
+                f'<div style="font-size:11px;color:{C["muted"]};margin-top:2px;">'
+                f'{_e(erlaeuterung)}</div></div>')
+
+        zweit = (
+            f'<div style="margin-top:16px;padding-top:12px;'
+            f'border-top:1px solid {C["line"]};">'
+            f'<div class="va-lbl">Zwei Wege, denselben Titel zu bewerten</div>'
+            + _zeile("Unser Bewertungsmodell sagt", m,
+                     "Cashflow, Gewinn und Substanz der Firma \u2013 unabhaengig "
+                     "davon, was der Markt gerade fuer die Branche zahlt")
+            + _zeile("Nur mit dem Segment-Vielfachen gerechnet", sk,
+                     f"Was die Firma kosten wuerde, wenn sie genauso bewertet "
+                     f"waere wie ihr Segment insgesamt ({_e(de(heute, 1))}-faches)",
+                     # Farbe nach dem Verhaeltnis zum KURS, nicht zum Modell:
+                     # Ein gruener Wert unter dem Kurs las sich als "guenstig",
+                     # obwohl er das Gegenteil sagt.
+                     (C["green"] if (kurs and sk > kurs)
+                      else (C["red"] if kurs and sk < kurs * 0.9 else None)))
+            + (_zeile("Tatsaechlicher Kurs", kurs,
+                      "Was die Aktie heute an der Boerse kostet") if kurs else "")
+            + f'<div class="note" style="margin-top:10px;line-height:1.55;">'
+              f'Weichen die beiden Werte stark voneinander ab, liegt darin die '
+              f'eigentliche Frage: Ist das Segment nur voruebergehend aus der '
+              f'Mode \u2013 dann holt die Bewertung wieder auf. Oder hat sich '
+              f'am Geschaeft etwas grundlegend geaendert \u2013 dann kommt sie '
+              f'nicht zurueck. Das entscheidet nicht die Rechnung, sondern was '
+              f'du ueber die Branche weisst.</div></div>')
+
+    # --- Quervergleich ---------------------------------------------------
     quer = ""
     if alle and len(alle) >= 3:
-        zeilen = []
-        for v in alle[:8]:
-            a = v.get("abweichung_pct")
-            if a is None:
-                continue
-            f = (C["amber"] if abs(a) >= 20 else C["muted"])
-            eigen = (v.get("gruppe") == verg.get("gruppe"))
-            zeilen.append(
-                f'<div style="display:flex;gap:8px;padding:3px 0;font-size:11.5px;'
-                f'{"font-weight:700;" if eigen else ""}">'
-                f'<span style="color:{C["fg"] if eigen else C["muted"]};">'
-                f'{_e(v["gruppe"])}</span>'
-                f'<span style="margin-left:auto;color:{f};" class="va-num">'
-                f'{a:+.0f} %</span></div>')
-        if zeilen:
-            quer = (f'<div style="margin-top:14px;padding-top:12px;'
+        verwertbar = [v for v in alle
+                      if v.get("abweichung_pct") is not None
+                      and (v.get("spanne_tage") or 0) >= 30]
+        if verwertbar:
+            zeilen = []
+            for v in verwertbar[:8]:
+                a = v["abweichung_pct"]
+                f = C["amber"] if abs(a) >= 20 else C["muted"]
+                eigen = (v.get("gruppe") == verg.get("gruppe"))
+                zeilen.append(
+                    f'<div style="display:flex;gap:8px;padding:3px 0;'
+                    f'font-size:11.5px;{"font-weight:700;" if eigen else ""}">'
+                    f'<span style="color:{C["fg"] if eigen else C["muted"]};">'
+                    f'{_e(v["gruppe"])}</span>'
+                    f'<span style="margin-left:auto;color:{f};" class="va-num">'
+                    f'{a:+.0f} %</span></div>')
+            quer = (f'<div style="margin-top:16px;padding-top:12px;'
                     f'border-top:1px solid {C["line"]};">'
-                    f'<div class="va-lbl">Alle gemessenen Segmente</div>'
+                    f'<div class="va-lbl">Andere Segmente im Vergleich</div>'
                     f'<div class="note" style="margin-bottom:6px;">'
-                    f'Gibt nur EIN Segment nach oder der ganze Markt? Das '
-                    f'unterscheidet ein Branchenproblem von einer '
-                    f'Marktbewegung.</div>{"".join(zeilen)}</div>')
+                    f'Sind nur einzelne Segmente billiger geworden oder alle? '
+                    f'Das unterscheidet ein Branchenproblem von einer '
+                    f'allgemeinen Marktbewegung.</div>{"".join(zeilen)}</div>')
+        else:
+            quer = (f'<div style="margin-top:16px;padding-top:12px;'
+                    f'border-top:1px solid {C["line"]};">'
+                    f'<div class="note" style="color:{C["muted"]};">'
+                    f'Ein Vergleich der Segmente untereinander folgt, sobald '
+                    f'die Messreihen ueber mehrere Monate reichen.</div></div>')
 
-    _md(f'<div class="va-card"><h4>Was der Markt fuer dieses Segment zahlt</h4>'
-        f'<div class="sub">Gemessen aus dem eigenen Universum, nicht aus einer '
-        f'festen Tabelle.</div>{kopf}{balken}{zweit}{quer}</div>')
-
+    _md(f'<div class="va-card"><h4>Was zahlt der Markt fuer '
+        f'{_e(str(verg.get("gruppe") or "dieses Segment"))}?</h4>'
+        f'<div class="sub">Gemessen an den Firmen dieses Segments im eigenen '
+        f'Universum \u2013 nicht aus einer festen Tabelle.</div>'
+        f'{erklaerung}{vergleich_block}{zweit}{quer}</div>')
 
 def gate_karte(erg: dict) -> None:
     """Pflicht-Gates und Bonuspunkte eines Titels.

@@ -8443,6 +8443,27 @@ if nav == "Earnings Calls":
             if _nur_pf:
                 _basis = [r for r in _basis if r["ticker"] in _meine]
 
+            # AUDIT-BEFUND E1: 'tage_her' wurde beim SCHREIBEN berechnet und
+            # mitgespeichert. Ein Eintrag vom 7. August stand damit fuer immer
+            # als "vor 2 Tagen" in der Liste - und galt als aktueller Call,
+            # obwohl er einen Monat alt war. Die Zahl altert nicht mit.
+            #
+            # Deshalb hier aus dem DATUM rechnen. Das gespeicherte Feld bleibt
+            # nur noch Rueckfall, falls kein Datum vorliegt.
+            from datetime import datetime as _dtm
+
+            def _alter_tage(r):
+                d = str(r.get("datum") or r.get("date") or "")[:10]
+                for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+                    try:
+                        return (_dtm.now() - _dtm.strptime(d, fmt)).days
+                    except ValueError:
+                        continue
+                return r.get("tage_her")
+
+            for _r in _basis:
+                _r["tage_her"] = _alter_tage(_r)
+
             _aktuell = [r for r in _basis if (r.get("tage_her") or 99) <= _zeit]
             _aktuell.sort(key=lambda r: r.get("tage_her") or 999)
             _aelter = [r for r in _basis if (r.get("tage_her") or 99) > _zeit]

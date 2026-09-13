@@ -1867,12 +1867,28 @@ def run():
             # galt, solange roic gar nicht lief. Mit Schluessel ist es der
             # teuerste Einzelabschnitt - deshalb bekommt er als erster ein
             # Zeitbudget und einen kleineren Deckel.
-            if _ROIC_AKTIV and not _budget_melden("Earnings-Call-Suche"):
+            # AUDIT-BEFUND E2: Dieser Abschnitt war der erste mit Budget-
+            # pruefung - und stand ganz am Ende des Laufs. Das Budget war dann
+            # immer erschoepft, die Suche lief nie, und in der App standen
+            # weiter die Calls vom 7. August.
+            #
+            # Er braucht ein EIGENES Kontingent. Die Suche ist billig
+            # gemessen an ihrem Nutzen: Ohne sie veraltet die
+            # Earnings-Call-Liste sofort, waehrend ein paar Titel weniger im
+            # Screener kaum auffallen.
+            _ec_budget = float(_os_modul.getenv("EARNINGS_BUDGET_MIN", "8"))
+            _ec_uebrig = ZEITBUDGET_MIN + _ec_budget - _verbraucht_min()
+            if _ROIC_AKTIV and _ec_uebrig <= 0:
+                _melde(f"[budget] Earnings-Call-Suche uebersprungen - auch das "
+                       f"Zusatzkontingent von {_ec_budget:.0f} min ist "
+                       f"aufgebraucht ({_verbraucht_min():.0f} min gesamt).")
+            elif _ROIC_AKTIV:
+                _melde(f"[transkripte] eigenes Kontingent: "
+                       f"{_ec_uebrig:.0f} min verbleibend")
                 _tk_uni = _roic_mod.index_universum()
                 _deckel = int(_os_modul.getenv("TRANSKRIPT_DECKEL", "600"))
-                print(f"[transkripte] Universum: {len(_tk_uni)} Titel, "
-                      f"Deckel {_deckel}, "
-                      f"{_verbraucht_min():.0f}/{ZEITBUDGET_MIN:.0f} min verbraucht")
+                _melde(f"[transkripte] Universum: {len(_tk_uni)} Titel, "
+                       f"Deckel {_deckel}")
                 _neu = _roic_mod.neue_transkripte(_tk_uni, tage=21, deckel=_deckel)
                 # Diagnose ueber fuenf Referenztitel. Sie hat ihren Zweck
                 # erfuellt (die Datumslogik stimmt) und kostet jetzt nur noch
@@ -1895,20 +1911,23 @@ def run():
                     raise RuntimeError("store.py veraltet")
                 store.set_transkripte(_neu)
                 _n_akt = sum(1 for r in _neu if r.get("ist_neu"))
-                print(f"[transkripte] {len(_neu)} Calls gespeichert, "
+                _melde(f"[transkripte] {len(_neu)} Calls gespeichert, "
                       f"{_n_akt} aktuell.")
                 _tr_status["stand"] = (f"{len(_neu)} Calls erfasst, "
                                        f"{_n_akt} aktuell (Universum "
                                        f"{len(_tk_uni)} Titel)")
             else:
-                print("[transkripte] uebersprungen (roic nicht aktiv - "
-                      "kein API-Key in dieser Umgebung).")
+                _melde("[transkripte] uebersprungen (roic nicht aktiv - "
+                       "kein API-Key in dieser Umgebung).")
                 _tr_status["stand"] = ("\u00dcBERSPRUNGEN: roic-Key fehlt im "
                                        "Nachtlauf (GitHub-Secret ROIC_API_KEY "
                                        "pruefen). Der Test-Button in der App "
                                        "nutzt einen anderen Key.")
+        except _Budget:
+            _melde("[transkripte] uebersprungen (Zeitkontingent)")
+            _tr_status["stand"] = "UEBERSPRUNGEN: Zeitkontingent"
         except Exception as e:
-            print(f"[transkripte] uebersprungen: {e}")
+            _melde(f"[transkripte] uebersprungen: {e}")
             _tr_status["stand"] = f"FEHLER: {e}"
         try:
             if hasattr(store, "set_transkript_status"):

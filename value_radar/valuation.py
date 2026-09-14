@@ -1413,7 +1413,18 @@ def datenqualitaet(fund, preset: str = "quality",
             f"Der Fair Value stuetzt sich auf einen Bruchteil der vorgesehenen "
             f"Methoden.")
     if fund.get("target_mean") is None and gewichte.get("analyst", 0) > 0:
-        warnungen.append("Kein Analystenziel vorhanden - der Marktanker fehlt.")
+        warnungen.append(
+            "Kein Analystenziel vorhanden - der Marktanker fehlt. Die Quelle "
+            "dafuer (yfinance) wird aus Rechenzentren haeufig blockiert; ein "
+            "frueher geholter Wert wird bis zum naechsten Quartalsbericht "
+            "weiterverwendet, sofern einer vorliegt.")
+    _aus_sp = fund.get("_schaetzfelder_aus_speicher")
+    if _aus_sp:
+        warnungen.append(
+            "Aus dem Zwischenspeicher statt frisch geholt: "
+            + ", ".join(_aus_sp)
+            + ". Das haelt den Fair Value stabil, wenn die Quelle gerade nicht "
+              "antwortet - die Werte sind aber hoechstens 45 Tage alt.")
 
     if not warnungen:
         stufe, ton = "vollstaendig", "gruen"

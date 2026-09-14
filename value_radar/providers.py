@@ -967,6 +967,57 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             except Exception:
                 pass
 
+        # ------------------------------------------------------------------
+        # SCHAETZFELDER AUFBEWAHREN
+        #
+        # AUDIT-BEFUND P2: eps_forward und target_mean stammen von yfinance -
+        # und yfinance wird aus Rechenzentren blockiert. Streamlit Cloud ist
+        # eines. Die Felder fehlen deshalb mal und sind mal da, und derselbe
+        # Titel bekommt bei jedem Aufruf eine andere Bewertung:
+        #
+        #   "Rechengrundlage hat sich geaendert: 714,52 -> 631,97
+        #    Daten fehlen jetzt: eps_forward, target_mean"
+        #
+        # target_mean hat einen funktionierenden Rueckfall (Finnhub),
+        # eps_forward nicht - sein einziger war FMP, und der antwortet nicht
+        # mehr. roic fuehrt keine Schaetzungen.
+        #
+        # Analystenschaetzungen aendern sich ueber Wochen, nicht Minuten. Was
+        # einmal geholt wurde, bleibt deshalb liegen: Bis zum naechsten
+        # Quartalsbericht (Marker) oder hoechstens 45 Tage. Das behebt die
+        # fehlende Quelle nicht, aber es beendet das Flackern.
+        # ------------------------------------------------------------------
+        _SCHAETZFELDER = ("eps_forward", "target_mean", "analyst_count", "beta")
+        try:
+            import store as _st_sch
+            _mk_sch = _st_sch.anreicherung_marker(merged)
+            _gespeichert = _st_sch.get_anreicherung(ticker, "schaetzfelder",
+                                                    max_alter_tage=45,
+                                                    marker=_mk_sch) or {}
+            _aus_speicher = []
+            for _k in _SCHAETZFELDER:
+                if merged.get(_k) is None and _gespeichert.get(_k) is not None:
+                    merged[_k] = _gespeichert[_k]
+                    _aus_speicher.append(_k)
+                    # Das Feld ist jetzt da - es gehoert nicht mehr in die
+                    # Luecken-Liste, sonst meldet die App eine Luecke, die es
+                    # nicht mehr gibt.
+                    if _k in _fehlt:
+                        try:
+                            _fehlt.remove(_k)
+                        except (KeyError, ValueError):
+                            pass
+            if _aus_speicher:
+                merged["_schaetzfelder_aus_speicher"] = sorted(_aus_speicher)
+            # Was jetzt vorliegt, fuer das naechste Mal sichern.
+            _neu_sch = {k: merged.get(k) for k in _SCHAETZFELDER
+                        if merged.get(k) is not None}
+            if _neu_sch and _neu_sch != _gespeichert:
+                _st_sch.set_anreicherung(ticker, "schaetzfelder", _neu_sch,
+                                         marker=_mk_sch)
+        except Exception:
+            pass
+
         if _gefuellt:
             merged["_fmp_luecken"] = sorted(_gefuellt)
         merged["_offene_luecken"] = sorted(_fehlt)

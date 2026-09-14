@@ -111,6 +111,41 @@ def _kurs_am_oder_vor(karte: Dict[str, dict], tag: datetime,
 def erheben(ticker: str, max_quartale: int = 12) -> dict:
     """Reaktionsmuster um die Earnings-Termine.
 
+    AUDIT-BEFUND R1: roic.call_kursreaktionen() und roic.call_reaktionsprofil()
+    gab es bereits, als ich dieses Modul gebaut habe - sie beantworten
+    dieselbe Frage, und laut Docstring sogar ueber 20+ Quartale statt 8.
+    Ich habe vorher nicht nachgesehen.
+
+    Deshalb wird jetzt zuerst die vorhandene Funktion benutzt. Der eigene
+    Rechenweg bleibt als Rueckfall, falls sie in einer aelteren roic.py fehlt.
+    """
+    try:
+        import roic as _r
+        if hasattr(_r, "call_kursreaktionen") and _r.enabled() and _r.covers(ticker):
+            roh = _r.call_kursreaktionen(ticker, max_calls=max_quartale) or []
+            if roh:
+                quartale = [{
+                    "datum": q.get("datum") or q.get("date"),
+                    "quartal": q.get("quartal") or q.get("quarter"),
+                    "jahr": q.get("jahr") or q.get("year"),
+                    "kurs_vorher": q.get("kurs_vorher") or q.get("vorher"),
+                    "reaktion_pct": q.get("reaktion_pct") or q.get("reaktion"),
+                    "nach_woche_pct": q.get("nach_woche_pct") or q.get("woche"),
+                    "nach_monat_pct": q.get("nach_monat_pct") or q.get("monat"),
+                } for q in roh]
+                quartale = [q for q in quartale if q.get("reaktion_pct") is not None]
+                if quartale:
+                    return {"ticker": ticker, "quartale": quartale,
+                            "quelle": "roic.call_kursreaktionen",
+                            **auswerten(quartale)}
+    except Exception:
+        pass
+    return _erheben_selbst(ticker, max_quartale)
+
+
+def _erheben_selbst(ticker: str, max_quartale: int = 12) -> dict:
+    """Reaktionsmuster um die Earnings-Termine.
+
     Braucht nur roic: Termine aus transcript_liste, Kurse aus prices_history.
     Kein Analystenkonsens, keine zweite Quelle.
     """

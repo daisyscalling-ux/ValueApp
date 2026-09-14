@@ -62,20 +62,40 @@ def main() -> int:
     for name, funktionen in MODULE.items():
         try:
             m = importlib.import_module(name)
+        except ModuleNotFoundError as e:
+            fehlt = str(e).split("'")[1] if "'" in str(e) else str(e)
+            if fehlt == name:
+                print(f"  {name + '.py':24s} FEHLT im Ordner")
+                fehler += 1
+            else:
+                # Nicht das Modul fehlt, sondern eine Abhaengigkeit. Das als
+                # "FEHLT oder defekt" zu melden schickt auf die falsche Faehrte.
+                print(f"  {name + '.py':24s} nicht pruefbar "
+                      f"(Abhaengigkeit '{fehlt}' nicht installiert)")
+            continue
         except Exception as e:
-            print(f"  {name + '.py':24s} FEHLT oder defekt ({e})")
+            print(f"  {name + '.py':24s} defekt ({type(e).__name__}: {e})")
             fehler += 1
             continue
 
+        # MINDEST-Stand: Eine neuere Datei ist kein Fehler. Die
+        # Gleichheitspruefung hat in der App eine korrekt hochgeladene Datei
+        # als veraltet gemeldet, weil die Erwartung nicht mitgezogen wurde.
         soll = ERWARTET_ENTDECKUNG if name in ENTDECKUNG else ERWARTET
         ver = getattr(m, "__version__", None)
-        stand = ("aktuell" if ver == soll
-                 else f"VERALTET ({ver or 'ohne Marker'}, erwartet {soll})")
+        if not ver:
+            stand = "ohne Marker"
+        elif str(ver) < soll:
+            stand = f"VERALTET ({ver}, mindestens {soll} noetig)"
+        elif str(ver) > soll:
+            stand = f"aktuell ({ver}, neuer als erwartet)"
+        else:
+            stand = "aktuell"
         fehlend = [f for f in funktionen if not hasattr(m, f)]
         print(f"  {name + '.py':24s} {stand}")
         if fehlend:
             print(f"      fehlende Funktionen: {', '.join(fehlend)}")
-        if ver != soll or fehlend:
+        if (ver and str(ver) < soll) or fehlend:
             fehler += 1
 
         import inspect
@@ -91,8 +111,19 @@ def main() -> int:
     for name, funktionen in OHNE_MARKER.items():
         try:
             m = importlib.import_module(name)
+        except ModuleNotFoundError as e:
+            fehlt = str(e).split("'")[1] if "'" in str(e) else str(e)
+            if fehlt == name:
+                print(f"  {name + '.py':24s} FEHLT im Ordner")
+                fehler += 1
+            else:
+                # Nicht das Modul fehlt, sondern eine Abhaengigkeit. Das als
+                # "FEHLT oder defekt" zu melden schickt auf die falsche Faehrte.
+                print(f"  {name + '.py':24s} nicht pruefbar "
+                      f"(Abhaengigkeit '{fehlt}' nicht installiert)")
+            continue
         except Exception as e:
-            print(f"  {name + '.py':24s} FEHLT oder defekt ({e})")
+            print(f"  {name + '.py':24s} defekt ({type(e).__name__}: {e})")
             fehler += 1
             continue
         fehlend = [f for f in funktionen if not hasattr(m, f)]

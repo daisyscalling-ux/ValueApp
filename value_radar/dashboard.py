@@ -4011,12 +4011,29 @@ if nav == "Einzelanalyse":
                 # sind. Ohne diese Pruefung erscheint sonst eine kryptische
                 # AttributeError-Meldung, obwohl schlicht eine Datei beim
                 # Hochladen vergessen wurde - genau das ist zweimal passiert.
+                # MINDEST-Stand, nicht exakter Stand.
+                #
+                # Vorher wurde auf Gleichheit geprueft. Nach einer Aenderung
+                # an ui_bewertung.py (Stand .27) meldete das Dashboard die
+                # Datei als veraltet, weil hier noch .25 stand - obwohl sie
+                # NEUER war. Eine Warnung, die bei korrekt hochgeladenen
+                # Dateien anschlaegt, bringt niemandem etwas: Man gewoehnt
+                # sich an sie und uebersieht sie, wenn sie einmal stimmt.
+                #
+                # Entscheidend ist ausserdem nicht die Zahl, sondern ob die
+                # gebrauchten Funktionen da sind. Deshalb zaehlt vor allem
+                # die zweite Pruefung.
                 _ERWARTET = "2026.09.25"
 
                 def _modul_alt(mod, noetig=()):
-                    if getattr(mod, "__version__", None) != _ERWARTET:
+                    if any(not hasattr(mod, x) for x in noetig):
                         return True
-                    return any(not hasattr(mod, x) for x in noetig)
+                    ver = getattr(mod, "__version__", None)
+                    # Kein Marker -> nicht beurteilbar, aber die Funktionen
+                    # sind da. Das reicht.
+                    if not ver:
+                        return False
+                    return str(ver) < _ERWARTET
 
                 try:
                     import kennzahl_kacheln as _kk
@@ -4193,10 +4210,25 @@ if nav == "Einzelanalyse":
                 try:
                     import bewertung_seite as _bs
 
-                    if getattr(_bs, "__version__", None) != "2026.09.25":
-                        st.warning("Veralteter Dateistand: bewertung_seite.py "
-                                   "\u2014 bitte erneut hochladen und die App "
-                                   "neu starten.", icon="\u26a0\ufe0f")
+                    # Zweite Pruefstelle. Sie verglich ebenfalls auf
+                    # Gleichheit und meldete deshalb weiter "veraltet",
+                    # nachdem die erste schon auf Mindeststand umgestellt war.
+                    # Entscheidend ist, ob die gebrauchte Funktion die noetigen
+                    # Parameter kennt - nicht welche Zahl im Marker steht.
+                    import inspect as _insp
+
+                    _noetig = ("fx", "waehrung", "start_abschnitt")
+                    try:
+                        _params = _insp.signature(_bs.rendern).parameters
+                        _fehlt = [p for p in _noetig if p not in _params]
+                    except (AttributeError, ValueError, TypeError):
+                        _fehlt = list(_noetig)
+                    if _fehlt:
+                        st.warning(
+                            "Veralteter Dateistand: bewertung_seite.py fehlen "
+                            "die Parameter " + ", ".join(_fehlt)
+                            + ". Bitte die Datei erneut hochladen und die App "
+                              "neu starten.", icon="\u26a0\ufe0f")
                         raise RuntimeError("Modulstand veraltet")
 
                     @st.cache_data(ttl=21600, show_spinner=False)

@@ -187,6 +187,7 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         f = providers.get_fundamentals(t, deep=deep)
         _fuer_sektormessung(f)
         _quelle = (f or {}).get("_quelle")
+        _verlauf_fund = f
     except Exception:
         return None
     if not f or not f.get("price"):
@@ -247,6 +248,19 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
     _atrend = f.get("_analyst_trend")
     q = scoring.quantum_score(comp, v, analyst, momentum=mom,
                               analyst_skepsis=_askep, analyst_trend=_atrend)
+    # Verlauf fuer JEDEN gescannten Titel - nicht nur Watchlist und
+    # Portfolio. Geschrieben wird nur bei spuerbarer Aenderung (Fair Value
+    # ueber 3 %, Scores ueber 3 Punkte), sonst waere die Liste nach einer
+    # Woche voller Kursrauschen und der Speicher voll.
+    try:
+        import verlauf as _vl
+        _vl.notieren(t, composite=comp,
+                     quantum=(q.get("score") if isinstance(q, dict) else None),
+                     fair_value=(v.get("fair_value") if v else None),
+                     basis=(v.get("basis") if v else None))
+    except Exception:
+        pass
+
     return {
         "ticker": t,
         "_quelle": _quelle,
@@ -2000,6 +2014,19 @@ def run():
     # Budgetpruefung.
     try:
         sektormediane_schreiben()
+        # Verlauf begrenzen: Ohne das waechst er mit jedem Lauf, und wenn der
+        # Zusatzspeicher voll ist, schlaegt das SCHREIBEN fehl - nicht nur der
+        # Verlauf, sondern auch Watchlist, Portfolio und Trackrecord.
+        try:
+            import verlauf as _vl2
+            _weg = _vl2.aufraeumen()
+            _st = _vl2.statistik()
+            _melde(f"[verlauf] {_st.get('titel', 0)} Titel, "
+                   f"{_st.get('eintraege', 0)} Eintraege, "
+                   f"{_st.get('anteil_speicher', 0)} % des Speichers"
+                   + (f", {_weg} aelteste entfernt" if _weg else ""))
+        except Exception as _e:
+            _melde(f"[verlauf] Aufraeumen fehlgeschlagen: {_e}")
         phase("Sektormediane")
         phasen_bericht()
     except Exception as _e:

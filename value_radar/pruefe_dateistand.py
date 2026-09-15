@@ -17,7 +17,7 @@ ERWARTET_ENTDECKUNG = "2026.09.25"   # Screener, Kandidat, Forensik
 
 #: Module der Entdeckungsschicht - eigener Zyklus, eigener Stand.
 ENTDECKUNG = {"kandidat", "screener2", "scores",
-              "valuation", "providers", "relval", "roic", "momentum", "radar", "pruefung", "kennzahlen", "sektor", "precompute", "earnings_reaktion"}
+              "valuation", "providers", "relval", "roic", "momentum", "radar", "pruefung", "kennzahlen", "sektor", "precompute", "earnings_reaktion", "verlauf"}
 
 MODULE = {
     "valuation": ["zyklisch_aus_margen", "fcf_basis", "reverse_dcf_analyse",
@@ -33,6 +33,7 @@ MODULE = {
                "segment", "normalisieren", "unbekannte_branchen"],
     "precompute": ["run", "scan_list", "sektormediane_schreiben"],
     "earnings_reaktion": ["erheben", "auswerten"],
+    "verlauf": ["notieren", "lesen", "aufraeumen", "statistik"],
     "kennzahlen": ["bewerte", "zusammenfassung", "transkript_kennzahlen",
                    "zusammenfassung_call", "kernstellen"],
     "ui_bewertung": ["sparkline", "kennzahl_kacheln", "news_karte",

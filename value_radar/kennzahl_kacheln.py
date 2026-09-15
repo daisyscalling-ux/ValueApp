@@ -125,6 +125,7 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
     _jahr = str(rows[-1].get("jahr"))[:4]
     _vorjahr = str(rows[-2].get("jahr"))[:4]
     _bezug = f"Geschaeftsjahr {_jahr} gegenueber {_vorjahr}"
+    _alle_jahre = [str(z.get("jahr"))[:4] for z in rows]
 
     items: List[Dict] = []
     for key, label, negativ in REIHEN:
@@ -147,6 +148,7 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             "delta": delta,
             "chips": chips,
             "reihe": xs,
+            "jahre": _alle_jahre[-len(xs):] if xs else [],
             "negative": negativ,
             "ampel": ampel,
             "zusatz": zusatz,
@@ -168,6 +170,7 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             "delta": None,
             "chips": [],
             "reihe": xs,
+            "jahre": _alle_jahre[-len(xs):] if xs else [],
             "negative": False,
             "ampel": ampel,
             "zusatz": zusatz,

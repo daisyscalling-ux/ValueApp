@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.27"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.29"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -830,6 +830,61 @@ def earnings_reaktion_karte(erg: dict) -> None:
         f'{kopf}{kopfzeile}{"".join(zeilen)}</div>')
 
 
+def verlauf_karte(eintraege, waehrung: str = "EUR") -> None:
+    """Was hat sich bei diesem Titel geaendert - und warum?
+
+    Zeigt nur SPUERBARE Aenderungen (Fair Value ueber 3 %, Scores ueber 3
+    Punkte). Kleinere Bewegungen sind Kursrauschen und wuerden die echten
+    Aenderungen zwischen sich begraben.
+    """
+    if not eintraege:
+        _md(f'<div class="va-card"><h4>Was sich geaendert hat</h4>'
+            f'<div class="note" style="color:{C["muted"]};line-height:1.55;">'
+            f'Noch kein Verlauf. Er entsteht ab dem naechsten naechtlichen '
+            f'Lauf \u2013 festgehalten wird nur, was sich spuerbar bewegt: '
+            f'der Fair Value um mehr als 3 %, Composite oder Quantum um mehr '
+            f'als 3 Punkte.</div></div>')
+        return
+
+    zeilen = []
+    for e in eintraege:
+        werte = []
+        if e.get("fair_value") is not None:
+            werte.append(f'Fair Value {_e(geld(e["fair_value"], waehrung))}')
+        if e.get("composite") is not None:
+            werte.append(f'Composite {e["composite"]:.0f}')
+        if e.get("quantum") is not None:
+            werte.append(f'Quantum {e["quantum"]:.0f}')
+
+        grund = e.get("grund") or ""
+        # Ein Grund, der auf fehlende Daten zeigt, ist wichtiger als einer,
+        # der nur den Markt beschreibt - deshalb faerben.
+        datenproblem = any(w in grund.lower() for w in
+                           ("fehlen", "entfallen", "playbook", "nicht "))
+        gfarbe = C["amber"] if datenproblem else C["muted"]
+
+        zeilen.append(
+            f'<div style="display:grid;grid-template-columns:92px 1fr;gap:12px;'
+            f'padding:9px 0;border-bottom:1px solid {C["line"]};">'
+            f'<div style="font-size:11px;color:{C["muted"]};line-height:1.5;">'
+            f'{_e(str(e.get("d") or ""))}</div>'
+            f'<div>'
+            f'<div style="font-size:12.5px;color:{C["fg"]};line-height:1.5;">'
+            f'{_e(e.get("was") or "")}</div>'
+            + (f'<div style="font-size:11px;color:{gfarbe};margin-top:3px;'
+               f'line-height:1.45;">{_e(grund)}</div>' if grund else "")
+            + (f'<div style="font-size:10.5px;color:{C["line"]};margin-top:3px;">'
+               f'{_e(" \u00b7 ".join(werte))}</div>' if werte else "")
+            + '</div></div>')
+    if zeilen:
+        zeilen[-1] = zeilen[-1].replace(f'border-bottom:1px solid {C["line"]};', "")
+
+    _md(f'<div class="va-card"><h4>Was sich geaendert hat</h4>'
+        f'<div class="sub">Nur spuerbare Aenderungen \u2013 Fair Value ueber '
+        f'3 %, Scores ueber 3 Punkte. Kleinere Bewegungen sind Kursrauschen.'
+        f'</div>{"".join(zeilen)}</div>')
+
+
 def sektor_karte(verg: dict, zweitwert: Optional[dict] = None,
                  alle: Optional[Sequence[dict]] = None,
                  waehrung: str = "EUR") -> None:
@@ -1081,6 +1136,68 @@ def pruef_streifen(kacheln, titel: str = "Kennzahlen im Detail",
         f'{"".join(teile)}</div>{fuss}</div>')
 
 
+def jahres_saeulen(reihe, jahre, farbe: Optional[str] = None,
+                   negativ: bool = False) -> str:
+    """Die letzten drei Geschaeftsjahre als Saeulen nebeneinander.
+
+    Ersetzt die Sparkline. Die zeigte zehn Jahre auf drei Zentimetern - man
+    sah eine Linie, aber keine Zahl. Drei Saeulen mit Jahr und Wert darunter
+    sind ablesbar: 2023, 2024, 2025 direkt vergleichbar.
+
+    reihe  Werte, aeltester zuerst
+    jahre  passende Jahreslabels, gleiche Reihenfolge
+    """
+    xs = [(float(v), j) for v, j in zip(reihe or [], jahre or [])
+          if v is not None and isinstance(v, (int, float))]
+    if len(xs) < 2:
+        return ""
+    xs = xs[-3:]                       # nur die letzten drei Jahre
+
+    werte = [v for v, _ in xs]
+    hoch = max(abs(v) for v in werte) or 1.0
+    # Grundfarbe neutral (cyan). Rot/gruen kommt aus dem JAHRESVERGLEICH -
+    # sonst faerbt "negativ=True" alle Saeulen rot und der Rueckgang im
+    # letzten Jahr ist nicht mehr vom Rest zu unterscheiden.
+    grund = farbe or C["cyan"]
+
+    saeulen = []
+    for idx, (v, j) in enumerate(xs):
+        h = max(4, abs(v) / hoch * 46)          # Pixelhoehe, min. sichtbar
+        # Faellt der Wert gegenueber dem Vorjahr, wird die Saeule rot - so ist
+        # ein Rueckgang auch ohne Zahl erkennbar. Der Screenshot zeigt genau
+        # den Fall: Nettoergebnis -3 %, aber die Linie stieg optisch an.
+        if idx > 0:
+            col = C["green"] if v >= xs[idx - 1][0] else C["red"]
+        else:
+            col = grund
+        anzeige = _kompakt(v)
+        saeulen.append(
+            f'<div style="display:flex;flex-direction:column;align-items:center;'
+            f'justify-content:flex-end;flex:1;gap:4px;">'
+            f'<div style="font-size:10px;color:{C["fg"]};font-variant-numeric:'
+            f'tabular-nums;">{_e(anzeige)}</div>'
+            f'<div style="width:60%;height:{h:.0f}px;background:{col};'
+            f'opacity:.85;border-radius:2px 2px 0 0;"></div>'
+            f'<div style="font-size:9.5px;color:{C["muted"]};">'
+            f"{_e(str(j)[-2:])}"
+            f'</div></div>')
+
+    return (f'<div style="display:flex;align-items:flex-end;gap:8px;height:74px;'
+            f'margin-top:10px;padding:0 2px;">{"".join(saeulen)}</div>')
+
+
+def _kompakt(x: float) -> str:
+    """Zahl knapp: 174,1 Mrd -> 174, 88,3 Mrd -> 88, 6,20 -> 6,2."""
+    a = abs(x)
+    if a >= 1e12:
+        return de(x / 1e12, 1)
+    if a >= 1e9:
+        return de(x / 1e9, 0)
+    if a >= 1e6:
+        return de(x / 1e6, 0)
+    return de(x, 1)
+
+
 def kennzahl_kacheln(items: Sequence[Dict]) -> None:
     """Kennzahlen-Kacheln mit Verlauf, Vorjahresdelta und 3J/5J/10J-Chips.
 
@@ -1111,7 +1228,10 @@ def kennzahl_kacheln(items: Sequence[Dict]) -> None:
             f'<span>{_e(c)} <b style="color:{C["green"] if v >= 0 else C["red"]};">'
             f'{v * 100:+.0f} %</b></span>' for c, v in (it.get("chips") or []))
         neg = it.get("negative")
-        spark = sparkline(it.get("reihe") or [], C["red"] if neg else None)
+        # Saeulendiagramm statt Sparkline - drei Jahre nebeneinander statt
+        # zehn auf einer Linie.
+        spark = jahres_saeulen(it.get("reihe") or [], it.get("jahre") or [],
+                               farbe=None, negativ=neg)
         amp = {"gruen": C["green"], "gelb": C["amber"],
                "rot": C["red"]}.get(it.get("ampel"))
         farbe = amp or (C["red"] if neg else C["cyan"])

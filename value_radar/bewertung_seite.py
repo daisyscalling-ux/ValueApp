@@ -22,7 +22,7 @@ Zwei Verwendungen:
 
 from __future__ import annotations
 
-__version__ = "2026.09.27"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
+__version__ = "2026.09.28"   # Signatur: rendern(..., fx=, waehrung=, start_abschnitt=)
 
 from typing import List, Optional, Sequence
 
@@ -287,6 +287,29 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
                   "kurs": _w(preis)} if _za else None),
                 _sk.alle_vergleiche("ev_ebitda", _eb),
                 waehrung)
+    except Exception:
+        pass
+
+    # =======================================================================
+    # Was sich geaendert hat. Steht bewusst NACH dem Wert und vor den
+    # Szenarien: Erst die Zahl, dann ihre Geschichte, dann die Varianten.
+    # =======================================================================
+    try:
+        import verlauf as _vl
+
+        _tk = ticker or fund.get("ticker")
+        if _tk:
+            _hist = _vl.lesen(_tk)
+            # Beim Oeffnen den aktuellen Stand mitschreiben - so entsteht der
+            # Verlauf auch fuer Titel, die der Nachtlauf nicht scannt.
+            try:
+                _vl.notieren(_tk, fair_value=v.get("fair_value"),
+                             basis=v.get("basis"))
+            except Exception:
+                pass
+            ui.abschnitt(n, "Verlauf", "was sich geaendert hat")
+            n += 1
+            ui.verlauf_karte(_hist, waehrung)
     except Exception:
         pass
 

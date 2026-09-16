@@ -142,12 +142,17 @@ def kacheln_aus_historie(historie: Sequence[dict], fx: float = 1.0,
             if r is not None:
                 chips.append((name, r))
         ampel, zusatz = _einordnung(xs, label, negativ)
+        # BEFUND: Die Grosszahl lief durch _zahl(..., fx), die Balkenreihe
+        # nicht. Auf dem Screenshot stand "58,3 Mrd" (EUR) ueber Balken mit
+        # "53/57/67" (USD) - dieselbe Groesse in zwei Waehrungen. Die Reihe
+        # wird jetzt mitgerechnet, damit Balken und Grosszahl uebereinstimmen.
+        xs_anzeige = [v * fx for v in xs]
         items.append({
             "label": label,
             "value": _zahl(xs[-1], waehrung, fx),
             "delta": delta,
             "chips": chips,
-            "reihe": xs,
+            "reihe": xs_anzeige,
             "jahre": _alle_jahre[-len(xs):] if xs else [],
             "negative": negativ,
             "ampel": ampel,

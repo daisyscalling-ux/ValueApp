@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.29"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.09.30"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -221,10 +221,33 @@ def abschnitt(nummer: int, titel: str, zusatz: str = "") -> None:
 
 
 def szenario_umschalter(key: str, index: int = 1) -> str:
-    """Gibt 'bear' | 'base' | 'bull' zurueck."""
+    """Gibt 'bear' | 'base' | 'bull' zurueck.
+
+    Nach einem Wechsel laedt Streamlit die ganze Seite neu und springt an den
+    Anfang. Damit man nicht jedesmal zurueckscrollen muss, wird ein Anker vor
+    den Umschalter gesetzt und - wenn sich die Wahl geaendert hat - per
+    JavaScript wieder angesprungen. Kein Streamlit-Bordmittel; deshalb ueber
+    einen kleinen scrollIntoView-Aufruf.
+    """
     labels = ["Bear Case", "Base Case", "Bull Case"]
+
+    _anker = f"anker_{key}"
+    _md(f'<div id="{_anker}" style="scroll-margin-top:12px;"></div>')
+
+    vorher = st.session_state.get(key)
     wahl = st.radio("Szenario", labels, index=index, key=key,
                     horizontal=True, label_visibility="collapsed")
+
+    # Nur springen, wenn wirklich gewechselt wurde - sonst scrollt die Seite
+    # auch beim ersten Laden oder bei fremden Reruns nach unten.
+    if vorher is not None and vorher != wahl:
+        import streamlit.components.v1 as _cmp
+        _cmp.html(
+            f"""<script>
+            const el = window.parent.document.getElementById("{_anker}");
+            if (el) el.scrollIntoView({{behavior:"instant", block:"start"}});
+            </script>""", height=0)
+
     return {"Bear Case": "bear", "Base Case": "base", "Bull Case": "bull"}[wahl]
 
 
@@ -424,15 +447,33 @@ def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
         f = C["red"] if ta > TERMINAL_ANTEIL_WARN else C["cyan"]
         jahre = diagnose.get("jahre") or 10
 
+        # Einordnung, damit die Prozentzahl nicht nackt dasteht. Ein
+        # Terminalwertanteil ist bei JEDEM DCF hoch - der Loewenanteil des
+        # Werts liegt immer jenseits der Prognose. Faustregeln aus der Praxis
+        # (Damodaran u.a.): unter ~65 % unauffaellig, 65-75 % erhoeht,
+        # ueber 75 % dominiert der Terminalwert die ganze Rechnung.
+        if ta >= TERMINAL_ANTEIL_WARN:
+            einordnung = ("Das ist <b>viel</b>. Der Wert haengt fast "
+                          "vollstaendig daran, was NACH der Prognose passiert "
+                          "\u2013 die Rechnung fuer die naechsten Jahre faellt "
+                          "kaum ins Gewicht.")
+            ton_wort = C["red"]
+        elif ta >= 0.65:
+            einordnung = ("Das ist <b>eher hoch</b>, aber fuer ein stabiles "
+                          "Geschaeft normal: Der groessere Teil des Werts liegt "
+                          "in der fernen Zukunft.")
+            ton_wort = C["amber"]
+        else:
+            einordnung = ("Das ist <b>unauffaellig</b>. Bei einem DCF liegt der "
+                          "groesste Teil des Werts immer jenseits der Prognose "
+                          "\u2013 dieser Anteil ist im ueblichen Rahmen.")
+            ton_wort = C["green"]
+
         satz = (f"<b>{ta * 100:.0f} %</b> des berechneten Werts entstehen erst "
                 f"nach Jahr {jahre} \u2013 in einer Zeit, fuer die nicht mehr "
                 f"gerechnet wird, sondern nur noch angenommen, dass es so "
-                f"weitergeht. Die Zahlen darunter sind Vielfache des "
-                f"Jahres-Cashflows.")
-        if ta > TERMINAL_ANTEIL_WARN:
-            satz += (" Bei diesem Anteil ist der Fair Value im Kern eine Wette "
-                     "darauf, wozu die Firma in zehn Jahren bewertet wird "
-                     "\u2013 nicht auf ihren Cashflow bis dahin.")
+                f"weitergeht.<br>"
+                f"<span style=\"color:{ton_wort};\">{einordnung}</span>")
 
         rows = []
         imp = diagnose.get("multiple_impliziert")
@@ -461,12 +502,17 @@ def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
 
         deutung = ""
         if imp is not None and gen and imp > gen * 1.25:
-            deutung = (f'<div class="note" style="color:{C["red"]};margin-top:8px;">'
-                       f'Der Kurs setzt darauf, dass die Firma in {jahre} Jahren '
-                       f'{mult(imp)} wert ist \u2013 das Modell haelt {mult(gen)} '
-                       f'fuer angemessen, heute steht sie bei '
-                       f'{mult(diagnose.get("multiple_heute")) if diagnose.get("multiple_heute") else "n/a"}. '
-                       f'Darueber wird gestritten, nicht ueber den Cashflow.</div>')
+            _heute_m = (mult(diagnose.get("multiple_heute"))
+                        if diagnose.get("multiple_heute") else "n/a")
+            deutung = (
+                f'<div class="note" style="margin-top:8px;line-height:1.55;">'
+                f'<b>So liest du die Zahlen:</b> Der Kurs geht davon aus, dass '
+                f'die Firma in {jahre} Jahren noch das {mult(imp)} ihres '
+                f'Cashflows wert ist. Das Modell haelt {mult(gen)} fuer '
+                f'angemessen \u2013 heute steht sie bei {_heute_m}. '
+                f'<span style="color:{C["red"]};">Verlangt der Kurs deutlich '
+                f'mehr als heute ({mult(imp)} gegen {_heute_m}), zahlt man '
+                f'fuer eine Zukunft, die erst noch eintreten muss.</span></div>')
 
         links = (
             f'<div class="va-lbl">Wie viel Wert liegt jenseits der Prognose?</div>'

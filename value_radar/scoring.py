@@ -1,4 +1,5 @@
 """
+__version__ = "2026.10.01"
 scoring.py — Scoring-Matrix.
 
 Wandelt Rohkennzahlen in branchenrelative Perzentil-Scores (0-100), mittelt
@@ -134,6 +135,88 @@ def score_stock(fund: dict[str, Any], peer_funds: list[dict] | None,
         "value_trap": vt,
         "breakdown": breakdown,
     }
+
+
+#: Sprechende Namen und Einheiten je Kennzahl - fuer die Score-Erklaerung.
+_METRIC_LABEL = {
+    "ev_ebitda":       ("EV/EBITDA", "x", False),
+    "pb":              ("Kurs-Buchwert", "x", False),
+    "pe_forward":      ("erwartetes KGV", "x", False),
+    "peg":             ("PEG", "", False),
+    "fcf_yield":       ("Free-Cashflow-Rendite", "%", True),
+    "roe":             ("Eigenkapitalrendite", "%", True),
+    "roa":             ("Gesamtkapitalrendite", "%", True),
+    "gross_margin":    ("Bruttomarge", "%", True),
+    "operating_margin":("operative Marge", "%", True),
+    "revenue_growth":  ("Umsatzwachstum", "%", True),
+    "earnings_growth": ("Gewinnwachstum", "%", True),
+    "current_ratio":   ("Liquiditaet 3. Grades", "x", True),
+    "net_debt_ebitda": ("Nettoverschuldung/EBITDA", "x", False),
+    "price_position_52w": ("Kursposition im 52-Wochen-Band", "%", True),
+}
+
+_KAT_BESCHREIBUNG = {
+    "valuation": "Wie teuer ist die Aktie gemessen an Gewinn, Cashflow und Substanz?",
+    "quality":   "Wie profitabel wirtschaftet die Firma mit ihrem Kapital?",
+    "growth":    "Wie stark wachsen Umsatz und Gewinn?",
+    "health":    "Wie solide ist die Bilanz - Schulden gegen Liquiditaet?",
+    "momentum":  "Wo steht der Kurs zwischen 52-Wochen-Tief und -Hoch?",
+    "catalyst":  "Gibt es Ausloeser (News, Termine), die Bewegung bringen koennten?",
+}
+
+
+def score_erklaerung(scores: dict, fund: dict) -> dict:
+    """Warum ist jeder Kategorie-Score so, wie er ist?
+
+    Nutzt breakdown (die Einzelnoten je Kennzahl) und die Rohwerte aus fund.
+    Fuer jede Kategorie: die Kennzahlen, die sie am staerksten nach oben oder
+    unten ziehen - mit dem tatsaechlichen Wert, nicht nur der Note.
+
+    Rueckgabe je Kategorie: {frage, treiber:[...], hinweis}
+    """
+    breakdown = scores.get("breakdown") or {}
+    cat_neutral = scores.get("cat_neutral") or {}
+    # Kennzahl -> Kategorie
+    kat_von = {m: cat for m, (cat, _hib) in METRIC_MAP.items()}
+    kat_von["price_position_52w"] = "momentum"
+
+    # Kennzahlen je Kategorie sammeln, mit Note und Rohwert
+    je_kat: dict[str, list] = {}
+    for metric, note in breakdown.items():
+        cat = kat_von.get(metric)
+        if not cat:
+            continue
+        label, einheit, hib = _METRIC_LABEL.get(metric, (metric, "", True))
+        roh = fund.get(metric)
+        je_kat.setdefault(cat, []).append(
+            {"label": label, "note": note, "roh": roh, "einheit": einheit})
+
+    out = {}
+    for cat, frage in _KAT_BESCHREIBUNG.items():
+        eintraege = je_kat.get(cat, [])
+        if cat_neutral.get(cat) or (not eintraege and cat not in ("momentum", "catalyst")):
+            out[cat] = {"frage": frage, "treiber": [],
+                        "hinweis": "Keine belastbaren Daten - Wert auf neutral (50) gesetzt."}
+            continue
+        # nach Note sortieren: staerkste Treiber oben und unten
+        eintraege.sort(key=lambda e: e["note"], reverse=True)
+        treiber = []
+        for e in eintraege:
+            roh = e["roh"]
+            if roh is None:
+                wert = "n/a"
+            elif e["einheit"] == "%":
+                wert = f"{roh * 100:.1f} %" if abs(roh) < 3 else f"{roh:.1f} %"
+            elif e["einheit"] == "x":
+                wert = f"{roh:.1f}x"
+            else:
+                wert = f"{roh:.2f}"
+            richtung = ("stark" if e["note"] >= 66 else
+                        "schwach" if e["note"] <= 33 else "mittel")
+            treiber.append({"label": e["label"], "wert": wert,
+                            "note": e["note"], "richtung": richtung})
+        out[cat] = {"frage": frage, "treiber": treiber, "hinweis": ""}
+    return out
 
 
 def _value_trap(fund: dict) -> bool:

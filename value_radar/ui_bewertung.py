@@ -18,7 +18,7 @@ relval und schaetzguete entgegen und rendert sie.
 
 from __future__ import annotations
 
-__version__ = "2026.09.30"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
+__version__ = "2026.10.01"   # Bausteine: sparkline, kennzahl_kacheln, news_karte
 
 import html as _html
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -875,6 +875,131 @@ def earnings_reaktion_karte(erg: dict) -> None:
         f'Reaktion Bestand hat.</div>'
         f'{kopf}{kopfzeile}{"".join(zeilen)}</div>')
 
+
+def score_matrix_erklaert(category_scores: dict, erklaerung: dict) -> None:
+    """Scoring-Matrix mit aufklappbarer Erklaerung je Kategorie.
+
+    Der Balken bleibt wie gehabt; darunter steht in einem Aufklapper, welche
+    Kennzahlen den Wert nach oben oder unten ziehen - mit dem echten Wert,
+    nicht nur der Note.
+    """
+    named = {"valuation": "Bewertung", "quality": "Qualitaet", "growth": "Wachstum",
+             "health": "Bilanz", "momentum": "Momentum", "catalyst": "Katalysator"}
+    for cat, val in category_scores.items():
+        farbe = (C["green"] if val >= 66 else C["red"] if val <= 40 else C["amber"])
+        label = named.get(cat, cat.capitalize())
+        _md(f'<div style="display:flex;align-items:center;gap:10px;'
+            f'margin:8px 0 2px;">'
+            f'<span style="width:96px;font-size:12px;color:{C["muted"]};'
+            f'text-transform:uppercase;letter-spacing:.5px;">{_e(label)}</span>'
+            f'<div style="flex:1;height:14px;background:{C["panel"]};'
+            f'border:1px solid {C["line"]};">'
+            f'<div style="width:{val:.0f}%;height:100%;background:{farbe};'
+            f'opacity:.85;"></div></div>'
+            f'<span class="va-num" style="width:34px;text-align:right;'
+            f'font-weight:700;color:{farbe};">{val:.0f}</span></div>')
+
+        e = (erklaerung or {}).get(cat) or {}
+        treiber = e.get("treiber") or []
+        with st.expander(f"warum {val:.0f}?", expanded=False):
+            if e.get("frage"):
+                st.caption(e["frage"])
+            if e.get("hinweis"):
+                st.caption(e["hinweis"])
+            for t in treiber:
+                tf = (C["green"] if t["richtung"] == "stark" else
+                      C["red"] if t["richtung"] == "schwach" else C["muted"])
+                _md(f'<div style="display:flex;justify-content:space-between;'
+                    f'padding:3px 0;font-size:12.5px;">'
+                    f'<span style="color:{C["fg"]};">{_e(t["label"])}</span>'
+                    f'<span class="va-num" style="color:{tf};">'
+                    f'{_e(t["wert"])} \u00b7 {t["note"]:.0f}/100</span></div>')
+            if not treiber and not e.get("hinweis"):
+                st.caption("Keine Einzelkennzahlen fuer diese Kategorie.")
+
+
+def fairvalue_verlauf(eintraege, waehrung: str = "EUR",
+                      aktueller_kurs: Optional[float] = None) -> None:
+    """Fair-Value-Verlauf statt Kursverlauf.
+
+    Der Kurs interessiert in der Value-Analyse wenig - der FAIR VALUE ueber die
+    Zeit dagegen zeigt, ob das Modell seine Einschaetzung geaendert hat. Die
+    Daten kommen aus dem Verlauf (verlauf.lesen), der bei jedem Lauf und jedem
+    Oeffnen fortgeschrieben wird.
+    """
+    punkte = [(str(e.get("d")), e.get("fair_value")) for e in (eintraege or [])
+              if e.get("fair_value") is not None and e.get("d")]
+    # aeltester zuerst fuer die Zeitachse
+    punkte = sorted(punkte, key=lambda p: p[0])
+
+    if len(punkte) < 2:
+        _md(f'<div class="va-card"><h4>Fair-Value-Verlauf</h4>'
+            f'<div class="note" style="color:{C["muted"]};line-height:1.55;">'
+            f'Noch zu wenige Messpunkte. Der Verlauf entsteht mit jedem '
+            f'naechtlichen Lauf und jedem Oeffnen dieser Analyse \u2013 '
+            f'sobald sich der Fair Value spuerbar aendert, wird ein Punkt '
+            f'gesetzt. Nach einigen Wochen zeigt die Kurve, ob das Modell '
+            f'seine Einschaetzung angehoben oder gesenkt hat.</div>'
+            + (f'<div style="margin-top:10px;font-size:13px;color:{C["fg"]};">'
+               f'Aktueller Fair Value: <b>{_e(geld(punkte[-1][1], waehrung))}</b>'
+               f'</div>' if punkte else "")
+            + '</div>')
+        return
+
+    werte = [w for _d, w in punkte]
+    lo, hi = min(werte), max(werte)
+    spanne = (hi - lo) or (hi * 0.1) or 1.0
+    breite, hoehe = 320, 90
+    n = len(punkte)
+
+    def _x(i):
+        return 4 + i / (n - 1) * (breite - 8)
+
+    def _y(w):
+        return hoehe - 6 - (w - lo) / spanne * (hoehe - 12)
+
+    pfad = " ".join(f"{'M' if i == 0 else 'L'}{_x(i):.1f},{_y(w):.1f}"
+                    for i, (_d, w) in enumerate(punkte))
+    steigt = werte[-1] >= werte[0]
+    linie = C["green"] if steigt else C["red"]
+
+    # Kurslinie zum Vergleich, wenn vorhanden
+    kurs_linie = ""
+    if aktueller_kurs and lo <= aktueller_kurs <= hi:
+        ky = _y(aktueller_kurs)
+        kurs_linie = (f'<line x1="4" y1="{ky:.1f}" x2="{breite-4}" y2="{ky:.1f}" '
+                      f'stroke="{C["muted"]}" stroke-width="1" '
+                      f'stroke-dasharray="3 3"/>')
+
+    punkte_svg = "".join(
+        f'<circle cx="{_x(i):.1f}" cy="{_y(w):.1f}" r="2.5" fill="{linie}"/>'
+        for i, (_d, w) in enumerate(punkte))
+
+    svg = (f'<svg viewBox="0 0 {breite} {hoehe}" width="100%" '
+           f'style="max-width:520px;">{kurs_linie}'
+           f'<path d="{pfad}" fill="none" stroke="{linie}" '
+           f'stroke-width="2"/>{punkte_svg}</svg>')
+
+    delta = werte[-1] - werte[0]
+    dpct = (werte[-1] / werte[0] - 1) * 100 if werte[0] else 0
+    dfarbe = C["green"] if delta >= 0 else C["red"]
+    pfeil = "\u2197" if delta >= 0 else "\u2198"
+
+    _md(f'<div class="va-card"><h4>Fair-Value-Verlauf</h4>'
+        f'<div class="sub">Wie sich die Modell-Einschaetzung entwickelt hat \u2013 '
+        f'nicht der Kurs. {n} Messpunkte seit {_e(punkte[0][0])}.</div>'
+        f'<div style="font-size:22px;font-weight:700;color:{C["fg"]};'
+        f'margin:6px 0 2px;">{_e(geld(werte[-1], waehrung))}</div>'
+        f'<div style="font-size:13px;color:{dfarbe};margin-bottom:10px;">'
+        f'{pfeil} {_e(geld(abs(delta), waehrung))} ({dpct:+.1f} %) seit Beginn'
+        f'</div>{svg}'
+        + (f'<div style="font-size:11px;color:{C["muted"]};margin-top:6px;">'
+           f'Gestrichelt: aktueller Kurs {_e(geld(aktueller_kurs, waehrung))}'
+           f'</div>' if kurs_linie else "")
+        + '</div>')
+
+
+def score_matrix_erklaert_ende(): pass
 
 def verlauf_karte(eintraege, waehrung: str = "EUR") -> None:
     """Was hat sich bei diesem Titel geaendert - und warum?

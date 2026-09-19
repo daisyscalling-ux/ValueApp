@@ -1364,6 +1364,32 @@ def index_universum(mit_dax=True) -> list:
     return liste
 
 
+_RECHTSFORMEN_T = (" plc", " inc.", " inc", " corp.", " corp", " ag", " se",
+                  " nv", " sa", " ltd.", " ltd", " limited", " group",
+                  " holdings", " co.", " company", ",", ".")
+
+
+def _norm_firm(name: str) -> str:
+    """Firmenname auf Vergleichsform - Rechtsformen und Zusaetze weg."""
+    if not name:
+        return ""
+    s = str(name).lower()
+    for w in _RECHTSFORMEN_T:
+        s = s.replace(w, " ")
+    return " ".join(s.split())
+
+
+def _firmenname_cached(ticker: str) -> str:
+    """Firmenname aus dem persistenten Speicher (vom Nachtlauf befuellt).
+    Kein Netzabruf - fehlt der Name, bleibt es beim Ticker."""
+    try:
+        import store as _st
+        nm = _st.get_anreicherung(ticker, "name", max_alter_tage=365)
+        return nm if isinstance(nm, str) else ""
+    except Exception:
+        return ""
+
+
 def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> list:
     """Neueste Earnings Calls je Titel - mit Alter (tage_her).
 
@@ -1383,8 +1409,34 @@ def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> lis
     tickers = tickers or index_universum()
     heute = _dt.date.today()
     grenze = heute - _dt.timedelta(days=tage)
+
+    # BEFUND: Dieselbe Firma stand mehrfach in der Liste - Allianz als ALV.DE,
+    # ALVR.XC und weitere Zweitnotierungen, jede mit demselben Datum. Grund:
+    # Das Universum enthaelt mehrere Ticker je Firma, und hier bekam jeder eine
+    # eigene Zeile. transcript_liste liefert keinen Firmennamen, wohl aber
+    # steckt die Firma in der Ticker-BASIS (ALV.DE -> ALV). Danach wird
+    # entdoppelt: je Basis nur die Heimatnotierung, .XC/.IL fliegen raus.
+    def _basis(tk: str) -> str:
+        return (tk or "").upper().split(".")[0].split("-")[0]
+
+    def _rang(tk: str) -> tuple:
+        tk = (tk or "").upper()
+        suffix = tk.split(".")[1] if "." in tk else ""
+        # Zweitnotierungen ganz nachrangig (liefern oft keinen Namen, andere
+        # Kurseinheit), danach Heimatnotierung ohne Suffix bevorzugen.
+        raus = suffix in ("XC", "IL")
+        return (1 if raus else 0, 1 if suffix else 0, len(tk))
+
+    bester_je_basis = {}
+    for t in tickers[:deckel]:
+        b = _basis(t)
+        if b not in bester_je_basis or _rang(t) < _rang(bester_je_basis[b]):
+            bester_je_basis[b] = t
+    eindeutige = list(bester_je_basis.values())
+
     out = []
-    for i, t in enumerate(tickers[:deckel]):
+    seen_basis = set()
+    for i, t in enumerate(eindeutige):
         if not covers(t):
             continue
         try:
@@ -1399,16 +1451,44 @@ def neue_transkripte(tickers=None, tage=21, deckel=600, fortschritt=None) -> lis
                 tag = _dt.date.fromisoformat(d)
             except Exception:
                 continue
+            b = _basis(t)
+            if b in seen_basis:                  # doppelte Sicherung
+                continue
+            seen_basis.add(b)
+            # Firmenname aus dem persistenten Speicher - er faengt Faelle, die
+            # die Ticker-Basis NICHT faengt: Allianz steht als ALV.DE, ALVR.XC
+            # und ALIZF, drei verschiedene Basen, aber eine Firma.
+            nm = _firmenname_cached(t)
             out.append({"ticker": t, "datum": d,
                         "quartal": z.get("quartal"), "jahr": z.get("jahr"),
+                        "name": nm,
+                        "_firm": _norm_firm(nm) if nm else "",
                         "tage_her": (heute - tag).days,
                         "ist_neu": tag >= grenze})
         if fortschritt and (i + 1) % 50 == 0:
-            fortschritt(i + 1, min(len(tickers), deckel), len(out))
+            fortschritt(i + 1, len(eindeutige), len(out))
+    # Zweite Stufe: gleicher normalisierter Firmenname -> nur der neueste
+    # Eintrag bleibt. Greift nur, wo ein Name vorliegt; ohne Namen bleibt der
+    # Eintrag (die Ticker-Basis-Stufe hat ihn schon einmal gefiltert).
+    nach_firma = {}
+    ohne_namen = []
+    for r in out:
+        f = r.get("_firm")
+        if not f:
+            ohne_namen.append(r)
+            continue
+        if f not in nach_firma or r["datum"] > nach_firma[f]["datum"]:
+            nach_firma[f] = r
+    out = list(nach_firma.values()) + ohne_namen
+    for r in out:
+        r.pop("_firm", None)
     out.sort(key=lambda r: r["datum"], reverse=True)
     _n_neu = sum(1 for r in out if r.get("ist_neu"))
-    print(f"  [Transkripte] {len(out)} Calls erfasst, davon {_n_neu} aktuell "
-          f"(<= {tage} Tage), aus {min(len(tickers), deckel)} Titeln.")
+    import sys as _sys
+    print(f"  [transkripte] {len(out)} Calls (je Firma einer), davon {_n_neu} "
+          f"aktuell (<= {tage} Tage), aus {len(eindeutige)} von "
+          f"{min(len(tickers), deckel)} Tickern nach Entdopplung.",
+          file=_sys.stderr, flush=True)
     return out
 
 

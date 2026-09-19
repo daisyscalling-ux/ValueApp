@@ -4305,13 +4305,22 @@ if nav == "Einzelanalyse":
 
                 with left:
                     st.markdown('<div class="sec-title">SCORING-MATRIX</div>', unsafe_allow_html=True)
-                    rows = ""
-                    for k, val in s["category_scores"].items():
-                        rows += (f'<div class="row"><span class="lbl">{k}</span>'
-                                 f'<div class="track"><div class="fill" '
-                                 f'style="width:{val}%;background:{score_color(val)}"></div></div>'
-                                 f'<span class="val">{val:.0f}</span></div>')
-                    st.markdown(rows, unsafe_allow_html=True)
+                    # Erklaerte Matrix: je Kategorie ein Aufklapper mit den
+                    # Kennzahlen, die den Wert treiben - statt nackter Zahlen.
+                    try:
+                        import scoring as _scng
+                        import ui_bewertung as _uim
+                        _erk = _scng.score_erklaerung(s, f)
+                        _uim.inject_css("dunkel")
+                        _uim.score_matrix_erklaert(s["category_scores"], _erk)
+                    except Exception:
+                        rows = ""
+                        for k, val in s["category_scores"].items():
+                            rows += (f'<div class="row"><span class="lbl">{k}</span>'
+                                     f'<div class="track"><div class="fill" '
+                                     f'style="width:{val}%;background:{score_color(val)}"></div></div>'
+                                     f'<span class="val">{val:.0f}</span></div>')
+                        st.markdown(rows, unsafe_allow_html=True)
                     rg = v["reverse_dcf_implied_growth"]
                     st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
                                f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
@@ -4330,70 +4339,24 @@ if nav == "Einzelanalyse":
                                    "Dieser Titel wird nicht als Vorschlag verwendet.")
 
                 with right:
-                    st.markdown('<div id="vr-chart-anchor"></div>'
-                                '<div class="sec-title">KURSVERLAUF</div>',
+                    # KURSVERLAUF entfernt - in der Value-Analyse wenig
+                    # relevant. Stattdessen der FAIR-VALUE-VERLAUF: wie sich
+                    # die Modell-Einschaetzung ueber die Zeit entwickelt hat.
+                    st.markdown('<div id="vr-chart-anchor"></div>',
                                 unsafe_allow_html=True)
-                    tf = st.radio("Zeitraum", list(TIMEFRAMES.keys()), index=0,
-                                  horizontal=True, label_visibility="collapsed",
-                                  key="ea_tf")
-                    # Beim Zeitraum-Wechsel NICHT ans Seitenende springen, sondern
-                    # sanft zum Chart zuruecksetzen.
-                    if st.session_state.get("_ea_tf_seen") not in (None, tf):
-                        components.html(
-                            "<script>setTimeout(function(){try{"
-                            "var d=window.parent.document;"
-                            "var e=d.getElementById('vr-chart-anchor');"
-                            "if(e){e.scrollIntoView({block:'start',behavior:'auto'});}"
-                            "}catch(e){}},60);</script>", height=0)
-                    st.session_state["_ea_tf_seen"] = tf
-                    period, interval = TIMEFRAMES[tf]
-                    hist = load_history(ticker, period, interval)
-                    if hist is not None and not hist.empty:
-                        datecol = hist.columns[0]
-                        hist = hist.rename(columns={datecol: "Datum"}).reset_index(drop=True)
-                        hist["_x"] = range(len(hist))
-                        base = float(hist["Close"].iloc[0])
-                        last = float(hist["Close"].iloc[-1])
-                        hist["pct"] = (hist["Close"] / base - 1) * 100
-                        hist["Preis"] = hist["Close"] * mult
-                        p_pct = (last / base - 1) * 100
-                        p_abs = (last - base) * mult
-                        cc = "var(--green)" if p_pct >= 0 else "var(--red)"
-                        arrow = "\u2197" if p_pct >= 0 else "\u2198"
-                        sign = "+" if p_abs >= 0 else ""
-                        st.markdown(
-                            f'<div class="px-big">{m(last)}</div>'
-                            f'<div class="px-chg" style="color:{cc}">{arrow} {sign}{sym}'
-                            f'{de(abs(p_abs))} ({de(p_pct,2)} %)  <span class="na">\u00b7 {tf}</span></div>',
-                            unsafe_allow_html=True)
+                    try:
+                        import verlauf as _vl_fv
+                        import ui_bewertung as _uifv
+                        _fv_hist = _vl_fv.lesen(ticker)
+                        _uifv.inject_css("dunkel")
+                        # Fair Values liegen in EUR vor (fx-umgerechnet); der
+                        # Kurs zum Vergleich wird mit demselben Faktor skaliert.
+                        _kurs_eur = (f.get("price") or 0) * mult if f.get("price") else None
+                        _uifv.fairvalue_verlauf(_fv_hist, "EUR",
+                                                aktueller_kurs=_kurs_eur)
+                    except Exception as _e_fv:
+                        st.caption(f"Fair-Value-Verlauf nicht verfuegbar ({_e_fv}).")
 
-                        hexcol = "#3FB950" if p_pct >= 0 else "#F85149"
-                        # Zeitlabels je nach Zeitraum: Intraday -> Uhrzeit,
-                        # laengere -> Datum. Fuer den Hover-Tooltip.
-                        try:
-                            _dt = pd.to_datetime(hist["Datum"])
-                            if tf in ("1T", "1W"):
-                                _labels = [d.strftime("%H:%M, %d.%m.") for d in _dt]
-                            else:
-                                _labels = [d.strftime("%d.%m.%Y") for d in _dt]
-                        except Exception:
-                            _labels = [str(x) for x in hist["Datum"]]
-                        _chart_html = interactive_price_chart(
-                            list(hist["Preis"]), list(hist["pct"]), _labels,
-                            sym=sym, height=260)
-                        if _chart_html:
-                            components.html(_chart_html, height=300)
-                        else:
-                            st.markdown(svg_area_chart(list(hist["pct"]), hexcol,
-                                                       height=250),
-                                        unsafe_allow_html=True)
-                        st.caption(f"Zeitraum {tf} \u00b7 \u00fcber den Chart fahren zeigt "
-                                   f"Kurs und Zeitpunkt \u00b7 gr\u00fcn \u00fcber, rot unter "
-                                   f"dem Startkurs (0-Linie gestrichelt).")
-                    else:
-                        st.markdown(f'<span class="na">Kein Kursverlauf f\u00fcr "{tf}" '
-                                    'verf\u00fcgbar (Intraday/1W nur an Handelstagen).</span>',
-                                    unsafe_allow_html=True)
                     lo, hi, pr = f.get("52w_low"), f.get("52w_high"), f.get("price")
                     if lo and hi and pr and hi > lo:
                         pos = (pr - lo) / (hi - lo) * 100

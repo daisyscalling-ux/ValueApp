@@ -807,6 +807,115 @@ _WEIGHTS = {
 }
 
 
+def kursziel_12m(fund, preset="quality") -> Optional[dict]:
+    """12-Monats-KURSZIEL - was der Kurs erreichen kann, NICHT was die Firma
+    wert ist.
+
+    Bewusst getrennt vom Fair Value. Der Fair Value fragt "was ist das
+    Geschaeft wert?" und mittelt dafuer mehrere Verfahren - bei uneinigen
+    Methoden ein fauler Kompromiss. Das Kursziel fragt etwas anderes und
+    beobachtbares: "Wohin bewegt sich der Kurs, wenn die Gewinne wie erwartet
+    wachsen und der Markt sein normales Vielfache dafuer zahlt?"
+
+    Rechnung (zwei beobachtbare Bausteine, kein Modell):
+        Ziel = erwarteter Gewinn je Aktie  x  normales KGV
+
+      1. erwarteter Gewinn = eps_forward (Analystenkonsens, real messbar)
+      2. normales KGV      = historischer KGV-Median (was der Markt fuer
+                             diese Firma ueblicherweise zahlt)
+
+    Die Rueckkehr zum historischen KGV ist gedeckelt: Bei einem Titel, dessen
+    KGV gerade explodiert oder eingebrochen ist, wuerde die volle Rueckkehr
+    absurde Ziele erzeugen. Deshalb hoechstens eine begrenzte Bewegung des
+    Multiples je Jahr.
+
+    Rueckgabe: {ziel, upside_pct, eps_annahme, kgv_annahme, herleitung, vs_analyst}
+    """
+    kurs = fund.get("price")
+    eps_fwd = fund.get("eps_forward")
+    eps_ttm = fund.get("eps_trailing")
+    if not kurs or kurs <= 0:
+        return None
+
+    # --- Baustein 1: erwarteter Gewinn ---------------------------------
+    # Vorzug: Forward-EPS (Konsens). Fehlt es, aus dem TTM-EPS mit dem
+    # begrenzten Gewinnwachstum hochrechnen - dann als "geschaetzt" markiert.
+    eps_quelle = "Forward-EPS (Konsens)"
+    eps = eps_fwd
+    if not eps or eps <= 0:
+        g = fund.get("earnings_growth")
+        if g is None:
+            g = fund.get("revenue_growth")
+        if eps_ttm and eps_ttm > 0 and g is not None:
+            eps = eps_ttm * (1 + max(min(g, 0.30), -0.20))
+            eps_quelle = "TTM-EPS x Wachstum (kein Konsens vorhanden)"
+        else:
+            return None                    # ohne Gewinnbasis kein Kursziel
+
+    # --- Baustein 2: normales Vielfache --------------------------------
+    kgv_heute = kurs / eps_ttm if (eps_ttm and eps_ttm > 0) else None
+    kgv_hist = fund.get("hist_pe_median")
+
+    if kgv_hist and kgv_hist > 0:
+        if kgv_heute and kgv_heute > 0:
+            # Rueckkehr zum historischen Median, aber gedeckelt: hoechstens
+            # 30 % des Abstands je Jahr. Ein KGV springt nicht in 12 Monaten
+            # von 60 auf 40 zurueck.
+            schritt = (kgv_hist - kgv_heute) * 0.30
+            # zusaetzlich absolut deckeln: max +/- 20 % des heutigen KGV
+            grenze = kgv_heute * 0.20
+            schritt = max(min(schritt, grenze), -grenze)
+            kgv_ziel = kgv_heute + schritt
+            kgv_quelle = (f"{kgv_heute:.0f}x heute \u2192 {kgv_ziel:.0f}x "
+                          f"(Teilrueckkehr zum Schnitt {kgv_hist:.0f}x)")
+        else:
+            kgv_ziel = kgv_hist
+            kgv_quelle = f"historischer Median {kgv_hist:.0f}x"
+    elif kgv_heute and kgv_heute > 0:
+        # Keine Historie: heutiges KGV halten (kein Multiple-Wandel unterstellt)
+        kgv_ziel = kgv_heute
+        kgv_quelle = f"{kgv_heute:.0f}x gehalten (keine KGV-Historie)"
+    else:
+        return None
+
+    ziel = eps * kgv_ziel
+    if not math.isfinite(ziel) or ziel <= 0:
+        return None
+
+    upside = (ziel / kurs - 1) * 100
+    analyst = fund.get("target_mean")
+    vs_analyst = ((ziel / analyst - 1) * 100) if analyst and analyst > 0 else None
+
+    herleitung = [
+        f"Erwarteter Gewinn: {eps:.2f} je Aktie ({eps_quelle})",
+        f"Normales Vielfache: {kgv_quelle}",
+        f"Ziel = {eps:.2f} \u00d7 {kgv_ziel:.0f} = {ziel:.0f}",
+    ]
+
+    # Plausibilitaet: Ein 12-Monats-Ziel ueber +/-50% ist keine belastbare
+    # Prognose mehr, sondern eine Wette. Der Wert bleibt sichtbar (nicht
+    # gedeckelt - das waere Schoenrechnerei), aber ausdruecklich markiert.
+    extrem = abs(upside) > 50
+    if extrem:
+        herleitung.append(
+            f"\u26a0 {upside:+.0f}% in 12 Monaten ist sehr viel - das setzt "
+            f"voraus, dass Gewinnsprung UND Multiple gleichzeitig eintreten. "
+            f"Als Richtung lesen, nicht als Punktziel.")
+
+    return {
+        "ziel": round(ziel, 2),
+        "upside_pct": round(upside, 1),
+        "extrem": extrem,
+        "eps_annahme": round(eps, 2),
+        "kgv_annahme": round(kgv_ziel, 1),
+        "kgv_heute": round(kgv_heute, 1) if kgv_heute else None,
+        "kgv_hist": kgv_hist,
+        "analyst_target": analyst,
+        "vs_analyst": round(vs_analyst, 1) if vs_analyst is not None else None,
+        "herleitung": herleitung,
+    }
+
+
 def eigenes_ziel(fund, fair_value, preset="quality", regime_ampel=None,
                  pe_perzentil=None, analyst_target=None):
     """Eigenes, ausgewogenes 12-Monats-Kursziel - der 'eigene Analyst'.

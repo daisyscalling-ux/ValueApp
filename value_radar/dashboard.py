@@ -4411,44 +4411,56 @@ if nav == "Einzelanalyse":
                     except Exception:
                         _bk, _mr = None, None
                     try:
-                        _ez = valuation.eigenes_ziel(
-                            f, fair_value=v.get("fair_value"), preset=ep,
-                            regime_ampel=(_mr or {}).get("ampel"),
-                            pe_perzentil=(_bk or {}).get("pe_perzentil"),
-                            analyst_target=v.get("analyst_target"))
+                        _ez = valuation.kursziel_12m(f, preset=ep)
                     except Exception:
                         _ez = None
 
                     if _ez and _ez.get("ziel"):
-                        with st.expander("\U0001f3af Eigenes 12-Monats-Ziel "
-                                         "(dein Analyst)", expanded=True):
-                            _zc = st.columns(3)
-                            card(_zc[0], "Eigenes Ziel", m(_ez["ziel"]),
-                                 f"Upside {de(_ez['upside_pct'],1)}%"
-                                 if _ez.get("upside_pct") is not None else "\u2014",
-                                 "var(--green)" if (_ez.get("upside_pct") or 0) > 0
-                                 else "var(--red)")
-                            card(_zc[1], "Analysten-Ziel", m(v.get("analyst_target")),
-                                 (f"wir {'+' if (_ez.get('vs_analyst') or 0) >= 0 else ''}"
-                                  f"{de(_ez['vs_analyst'],1)}% ggu."
-                                  if _ez.get("vs_analyst") is not None else "\u2014"))
-                            card(_zc[2], "Fair Value (heute)", m(v.get("fair_value")),
-                                 "Basis des Ziels", "var(--muted)")
-                            st.caption("So entstand das Ziel (nachvollziehbar):")
+                        # Kachel nach Vorgabe: erst die ANNAHME (welcher Gewinn
+                        # und welches Vielfache), dann der Zielwert, darunter
+                        # das Analystenziel zum Vergleich. Bewusst KEIN Bezug
+                        # zum Fair Value - das Ziel beantwortet eine andere
+                        # Frage (wohin geht der Kurs), nicht (was ist es wert).
+                        _up = _ez.get("upside_pct")
+                        _upfarbe = ("var(--green)" if (_up or 0) > 0
+                                    else "var(--red)")
+                        _annahme = (f"DCF-Annahme: {de(_ez.get('eps_annahme'),2)} "
+                                    f"EPS \u00d7 {de(_ez.get('kgv_annahme'),0)} KGV")
+                        st.markdown(
+                            f'<div class="va-card" style="margin-top:8px;">'
+                            f'<div style="font-size:11px;color:var(--muted);'
+                            f'text-transform:uppercase;letter-spacing:.5px;">'
+                            f'12-Monats-Kursziel</div>'
+                            f'<div style="font-size:11.5px;color:var(--muted);'
+                            f'margin:2px 0 6px;">{esc(_annahme)}</div>'
+                            f'<div style="font-size:26px;font-weight:700;'
+                            f'color:{_upfarbe};">{m(_ez["ziel"])}'
+                            f'<span style="font-size:14px;font-weight:600;"> '
+                            f'({"+" if (_up or 0)>=0 else ""}{de(_up,1)}%)</span></div>'
+                            + (f'<div style="font-size:12.5px;color:var(--muted);'
+                               f'margin-top:6px;border-top:1px solid var(--line);'
+                               f'padding-top:6px;">Analysten-Ziel: '
+                               f'<b style="color:var(--fg);">{m(_ez.get("analyst_target"))}</b>'
+                               + (f' &nbsp;\u00b7&nbsp; wir '
+                                  f'{"+" if (_ez.get("vs_analyst") or 0)>=0 else ""}'
+                                  f'{de(_ez.get("vs_analyst"),0)}%'
+                                  if _ez.get("vs_analyst") is not None else "")
+                               + '</div>' if _ez.get("analyst_target") else "")
+                            + '</div>', unsafe_allow_html=True)
+                        if _ez.get("extrem"):
+                            st.caption("\u26a0 " + str(_ez["upside_pct"]) +
+                                       "% in 12 Monaten ist sehr viel - als "
+                                       "Richtung lesen, nicht als exaktes Ziel.")
+                        with st.expander("Wie das Ziel entsteht", expanded=False):
                             for _s in _ez.get("herleitung", []):
                                 st.markdown(f'<div class="meta">\u2022 {esc(_s)}</div>',
                                             unsafe_allow_html=True)
-                            _vsa = _ez.get("vs_analyst")
-                            if _vsa is not None and abs(_vsa) >= 10:
-                                _ri = "optimistischer" if _vsa > 0 else "vorsichtiger"
-                                st.caption(f"\u2192 Wir sind {abs(_vsa):.0f}% {_ri} als "
-                                           f"der Analystenkonsens \u2013 auf Basis von "
-                                           f"Wachstumsqualitaet, Bewertungshistorie und "
-                                           f"Marktregime, nicht aus Kontakten/News.")
-                            st.caption("Ausgewogener Sch\u00e4tzwert aus vorhandenen "
-                                       "Zahlen \u2013 kein Anlagerat. Auftragsbest\u00e4nde/"
-                                       "Ank\u00fcndigungen flie\u00dfen NICHT ein (nicht in den "
-                                       "strukturierten Daten enthalten).")
+                            st.caption("Das Kursziel misst, WOHIN der Kurs sich "
+                                       "bewegen kann \u2013 nicht, was die Firma wert "
+                                       "ist (das ist der Fair Value oben). Es rechnet: "
+                                       "erwarteter Gewinn \u00d7 das Vielfache, das der "
+                                       "Markt fuer diese Firma ueblicherweise zahlt. "
+                                       "Kein Anlagerat.")
 
                     dv = v.get("model_vs_analyst_pct")
                     if dv is not None and abs(dv) >= 25:

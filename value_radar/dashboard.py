@@ -74,11 +74,16 @@ html,body,[class*="css"]{font-family:'JetBrains Mono',ui-monospace,monospace;}
 @keyframes blink{50%{opacity:0;}}
 .vr-head .status{color:var(--muted);font-size:12px;margin-top:2px;}
 .vr-card{border:1px solid var(--line);background:var(--panel);padding:14px 16px;
-  height:100%;min-height:104px;display:flex;flex-direction:column;justify-content:center;}
-.vr-card .k{color:var(--muted);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;}
-.vr-card .v{font-size:24px;font-weight:700;margin-top:4px;}
-.vr-card .sub{font-size:12px;color:var(--muted);margin-top:2px;min-height:16px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  height:124px;box-sizing:border-box;display:flex;flex-direction:column;
+  justify-content:center;overflow:hidden;}
+.vr-card .k{color:var(--muted);font-size:11px;letter-spacing:1.2px;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;line-height:1.3;}
+.vr-card .v{font-size:24px;font-weight:700;margin-top:4px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.vr-card .sub{font-size:11px;color:var(--muted);margin-top:3px;
+  line-height:1.3;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .row{display:flex;align-items:center;gap:12px;margin:7px 0;}
 .row .lbl{width:130px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;}
 .row .track{flex:1;height:14px;background:#0d1219;border:1px solid var(--line);position:relative;}
@@ -3925,14 +3930,27 @@ if nav == "Einzelanalyse":
                 card(c[3], "Fair Value", m(v["fair_value"]),
                      f"Upside {de(up,2)}%" if up is not None else "\u2014",
                      "var(--green)" if (up or 0) > 0 else "var(--red)")
-                card(c[4], "12M-Target", m(v["target_12m"]),
-                     f"Analysten: {m(v['analyst_target'])}" if v.get("analyst_target") else "\u2014")
-                card(c[5], f"Einstieg (MoS {int(v['margin_of_safety']*100)}%)",
-                     m(v["entry_price"]), "Kaufzone \u2264 Preis", "var(--amber)")
-
-                if q["score"] is not None and q.get("parts"):
-                    st.caption("\u269b\ufe0f Quantum-Aufschl\u00fcsselung: "
-                               + "  \u00b7  ".join(f"{k} {x}" for k, x in q["parts"].items()))
+                # 12M-Ziel aus der neuen kursziel_12m-Funktion (EPS x normales
+                # Vielfache) - NICHT der alte v["target_12m"]. Annahme steht im
+                # sub-Text, Analystenziel darunter.
+                try:
+                    _kz = valuation.kursziel_12m(f, preset=ep)
+                except Exception:
+                    _kz = None
+                if _kz and _kz.get("ziel"):
+                    _kz_sub = (f"{de(_kz['eps_annahme'],2)} EPS \u00d7 "
+                               f"{de(_kz['kgv_annahme'],0)} KGV")
+                    if _kz.get("analyst_target"):
+                        _kz_sub += f" \u00b7 Analyst {m(_kz['analyst_target'])}"
+                    _kz_farbe = ("var(--green)" if (_kz.get("upside_pct") or 0) > 0
+                                 else "var(--red)")
+                    card(c[4], "12M-Ziel", m(_kz["ziel"]), _kz_sub, _kz_farbe)
+                else:
+                    card(c[4], "12M-Ziel", "\u2014", "keine Gewinnbasis")
+                card(c[5], "Einstieg",
+                     m(v["entry_price"]),
+                     f"MoS {int(v['margin_of_safety']*100)}% \u00b7 Kaufzone",
+                     "var(--amber)")
 
                 # Schmidlin-Kennzahlen (kompakt): ungehebelte ROE, dyn.
                 # Verschuldungsgrad, Net-Net, PEG. Ergaenzen den fairen Wert.

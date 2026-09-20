@@ -3870,6 +3870,37 @@ if nav == "Einzelanalyse":
                 q = scoring.quantum_score(s["composite"], v, intel.get("analyst"),
                                           momentum=s["category_scores"].get("momentum"))
 
+                # ============================================================
+                # DREI REITER nach Frage (Vorschlag 1). Die Bloecke darunter
+                # pruefen _ea_zone und rendern nur, wenn ihre Zone gewaehlt
+                # ist. "Gesund?" ist in "Ueberblick" (Finanzlage) und "Wert"
+                # (Scoring-Matrix) enthalten - drei Reiter statt vier, weil
+                # die Bilanzdaten sonst doppelt erscheinen wuerden.
+                # ============================================================
+                _ea_zonen = {"📋  Überblick": "ueberblick",
+                             "💰  Was ist es wert?": "wert",
+                             "📈  Was bewegt sich?": "bewegung"}
+                # Radio als Reiter-Leiste stylen - auf Mobil sonst nicht als Reiter
+                # erkennbar (der Nutzer sah nur Punkte weit unten).
+                st.markdown("""<style>
+                div[role="radiogroup"]{gap:4px;flex-wrap:wrap;}
+                div[role="radiogroup"] label{background:var(--panel,#161b22);
+                  border:1px solid var(--line,#30363d);border-radius:8px;
+                  padding:8px 14px;margin:0;cursor:pointer;flex:1;min-width:96px;
+                  justify-content:center;text-align:center;font-weight:600;}
+                div[role="radiogroup"] label:has(input:checked){
+                  background:var(--amber,#e3a008);border-color:var(--amber,#e3a008);
+                  color:#0d1117;}
+                /* Radio-Kreis ausblenden, Text behalten */
+                div[role="radiogroup"] label > div:first-of-type{display:none;}
+                div[role="radiogroup"] label input{display:none;}
+                </style>""", unsafe_allow_html=True)
+                _ea_wahl = st.radio("Ansicht", list(_ea_zonen),
+                                    horizontal=True, label_visibility="collapsed",
+                                    key=f"ea_zone_sel_{ticker}")
+                _ea_zone = _ea_zonen[_ea_wahl]
+                
+
                 c = st.columns(6)
                 _q_info = info_icon(
                     "Gesamtnote des Tools (0\u2013100): b\u00fcndelt Qualit\u00e4t, "
@@ -4035,21 +4066,6 @@ if nav == "Einzelanalyse":
                         return False
                     return str(ver) < _ERWARTET
 
-                # ============================================================
-                # DREI REITER nach Frage (Vorschlag 1). Die Bloecke darunter
-                # pruefen _ea_zone und rendern nur, wenn ihre Zone gewaehlt
-                # ist. "Gesund?" ist in "Ueberblick" (Finanzlage) und "Wert"
-                # (Scoring-Matrix) enthalten - drei Reiter statt vier, weil
-                # die Bilanzdaten sonst doppelt erscheinen wuerden.
-                # ============================================================
-                _ea_zonen = {"📋  Überblick": "ueberblick",
-                             "💰  Was ist es wert?": "wert",
-                             "📈  Was bewegt sich?": "bewegung"}
-                _ea_wahl = st.radio("Ansicht", list(_ea_zonen),
-                                    horizontal=True, label_visibility="collapsed",
-                                    key=f"ea_zone_sel_{ticker}")
-                _ea_zone = _ea_zonen[_ea_wahl]
-                
                 if _ea_zone == "ueberblick":
                     try:
                         import kennzahl_kacheln as _kk

@@ -3888,10 +3888,14 @@ if nav == "Einzelanalyse":
                 # Radio als Reiter-Leiste stylen - auf Mobil sonst nicht als Reiter
                 # erkennbar (der Nutzer sah nur Punkte weit unten).
                 st.markdown("""<style>
-                div[role="radiogroup"]{gap:4px;flex-wrap:wrap;}
+                div[role="radiogroup"]{gap:8px;flex-wrap:nowrap;}
+                /* flex:1 1 0 = alle Reiter GLEICH breit, unabhaengig vom Text.
+                   Feste Hoehe, damit ein zweizeiliges Label ("Was ist es
+                   wert?") die Kachel nicht hoeher macht als "Ueberblick". */
                 div[role="radiogroup"] label{background:var(--panel,#161b22);
                   border:1px solid var(--line,#30363d);border-radius:8px;
-                  padding:8px 14px;margin:0;cursor:pointer;flex:1;min-width:96px;
+                  padding:0 12px;margin:0;cursor:pointer;flex:1 1 0;min-width:0;
+                  height:52px;display:flex;align-items:center;
                   justify-content:center;text-align:center;font-weight:600;}
                 div[role="radiogroup"] label:has(input:checked){
                   background:var(--amber,#e3a008);border-color:var(--amber,#e3a008);
@@ -3899,6 +3903,14 @@ if nav == "Einzelanalyse":
                 /* Radio-Kreis ausblenden, Text behalten */
                 div[role="radiogroup"] label > div:first-of-type{display:none;}
                 div[role="radiogroup"] label input{display:none;}
+                /* Reiter-Text: klein, zweizeilig erlaubt, zentriert. */
+                div[role="radiogroup"] label > div{font-size:13px;
+                  line-height:1.2;white-space:normal;}
+                @media (max-width:480px){
+                  div[role="radiogroup"]{gap:5px;}
+                  div[role="radiogroup"] label{padding:0 6px;height:48px;}
+                  div[role="radiogroup"] label > div{font-size:11.5px;}
+                }
                 </style>""", unsafe_allow_html=True)
                 _ea_wahl = st.radio("Ansicht", list(_ea_zonen),
                                     horizontal=True, label_visibility="collapsed",
@@ -4020,6 +4032,10 @@ if nav == "Einzelanalyse":
                 else:
                     _ampel.append("\u2705 keine Warnsignale")
                 if _ampel:
+                    # Etwas Luft zwischen der Kachel-Reihe und der Ampel-Zeile,
+                    # sonst kleben sie aneinander.
+                    st.markdown('<div style="height:14px"></div>',
+                                unsafe_allow_html=True)
                     st.markdown("**Auf einen Blick:** &nbsp; "
                                 + " &nbsp;\u00b7&nbsp; ".join(_ampel),
                                 unsafe_allow_html=True)

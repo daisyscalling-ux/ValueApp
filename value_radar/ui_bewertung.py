@@ -478,22 +478,23 @@ def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
         rows = []
         imp = diagnose.get("multiple_impliziert")
         gen = diagnose.get("multiple_genutzt")
+        _heute = diagnose.get("multiple_heute")
+        if _heute:
+            rows.append(
+                f'<div class="va-r"><span class="k">Heute: Kurs je heutigem '
+                f'Cashflow</span>'
+                f'<span class="v va-num">{mult(_heute)}</span></div>')
         if imp is not None and gen:
             gap = imp > gen * 1.25
             rows.append(
-                f'<div class="va-r"><span class="k">Kurs unterstellt am '
-                f'Ende</span>'
+                f'<div class="va-r"><span class="k">In {jahre} J.: Kurs je '
+                f'dann groesserem Cashflow</span>'
                 f'<span class="v va-num" style="color:{C["red"] if gap else C["fg"]};">'
                 f'{mult(imp)}</span></div>')
             rows.append(
-                f'<div class="va-r"><span class="k">Modell rechnet am Ende '
-                f'mit</span>'
+                f'<div class="va-r"><span class="k">In {jahre} J.: was das '
+                f'Modell fuer fair haelt</span>'
                 f'<span class="v va-num">{mult(gen)}</span></div>')
-        if diagnose.get("multiple_heute"):
-            rows.append(
-                f'<div class="va-r"><span class="k">Bewertung heute</span>'
-                f'<span class="v va-num">{mult(diagnose["multiple_heute"])}'
-                f'</span></div>')
         rows.append(
             f'<div class="va-r"><span class="k">Kapitalkosten / unterstelltes '
             f'Wachstum danach</span>'
@@ -501,18 +502,15 @@ def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
             f'{pct(diagnose.get("terminal_growth"))}</span></div>')
 
         deutung = ""
-        if imp is not None and gen and imp > gen * 1.25:
-            _heute_m = (mult(diagnose.get("multiple_heute"))
-                        if diagnose.get("multiple_heute") else "n/a")
+        if imp is not None and gen:
+            _teuer = imp > gen * 1.25
+            _kurz = (f'Der Kurs setzt darauf, dass der Markt am Ende {mult(imp)} '
+                     f'zahlt \u2013 das Modell haelt {mult(gen)} fuer fair.')
+            if _teuer:
+                _kurz += ' Die Luecke ist der Streitpunkt, nicht der Cashflow.'
             deutung = (
-                f'<div class="note" style="margin-top:8px;line-height:1.55;">'
-                f'<b>So liest du die Zahlen:</b> Der Kurs geht davon aus, dass '
-                f'die Firma in {jahre} Jahren noch das {mult(imp)} ihres '
-                f'Cashflows wert ist. Das Modell haelt {mult(gen)} fuer '
-                f'angemessen \u2013 heute steht sie bei {_heute_m}. '
-                f'<span style="color:{C["red"]};">Verlangt der Kurs deutlich '
-                f'mehr als heute ({mult(imp)} gegen {_heute_m}), zahlt man '
-                f'fuer eine Zukunft, die erst noch eintreten muss.</span></div>')
+                f'<div class="note" style="margin-top:8px;line-height:1.5;'
+                f'color:{C["red"] if _teuer else C["muted"]};">{_kurz}</div>')
 
         links = (
             f'<div class="va-lbl">Wie viel Wert liegt jenseits der Prognose?</div>'

@@ -1592,15 +1592,35 @@ def run():
     # NACH dem erschoepften Budget, von Minute 38,3 bis 57,3. Er allein
     # verursachte die Ueberschreitung. Ich hatte KI-Briefing und Auto-Depot
     # gebremst, diesen hier uebersehen.
-    try:
-        if _budget_melden("Hedgefonds"):
-            raise _Budget("Hedgefonds uebersprungen")
-        import hedgefund
-        hedgefund.run_all()
-    except _Budget:
-        pass                               # Meldung steht schon
-    except Exception as e:
-        print(f"[precompute] Hedgefonds-Update uebersprungen: {e}")
+    #
+    # BEFUND aus Lauf vom 19.09.: Hedgefonds lief 15,9 min am Stueck (Minute
+    # 25 -> 41). Das Budget-Gate prueft nur VOR dem Start; bei Minute 25 war
+    # das Budget (38 min) noch nicht erschoepft, also lief er los und ueberzog
+    # danach ohne Zwischenpruefung. Folge: Die Earnings-Suche danach kam nie
+    # dran, die Calls blieben vom 7. August.
+    #
+    # Loesung: Hedgefonds laeuft nur, wenn danach noch das Earnings-Kontingent
+    # (EARNINGS_BUDGET_MIN) UND eine Reserve bleiben. Die Earnings-Calls sind
+    # wichtiger - sie veralten sofort, das Papier-Depot vertraegt einen
+    # ausgelassenen Tag.
+    # Reserve = Earnings-Kontingent + Hedgefonds-Dauer selbst. Gemessen lief
+    # Hedgefonds ~16 min am Stueck; deshalb hier grosszuegig veranschlagt.
+    # Nur wenn NACH Hedgefonds noch das Earnings-Kontingent bleibt, darf er
+    # starten - sonst faellt er ganz aus.
+    _hf_dauer = float(_os_modul.getenv("HEDGEFONDS_DAUER_MIN", "17"))
+    _hf_earnings = float(_os_modul.getenv("EARNINGS_BUDGET_MIN", "8"))
+    _hf_bedarf = _hf_dauer + _hf_earnings
+    if _verbraucht_min() + _hf_bedarf >= ZEITBUDGET_MIN:
+        _melde(f"[budget] Hedgefonds uebersprungen - {_verbraucht_min():.0f} von "
+               f"{ZEITBUDGET_MIN:.0f} min verbraucht, er braucht ~{_hf_dauer:.0f} "
+               f"min und muss {_hf_earnings:.0f} min fuer die Earnings-Suche "
+               f"frei lassen.")
+    else:
+        try:
+            import hedgefund
+            hedgefund.run_all()
+        except Exception as e:
+            print(f"[precompute] Hedgefonds-Update uebersprungen: {e}")
 
     phase("Hedgefonds")
     # 5d) Signal-Tagebuch: heutige Screener-/Radar-Signale festhalten (Vorwaerts-Test).
@@ -1609,9 +1629,15 @@ def run():
     #     messen, ob 'Kaufkandidat' die 'Verwerfen'-Titel wirklich schlaegt.
     print(f"[trackrecord] Signal-Erfassung startet: {len(scr or [])} Screener-, "
           f"{len(rad or [])} Radar-Treffer vorhanden.")
+    # BEFUND vom 19.09.: Die Earnings-Suche steckt in DIESEM try-Block. Das
+    # Signal-Tagebuch-Gate warf _Budget und uebersprang damit den GANZEN Block
+    # - auch die Transkripte, die deshalb vom 7. August blieben.
+    #
+    # Jetzt getrennt: Das Tagebuch selbst wird bei Zeitnot uebersprungen, die
+    # Earnings-Suche hat ihr eigenes Kontingent weiter unten und laeuft
+    # unabhaengig. _tagebuch_aus steuert nur das Tagebuch.
+    _tagebuch_aus = _budget_melden("Signal-Tagebuch")
     try:
-        if _budget_melden("Signal-Tagebuch"):
-            raise _Budget("Signal-Tagebuch uebersprungen")
         import trackrecord
         import scorecard as _sc
         import matrices as _mx
@@ -1661,7 +1687,9 @@ def run():
         _kein_entry = 0          # Diagnose: wie viele ohne Einstiegskurs?
         _kein_daten = 0          # Diagnose: wie viele ganz ohne Analyse?
         _kurs_kaputt = 0         # Diagnose: wie viele mit kaputtem Kurs raus?
-        for r in (scr or [])[:SIGNAL_KANDIDATEN]:
+        # Bei Zeitnot: Erfassung auslassen, aber die Earnings-Suche weiter
+        # unten NICHT - sie ist wichtiger und hat ihr eigenes Kontingent.
+        for r in ((scr or [])[:SIGNAL_KANDIDATEN] if not _tagebuch_aus else []):
             tk = r.get("ticker")
             if not tk:
                 continue

@@ -4035,755 +4035,773 @@ if nav == "Einzelanalyse":
                         return False
                     return str(ver) < _ERWARTET
 
-                try:
-                    import kennzahl_kacheln as _kk
-                    import ui_bewertung as _uib
-
-                    _veraltet = [
-                        n for n, m, f in (
-                            ("ui_bewertung.py", _uib,
-                             ("kennzahl_kacheln", "news_karte", "sparkline")),
-                            ("kennzahl_kacheln.py", _kk, ("rendern",)),
-                        ) if _modul_alt(m, f)]
-                    if _veraltet:
-                        st.warning("Veralteter Dateistand: "
-                                   + ", ".join(_veraltet)
-                                   + f" \u2014 erwartet wird {_ERWARTET}. "
-                                     "Bitte diese Dateien erneut hochladen und "
-                                     "die App neu starten.", icon="\u26a0\ufe0f")
-                        raise RuntimeError("Modulstand veraltet")
-
-                    @st.cache_data(ttl=21600, show_spinner=False)
-                    def _kopf_daten(t):
-                        hist, news, bil, zus = [], [], None, None
-                        try:
-                            import roic as _r
-                            if _r.enabled():
-                                hist = _r.kennzahl_historie(t, 12) or []
-                                if _r.covers(t):
-                                    news = _r.news(t, 12) or []
-                                    # Bilanzkennzahlen fuer den Kachelstreifen.
-                                    # Dieselbe Quelle wie der Aufklapper weiter
-                                    # unten, nur einmal geladen.
-                                    import kennzahlen as _kz2
-                                    _roh2 = _r.ratios_alle(t)
-                                    bil = _kz2.bewerte(_roh2)
-                                    zus = _kz2.zusammenfassung(bil) if bil else None
-                        except Exception:
-                            pass
-                        return {"hist": hist, "news": news,
-                                "bilanz": bil, "bilanz_zus": zus}
-
-                    _kd = _kopf_daten(ticker)
-                    if _kd["hist"] or _kd["news"] or _kd["bilanz"]:
-                        _uib.inject_css("dunkel")
-                        _kk.rendern(_kd["hist"], _kd["news"],
-                                    fx=fx_to_eur(f.get("currency") or "USD") or 1.0,
-                                    waehrung="EUR", nummer_start=1,
-                                    bilanz=_kd["bilanz"],
-                                    bilanz_zusammenfassung=_kd["bilanz_zus"])
-                except RuntimeError:
-                    pass                       # Hinweis steht bereits oben
-                except Exception as _e_kk:
-                    st.caption(f"Kennzahlen-\u00dcbersicht nicht verf\u00fcgbar ({_e_kk}).")
-
-                # =====================================================
-                # DETAILS AUF ABRUF: alle Kennzahl-Erklaerungen in EINEM
-                # zugeklappten Block. Kurz oben, tief auf Wunsch.
-                # =====================================================
-                with st.expander("\U0001f52c Kennzahlen im Detail (Schmidlin, "
-                                 "Dorsey, Piotroski, Altman, Beneish)",
-                                 expanded=False):
-                    # Kacheln: (Label, Wert-Text, Farbe, Hover-Erklaerung)
-                    _kacheln = []
-                    _GR, _GE, _RO = "var(--green)", "var(--amber)", "var(--red)"
-                    if _uroe is not None:
-                        _c = _GR if _uroe >= 0.15 else _GE if _uroe >= 0.08 else _RO
-                        _kacheln.append(("Ungeh. EKR", f"{_uroe*100:.0f}%", _c,
-                            "Ungehebelte Eigenkapitalrendite: wie rentabel die Firma "
-                            "ohne den Effekt der Verschuldung arbeitet. \u00dcber 15% stark."))
-                    if _dvg is not None:
-                        _c = _GR if _dvg < 3 else _GE if _dvg < 5 else _RO
-                        _kacheln.append(("Schuldenfrei in", f"{_dvg:.1f} J", _c,
-                            "Jahre, um mit dem operativen Cashflow alle Schulden zu "
-                            "tilgen. Unter 3 solide, \u00fcber 5 kritisch."))
-                    if _nn is not None:
-                        _unter = v.get("unter_net_net")
-                        _c = _GR if _unter else _GE
-                        _kacheln.append(("Net-Net-Wert", m(_nn), _c,
-                            "Was bei Zerschlagung je Aktie \u00fcbrig bliebe "
-                            "(Umlaufverm\u00f6gen minus alle Schulden). "
-                            + ("Kurs liegt darunter \u2013 seltenes starkes Signal!"
-                               if _unter else "Negativer Wert ist normal.")))
-                    if _peg is not None:
-                        _c = _GR if _peg < 1 else _GE if _peg < 1.3 else _RO
-                        _kacheln.append(("PEG", f"{_peg:.2f}", _c,
-                            "KGV geteilt durch Gewinnwachstum. Unter 1 g\u00fcnstig, um 1 "
-                            "fair, \u00fcber 1,3 teuer. Nur so gut wie die Wachstumsannahme."))
-                    if _fsc and _fsc.get("score") is not None:
-                        _fs = _fsc["score"]
-                        _c = _GR if _fs >= 7 else _GE if _fs >= 4 else _RO
-                        _kacheln.append(("Piotroski F", f"{_fs}/9", _c,
-                            "Fundamentale St\u00e4rke aus neun Kriterien (Profitabilit\u00e4t, "
-                            "Verschuldung, Effizienz). 7\u20139 solide, 0\u20133 schwach."))
-                    if _zsc and _zsc.get("z") is not None:
-                        _z = _zsc["z"]
-                        _c = _GR if _z >= 3 else _GE if _z >= 1.8 else _RO
-                        _kacheln.append(("Altman Z", f"{_z:.1f}", _c,
-                            "Pleiterisiko. \u00dcber 3 sicher, 1,8\u20133 Graubereich, "
-                            "unter 1,8 kritisch."))
-                    if _msc and _msc.get("m") is not None:
-                        _verd = _msc.get("verdaechtig")
-                        _c = _RO if _verd else _GR
-                        _kacheln.append(("Beneish M", f"{_msc['m']:.1f}", _c,
-                            "Wahrscheinlichkeit von Bilanzmanipulation. \u00dcber \u22122,22 "
-                            "verd\u00e4chtig." + (" HIER VERD\u00c4CHTIG!" if _verd else "")))
-                    if _moat:
-                        _c = {"breit": _GR, "schmal": _GE, "keiner": _RO}.get(
-                            _moat["moat_urteil"], _GE)
-                        _mtxt = {"breit": "breit", "schmal": "schmal",
-                                 "keiner": "keiner"}.get(_moat["moat_urteil"], "")
-                        _fcf = _moat.get("fcf_sales_akt")
-                        _nm = _moat.get("net_margin_akt")
-                        _det = []
-                        if _fcf is not None:
-                            _det.append(f"FCF/Umsatz {_fcf:.0f}% (Ziel 5%)")
-                        if _nm is not None:
-                            _det.append(f"Nettomarge {_nm:.0f}% (Ziel 15%)")
-                        _kacheln.append(("Burggraben", _mtxt, _c,
-                            "Dauerhafter Wettbewerbsvorteil (Dorsey), gemessen an "
-                            "anhaltend hoher Profitabilit\u00e4t \u00fcber "
-                            f"{_moat['jahre_geprueft']} Jahre. "
-                            + " \u00b7 ".join(_det)))
-                    # Kacheln im selben Streifen wie die Finanzlage.
-                    #
-                    # Vorher: Raster mit drei Spalten - jede Kachel ein Drittel
-                    # Bildschirmbreite fuer eine zweistellige Zahl, acht
-                    # Kennzahlen brauchten drei Reihen. Jetzt passen dieselben
-                    # acht in eine Reihe, und sie sind untereinander
-                    # vergleichbar statt verteilt.
-                    if _kacheln:
-                        try:
-                            import ui_bewertung as _uib2
-                            _uib2.inject_css("dunkel")
-                            _uib2.pruef_streifen(
-                                _kacheln,
-                                titel="Kennzahlen im Detail",
-                                untertitel="Schmidlin, Dorsey, Piotroski, "
-                                           "Altman, Beneish \u2013 Momentaufnahme "
-                                           "der Bilanz, keine Prognose.",
-                                fusszeile="Mit der Maus \u00fcber eine Kachel "
-                                          "fahren zeigt die Erkl\u00e4rung.")
-                        except Exception:
-                            for _r in range(0, len(_kacheln), 3):
-                                _cols = st.columns(3)
-                                for _col, (_lab, _val, _col_c, _tipp) in zip(
-                                        _cols, _kacheln[_r:_r+3]):
-                                    _col.markdown(
-                                        f'<div title="{_tipp}" style="cursor:help;'
-                                        f'border:1px solid #222;border-radius:8px;'
-                                        f'padding:8px 10px;margin-bottom:6px">'
-                                        f'<div style="font-size:11px;color:#888">'
-                                        f'{_lab}</div>'
-                                        f'<div style="font-size:18px;font-weight:600;'
-                                        f'color:{_col_c}">{_val}</div></div>',
-                                        unsafe_allow_html=True)
-
-                # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
-                # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
-                _vtw = q.get("value_trap_warnung") or []
-                if _vtw:
-                    # Kurz halten: die Einzelgruende stehen ausgeklappt darunter,
-                    # die Erklaerung wiederholt sich sonst auf jeder Seite.
-                    st.warning("**M\u00f6gliche Value-Trap** \u2013 selbst pr\u00fcfen, "
-                               "bevor du kaufst.", icon="\u26a0\ufe0f")
-                    with st.expander(f"Gr\u00fcnde ({len(_vtw)})", expanded=False):
-                        st.markdown("\n".join(f"\u2022 {w}" for w in _vtw))
-
-                st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
                 # ============================================================
-                # BEWERTUNG IM DETAIL — Reverse DCF, Szenarien, Herkunft
-                # Rendering liegt in ui_bewertung.py / bewertung_seite.py,
-                # damit dieser Block hier schlank bleibt. Faellt das Modul aus,
-                # laeuft die Seite unveraendert weiter.
+                # DREI REITER nach Frage (Vorschlag 1). Die Bloecke darunter
+                # pruefen _ea_zone und rendern nur, wenn ihre Zone gewaehlt
+                # ist. "Gesund?" ist in "Ueberblick" (Finanzlage) und "Wert"
+                # (Scoring-Matrix) enthalten - drei Reiter statt vier, weil
+                # die Bilanzdaten sonst doppelt erscheinen wuerden.
                 # ============================================================
-                try:
-                    import bewertung_seite as _bs
-
-                    # Zweite Pruefstelle. Sie verglich ebenfalls auf
-                    # Gleichheit und meldete deshalb weiter "veraltet",
-                    # nachdem die erste schon auf Mindeststand umgestellt war.
-                    # Entscheidend ist, ob die gebrauchte Funktion die noetigen
-                    # Parameter kennt - nicht welche Zahl im Marker steht.
-                    import inspect as _insp
-
-                    _noetig = ("fx", "waehrung", "start_abschnitt")
+                _ea_zonen = {"📋  Überblick": "ueberblick",
+                             "💰  Was ist es wert?": "wert",
+                             "📈  Was bewegt sich?": "bewegung"}
+                _ea_wahl = st.radio("Ansicht", list(_ea_zonen),
+                                    horizontal=True, label_visibility="collapsed",
+                                    key=f"ea_zone_sel_{ticker}")
+                _ea_zone = _ea_zonen[_ea_wahl]
+                
+                if _ea_zone == "ueberblick":
                     try:
-                        _params = _insp.signature(_bs.rendern).parameters
-                        _fehlt = [p for p in _noetig if p not in _params]
-                    except (AttributeError, ValueError, TypeError):
-                        _fehlt = list(_noetig)
-                    if _fehlt:
-                        st.warning(
-                            "Veralteter Dateistand: bewertung_seite.py fehlen "
-                            "die Parameter " + ", ".join(_fehlt)
-                            + ". Bitte die Datei erneut hochladen und die App "
-                              "neu starten.", icon="\u26a0\ufe0f")
-                        raise RuntimeError("Modulstand veraltet")
+                        import kennzahl_kacheln as _kk
+                        import ui_bewertung as _uib
 
-                    @st.cache_data(ttl=21600, show_spinner=False)
-                    def _bewertung_reihen(t):
-                        """Historienreihen fuer Reverse DCF, Perzentil und
-                        Schaetzguete. Alles optional - was fehlt, faellt weg."""
-                        out = {"pe_hist": None, "umsatz": None, "eps": None,
-                               "fcf": None, "ni": None}
-                        try:
-                            import roic as _r
-                            if _r.enabled() and _r.multiples_ok(t):
-                                out["pe_hist"] = _r.pe_history(t, 10)
-                            if _r.enabled():
-                                hist = _r.kennzahl_historie(t, 12) or []
-                                hist = sorted(hist, key=lambda z: str(z.get("jahr") or ""))
-                                out["umsatz"] = [z["revenue"] for z in hist if z.get("revenue")]
-                                out["eps"] = [z["eps"] for z in hist if z.get("eps")]
-                                out["ni"] = [z["net_income"] for z in hist
-                                             if z.get("net_income")]
-                        except Exception:
-                            pass
-                        if not out["umsatz"]:
-                            try:                      # Rueckfall auf yfinance
-                                fin = providers.get_financials(t) or {}
-                                out["umsatz"] = list(reversed(fin.get("revenue") or [])) or None
-                                out["fcf"] = list(reversed(fin.get("fcf") or [])) or None
+                        _veraltet = [
+                            n for n, m, f in (
+                                ("ui_bewertung.py", _uib,
+                                 ("kennzahl_kacheln", "news_karte", "sparkline")),
+                                ("kennzahl_kacheln.py", _kk, ("rendern",)),
+                            ) if _modul_alt(m, f)]
+                        if _veraltet:
+                            st.warning("Veralteter Dateistand: "
+                                       + ", ".join(_veraltet)
+                                       + f" \u2014 erwartet wird {_ERWARTET}. "
+                                         "Bitte diese Dateien erneut hochladen und "
+                                         "die App neu starten.", icon="\u26a0\ufe0f")
+                            raise RuntimeError("Modulstand veraltet")
+
+                        @st.cache_data(ttl=21600, show_spinner=False)
+                        def _kopf_daten(t):
+                            hist, news, bil, zus = [], [], None, None
+                            try:
+                                import roic as _r
+                                if _r.enabled():
+                                    hist = _r.kennzahl_historie(t, 12) or []
+                                    if _r.covers(t):
+                                        news = _r.news(t, 12) or []
+                                        # Bilanzkennzahlen fuer den Kachelstreifen.
+                                        # Dieselbe Quelle wie der Aufklapper weiter
+                                        # unten, nur einmal geladen.
+                                        import kennzahlen as _kz2
+                                        _roh2 = _r.ratios_alle(t)
+                                        bil = _kz2.bewerte(_roh2)
+                                        zus = _kz2.zusammenfassung(bil) if bil else None
                             except Exception:
                                 pass
-                        return out
+                            return {"hist": hist, "news": news,
+                                    "bilanz": bil, "bilanz_zus": zus}
 
-                    _reihen = _bewertung_reihen(ticker)
+                        _kd = _kopf_daten(ticker)
+                        if _kd["hist"] or _kd["news"] or _kd["bilanz"]:
+                            _uib.inject_css("dunkel")
+                            _kk.rendern(_kd["hist"], _kd["news"],
+                                        fx=fx_to_eur(f.get("currency") or "USD") or 1.0,
+                                        waehrung="EUR", nummer_start=1,
+                                        bilanz=_kd["bilanz"],
+                                        bilanz_zusammenfassung=_kd["bilanz_zus"])
+                    except RuntimeError:
+                        pass                       # Hinweis steht bereits oben
+                    except Exception as _e_kk:
+                        st.caption(f"Kennzahlen-\u00dcbersicht nicht verf\u00fcgbar ({_e_kk}).")
 
-                    # Bewusst NICHT in einem Expander: Terminalwert-Anteil,
-                    # Herkunft des Fair Value und das Reverse-DCF-Urteil sind
-                    # genau die Warnungen, die man nicht wegklicken koennen soll.
-                    # Nur das Wachstum-x-Cash-Gitter bleibt eingeklappt.
-                    # In EUR anzeigen: die Kacheln oben rechnen ebenfalls um,
-                    # zwei Waehrungen auf einer Seite sind nicht lesbar.
-                    _fx_eur = fx_to_eur(f.get("currency") or "USD") or 1.0
-                    _bs.rendern(f, v, preset=ep, ticker=ticker, peer_funds=None,
-                                pe_hist=_reihen.get("pe_hist"),
-                                umsatz_reihe=_reihen.get("umsatz"),
-                                eps_reihe=_reihen.get("eps"),
-                                fcf_reihe=_reihen.get("fcf"),
-                                ni_reihe=_reihen.get("ni"),
-                                fx=_fx_eur, waehrung="EUR", theme="dunkel",
-                                start_abschnitt=3,
-                                # Bewusst False: st.fragment kann hier nicht
-                                # greifen, weil der Block in aeusseren
-                                # Containern sitzt (Tabs/Spalten). Das Umschalten
-                                # laedt die Seite neu - dafuer funktioniert es.
-                                ohne_reload=False)
-
-                    # Datenherkunft sichtbar machen: fehlt eine Reihe, fehlt der
-                    # zugehoerige Abschnitt - dann soll man wissen warum.
-                    _quellen = [
-                        ("KGV-Historie", _reihen.get("pe_hist")),
-                        ("Umsatzreihe", _reihen.get("umsatz")),
-                        ("EPS-Reihe", _reihen.get("eps")),
-                        ("Cashflow-Reihe", _reihen.get("fcf")),
-                    ]
-                    _fehlt = [n for n, w in _quellen if not w]
-                    if _fehlt:
-                        st.caption("Nicht verf\u00fcgbar f\u00fcr diesen Titel: "
-                                   + ", ".join(_fehlt)
-                                   + " \u2014 die davon abh\u00e4ngigen Abschnitte "
-                                     "fehlen deshalb.")
-                except RuntimeError:
-                    pass                       # Hinweis steht bereits oben
-                except Exception as _e_bw:
-                    st.caption(f"Bewertungsdetails nicht verf\u00fcgbar ({_e_bw}).")
-
-                left, right = st.columns([1, 1])
-
-                with left:
-                    st.markdown('<div class="sec-title">SCORING-MATRIX</div>', unsafe_allow_html=True)
-                    # Erklaerte Matrix: je Kategorie ein Aufklapper mit den
-                    # Kennzahlen, die den Wert treiben - statt nackter Zahlen.
-                    try:
-                        import scoring as _scng
-                        import ui_bewertung as _uim
-                        _erk = _scng.score_erklaerung(s, f)
-                        _uim.inject_css("dunkel")
-                        _uim.score_matrix_erklaert(s["category_scores"], _erk)
-                    except Exception:
-                        rows = ""
-                        for k, val in s["category_scores"].items():
-                            rows += (f'<div class="row"><span class="lbl">{k}</span>'
-                                     f'<div class="track"><div class="fill" '
-                                     f'style="width:{val}%;background:{score_color(val)}"></div></div>'
-                                     f'<span class="val">{val:.0f}</span></div>')
-                        st.markdown(rows, unsafe_allow_html=True)
-                    rg = v["reverse_dcf_implied_growth"]
-                    st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
-                               f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
-                    conf = v.get("confidence")
-                    cmap = {"hoch": "var(--green)", "mittel": "var(--amber)",
-                            "niedrig": "var(--red)"}.get(conf, "var(--muted)")
-                    st.markdown(f'<div class="meta">Verl\u00e4sslichkeit Fair Value: '
-                                f'<b style="color:{cmap}">{esc(conf or "?")}</b> '
-                                f'({v.get("n_methods", 0)} Methoden)</div>',
-                                unsafe_allow_html=True)
-                    if v.get("fair_value_capped"):
-                        st.caption("\u26a0 Fair Value durch Sicherheits-Deckel begrenzt "
-                                   "(Methoden weit auseinander \u2013 vorsichtig interpretieren).")
-                    if not v.get("reliable"):
-                        st.caption("\u26a0 Niedrige Verl\u00e4sslichkeit \u2013 Upside hier nur grob. "
-                                   "Dieser Titel wird nicht als Vorschlag verwendet.")
-
-                with right:
-                    # KURSVERLAUF entfernt - in der Value-Analyse wenig
-                    # relevant. Stattdessen der FAIR-VALUE-VERLAUF: wie sich
-                    # die Modell-Einschaetzung ueber die Zeit entwickelt hat.
-                    st.markdown('<div id="vr-chart-anchor"></div>',
-                                unsafe_allow_html=True)
-                    try:
-                        import verlauf as _vl_fv
-                        import ui_bewertung as _uifv
-                        _fv_hist = _vl_fv.lesen(ticker)
-                        _uifv.inject_css("dunkel")
-                        # Fair Values liegen in EUR vor (fx-umgerechnet); der
-                        # Kurs zum Vergleich wird mit demselben Faktor skaliert.
-                        _kurs_eur = (f.get("price") or 0) * mult if f.get("price") else None
-                        _uifv.fairvalue_verlauf(_fv_hist, "EUR",
-                                                aktueller_kurs=_kurs_eur)
-                    except Exception as _e_fv:
-                        st.caption(f"Fair-Value-Verlauf nicht verfuegbar ({_e_fv}).")
-
-                    lo, hi, pr = f.get("52w_low"), f.get("52w_high"), f.get("price")
-                    if lo and hi and pr and hi > lo:
-                        pos = (pr - lo) / (hi - lo) * 100
-                        pos = max(0.0, min(pos, 100.0))   # sauber begrenzen
-                        st.caption(f"52W: {m(lo)} \u2500\u2500 [{pos:.2f}%] \u2500\u2500 {m(hi)}")
-
-                # ============================================================
-                # EIGENES 12-MONATS-ZIEL - der 'eigene Analyst'. Verdichtet
-                # Fair Value + Wachstum(qualitaetsgewichtet) + Bewertungs-
-                # historie + Marktregime zu EINEM eigenstaendigen Ziel, das
-                # bewusst vom Analystenkonsens abweichen darf - transparent.
-                # ============================================================
-                # Marktregime + Bewertungskontext werden fuer das eigene Ziel
-                # noch gebraucht (nur als Rechengroesse, nicht mehr angezeigt).
-                try:
-                    import regime as _reg
-                    _bk = _reg.bewertungs_kontext(f, fair_value=v.get("fair_value"))
-                    _mr = _reg.markt_regime()
-                except Exception:
-                    _bk, _mr = None, None
-                try:
-                    _ez = valuation.eigenes_ziel(
-                        f, fair_value=v.get("fair_value"), preset=ep,
-                        regime_ampel=(_mr or {}).get("ampel"),
-                        pe_perzentil=(_bk or {}).get("pe_perzentil"),
-                        analyst_target=v.get("analyst_target"))
-                except Exception:
-                    _ez = None
-
-                if _ez and _ez.get("ziel"):
-                    with st.expander("\U0001f3af Eigenes 12-Monats-Ziel "
-                                     "(dein Analyst)", expanded=True):
-                        _zc = st.columns(3)
-                        card(_zc[0], "Eigenes Ziel", m(_ez["ziel"]),
-                             f"Upside {de(_ez['upside_pct'],1)}%"
-                             if _ez.get("upside_pct") is not None else "\u2014",
-                             "var(--green)" if (_ez.get("upside_pct") or 0) > 0
-                             else "var(--red)")
-                        card(_zc[1], "Analysten-Ziel", m(v.get("analyst_target")),
-                             (f"wir {'+' if (_ez.get('vs_analyst') or 0) >= 0 else ''}"
-                              f"{de(_ez['vs_analyst'],1)}% ggu."
-                              if _ez.get("vs_analyst") is not None else "\u2014"))
-                        card(_zc[2], "Fair Value (heute)", m(v.get("fair_value")),
-                             "Basis des Ziels", "var(--muted)")
-                        st.caption("So entstand das Ziel (nachvollziehbar):")
-                        for _s in _ez.get("herleitung", []):
-                            st.markdown(f'<div class="meta">\u2022 {esc(_s)}</div>',
-                                        unsafe_allow_html=True)
-                        _vsa = _ez.get("vs_analyst")
-                        if _vsa is not None and abs(_vsa) >= 10:
-                            _ri = "optimistischer" if _vsa > 0 else "vorsichtiger"
-                            st.caption(f"\u2192 Wir sind {abs(_vsa):.0f}% {_ri} als "
-                                       f"der Analystenkonsens \u2013 auf Basis von "
-                                       f"Wachstumsqualitaet, Bewertungshistorie und "
-                                       f"Marktregime, nicht aus Kontakten/News.")
-                        st.caption("Ausgewogener Sch\u00e4tzwert aus vorhandenen "
-                                   "Zahlen \u2013 kein Anlagerat. Auftragsbest\u00e4nde/"
-                                   "Ank\u00fcndigungen flie\u00dfen NICHT ein (nicht in den "
-                                   "strukturierten Daten enthalten).")
-
-                dv = v.get("model_vs_analyst_pct")
-                if dv is not None and abs(dv) >= 25:
-                    acnt = v.get("analyst_count")
-                    st.caption(f"\u2696\ufe0f Modell {m(v.get('model_fair_value'))} vs. "
-                               f"Analysten-Konsens {m(v.get('analyst_target'))}"
-                               + (f" ({acnt:.0f} Analysten)" if acnt else "")
-                               + f": Analysten sehen {dv:+.0f}% ggü. Modell \u2013 unser Fair Value "
-                                 "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
-                                 "Wachstumsstory, nicht an heutigen Zahlen.")
-
-                # Hinweis, wenn roic-Werte umgerechnet werden mussten
-                if f.get("_roic_fx"):
-                    st.caption(
-                        f"\u2139\ufe0f Kennzahlen von roic.ai wurden mit dem "
-                        f"Faktor **{f['_roic_fx']}** auf die Handelsw\u00e4hrung "
-                        "umgerechnet (der Anbieter normalisiert internationale "
-                        "Abschl\u00fcsse auf USD). Der Faktor stammt aus dem "
-                        "Verh\u00e4ltnis beider Kursquellen, nicht aus einem "
-                        "Wechselkurs \u2013 kleine Abweichungen sind m\u00f6glich, "
-                        "wenn die Kurse von verschiedenen Handelstagen stammen.")
-
-                # --- NOTBEHELF-WARNUNG: keine Methode lieferte ein Ergebnis
-                if v.get("used_fallback"):
-                    st.error(
-                        "\u26a0\ufe0f **Der Fair Value ist hier KEINE Bewertung.** "
-                        "Keine einzige Methode (KGV, KBV, DCF, EV/EBITDA, "
-                        "Analystenziel) lieferte ein plausibles Ergebnis \u2013 "
-                        "meist wegen fehlender oder widerspr\u00fcchlicher "
-                        "Fundamentaldaten. Angezeigt wird deshalb nur ein "
-                        "Notbehelf: der gegen den Kurs geklammerte Median, "
-                        "also faktisch **der halbe oder doppelte Kurs**. "
-                        "Eine Upside von genau \u221250 % oder +100 % ist das "
-                        "Erkennungszeichen. **Diese Zahl bitte ignorieren.**")
-                    _fehlend = [k for k in ("eps_trailing", "eps_forward",
-                                            "book_value_ps", "revenue", "ebitda",
-                                            "target_mean", "free_cashflow",
-                                            "total_debt", "sector")
-                                if not f.get(k)]
-                    if _fehlend:
-                        st.caption("Fehlende Felder: " + ", ".join(_fehlend))
-
-                # --- Analysten-Streuung (eigenes Feld, kein Eingriff in die Rechnung)
-                try:
-                    _sp = valuation.analyst_spread(f)
-                except Exception:
-                    _sp = None
-                if _sp and _sp.get("spanne_pct") is not None:
-                    _spc = st.columns(3)
-                    card(_spc[0], "Kursziel niedrigstes", m(_sp["low"]),
-                         "pessimistischster Analyst", "var(--red)")
-                    card(_spc[1], "Kursziel h\u00f6chstes", m(_sp["high"]),
-                         "optimistischster Analyst", "var(--green)")
-                    card(_spc[2], "Uneinigkeit",
-                         f"{_sp['spanne_pct']:.0f} %",
-                         (f"Faktor {_sp['faktor']} \u00b7 {_sp['n']} Analysten"
-                          if _sp.get("faktor") and _sp.get("n")
-                          else _sp["einstufung"]),
-                         "var(--green)" if _sp["vertrauen"] >= 0.85 else
-                         ("var(--amber)" if _sp["vertrauen"] >= 0.6 else "var(--red)"))
-                    if _sp["vertrauen"] < 0.85:
-                        st.warning(f"**Analysten {_sp['einstufung']}.** Das "
-                                   f"12M-Target von {m(_sp['mean'])} ist der "
-                                   f"Mittelwert aus {m(_sp['low'])} und "
-                                   f"{m(_sp['high'])}. Es tr\u00e4gt je nach Preset "
-                                   "25 bis 40 % unseres Fair Value \u2013 bei dieser "
-                                   "Streuung sollte man ihm entsprechend wenig "
-                                   "Gewicht beimessen.")
-
-                # --- Aktualit\u00e4t: meldet der Titel demn\u00e4chst?
-                try:
-                    import regime as _rgv
-                    _ne = _rgv.next_earnings(ticker, max_wochen=8)
-                    _fr = valuation.datenaktualitaet(f, _ne["tage"] if _ne else None)
-                    if _fr["stufe"] in ("kritisch", "achtung"):
-                        st.warning(f"\u23f0 **{_fr['hinweis']}.** Fair Value und "
-                                   "Scores beruhen auf den zuletzt gemeldeten "
-                                   "Zahlen.")
-                    elif _fr["stufe"] == "hinweis":
-                        st.caption(f"\u23f0 {_fr['hinweis']}")
-                except Exception:
-                    pass
-
-                # Die Detail-Reiter (Finanzlage, Bewertungshistorie,
-                # Profil & Nachrichten) samt Tabellen wurden entfernt:
-                # Ihre Inhalte stehen bereits oben - Finanzlage als
-                # Kachelstreifen, Kennzahlen im Detail im Aufklapper,
-                # Nachrichten im Kopfbereich.
-
-                # --- Relative Bewertung: historisches Band + Sektor-Vergleich ---
-                try:
-                    import relval
-                    _rv = relval.summarize(f)
-                    _hist, _peer = _rv["hist"], _rv["peer"]
-                    if _hist.get("text") or _peer.get("verdict"):
-                        st.markdown('<div class="sec-title" style="margin-top:12px">'
-                                    'RELATIVE BEWERTUNG</div>', unsafe_allow_html=True)
-                        _rc = st.columns(2)
-                        _vc = {"guenstig": "var(--green)", "teuer": "var(--red)",
-                               "neutral": "var(--muted)", "fair": "var(--muted)"}
-                        with _rc[0]:
-                            if _hist.get("pe_now") and _hist.get("pe_hist_median"):
-                                _pct = _hist.get("pe_pctile")
-                                _pct_txt = str(_pct) if _pct is not None else "\u2014"
-                                card(st, "KGV vs. eigene Historie",
-                                     f"{_hist['pe_now']:.1f}",
-                                     f"Schnitt {_hist['pe_hist_median']:.1f} \u00b7 "
-                                     f"Perzentil {_pct_txt}",
-                                     _vc.get(_hist.get("verdict"), "var(--fg)"))
-                            else:
-                                st.caption("Historisches KGV-Band: keine ausreichende "
-                                           "Historie (FMP-Ratios n\u00f6tig).")
-                        with _rc[1]:
-                            if _peer.get("avg_disc") is not None:
-                                card(st, f"vs. Sektor ({esc(_peer['sector'])})",
-                                     f"{_peer['avg_disc']:+.0f}%",
-                                     "\u00d8 Ab-/Aufschlag auf KGV & EV/EBITDA",
-                                     _vc.get(_peer.get("verdict"), "var(--fg)"))
-                            else:
-                                st.caption("Sektor-Vergleich: keine Multiples verf\u00fcgbar.")
-                        if _hist.get("text"):
-                            st.caption("\U0001f4ca " + _hist["text"])
-                        st.caption("Sektor-Vergleich nutzt typische Sektor-Multiples "
-                                   "(kein echter Einzel-Peer-Vergleich) \u2013 Orientierung, "
-                                   "kein exakter Wert. Kein Anlagerat.")
-                except Exception as _e:
-                    pass
-
-                # Frischer Katalysator / "Kurs vorausgeeilt"-Warnung (aus Kurshistorie).
-                # Defensiv: faellt eine aeltere radar.py ohne catalyst_flag auf, wird der
-                # Block einfach uebersprungen statt die Analyse abzubrechen.
-                _cf = None
-                if hasattr(radar, "catalyst_flag"):
-                    try:
-                        _hc = load_history_full(ticker)
-                        _closes = ([float(x) for x in _hc["Close"].dropna().tolist()]
-                                   if _hc is not None and not _hc.empty else [])
-                        _cf = radar.catalyst_flag(_closes, price=f.get("price"),
-                                                  fair_value=v.get("fair_value"))
-                    except Exception:
-                        _cf = None
-                if _cf and _cf.get("trigger"):
-                    _up = (_cf.get("info") or {}).get("dir") == "up"
-                    _col = "#3FB950" if _up else "#F85149"
-                    st.markdown(
-                        f'<div class="news-box" style="border-color:{_col}">'
-                        f'<b style="color:{_col}">{esc(_cf["trigger"])}</b>'
-                        + (f'<div class="sum">\u26a0\ufe0f {esc(_cf["warning"])}</div>'
-                           if _cf.get("warning") else "")
-                        + '<div class="meta">Frisch erkannter Kurs-Katalysator \u2013 '
-                          'zum Beobachten und Lernen, kein Anlagerat.</div></div>',
-                        unsafe_allow_html=True)
-
-
-                st.markdown('<div class="sec-title" style="margin-top:10px">'
-                            'KATALYSATOR \u00b7 INTEL</div>', unsafe_allow_html=True)
-                ic = st.columns(4)
-                cs = intel.get("catalyst_score", 50)
-                card(ic[0], "Catalyst Score", f"{cs:.2f}", "/ 100", score_color(cs))
-                sent = intel.get("news_sentiment", 0)
-                scl = "var(--green)" if sent > 0.1 else ("var(--red)" if sent < -0.1 else "var(--amber)")
-                card(ic[1], "News-Sentiment", f"{sent:+.2f}", "Schlagwort-Proxy", scl)
-                ins = intel.get("insider") or {}
-                card(ic[2], "Insider-Trades (30 Tage)",
-                     f"{ins.get('recent_buys', 0)} K\u00e4ufe / {ins.get('recent_sells', 0)} Verk\u00e4ufe"
-                     if ins else "n/a",
-                     "gemeldete Insider-Transaktionen")
-                an = intel.get("analyst") or {}
-                card(ic[3], "Analysten",
-                     f"{an.get('buy','\u2014')}B / {an.get('hold','\u2014')}H / {an.get('sell','\u2014')}S"
-                     if an else "n/a")
-
-                # --- TEST: Liefert der Finnhub-Zugang Rating-Changes je Bank? ---
-                # roic bietet KEINE Analysten-Meinungsdaten, daher nur Finnhub.
-                # Dieser Test zeigt, ob dein Zugang die Upgrade/Downgrade-Events
-                # liefert (Plan-abhaengig), bevor wir ein Feature darauf bauen.
-                with st.expander("\U0001f9ea Test: Rating-Changes (Upgrade/Downgrade) "
-                                 "verf\u00fcgbar?"):
-                    st.caption("Pr\u00fcft, ob dein Finnhub-Zugang einzelne "
-                               "Rating-\u00c4nderungen je Bank mit Datum liefert "
-                               "(z.B. \u201eBarclays: Overweight \u2192 Buy\u201c). roic hat "
-                               "solche Meinungsdaten nicht \u2013 daher nur Finnhub.")
-                    if st.button("\U0001f52c Rating-Changes abrufen",
-                                 key=f"rc_test_{ticker}"):
-                        try:
-                            _rc = providers.get_rating_changes(ticker)
-                            if _rc:
-                                st.success(f"\u2705 Finnhub liefert Rating-Changes "
-                                           f"\u2013 {len(_rc)} Eintr\u00e4ge f\u00fcr {ticker}:")
-                                _rows = [{"Datum": r["datum"], "Firma": r["firma"],
-                                          "Von": r["von"] or "\u2014",
-                                          "Auf": r["zu"] or "\u2014",
-                                          "Aktion": r["aktion"]} for r in _rc]
-                                vr_table(_rows)
-                                st.caption("\u2705 Der Zugang funktioniert \u2013 wir "
-                                           "k\u00f6nnen daraus ein festes Feature bauen.")
-                            else:
-                                st.warning("\u274c Keine Rating-Changes zur\u00fcck. "
-                                           "Entweder liefert dein Finnhub-Plan diesen "
-                                           "Endpunkt nicht (oft nur in kostenpflichtigen "
-                                           "Tarifen), oder es gibt f\u00fcr diesen Titel "
-                                           "gerade keine. Probier einen gro\u00dfen "
-                                           "US-Titel wie NVDA oder AAPL.")
-                        except Exception as _e:
-                            st.error(f"Test fehlgeschlagen: {_e}")
-
-                # (Der zweite Nachrichten-Block an dieser Stelle wurde
-                #  entfernt - die Meldungen stehen jetzt oben unter
-                #  'Profil, Nachrichten, Peers & Earnings Call'.)
-                st.markdown("**Peers / Wettbewerber**")
-                peers = intel.get("peers") or []
-                if not peers:
-                    st.markdown('<span class="na">n/a (Finnhub-Key n\u00f6tig)</span>',
-                                unsafe_allow_html=True)
-                else:
-                    with st.spinner("Lade Wettbewerber-Kennzahlen ..."):
-                        prowz = []
-                        for ptk in peers[:6]:
-                            if ptk.upper() == ticker.upper():
-                                continue
-                            pf_ = load_fundamentals_deep(ptk)
-                            if not pf_.get("price"):
-                                continue
-                            pep = valuation.classify_playbook(pf_)
-                            pcomp = scoring.score_stock(pf_, None, preset=pep)["composite"]
-                            pv = valuation.fair_value(pf_, None, pep)
-                            atgt = pv.get("analyst_target")
-                            prowz.append({
-                                "Ticker": pf_["ticker"],
-                                "Name": (pf_.get("name") or "")[:18],
-                                "Score": round(pcomp),
-                                "Kurs": round(pf_["price"], 2),
-                                "Fair Value": pv.get("fair_value"),
-                                "Upside %": display_upside(pv, pf_.get("price")),
-                                "Analysten-Ziel": atgt,
-                                "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
-                                                  if atgt and pf_.get("price") else None)})
-                    if prowz:
-                        vr_rows(prowz, key_prefix="peer",
-                                score_cols=("Score",),
-                                signed_cols=("Upside %", "Ziel-Upside %"))
-                        st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet "
-                                   "den Wettbewerber. Kurse/Werte in Handelsw\u00e4hrung "
-                                   "des jeweiligen Titels.")
-                    else:
-                        st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
-                                    unsafe_allow_html=True)
-
-                # -----------------------------------------------------------
-                # EARNINGS: "Wird der Beat bezahlt?" - Surprise vs Kursreaktion.
-                # Zeigt, ob gute Zahlen vom Markt belohnt werden (oft nicht!).
-                # -----------------------------------------------------------
-                with st.expander("\U0001f4c8 Earnings: Kursreaktion auf Zahlen",
-                                 expanded=False):
-                    with st.spinner("Lade Earnings-Historie \u2026"):
-                        _eh = load_earnings_history(ticker)
-                    if not _eh:
-                        # Ohne Analystenkonsens ist "Wird der Beat bezahlt?"
-                        # nicht zu beantworten - roic liefert die Schaetzungen
-                        # nicht. Die TERMINE liegen aber vor, und Tageskurse
-                        # auch. Damit laesst sich eine verwandte Frage klaeren:
-                        # Haelt die erste Reaktion, oder verpufft sie?
-                        try:
-                            import earnings_reaktion as _er
-                            import ui_bewertung as _uier
-
-                            @st.cache_data(ttl=21600, show_spinner=False)
-                            def _reaktion_laden(t):
-                                return _er.erheben(t)
-
-                            with st.spinner("Kursreaktion um die Termine \u2026"):
-                                _rk = _reaktion_laden(ticker)
-                            _uier.inject_css("dunkel")
-                            _uier.earnings_reaktion_karte(_rk)
-                        except Exception as _e_er:
-                            st.caption(f"Kursreaktion nicht berechenbar "
-                                       f"({_e_er}).")
-                    else:
-                        st.caption("Jeder Punkt ist ein Quartal: **EPS-\u00dcberraschung** "
-                                   "(wie stark der Gewinn die Sch\u00e4tzung schlug) gegen "
-                                   "die **Kursreaktion** am Tag danach. Die Kernfrage: "
-                                   "Wird ein Gewinn-Beat vom Markt \u00fcberhaupt belohnt? "
-                                   "Gr\u00fcn = Kurs stieg, rot = Kurs fiel.")
-                        # Streudiagramm (Altair)
-                        _pts = [e for e in _eh
-                                if e.get("eps_surprise_pct") is not None
-                                and e.get("price_reaction_pct") is not None]
-                        if _pts:
+                    # =====================================================
+                    # DETAILS AUF ABRUF: alle Kennzahl-Erklaerungen in EINEM
+                    # zugeklappten Block. Kurz oben, tief auf Wunsch.
+                    # =====================================================
+                    with st.expander("\U0001f52c Kennzahlen im Detail (Schmidlin, "
+                                     "Dorsey, Piotroski, Altman, Beneish)",
+                                     expanded=False):
+                        # Kacheln: (Label, Wert-Text, Farbe, Hover-Erklaerung)
+                        _kacheln = []
+                        _GR, _GE, _RO = "var(--green)", "var(--amber)", "var(--red)"
+                        if _uroe is not None:
+                            _c = _GR if _uroe >= 0.15 else _GE if _uroe >= 0.08 else _RO
+                            _kacheln.append(("Ungeh. EKR", f"{_uroe*100:.0f}%", _c,
+                                "Ungehebelte Eigenkapitalrendite: wie rentabel die Firma "
+                                "ohne den Effekt der Verschuldung arbeitet. \u00dcber 15% stark."))
+                        if _dvg is not None:
+                            _c = _GR if _dvg < 3 else _GE if _dvg < 5 else _RO
+                            _kacheln.append(("Schuldenfrei in", f"{_dvg:.1f} J", _c,
+                                "Jahre, um mit dem operativen Cashflow alle Schulden zu "
+                                "tilgen. Unter 3 solide, \u00fcber 5 kritisch."))
+                        if _nn is not None:
+                            _unter = v.get("unter_net_net")
+                            _c = _GR if _unter else _GE
+                            _kacheln.append(("Net-Net-Wert", m(_nn), _c,
+                                "Was bei Zerschlagung je Aktie \u00fcbrig bliebe "
+                                "(Umlaufverm\u00f6gen minus alle Schulden). "
+                                + ("Kurs liegt darunter \u2013 seltenes starkes Signal!"
+                                   if _unter else "Negativer Wert ist normal.")))
+                        if _peg is not None:
+                            _c = _GR if _peg < 1 else _GE if _peg < 1.3 else _RO
+                            _kacheln.append(("PEG", f"{_peg:.2f}", _c,
+                                "KGV geteilt durch Gewinnwachstum. Unter 1 g\u00fcnstig, um 1 "
+                                "fair, \u00fcber 1,3 teuer. Nur so gut wie die Wachstumsannahme."))
+                        if _fsc and _fsc.get("score") is not None:
+                            _fs = _fsc["score"]
+                            _c = _GR if _fs >= 7 else _GE if _fs >= 4 else _RO
+                            _kacheln.append(("Piotroski F", f"{_fs}/9", _c,
+                                "Fundamentale St\u00e4rke aus neun Kriterien (Profitabilit\u00e4t, "
+                                "Verschuldung, Effizienz). 7\u20139 solide, 0\u20133 schwach."))
+                        if _zsc and _zsc.get("z") is not None:
+                            _z = _zsc["z"]
+                            _c = _GR if _z >= 3 else _GE if _z >= 1.8 else _RO
+                            _kacheln.append(("Altman Z", f"{_z:.1f}", _c,
+                                "Pleiterisiko. \u00dcber 3 sicher, 1,8\u20133 Graubereich, "
+                                "unter 1,8 kritisch."))
+                        if _msc and _msc.get("m") is not None:
+                            _verd = _msc.get("verdaechtig")
+                            _c = _RO if _verd else _GR
+                            _kacheln.append(("Beneish M", f"{_msc['m']:.1f}", _c,
+                                "Wahrscheinlichkeit von Bilanzmanipulation. \u00dcber \u22122,22 "
+                                "verd\u00e4chtig." + (" HIER VERD\u00c4CHTIG!" if _verd else "")))
+                        if _moat:
+                            _c = {"breit": _GR, "schmal": _GE, "keiner": _RO}.get(
+                                _moat["moat_urteil"], _GE)
+                            _mtxt = {"breit": "breit", "schmal": "schmal",
+                                     "keiner": "keiner"}.get(_moat["moat_urteil"], "")
+                            _fcf = _moat.get("fcf_sales_akt")
+                            _nm = _moat.get("net_margin_akt")
+                            _det = []
+                            if _fcf is not None:
+                                _det.append(f"FCF/Umsatz {_fcf:.0f}% (Ziel 5%)")
+                            if _nm is not None:
+                                _det.append(f"Nettomarge {_nm:.0f}% (Ziel 15%)")
+                            _kacheln.append(("Burggraben", _mtxt, _c,
+                                "Dauerhafter Wettbewerbsvorteil (Dorsey), gemessen an "
+                                "anhaltend hoher Profitabilit\u00e4t \u00fcber "
+                                f"{_moat['jahre_geprueft']} Jahre. "
+                                + " \u00b7 ".join(_det)))
+                        # Kacheln im selben Streifen wie die Finanzlage.
+                        #
+                        # Vorher: Raster mit drei Spalten - jede Kachel ein Drittel
+                        # Bildschirmbreite fuer eine zweistellige Zahl, acht
+                        # Kennzahlen brauchten drei Reihen. Jetzt passen dieselben
+                        # acht in eine Reihe, und sie sind untereinander
+                        # vergleichbar statt verteilt.
+                        if _kacheln:
                             try:
-                                import pandas as _pd
-                                import altair as _alt
-                                _df = _pd.DataFrame([{
-                                    "EPS-\u00dcberraschung %": e["eps_surprise_pct"],
-                                    "Kursreaktion %": e["price_reaction_pct"],
+                                import ui_bewertung as _uib2
+                                _uib2.inject_css("dunkel")
+                                _uib2.pruef_streifen(
+                                    _kacheln,
+                                    titel="Kennzahlen im Detail",
+                                    untertitel="Schmidlin, Dorsey, Piotroski, "
+                                               "Altman, Beneish \u2013 Momentaufnahme "
+                                               "der Bilanz, keine Prognose.",
+                                    fusszeile="Mit der Maus \u00fcber eine Kachel "
+                                              "fahren zeigt die Erkl\u00e4rung.")
+                            except Exception:
+                                for _r in range(0, len(_kacheln), 3):
+                                    _cols = st.columns(3)
+                                    for _col, (_lab, _val, _col_c, _tipp) in zip(
+                                            _cols, _kacheln[_r:_r+3]):
+                                        _col.markdown(
+                                            f'<div title="{_tipp}" style="cursor:help;'
+                                            f'border:1px solid #222;border-radius:8px;'
+                                            f'padding:8px 10px;margin-bottom:6px">'
+                                            f'<div style="font-size:11px;color:#888">'
+                                            f'{_lab}</div>'
+                                            f'<div style="font-size:18px;font-weight:600;'
+                                            f'color:{_col_c}">{_val}</div></div>',
+                                            unsafe_allow_html=True)
+
+                    # Value-Trap-Warnung: der Titel bleibt eine Idee, aber mit
+                    # Vorsicht. "Zu guenstig" ist oft eine Falle, kein Geschenk.
+                    _vtw = q.get("value_trap_warnung") or []
+                    if _vtw:
+                        # Kurz halten: die Einzelgruende stehen ausgeklappt darunter,
+                        # die Erklaerung wiederholt sich sonst auf jeder Seite.
+                        st.warning("**M\u00f6gliche Value-Trap** \u2013 selbst pr\u00fcfen, "
+                                   "bevor du kaufst.", icon="\u26a0\ufe0f")
+                        with st.expander(f"Gr\u00fcnde ({len(_vtw)})", expanded=False):
+                            st.markdown("\n".join(f"\u2022 {w}" for w in _vtw))
+
+                    st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
+                    # ============================================================
+                    # BEWERTUNG IM DETAIL — Reverse DCF, Szenarien, Herkunft
+                    # Rendering liegt in ui_bewertung.py / bewertung_seite.py,
+                    # damit dieser Block hier schlank bleibt. Faellt das Modul aus,
+                    # laeuft die Seite unveraendert weiter.
+                    # ============================================================
+                if _ea_zone == "wert":
+                    try:
+                        import bewertung_seite as _bs
+
+                        # Zweite Pruefstelle. Sie verglich ebenfalls auf
+                        # Gleichheit und meldete deshalb weiter "veraltet",
+                        # nachdem die erste schon auf Mindeststand umgestellt war.
+                        # Entscheidend ist, ob die gebrauchte Funktion die noetigen
+                        # Parameter kennt - nicht welche Zahl im Marker steht.
+                        import inspect as _insp
+
+                        _noetig = ("fx", "waehrung", "start_abschnitt")
+                        try:
+                            _params = _insp.signature(_bs.rendern).parameters
+                            _fehlt = [p for p in _noetig if p not in _params]
+                        except (AttributeError, ValueError, TypeError):
+                            _fehlt = list(_noetig)
+                        if _fehlt:
+                            st.warning(
+                                "Veralteter Dateistand: bewertung_seite.py fehlen "
+                                "die Parameter " + ", ".join(_fehlt)
+                                + ". Bitte die Datei erneut hochladen und die App "
+                                  "neu starten.", icon="\u26a0\ufe0f")
+                            raise RuntimeError("Modulstand veraltet")
+
+                        @st.cache_data(ttl=21600, show_spinner=False)
+                        def _bewertung_reihen(t):
+                            """Historienreihen fuer Reverse DCF, Perzentil und
+                            Schaetzguete. Alles optional - was fehlt, faellt weg."""
+                            out = {"pe_hist": None, "umsatz": None, "eps": None,
+                                   "fcf": None, "ni": None}
+                            try:
+                                import roic as _r
+                                if _r.enabled() and _r.multiples_ok(t):
+                                    out["pe_hist"] = _r.pe_history(t, 10)
+                                if _r.enabled():
+                                    hist = _r.kennzahl_historie(t, 12) or []
+                                    hist = sorted(hist, key=lambda z: str(z.get("jahr") or ""))
+                                    out["umsatz"] = [z["revenue"] for z in hist if z.get("revenue")]
+                                    out["eps"] = [z["eps"] for z in hist if z.get("eps")]
+                                    out["ni"] = [z["net_income"] for z in hist
+                                                 if z.get("net_income")]
+                            except Exception:
+                                pass
+                            if not out["umsatz"]:
+                                try:                      # Rueckfall auf yfinance
+                                    fin = providers.get_financials(t) or {}
+                                    out["umsatz"] = list(reversed(fin.get("revenue") or [])) or None
+                                    out["fcf"] = list(reversed(fin.get("fcf") or [])) or None
+                                except Exception:
+                                    pass
+                            return out
+
+                        _reihen = _bewertung_reihen(ticker)
+
+                        # Bewusst NICHT in einem Expander: Terminalwert-Anteil,
+                        # Herkunft des Fair Value und das Reverse-DCF-Urteil sind
+                        # genau die Warnungen, die man nicht wegklicken koennen soll.
+                        # Nur das Wachstum-x-Cash-Gitter bleibt eingeklappt.
+                        # In EUR anzeigen: die Kacheln oben rechnen ebenfalls um,
+                        # zwei Waehrungen auf einer Seite sind nicht lesbar.
+                        _fx_eur = fx_to_eur(f.get("currency") or "USD") or 1.0
+                        _bs.rendern(f, v, preset=ep, ticker=ticker, peer_funds=None,
+                                    pe_hist=_reihen.get("pe_hist"),
+                                    umsatz_reihe=_reihen.get("umsatz"),
+                                    eps_reihe=_reihen.get("eps"),
+                                    fcf_reihe=_reihen.get("fcf"),
+                                    ni_reihe=_reihen.get("ni"),
+                                    fx=_fx_eur, waehrung="EUR", theme="dunkel",
+                                    start_abschnitt=3,
+                                    # Bewusst False: st.fragment kann hier nicht
+                                    # greifen, weil der Block in aeusseren
+                                    # Containern sitzt (Tabs/Spalten). Das Umschalten
+                                    # laedt die Seite neu - dafuer funktioniert es.
+                                    ohne_reload=False)
+
+                        # Datenherkunft sichtbar machen: fehlt eine Reihe, fehlt der
+                        # zugehoerige Abschnitt - dann soll man wissen warum.
+                        _quellen = [
+                            ("KGV-Historie", _reihen.get("pe_hist")),
+                            ("Umsatzreihe", _reihen.get("umsatz")),
+                            ("EPS-Reihe", _reihen.get("eps")),
+                            ("Cashflow-Reihe", _reihen.get("fcf")),
+                        ]
+                        _fehlt = [n for n, w in _quellen if not w]
+                        if _fehlt:
+                            st.caption("Nicht verf\u00fcgbar f\u00fcr diesen Titel: "
+                                       + ", ".join(_fehlt)
+                                       + " \u2014 die davon abh\u00e4ngigen Abschnitte "
+                                         "fehlen deshalb.")
+                    except RuntimeError:
+                        pass                       # Hinweis steht bereits oben
+                    except Exception as _e_bw:
+                        st.caption(f"Bewertungsdetails nicht verf\u00fcgbar ({_e_bw}).")
+
+                    left, right = st.columns([1, 1])
+
+                    with left:
+                        st.markdown('<div class="sec-title">SCORING-MATRIX</div>', unsafe_allow_html=True)
+                        # Erklaerte Matrix: je Kategorie ein Aufklapper mit den
+                        # Kennzahlen, die den Wert treiben - statt nackter Zahlen.
+                        try:
+                            import scoring as _scng
+                            import ui_bewertung as _uim
+                            _erk = _scng.score_erklaerung(s, f)
+                            _uim.inject_css("dunkel")
+                            _uim.score_matrix_erklaert(s["category_scores"], _erk)
+                        except Exception:
+                            rows = ""
+                            for k, val in s["category_scores"].items():
+                                rows += (f'<div class="row"><span class="lbl">{k}</span>'
+                                         f'<div class="track"><div class="fill" '
+                                         f'style="width:{val}%;background:{score_color(val)}"></div></div>'
+                                         f'<span class="val">{val:.0f}</span></div>')
+                            st.markdown(rows, unsafe_allow_html=True)
+                        rg = v["reverse_dcf_implied_growth"]
+                        st.caption(f"WACC {v['wacc']:.3f}  \u00b7  Reverse-DCF impliziert g = "
+                                   f"{(rg*100):.2f}%" if rg is not None else f"WACC {v['wacc']:.3f}")
+                        conf = v.get("confidence")
+                        cmap = {"hoch": "var(--green)", "mittel": "var(--amber)",
+                                "niedrig": "var(--red)"}.get(conf, "var(--muted)")
+                        st.markdown(f'<div class="meta">Verl\u00e4sslichkeit Fair Value: '
+                                    f'<b style="color:{cmap}">{esc(conf or "?")}</b> '
+                                    f'({v.get("n_methods", 0)} Methoden)</div>',
+                                    unsafe_allow_html=True)
+                        if v.get("fair_value_capped"):
+                            st.caption("\u26a0 Fair Value durch Sicherheits-Deckel begrenzt "
+                                       "(Methoden weit auseinander \u2013 vorsichtig interpretieren).")
+                        if not v.get("reliable"):
+                            st.caption("\u26a0 Niedrige Verl\u00e4sslichkeit \u2013 Upside hier nur grob. "
+                                       "Dieser Titel wird nicht als Vorschlag verwendet.")
+
+                    with right:
+                        # KURSVERLAUF entfernt - in der Value-Analyse wenig
+                        # relevant. Stattdessen der FAIR-VALUE-VERLAUF: wie sich
+                        # die Modell-Einschaetzung ueber die Zeit entwickelt hat.
+                        st.markdown('<div id="vr-chart-anchor"></div>',
+                                    unsafe_allow_html=True)
+                        try:
+                            import verlauf as _vl_fv
+                            import ui_bewertung as _uifv
+                            _fv_hist = _vl_fv.lesen(ticker)
+                            _uifv.inject_css("dunkel")
+                            # Fair Values liegen in EUR vor (fx-umgerechnet); der
+                            # Kurs zum Vergleich wird mit demselben Faktor skaliert.
+                            _kurs_eur = (f.get("price") or 0) * mult if f.get("price") else None
+                            _uifv.fairvalue_verlauf(_fv_hist, "EUR",
+                                                    aktueller_kurs=_kurs_eur)
+                        except Exception as _e_fv:
+                            st.caption(f"Fair-Value-Verlauf nicht verfuegbar ({_e_fv}).")
+
+                        lo, hi, pr = f.get("52w_low"), f.get("52w_high"), f.get("price")
+                        if lo and hi and pr and hi > lo:
+                            pos = (pr - lo) / (hi - lo) * 100
+                            pos = max(0.0, min(pos, 100.0))   # sauber begrenzen
+                            st.caption(f"52W: {m(lo)} \u2500\u2500 [{pos:.2f}%] \u2500\u2500 {m(hi)}")
+
+                    # ============================================================
+                    # EIGENES 12-MONATS-ZIEL - der 'eigene Analyst'. Verdichtet
+                    # Fair Value + Wachstum(qualitaetsgewichtet) + Bewertungs-
+                    # historie + Marktregime zu EINEM eigenstaendigen Ziel, das
+                    # bewusst vom Analystenkonsens abweichen darf - transparent.
+                    # ============================================================
+                    # Marktregime + Bewertungskontext werden fuer das eigene Ziel
+                    # noch gebraucht (nur als Rechengroesse, nicht mehr angezeigt).
+                    try:
+                        import regime as _reg
+                        _bk = _reg.bewertungs_kontext(f, fair_value=v.get("fair_value"))
+                        _mr = _reg.markt_regime()
+                    except Exception:
+                        _bk, _mr = None, None
+                    try:
+                        _ez = valuation.eigenes_ziel(
+                            f, fair_value=v.get("fair_value"), preset=ep,
+                            regime_ampel=(_mr or {}).get("ampel"),
+                            pe_perzentil=(_bk or {}).get("pe_perzentil"),
+                            analyst_target=v.get("analyst_target"))
+                    except Exception:
+                        _ez = None
+
+                    if _ez and _ez.get("ziel"):
+                        with st.expander("\U0001f3af Eigenes 12-Monats-Ziel "
+                                         "(dein Analyst)", expanded=True):
+                            _zc = st.columns(3)
+                            card(_zc[0], "Eigenes Ziel", m(_ez["ziel"]),
+                                 f"Upside {de(_ez['upside_pct'],1)}%"
+                                 if _ez.get("upside_pct") is not None else "\u2014",
+                                 "var(--green)" if (_ez.get("upside_pct") or 0) > 0
+                                 else "var(--red)")
+                            card(_zc[1], "Analysten-Ziel", m(v.get("analyst_target")),
+                                 (f"wir {'+' if (_ez.get('vs_analyst') or 0) >= 0 else ''}"
+                                  f"{de(_ez['vs_analyst'],1)}% ggu."
+                                  if _ez.get("vs_analyst") is not None else "\u2014"))
+                            card(_zc[2], "Fair Value (heute)", m(v.get("fair_value")),
+                                 "Basis des Ziels", "var(--muted)")
+                            st.caption("So entstand das Ziel (nachvollziehbar):")
+                            for _s in _ez.get("herleitung", []):
+                                st.markdown(f'<div class="meta">\u2022 {esc(_s)}</div>',
+                                            unsafe_allow_html=True)
+                            _vsa = _ez.get("vs_analyst")
+                            if _vsa is not None and abs(_vsa) >= 10:
+                                _ri = "optimistischer" if _vsa > 0 else "vorsichtiger"
+                                st.caption(f"\u2192 Wir sind {abs(_vsa):.0f}% {_ri} als "
+                                           f"der Analystenkonsens \u2013 auf Basis von "
+                                           f"Wachstumsqualitaet, Bewertungshistorie und "
+                                           f"Marktregime, nicht aus Kontakten/News.")
+                            st.caption("Ausgewogener Sch\u00e4tzwert aus vorhandenen "
+                                       "Zahlen \u2013 kein Anlagerat. Auftragsbest\u00e4nde/"
+                                       "Ank\u00fcndigungen flie\u00dfen NICHT ein (nicht in den "
+                                       "strukturierten Daten enthalten).")
+
+                    dv = v.get("model_vs_analyst_pct")
+                    if dv is not None and abs(dv) >= 25:
+                        acnt = v.get("analyst_count")
+                        st.caption(f"\u2696\ufe0f Modell {m(v.get('model_fair_value'))} vs. "
+                                   f"Analysten-Konsens {m(v.get('analyst_target'))}"
+                                   + (f" ({acnt:.0f} Analysten)" if acnt else "")
+                                   + f": Analysten sehen {dv:+.0f}% ggü. Modell \u2013 unser Fair Value "
+                                     "gewichtet beide. Gro\u00dfe Divergenz = Bewertung h\u00e4ngt an der "
+                                     "Wachstumsstory, nicht an heutigen Zahlen.")
+
+                    # Hinweis, wenn roic-Werte umgerechnet werden mussten
+                    if f.get("_roic_fx"):
+                        st.caption(
+                            f"\u2139\ufe0f Kennzahlen von roic.ai wurden mit dem "
+                            f"Faktor **{f['_roic_fx']}** auf die Handelsw\u00e4hrung "
+                            "umgerechnet (der Anbieter normalisiert internationale "
+                            "Abschl\u00fcsse auf USD). Der Faktor stammt aus dem "
+                            "Verh\u00e4ltnis beider Kursquellen, nicht aus einem "
+                            "Wechselkurs \u2013 kleine Abweichungen sind m\u00f6glich, "
+                            "wenn die Kurse von verschiedenen Handelstagen stammen.")
+
+                    # --- NOTBEHELF-WARNUNG: keine Methode lieferte ein Ergebnis
+                    if v.get("used_fallback"):
+                        st.error(
+                            "\u26a0\ufe0f **Der Fair Value ist hier KEINE Bewertung.** "
+                            "Keine einzige Methode (KGV, KBV, DCF, EV/EBITDA, "
+                            "Analystenziel) lieferte ein plausibles Ergebnis \u2013 "
+                            "meist wegen fehlender oder widerspr\u00fcchlicher "
+                            "Fundamentaldaten. Angezeigt wird deshalb nur ein "
+                            "Notbehelf: der gegen den Kurs geklammerte Median, "
+                            "also faktisch **der halbe oder doppelte Kurs**. "
+                            "Eine Upside von genau \u221250 % oder +100 % ist das "
+                            "Erkennungszeichen. **Diese Zahl bitte ignorieren.**")
+                        _fehlend = [k for k in ("eps_trailing", "eps_forward",
+                                                "book_value_ps", "revenue", "ebitda",
+                                                "target_mean", "free_cashflow",
+                                                "total_debt", "sector")
+                                    if not f.get(k)]
+                        if _fehlend:
+                            st.caption("Fehlende Felder: " + ", ".join(_fehlend))
+
+                    # --- Analysten-Streuung (eigenes Feld, kein Eingriff in die Rechnung)
+                    try:
+                        _sp = valuation.analyst_spread(f)
+                    except Exception:
+                        _sp = None
+                    if _sp and _sp.get("spanne_pct") is not None:
+                        _spc = st.columns(3)
+                        card(_spc[0], "Kursziel niedrigstes", m(_sp["low"]),
+                             "pessimistischster Analyst", "var(--red)")
+                        card(_spc[1], "Kursziel h\u00f6chstes", m(_sp["high"]),
+                             "optimistischster Analyst", "var(--green)")
+                        card(_spc[2], "Uneinigkeit",
+                             f"{_sp['spanne_pct']:.0f} %",
+                             (f"Faktor {_sp['faktor']} \u00b7 {_sp['n']} Analysten"
+                              if _sp.get("faktor") and _sp.get("n")
+                              else _sp["einstufung"]),
+                             "var(--green)" if _sp["vertrauen"] >= 0.85 else
+                             ("var(--amber)" if _sp["vertrauen"] >= 0.6 else "var(--red)"))
+                        if _sp["vertrauen"] < 0.85:
+                            st.warning(f"**Analysten {_sp['einstufung']}.** Das "
+                                       f"12M-Target von {m(_sp['mean'])} ist der "
+                                       f"Mittelwert aus {m(_sp['low'])} und "
+                                       f"{m(_sp['high'])}. Es tr\u00e4gt je nach Preset "
+                                       "25 bis 40 % unseres Fair Value \u2013 bei dieser "
+                                       "Streuung sollte man ihm entsprechend wenig "
+                                       "Gewicht beimessen.")
+
+                    # --- Aktualit\u00e4t: meldet der Titel demn\u00e4chst?
+                    try:
+                        import regime as _rgv
+                        _ne = _rgv.next_earnings(ticker, max_wochen=8)
+                        _fr = valuation.datenaktualitaet(f, _ne["tage"] if _ne else None)
+                        if _fr["stufe"] in ("kritisch", "achtung"):
+                            st.warning(f"\u23f0 **{_fr['hinweis']}.** Fair Value und "
+                                       "Scores beruhen auf den zuletzt gemeldeten "
+                                       "Zahlen.")
+                        elif _fr["stufe"] == "hinweis":
+                            st.caption(f"\u23f0 {_fr['hinweis']}")
+                    except Exception:
+                        pass
+
+                    # Die Detail-Reiter (Finanzlage, Bewertungshistorie,
+                    # Profil & Nachrichten) samt Tabellen wurden entfernt:
+                    # Ihre Inhalte stehen bereits oben - Finanzlage als
+                    # Kachelstreifen, Kennzahlen im Detail im Aufklapper,
+                    # Nachrichten im Kopfbereich.
+
+                    # --- Relative Bewertung: historisches Band + Sektor-Vergleich ---
+                if _ea_zone == "bewegung":
+                    try:
+                        import relval
+                        _rv = relval.summarize(f)
+                        _hist, _peer = _rv["hist"], _rv["peer"]
+                        if _hist.get("text") or _peer.get("verdict"):
+                            st.markdown('<div class="sec-title" style="margin-top:12px">'
+                                        'RELATIVE BEWERTUNG</div>', unsafe_allow_html=True)
+                            _rc = st.columns(2)
+                            _vc = {"guenstig": "var(--green)", "teuer": "var(--red)",
+                                   "neutral": "var(--muted)", "fair": "var(--muted)"}
+                            with _rc[0]:
+                                if _hist.get("pe_now") and _hist.get("pe_hist_median"):
+                                    _pct = _hist.get("pe_pctile")
+                                    _pct_txt = str(_pct) if _pct is not None else "\u2014"
+                                    card(st, "KGV vs. eigene Historie",
+                                         f"{_hist['pe_now']:.1f}",
+                                         f"Schnitt {_hist['pe_hist_median']:.1f} \u00b7 "
+                                         f"Perzentil {_pct_txt}",
+                                         _vc.get(_hist.get("verdict"), "var(--fg)"))
+                                else:
+                                    st.caption("Historisches KGV-Band: keine ausreichende "
+                                               "Historie (FMP-Ratios n\u00f6tig).")
+                            with _rc[1]:
+                                if _peer.get("avg_disc") is not None:
+                                    card(st, f"vs. Sektor ({esc(_peer['sector'])})",
+                                         f"{_peer['avg_disc']:+.0f}%",
+                                         "\u00d8 Ab-/Aufschlag auf KGV & EV/EBITDA",
+                                         _vc.get(_peer.get("verdict"), "var(--fg)"))
+                                else:
+                                    st.caption("Sektor-Vergleich: keine Multiples verf\u00fcgbar.")
+                            if _hist.get("text"):
+                                st.caption("\U0001f4ca " + _hist["text"])
+                            st.caption("Sektor-Vergleich nutzt typische Sektor-Multiples "
+                                       "(kein echter Einzel-Peer-Vergleich) \u2013 Orientierung, "
+                                       "kein exakter Wert. Kein Anlagerat.")
+                    except Exception as _e:
+                        pass
+
+                    # Frischer Katalysator / "Kurs vorausgeeilt"-Warnung (aus Kurshistorie).
+                    # Defensiv: faellt eine aeltere radar.py ohne catalyst_flag auf, wird der
+                    # Block einfach uebersprungen statt die Analyse abzubrechen.
+                    _cf = None
+                    if hasattr(radar, "catalyst_flag"):
+                        try:
+                            _hc = load_history_full(ticker)
+                            _closes = ([float(x) for x in _hc["Close"].dropna().tolist()]
+                                       if _hc is not None and not _hc.empty else [])
+                            _cf = radar.catalyst_flag(_closes, price=f.get("price"),
+                                                      fair_value=v.get("fair_value"))
+                        except Exception:
+                            _cf = None
+                    if _cf and _cf.get("trigger"):
+                        _up = (_cf.get("info") or {}).get("dir") == "up"
+                        _col = "#3FB950" if _up else "#F85149"
+                        st.markdown(
+                            f'<div class="news-box" style="border-color:{_col}">'
+                            f'<b style="color:{_col}">{esc(_cf["trigger"])}</b>'
+                            + (f'<div class="sum">\u26a0\ufe0f {esc(_cf["warning"])}</div>'
+                               if _cf.get("warning") else "")
+                            + '<div class="meta">Frisch erkannter Kurs-Katalysator \u2013 '
+                              'zum Beobachten und Lernen, kein Anlagerat.</div></div>',
+                            unsafe_allow_html=True)
+
+
+                    st.markdown('<div class="sec-title" style="margin-top:10px">'
+                                'KATALYSATOR \u00b7 INTEL</div>', unsafe_allow_html=True)
+                    ic = st.columns(4)
+                    cs = intel.get("catalyst_score", 50)
+                    card(ic[0], "Catalyst Score", f"{cs:.2f}", "/ 100", score_color(cs))
+                    sent = intel.get("news_sentiment", 0)
+                    scl = "var(--green)" if sent > 0.1 else ("var(--red)" if sent < -0.1 else "var(--amber)")
+                    card(ic[1], "News-Sentiment", f"{sent:+.2f}", "Schlagwort-Proxy", scl)
+                    ins = intel.get("insider") or {}
+                    card(ic[2], "Insider-Trades (30 Tage)",
+                         f"{ins.get('recent_buys', 0)} K\u00e4ufe / {ins.get('recent_sells', 0)} Verk\u00e4ufe"
+                         if ins else "n/a",
+                         "gemeldete Insider-Transaktionen")
+                    an = intel.get("analyst") or {}
+                    card(ic[3], "Analysten",
+                         f"{an.get('buy','\u2014')}B / {an.get('hold','\u2014')}H / {an.get('sell','\u2014')}S"
+                         if an else "n/a")
+
+                    # --- TEST: Liefert der Finnhub-Zugang Rating-Changes je Bank? ---
+                    # roic bietet KEINE Analysten-Meinungsdaten, daher nur Finnhub.
+                    # Dieser Test zeigt, ob dein Zugang die Upgrade/Downgrade-Events
+                    # liefert (Plan-abhaengig), bevor wir ein Feature darauf bauen.
+                    with st.expander("\U0001f9ea Test: Rating-Changes (Upgrade/Downgrade) "
+                                     "verf\u00fcgbar?"):
+                        st.caption("Pr\u00fcft, ob dein Finnhub-Zugang einzelne "
+                                   "Rating-\u00c4nderungen je Bank mit Datum liefert "
+                                   "(z.B. \u201eBarclays: Overweight \u2192 Buy\u201c). roic hat "
+                                   "solche Meinungsdaten nicht \u2013 daher nur Finnhub.")
+                        if st.button("\U0001f52c Rating-Changes abrufen",
+                                     key=f"rc_test_{ticker}"):
+                            try:
+                                _rc = providers.get_rating_changes(ticker)
+                                if _rc:
+                                    st.success(f"\u2705 Finnhub liefert Rating-Changes "
+                                               f"\u2013 {len(_rc)} Eintr\u00e4ge f\u00fcr {ticker}:")
+                                    _rows = [{"Datum": r["datum"], "Firma": r["firma"],
+                                              "Von": r["von"] or "\u2014",
+                                              "Auf": r["zu"] or "\u2014",
+                                              "Aktion": r["aktion"]} for r in _rc]
+                                    vr_table(_rows)
+                                    st.caption("\u2705 Der Zugang funktioniert \u2013 wir "
+                                               "k\u00f6nnen daraus ein festes Feature bauen.")
+                                else:
+                                    st.warning("\u274c Keine Rating-Changes zur\u00fcck. "
+                                               "Entweder liefert dein Finnhub-Plan diesen "
+                                               "Endpunkt nicht (oft nur in kostenpflichtigen "
+                                               "Tarifen), oder es gibt f\u00fcr diesen Titel "
+                                               "gerade keine. Probier einen gro\u00dfen "
+                                               "US-Titel wie NVDA oder AAPL.")
+                            except Exception as _e:
+                                st.error(f"Test fehlgeschlagen: {_e}")
+
+                    # (Der zweite Nachrichten-Block an dieser Stelle wurde
+                    #  entfernt - die Meldungen stehen jetzt oben unter
+                    #  'Profil, Nachrichten, Peers & Earnings Call'.)
+                    st.markdown("**Peers / Wettbewerber**")
+                    peers = intel.get("peers") or []
+                    if not peers:
+                        st.markdown('<span class="na">n/a (Finnhub-Key n\u00f6tig)</span>',
+                                    unsafe_allow_html=True)
+                    else:
+                        with st.spinner("Lade Wettbewerber-Kennzahlen ..."):
+                            prowz = []
+                            for ptk in peers[:6]:
+                                if ptk.upper() == ticker.upper():
+                                    continue
+                                pf_ = load_fundamentals_deep(ptk)
+                                if not pf_.get("price"):
+                                    continue
+                                pep = valuation.classify_playbook(pf_)
+                                pcomp = scoring.score_stock(pf_, None, preset=pep)["composite"]
+                                pv = valuation.fair_value(pf_, None, pep)
+                                atgt = pv.get("analyst_target")
+                                prowz.append({
+                                    "Ticker": pf_["ticker"],
+                                    "Name": (pf_.get("name") or "")[:18],
+                                    "Score": round(pcomp),
+                                    "Kurs": round(pf_["price"], 2),
+                                    "Fair Value": pv.get("fair_value"),
+                                    "Upside %": display_upside(pv, pf_.get("price")),
+                                    "Analysten-Ziel": atgt,
+                                    "Ziel-Upside %": (round((atgt / pf_["price"] - 1) * 100, 2)
+                                                      if atgt and pf_.get("price") else None)})
+                        if prowz:
+                            vr_rows(prowz, key_prefix="peer",
+                                    score_cols=("Score",),
+                                    signed_cols=("Upside %", "Ziel-Upside %"))
+                            st.caption("\U0001f449 Orangenen Ticker anklicken \u2192 \u00f6ffnet "
+                                       "den Wettbewerber. Kurse/Werte in Handelsw\u00e4hrung "
+                                       "des jeweiligen Titels.")
+                        else:
+                            st.markdown("".join(f'<span class="pill">{p}</span>' for p in peers),
+                                        unsafe_allow_html=True)
+
+                    # -----------------------------------------------------------
+                    # EARNINGS: "Wird der Beat bezahlt?" - Surprise vs Kursreaktion.
+                    # Zeigt, ob gute Zahlen vom Markt belohnt werden (oft nicht!).
+                    # -----------------------------------------------------------
+                    with st.expander("\U0001f4c8 Earnings: Kursreaktion auf Zahlen",
+                                     expanded=False):
+                        with st.spinner("Lade Earnings-Historie \u2026"):
+                            _eh = load_earnings_history(ticker)
+                        if not _eh:
+                            # Ohne Analystenkonsens ist "Wird der Beat bezahlt?"
+                            # nicht zu beantworten - roic liefert die Schaetzungen
+                            # nicht. Die TERMINE liegen aber vor, und Tageskurse
+                            # auch. Damit laesst sich eine verwandte Frage klaeren:
+                            # Haelt die erste Reaktion, oder verpufft sie?
+                            try:
+                                import earnings_reaktion as _er
+                                import ui_bewertung as _uier
+
+                                @st.cache_data(ttl=21600, show_spinner=False)
+                                def _reaktion_laden(t):
+                                    return _er.erheben(t)
+
+                                with st.spinner("Kursreaktion um die Termine \u2026"):
+                                    _rk = _reaktion_laden(ticker)
+                                _uier.inject_css("dunkel")
+                                _uier.earnings_reaktion_karte(_rk)
+                            except Exception as _e_er:
+                                st.caption(f"Kursreaktion nicht berechenbar "
+                                           f"({_e_er}).")
+                        else:
+                            st.caption("Jeder Punkt ist ein Quartal: **EPS-\u00dcberraschung** "
+                                       "(wie stark der Gewinn die Sch\u00e4tzung schlug) gegen "
+                                       "die **Kursreaktion** am Tag danach. Die Kernfrage: "
+                                       "Wird ein Gewinn-Beat vom Markt \u00fcberhaupt belohnt? "
+                                       "Gr\u00fcn = Kurs stieg, rot = Kurs fiel.")
+                            # Streudiagramm (Altair)
+                            _pts = [e for e in _eh
+                                    if e.get("eps_surprise_pct") is not None
+                                    and e.get("price_reaction_pct") is not None]
+                            if _pts:
+                                try:
+                                    import pandas as _pd
+                                    import altair as _alt
+                                    _df = _pd.DataFrame([{
+                                        "EPS-\u00dcberraschung %": e["eps_surprise_pct"],
+                                        "Kursreaktion %": e["price_reaction_pct"],
+                                        "Quartal": e["datum"],
+                                        "Reaktion": ("positiv" if e["price_reaction_pct"] >= 0
+                                                     else "negativ"),
+                                    } for e in _pts])
+                                    _chart = _alt.Chart(_df).mark_circle(
+                                        size=120, opacity=0.75).encode(
+                                        x=_alt.X("EPS-\u00dcberraschung %:Q"),
+                                        y=_alt.Y("Kursreaktion %:Q"),
+                                        color=_alt.Color("Reaktion:N", scale=_alt.Scale(
+                                            domain=["positiv", "negativ"],
+                                            range=["#3FB950", "#F85149"]), legend=None),
+                                        tooltip=["Quartal", "EPS-\u00dcberraschung %",
+                                                 "Kursreaktion %"],
+                                    ).properties(height=280)
+                                    st.altair_chart(_chart, use_container_width=True)
+                                    # Kernaussage: korreliert Beat mit Kursreaktion?
+                                    _npos = sum(1 for e in _pts if e["price_reaction_pct"] >= 0)
+                                    _quote = round(_npos / len(_pts) * 100)
+                                    st.markdown(f"**Bei {_quote}% der Quartale stieg der "
+                                                f"Kurs** nach den Zahlen ({_npos} von "
+                                                f"{len(_pts)}). "
+                                                + ("Der Markt belohnt die Zahlen "
+                                                   "\u00fcberwiegend." if _quote >= 60 else
+                                                   "Gute Zahlen f\u00fchren hier oft NICHT zu "
+                                                   "steigenden Kursen \u2013 ein wichtiges "
+                                                   "Warnsignal gegen die Annahme \u201eBeat "
+                                                   "= Kurs rauf\u201c." if _quote <= 40 else
+                                                   "Gemischtes Bild \u2013 der Beat allein "
+                                                   "sagt wenig \u00fcber die Kursreaktion."))
+                                except Exception as _ce:
+                                    st.caption(f"Diagramm nicht darstellbar ({_ce}).")
+                            # Tabelle
+                            _tab = []
+                            for e in _eh:
+                                _tab.append({
                                     "Quartal": e["datum"],
-                                    "Reaktion": ("positiv" if e["price_reaction_pct"] >= 0
-                                                 else "negativ"),
-                                } for e in _pts])
-                                _chart = _alt.Chart(_df).mark_circle(
-                                    size=120, opacity=0.75).encode(
-                                    x=_alt.X("EPS-\u00dcberraschung %:Q"),
-                                    y=_alt.Y("Kursreaktion %:Q"),
-                                    color=_alt.Color("Reaktion:N", scale=_alt.Scale(
-                                        domain=["positiv", "negativ"],
-                                        range=["#3FB950", "#F85149"]), legend=None),
-                                    tooltip=["Quartal", "EPS-\u00dcberraschung %",
-                                             "Kursreaktion %"],
-                                ).properties(height=280)
-                                st.altair_chart(_chart, use_container_width=True)
-                                # Kernaussage: korreliert Beat mit Kursreaktion?
-                                _npos = sum(1 for e in _pts if e["price_reaction_pct"] >= 0)
-                                _quote = round(_npos / len(_pts) * 100)
-                                st.markdown(f"**Bei {_quote}% der Quartale stieg der "
-                                            f"Kurs** nach den Zahlen ({_npos} von "
-                                            f"{len(_pts)}). "
-                                            + ("Der Markt belohnt die Zahlen "
-                                               "\u00fcberwiegend." if _quote >= 60 else
-                                               "Gute Zahlen f\u00fchren hier oft NICHT zu "
-                                               "steigenden Kursen \u2013 ein wichtiges "
-                                               "Warnsignal gegen die Annahme \u201eBeat "
-                                               "= Kurs rauf\u201c." if _quote <= 40 else
-                                               "Gemischtes Bild \u2013 der Beat allein "
-                                               "sagt wenig \u00fcber die Kursreaktion."))
-                            except Exception as _ce:
-                                st.caption(f"Diagramm nicht darstellbar ({_ce}).")
-                        # Tabelle
-                        _tab = []
-                        for e in _eh:
-                            _tab.append({
-                                "Quartal": e["datum"],
-                                "EPS Ist": e.get("eps_actual"),
-                                "EPS Sch\u00e4tz.": e.get("eps_est"),
-                                "\u00dcberrasch. %": e.get("eps_surprise_pct"),
-                                "Kursreaktion %": e.get("price_reaction_pct"),
-                            })
-                        vr_table(_tab, signed_cols=("\u00dcberrasch. %", "Kursreaktion %"),
-                                 height=min(len(_tab) * 38 + 46, 460))
-                        st.caption("Kursreaktion = Schlusskurs am ersten Handelstag "
-                                   "nach dem Bericht gegen den letzten Tag davor. "
-                                   "Datenquelle liefert typischerweise die letzten "
-                                   "8\u201312 Quartale.")
-    def _prep_for_matrix(t):
-        # WICHTIG: deep=True wie in der Einzelanalyse (Zeile ~2544). Sonst
-        # laedt die Scorecard flachere Daten und der Composite weicht ab
-        # (z.B. 68 statt 70) - der Nutzer sieht zwei verschiedene Scores fuer
-        # dieselbe Aktie.
-        f = load_fundamentals_deep(t)
-        if not f.get("price"):
-            return None
-        intel = load_intel(t, f.get("name"))
-        f["_catalyst_score"] = intel.get("catalyst_score", 50)
-        hist = load_history_full(t)
-        extras = load_extras(t)
-        sig = mx.build_signals(f, hist, intel.get("analyst"), extras)
-        cur = f.get("currency", "USD")
-        mlt = fx_to_eur(cur)
-        sym = "\u20ac" if mlt is not None else cur
-        mlt = mlt or 1.0
-        return f, intel, sig, sym, mlt
+                                    "EPS Ist": e.get("eps_actual"),
+                                    "EPS Sch\u00e4tz.": e.get("eps_est"),
+                                    "\u00dcberrasch. %": e.get("eps_surprise_pct"),
+                                    "Kursreaktion %": e.get("price_reaction_pct"),
+                                })
+                            vr_table(_tab, signed_cols=("\u00dcberrasch. %", "Kursreaktion %"),
+                                     height=min(len(_tab) * 38 + 46, 460))
+                            st.caption("Kursreaktion = Schlusskurs am ersten Handelstag "
+                                       "nach dem Bericht gegen den letzten Tag davor. "
+                                       "Datenquelle liefert typischerweise die letzten "
+                                       "8\u201312 Quartale.")
+        def _prep_for_matrix(t):
+            # WICHTIG: deep=True wie in der Einzelanalyse (Zeile ~2544). Sonst
+            # laedt die Scorecard flachere Daten und der Composite weicht ab
+            # (z.B. 68 statt 70) - der Nutzer sieht zwei verschiedene Scores fuer
+            # dieselbe Aktie.
+            f = load_fundamentals_deep(t)
+            if not f.get("price"):
+                return None
+            intel = load_intel(t, f.get("name"))
+            f["_catalyst_score"] = intel.get("catalyst_score", 50)
+            hist = load_history_full(t)
+            extras = load_extras(t)
+            sig = mx.build_signals(f, hist, intel.get("analyst"), extras)
+            cur = f.get("currency", "USD")
+            mlt = fx_to_eur(cur)
+            sym = "\u20ac" if mlt is not None else cur
+            mlt = mlt or 1.0
+            return f, intel, sig, sym, mlt
 
 
-    def _crit_row(name, options, idx_auto, why, key, fmt):
-        c1, c2, c3 = st.columns([2.2, 2.3, 3.5])
-        c1.markdown(f"**{name}**")
-        sel = c2.selectbox(name, range(len(options)), index=idx_auto, key=key,
-                           format_func=fmt, label_visibility="collapsed")
-        c3.caption(why)
-        return sel
+        def _crit_row(name, options, idx_auto, why, key, fmt):
+            c1, c2, c3 = st.columns([2.2, 2.3, 3.5])
+            c1.markdown(f"**{name}**")
+            sel = c2.selectbox(name, range(len(options)), index=idx_auto, key=key,
+                               format_func=fmt, label_visibility="collapsed")
+            c3.caption(why)
+            return sel
     with ea_tabs[1]:
         prep = _prep_for_matrix(ticker)
         if prep is None:

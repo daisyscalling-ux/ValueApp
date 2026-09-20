@@ -419,6 +419,74 @@ def benchmark_tabelle(zeilen: Iterable[dict], *, treiber_kopf: str = "Startwachs
         f'<tbody>{"".join(body)}</tbody></table></div>')
 
 
+def _multiple_ampel(imp, gen, heute) -> str:
+    """Grafik: verlangtes vs. faires vs. heutiges Multiple auf einer Skala.
+
+    Statt drei Zahlen in einer Tabelle - ein Balken, auf dem man sofort sieht,
+    ob der Kurs mehr verlangt als das Modell fuer fair haelt. Gruen = Kurs
+    unter fair, gelb = nah dran, rot = deutlich darueber.
+    """
+    if imp is None or not gen:
+        return ""
+    # Verhaeltnis verlangt/fair entscheidet die Farbe
+    verh = imp / gen
+    if verh <= 1.0:
+        farbe, urteil = C["green"], "guenstig \u2013 Kurs verlangt weniger als fair"
+    elif verh <= 1.25:
+        farbe, urteil = C["amber"], "fair \u2013 Kurs nah am Modell"
+    else:
+        farbe, urteil = C["red"], "teuer \u2013 Kurs verlangt deutlich mehr"
+
+    # Skala: 0 bis max(imp, heute)*1.1
+    hoch = max(imp, heute or 0, gen) * 1.12 or 1.0
+    def pos(x):
+        return max(2, min(98, x / hoch * 100))
+
+    p_gen = pos(gen)
+    p_imp = pos(imp)
+    p_heute = pos(heute) if heute else None
+
+    # Grüne Zone bis "fair", roter Bereich darüber
+    marker = []
+    # Faires Multiple: senkrechte Linie + Label
+    marker.append(
+        f'<div style="position:absolute;left:{p_gen:.1f}%;top:0;bottom:0;'
+        f'width:2px;background:{C["green"]};"></div>'
+        f'<div style="position:absolute;left:{p_gen:.1f}%;top:-16px;'
+        f'transform:translateX(-50%);font-size:9px;color:{C["green"]};'
+        f'white-space:nowrap;">fair {gen:.0f}x</div>')
+    # Verlangtes Multiple: dicker Punkt
+    marker.append(
+        f'<div style="position:absolute;left:{p_imp:.1f}%;top:50%;'
+        f'transform:translate(-50%,-50%);width:14px;height:14px;'
+        f'border-radius:50%;background:{farbe};border:2px solid {C["bg"]};'
+        f'box-shadow:0 0 0 1px {farbe};"></div>'
+        f'<div style="position:absolute;left:{p_imp:.1f}%;bottom:-16px;'
+        f'transform:translateX(-50%);font-size:9px;color:{farbe};'
+        f'white-space:nowrap;font-weight:700;">Kurs {imp:.0f}x</div>')
+    # Heutiges Multiple: kleiner grauer Strich
+    if p_heute is not None:
+        marker.append(
+            f'<div style="position:absolute;left:{p_heute:.1f}%;top:2px;'
+            f'bottom:2px;width:1px;background:{C["muted"]};"></div>'
+            f'<div style="position:absolute;left:{p_heute:.1f}%;top:-16px;'
+            f'transform:translateX(-50%);font-size:9px;color:{C["muted"]};'
+            f'white-space:nowrap;">heute {heute:.0f}x</div>')
+
+    # Farbverlauf-Hintergrund: gruen bis fair, dann rot
+    return (
+        f'<div class="va-lbl" style="margin-top:20px;">Verlangt der Kurs '
+        f'mehr als fair?</div>'
+        f'<div style="position:relative;height:20px;margin:22px 4px 24px;">'
+        f'<div style="position:absolute;inset:0;border-radius:4px;'
+        f'background:linear-gradient(90deg,{C["green"]}22 0%,'
+        f'{C["green"]}22 {p_gen:.0f}%,{C["amber"]}22 {p_gen:.0f}%,'
+        f'{C["red"]}22 100%);"></div>'
+        f'{"".join(marker)}</div>'
+        f'<div style="text-align:center;font-size:12px;font-weight:600;'
+        f'color:{farbe};margin-top:6px;">{urteil}</div>')
+
+
 def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
     """Woher der ausgewiesene Wert tatsaechlich kommt.
 
@@ -534,7 +602,13 @@ def diagnose_karte(diagnose: Optional[dict], herkunft: Optional[dict]) -> None:
                        f'{_e(HERKUNFT_LABEL.get(k, k))}</span>')
         rechts = (f'<div class="va-lbl">Woraus der Fair Value besteht</div>'
                   f'<div class="va-stack">{"".join(seg)}</div>'
-                  f'<div class="va-legend">{"".join(leg)}</div>')
+                  f'<div class="va-legend">{"".join(leg)}</div>'
+                  # Grafik: verlangtes vs. faires Multiple - fuellt den leeren
+                  # Platz rechts und ordnet die drei Zahlen visuell ein.
+                  + _multiple_ampel(
+                      (diagnose or {}).get("multiple_impliziert"),
+                      (diagnose or {}).get("multiple_genutzt"),
+                      (diagnose or {}).get("multiple_heute")))
 
     hinweise = list((diagnose or {}).get("hinweise") or []) + \
                list((herkunft or {}).get("hinweise") or [])

@@ -858,16 +858,31 @@ def kursziel_12m(fund, preset="quality") -> Optional[dict]:
 
     if kgv_hist and kgv_hist > 0:
         if kgv_heute and kgv_heute > 0:
-            # Rueckkehr zum historischen Median, aber gedeckelt: hoechstens
-            # 30 % des Abstands je Jahr. Ein KGV springt nicht in 12 Monaten
-            # von 60 auf 40 zurueck.
-            schritt = (kgv_hist - kgv_heute) * 0.30
-            # zusaetzlich absolut deckeln: max +/- 20 % des heutigen KGV
-            grenze = kgv_heute * 0.20
-            schritt = max(min(schritt, grenze), -grenze)
+            # Rueckkehr zum historischen Median. WICHTIG (Befund NEE): Frueher
+            # war der Schritt symmetrisch auf 30% des Abstands gedeckelt -
+            # dadurch konnte der Gewinnzuwachs (eps_forward > trailing, fast
+            # immer) die KGV-Senkung locker schlagen, und JEDES Ziel zeigte
+            # nach oben.
+            #
+            # Jetzt asymmetrisch: Ist der Titel TEUER (KGV ueber Schnitt), zieht
+            # die Rueckkehr staerker nach unten - je teurer, desto mehr. Das
+            # erzeugt fallende Ziele bei ueberbewerteten Aktien, wie es sein
+            # soll. Nach oben (Titel billig) bleibt es zurueckhaltend.
+            abstand = kgv_hist - kgv_heute        # negativ, wenn teuer
+            teuer = kgv_heute > kgv_hist
+            if teuer:
+                # bis zu 55% der Ueberbewertung im ersten Jahr abbauen
+                anteil = 0.55
+                grenze = kgv_heute * 0.35         # bis -35% des KGV moeglich
+            else:
+                anteil = 0.25                     # billig: vorsichtig
+                grenze = kgv_heute * 0.15
+            schritt = abstand * anteil
+            schritt = max(min(schritt, kgv_heute * 0.15), -grenze)
             kgv_ziel = kgv_heute + schritt
+            _ri = "senkt" if teuer else "hebt"
             kgv_quelle = (f"{kgv_heute:.0f}x heute \u2192 {kgv_ziel:.0f}x "
-                          f"(Teilrueckkehr zum Schnitt {kgv_hist:.0f}x)")
+                          f"(Rueckkehr {_ri} Richtung Schnitt {kgv_hist:.0f}x)")
         else:
             kgv_ziel = kgv_hist
             kgv_quelle = f"historischer Median {kgv_hist:.0f}x"

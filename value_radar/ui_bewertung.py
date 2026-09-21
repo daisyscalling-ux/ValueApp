@@ -1073,6 +1073,91 @@ def fairvalue_verlauf(eintraege, waehrung: str = "EUR",
 
 def score_matrix_erklaert_ende(): pass
 
+def projektion_karte(pr: dict, waehrung: str = "EUR") -> None:
+    """EXPERIMENTELL: Kursband fuer 1/3/6 Monate.
+
+    Zeigt bewusst die SPANNE, nicht einen Punkt. Ein Trichter, der sich nach
+    rechts oeffnet - die visuelle Botschaft ist: je weiter voraus, desto
+    unsicherer.
+    """
+    if not pr or not pr.get("punkte"):
+        return
+    kurs = pr["kurs"]
+    punkte = pr["punkte"]
+
+    # Skala ueber alle Baender
+    alle = [kurs] + [p["tief"] for p in punkte] + [p["hoch"] for p in punkte]
+    lo, hi = min(alle), max(alle)
+    spanne = (hi - lo) or 1.0
+    B, H = 340, 150
+
+    def y(v):
+        return H - 12 - (v - lo) / spanne * (H - 24)
+
+    # x-Positionen: heute (0) + drei Horizonte
+    xs = [30]
+    for i in range(len(punkte)):
+        xs.append(30 + (i + 1) / len(punkte) * (B - 50))
+
+    # Trichter-Flaeche (tief..hoch)
+    oben = f"M{xs[0]:.0f},{y(kurs):.1f} "
+    unten = ""
+    for i, p in enumerate(punkte):
+        oben += f"L{xs[i+1]:.0f},{y(p['hoch']):.1f} "
+    for i in range(len(punkte) - 1, -1, -1):
+        unten += f"L{xs[i+1]:.0f},{y(punkte[i]['tief']):.1f} "
+    flaeche = oben + unten + f"L{xs[0]:.0f},{y(kurs):.1f} Z"
+
+    # Mittellinie
+    mitte_pfad = f"M{xs[0]:.0f},{y(kurs):.1f} " + " ".join(
+        f"L{xs[i+1]:.0f},{y(p['mitte']):.1f}" for i, p in enumerate(punkte))
+
+    # Kurslinie heute (gestrichelt, horizontal)
+    kurs_linie = (f'<line x1="{xs[0]}" y1="{y(kurs):.1f}" x2="{B-4}" '
+                  f'y2="{y(kurs):.1f}" stroke="{C["muted"]}" stroke-width="1" '
+                  f'stroke-dasharray="3 3"/>')
+
+    # Punkte + Labels an den Horizonten
+    marker = ""
+    for i, p in enumerate(punkte):
+        x = xs[i+1]
+        marker += (f'<circle cx="{x:.0f}" cy="{y(p["mitte"]):.1f}" r="3" '
+                   f'fill="{C["cyan"]}"/>'
+                   f'<text x="{x:.0f}" y="{H-2:.0f}" text-anchor="middle" '
+                   f'font-size="9" fill="{C["muted"]}">{p["monate"]}M</text>')
+
+    svg = (f'<svg viewBox="0 0 {B} {H}" width="100%" style="max-width:520px;">'
+           f'<path d="{flaeche}" fill="{C["cyan"]}" opacity="0.13"/>'
+           f'{kurs_linie}'
+           f'<path d="{mitte_pfad}" fill="none" stroke="{C["cyan"]}" '
+           f'stroke-width="2"/>{marker}'
+           f'<circle cx="{xs[0]}" cy="{y(kurs):.1f}" r="3" fill="{C["fg"]}"/>'
+           f'</svg>')
+
+    # Tabelle darunter: die Spannen als Zahlen
+    zeilen = ""
+    for p in punkte:
+        zeilen += (
+            f'<div style="display:grid;grid-template-columns:1fr auto;gap:8px;'
+            f'padding:5px 0;border-bottom:1px solid {C["line"]};font-size:12.5px;">'
+            f'<span style="color:{C["muted"]};">{_e(p["horizont"])}</span>'
+            f'<span class="va-num" style="color:{C["fg"]};">'
+            f'{_e(geld(p["tief"], waehrung))} \u2013 '
+            f'{_e(geld(p["hoch"], waehrung))} '
+            f'<span style="color:{C["muted"]};">(\u00b1{p["spanne_pct"]:.0f}%)'
+            f'</span></span></div>')
+
+    _md(f'<div class="va-card" style="border-color:{C["amber"]}55;">'
+        f'<h4>\U0001f9ea Kursband 1\u20136 Monate <span style="font-size:11px;'
+        f'font-weight:400;color:{C["amber"]};">experimentell</span></h4>'
+        f'<div class="sub">Wohin sich der Kurs bewegen KOENNTE, wenn alles '
+        f'normal laeuft \u2013 keine Vorhersage. Der Trichter oeffnet sich, '
+        f'weil die Unsicherheit mit der Zeit waechst.</div>'
+        f'{svg}<div style="margin-top:10px;">{zeilen}</div>'
+        f'<div class="note" style="margin-top:10px;color:{C["muted"]};'
+        f'line-height:1.5;">{_e(pr.get("warnung",""))}</div></div>')
+
+
 def verlauf_karte(eintraege, waehrung: str = "EUR") -> None:
     """Was hat sich bei diesem Titel geaendert - und warum?
 

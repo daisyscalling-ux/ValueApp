@@ -4586,6 +4586,25 @@ if nav == "Einzelanalyse":
 
                     # --- Relative Bewertung: historisches Band + Sektor-Vergleich ---
                 if _ea_zone == "bewegung":
+                    # EXPERIMENTELL: Kursband 1-6 Monate. Ganz oben in dieser
+                    # Zone, weil "was bewegt sich" genau die Frage ist.
+                    try:
+                        import ui_bewertung as _uip
+                        _vola = None
+                        try:
+                            _mm = f.get("_momentum") or {}
+                            _vola = _mm.get("vola")
+                        except Exception:
+                            pass
+                        _kz = valuation.kursziel_12m(f, preset=ep)
+                        _pr = valuation.kurs_projektion(
+                            f, kursziel_12m_wert=(_kz["ziel"] if _kz else None),
+                            vola_pct=_vola, preset=ep)
+                        if _pr:
+                            _uip.inject_css("dunkel")
+                            _uip.projektion_karte(_pr, "EUR")
+                    except Exception:
+                        pass
                     try:
                         import relval
                         _rv = relval.summarize(f)

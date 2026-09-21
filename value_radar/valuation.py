@@ -916,6 +916,72 @@ def kursziel_12m(fund, preset="quality") -> Optional[dict]:
     }
 
 
+def kurs_projektion(fund, kursziel_12m_wert=None, vola_pct=None,
+                    preset="quality") -> Optional[dict]:
+    """EXPERIMENTELL: Wohin koennte sich der Kurs in 1/3/6 Monaten bewegen,
+    wenn alles normal verlaeuft?
+
+    Ausdruecklich KEINE Vorhersage - niemand kann Kurse vorhersagen. Was das
+    hier zeigt, ist eine mechanische Fortschreibung:
+
+      Anker:  das 12-Monats-Ziel (erwarteter Gewinn x normales Multiple).
+              Von dort aus wird linear zurueckgerechnet - in 1 Monat ist erst
+              1/12 des Weges plausibel, in 6 Monaten die Haelfte.
+
+      Spanne: die Unsicherheit waechst mit der Wurzel der Zeit (so verhalten
+              sich Kursschwankungen). Aus der Jahresvolatilitaet ergibt sich
+              je Horizont ein Band nach oben und unten.
+
+    Der MITTELWERT ist kaum aussagekraeftig - die SPANNE ist die Botschaft:
+    Sie zeigt, wie wenig ueber kurze Zeitraeume gesagt werden kann. Genau
+    deshalb wird sie mitgeliefert und nicht versteckt.
+    """
+    kurs = fund.get("price")
+    if not kurs or kurs <= 0:
+        return None
+
+    ziel = kursziel_12m_wert
+    if ziel is None:
+        kz = kursziel_12m(fund, preset)
+        ziel = kz["ziel"] if kz else None
+    # Ohne Ziel: nur Seitwaerts mit Vola-Band (keine Richtung unterstellt)
+    jahres_rendite = (ziel / kurs - 1) if ziel else 0.0
+
+    # Volatilitaet: aus Momentum-Daten, sonst aus Beta grob geschaetzt.
+    if vola_pct is None:
+        beta = fund.get("beta") or 1.0
+        # Marktvola ~18 %/Jahr, mit Beta skaliert - grobe Naeherung.
+        vola_pct = 18.0 * max(0.5, min(beta, 2.5))
+    vola = vola_pct / 100.0
+
+    import math
+    horizonte = [("1 Monat", 1 / 12), ("3 Monate", 3 / 12), ("6 Monate", 6 / 12)]
+    punkte = []
+    for name, t in horizonte:
+        # Erwartete Bewegung: anteilig am Jahresziel
+        mitte = kurs * (1 + jahres_rendite * t)
+        # Unsicherheitsband: 1 Standardabweichung, mit sqrt(t) skaliert
+        band = kurs * vola * math.sqrt(t)
+        punkte.append({
+            "horizont": name,
+            "monate": round(t * 12),
+            "mitte": round(mitte, 2),
+            "tief": round(mitte - band, 2),
+            "hoch": round(mitte + band, 2),
+            "spanne_pct": round(band / kurs * 100, 1),
+        })
+
+    return {
+        "kurs": round(kurs, 2),
+        "ziel_12m": round(ziel, 2) if ziel else None,
+        "vola_pct": round(vola_pct, 1),
+        "punkte": punkte,
+        "warnung": ("Mechanische Fortschreibung, keine Vorhersage. Die Spanne "
+                    "ist die eigentliche Aussage - sie zeigt, wie gross die "
+                    "Unsicherheit auf kurze Sicht ist."),
+    }
+
+
 def eigenes_ziel(fund, fair_value, preset="quality", regime_ampel=None,
                  pe_perzentil=None, analyst_target=None):
     """Eigenes, ausgewogenes 12-Monats-Kursziel - der 'eigene Analyst'.

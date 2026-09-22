@@ -2557,7 +2557,7 @@ def portfolio_candidates(analysis, held_tickers, held_names):
     return ordered[:6]
 
 
-PAGES = ["Start", "News", "Einzelanalyse", "Aktienvergleich", "Radar",
+PAGES = ["Start", "News", "Einzelanalyse", "Aktienvergleich", "Suche", "Radar",
          "Screener", "Momentum",
          "Watchlist", "Long/Short", "Portfoliocheck", "Trefferbilanz",
          "Earnings Calls", "Umfeld"]
@@ -2575,6 +2575,7 @@ NAV_GROUPS = [
      "icon": "\U0001f4ca", "children": [
         ("Einzelanalyse", "Einzelanalyse", "\U0001f4c8"),
         ("Aktienvergleich", "Aktienvergleich", "\u2696\ufe0f"),
+        ("Suche", "Suche", "\U0001f50e"),
         ("Radar", "Radar", "\U0001f3af"),
         ("Screener", "Screener", "\U0001f50d"),
         ("Momentum", "Momentum", "\U0001f680"),
@@ -2599,7 +2600,7 @@ NAV_GROUP_SEITEN = {"AktienMarkt", "MyValueApp", "StrategieStatistik"}
 # Auch die Ueberpunkt-Landeseiten sind gueltige nav-Ziele.
 PAGES = PAGES + ["AktienMarkt", "MyValueApp", "StrategieStatistik"]
 ICONS = {"Start": "\U0001f3e0", "Einzelanalyse": "\U0001f4c8", "Radar": "\U0001f3af",
-         "Screener": "\U0001f50d", "Momentum": "\U0001f680",
+         "Screener": "\U0001f50d", "Momentum": "\U0001f680", "Suche": "\U0001f50e",
          "Watchlist": "\u2b50", "Long/Short": "\u2696\ufe0f",
          "Portfoliocheck": "\U0001f4bc", "News": "\U0001f4f0",
          "Trefferbilanz": "\U0001f3c6", "Earnings Calls": "\U0001f399\ufe0f",
@@ -2650,7 +2651,7 @@ if st.session_state.get("_last_nav") != nav:     # Tab-Wechsel -> hoch
 MOBILE_NAV = {"Start": "\U0001f3e0", "News": "\U0001f4f0",
               "Einzelanalyse": "\U0001f4c8", "Aktienvergleich": "\u2696\ufe0f",
               "Radar": "\U0001f3af",
-              "Screener": "\U0001f50d", "Momentum": "\U0001f680",
+              "Screener": "\U0001f50d", "Momentum": "\U0001f680", "Suche": "\U0001f50e",
               "Watchlist": "\u2b50",
               "Long/Short": "\U0001f4c9", "Portfoliocheck": "\U0001f4bc",
               "Trefferbilanz": "\U0001f3c6", "Backtest": "\U0001f9ea",
@@ -5189,6 +5190,105 @@ if nav == "News":
 # ===========================================================================
 if nav == "Trefferbilanz":
     render_trackrecord()
+
+if nav == "Suche":
+    st.markdown('<div class="sec-title">\U0001f50e AKTIENSUCHE</div>',
+                unsafe_allow_html=True)
+    st.caption("Schnellfilter f\u00fcr die bew\u00e4hrten Strategien \u2013 oder "
+               "eigene Suche nach Composite, Upside, Quantum, Kauf-Urteil und "
+               "mehr. Sucht in den Titeln, die der n\u00e4chtliche Job berechnet "
+               "hat.")
+
+    import suche as _su
+    _snap = store.get_snapshot() or {}
+    _rows = (_snap.get("_screener_rows") or []) + (_snap.get("_radar_rows") or [])
+    # Entdopplung nach Ticker (ein Titel kann in beiden Listen stehen)
+    _seen = {}
+    for _r in _rows:
+        _tk = _r.get("ticker")
+        if _tk and _tk not in _seen:
+            _seen[_tk] = _r
+    _kandidaten = list(_seen.values())
+
+    if not _kandidaten:
+        st.info("Noch keine berechneten Titel vorhanden. Der n\u00e4chtliche "
+                "Job f\u00fcllt die Liste \u2013 oder starte ihn manuell.")
+    else:
+        st.caption(f"{len(_kandidaten)} berechnete Titel durchsuchbar.")
+
+        _modus = st.radio("Modus", ["Schnellfilter", "Eigene Suche"],
+                          horizontal=True, label_visibility="collapsed",
+                          key="such_modus")
+
+        _ergebnis = None
+
+        if _modus == "Schnellfilter":
+            _sf_cols = st.columns(len(_su.SCHNELLFILTER))
+            for _i, (_key, _sf) in enumerate(_su.SCHNELLFILTER.items()):
+                with _sf_cols[_i]:
+                    if st.button(_sf["label"], key=f"sf_{_key}",
+                                 use_container_width=True):
+                        st.session_state["such_aktiv"] = _key
+                    st.caption(_sf["beschreibung"])
+            _aktiv = st.session_state.get("such_aktiv", "value")
+            _ergebnis = _su.schnellfilter_ausfuehren(_kandidaten, _aktiv)
+            st.markdown(f"**{_ergebnis.get('schnellfilter','')}** \u00b7 "
+                        f"{_ergebnis.get('beschreibung','')}")
+
+        else:
+            _fc = st.columns(3)
+            _f = {}
+            _f["composite_min"] = _fc[0].number_input("Composite \u2265", 0, 100, 0,
+                                                      step=5, key="f_comp")
+            _f["upside_min"] = _fc[1].number_input("Upside % \u2265", -100, 200, 0,
+                                                   step=5, key="f_up")
+            _f["quantum_min"] = _fc[2].number_input("Quantum \u2265", 0, 100, 0,
+                                                    step=5, key="f_qua")
+            _fc2 = st.columns(3)
+            _f["momentum_min"] = _fc2[0].number_input("Momentum \u2265", 0, 100, 0,
+                                                      step=5, key="f_mom")
+            _f["pe_max"] = _fc2[1].number_input("KGV \u2264 (0=egal)", 0, 200, 0,
+                                                step=1, key="f_pe")
+            _kauf = _fc2[2].selectbox("Kauf-Urteil",
+                                      ["alle", "kauf", "beobachten", "meiden"],
+                                      key="f_kauf")
+            _f["kauf_urteil"] = _kauf
+            _fc3 = st.columns(2)
+            _sekt = ["alle"] + _su.sektoren_in(_kandidaten)
+            _f["sektor"] = _fc3[0].selectbox("Sektor", _sekt, key="f_sekt")
+            _sortier = _fc3[1].selectbox(
+                "Sortieren nach", list(_su.SORTIERFELDER),
+                format_func=lambda k: _su.SORTIERFELDER[k][0], key="f_sort")
+
+            # 0-Werte als "inaktiv" behandeln
+            _fclean = {k: (None if v in (0, "alle") else v)
+                       for k, v in _f.items()}
+            if _fclean.get("upside_min") == 0:
+                _fclean["upside_min"] = None
+            _ergebnis = _su.suchen(_kandidaten, _fclean, _sortier)
+            if _ergebnis["aktive_filter"]:
+                st.caption("Aktiv: " + " \u00b7 ".join(_ergebnis["aktive_filter"]))
+
+        # --- Trefferliste ---
+        if _ergebnis:
+            if _ergebnis["leer_grund"]:
+                st.info(_ergebnis["leer_grund"])
+            else:
+                st.caption(f"{_ergebnis['anzahl']} Treffer \u00b7 sortiert nach "
+                           f"{_ergebnis.get('sortiert_nach','')}")
+                import pandas as _pd
+                _tab = [{
+                    "Ticker": t.get("ticker"),
+                    "Name": (t.get("name") or "")[:26],
+                    "Comp": t.get("composite"),
+                    "Upside %": t.get("upside"),
+                    "Quantum": t.get("quantum"),
+                    "Mom": t.get("momentum"),
+                    "Urteil": t.get("kauf_urteil"),
+                    "Sektor": (t.get("sector") or "")[:18],
+                } for t in _ergebnis["treffer"]]
+                st.dataframe(_pd.DataFrame(_tab), use_container_width=True,
+                             hide_index=True)
 
 if nav == "Radar":
     if True:

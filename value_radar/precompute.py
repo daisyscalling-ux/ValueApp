@@ -22,7 +22,7 @@ Robust: Jede Sektion ist gekapselt - faellt eine aus, laufen die anderen weiter.
 """
 from __future__ import annotations
 
-__version__ = "2026.09.26"   # Sektormediane im Nachtlauf
+__version__ = "2026.10.06"   # Sektormediane im Nachtlauf
 
 # Bei jeder inhaltlichen Aenderung hochzaehlen. Wird im Lauf-Log ausgegeben
 # und mit jedem Signal gespeichert -> man sieht, welcher Code ein Signal
@@ -222,6 +222,25 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
     s = scoring.score_stock(f, None, preset=preset)
     comp = s.get("composite")
     v = valuation.fair_value(f, None, preset)
+
+    # KAUF-URTEIL fuer die Suche ("nur Kaufkandidaten"). Aus vorhandenen
+    # Feldern abgeleitet - keine extra Abrufe. Bewusst konservativ: Ein Titel
+    # gilt nur als Kauf, wenn Abschlag UND Qualitaet UND keine Value-Trap.
+    _cats = s.get("category_scores") or {}
+    _upside = (v or {}).get("upside_pct")
+    _urteil = "neutral"
+    try:
+        _stufe = ((v or {}).get("datenqualitaet") or {}).get("stufe")
+        _belastbar = _stufe not in ("nicht belastbar", "kritisch")
+        _kauf = (_belastbar and _upside is not None and _upside >= 10
+                 and (_cats.get("quality") or 0) >= 55
+                 and (comp or 0) >= 55
+                 and not s.get("value_trap"))
+        _knapp = (_belastbar and _upside is not None and _upside >= 0
+                  and (comp or 0) >= 50 and not _kauf)
+        _urteil = "kauf" if _kauf else ("beobachten" if _knapp else "meiden")
+    except Exception:
+        pass
     # EXAKT dieselbe Upside-Logik wie in der App (display_upside):
     # Modell-Upside wenn nicht gekappt, sonst Analysten-Ziel als Rueckfall.
     up = v.get("upside_pct")
@@ -286,6 +305,7 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "cat_neutral": s.get("cat_neutral") or {},
         "analyst_count": f.get("analyst_count"),
         "value_trap": s.get("value_trap"),
+        "kauf_urteil": _urteil,
         # Value-Trap-Warnungen aus dem Quantum Score (fuer das Symbol in Listen)
         "vt_warnung": q.get("value_trap_warnung") or [],
         "revenue_growth": (round(f["revenue_growth"] * 100, 1)

@@ -1535,6 +1535,26 @@ def run():
     new_snap["_radar_top"] = [r["ticker"] for r in rad]
     new_snap["_screener_rows"] = scr
     new_snap["_radar_rows"] = rad
+
+    # VOLLES gescanntes Universum fuer die Suche - nicht nur die Top-Treffer.
+    # _LAST_SCAN haelt ALLE gescannten Titel (auch die unter Composite 55);
+    # ranked wirft sie fuer die Tabs weg, die Suche will sie behalten. Nur die
+    # Suchfelder speichern, damit der Snapshot schlank bleibt.
+    _SUCHFELDER = ("ticker", "name", "composite", "upside", "quantum",
+                   "momentum", "quality", "value", "growth", "catalyst",
+                   "kauf_urteil", "sector", "pe", "pb", "ev_ebitda", "roe",
+                   "fair_value", "price", "value_trap")
+    _such_universum = {}
+    for _lbl, _scored in _LAST_SCAN.items():
+        for _tk, _row in (_scored or {}).items():
+            if not isinstance(_row, dict) or not _row.get("ticker"):
+                continue
+            _t = _row["ticker"]
+            if _t not in _such_universum:
+                _such_universum[_t] = {k: _row.get(k) for k in _SUCHFELDER}
+    new_snap["_such_universum"] = list(_such_universum.values())
+    _melde(f"[suche] {len(_such_universum)} Titel im durchsuchbaren Universum "
+           f"(volles gescanntes Feld, nicht nur Top-Treffer).")
     # Breite Werte je Titel fuer den naechsten Vergleich (nur die Felder, die
     # diff_changes braucht - haelt den Snapshot klein).
     new_snap["_breit"] = {

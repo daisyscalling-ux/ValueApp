@@ -34,6 +34,7 @@ MODULE = {
     "precompute": ["run", "scan_list", "sektormediane_schreiben"],
     "earnings_reaktion": ["erheben", "auswerten"],
     "verlauf": ["notieren", "lesen", "aufraeumen", "statistik"],
+    "suche": ["suchen", "schnellfilter_ausfuehren", "SCHNELLFILTER"],
     "kennzahlen": ["bewerte", "zusammenfassung", "transkript_kennzahlen",
                    "zusammenfassung_call", "kernstellen"],
     "ui_bewertung": ["sparkline", "kennzahl_kacheln", "news_karte",

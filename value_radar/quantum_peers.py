@@ -24,7 +24,7 @@ class Client:
         self.opener=urllib.request.build_opener(NoRedirect())
     def request(self,url,token,data=None):
         if time.monotonic()>self.end-30: raise StopRun('Save reserve reached')
-        req=urllib.request.Request(url,data=json.dumps(data,allow_nan=False).encode() if data is not None else None,headers={'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'})
+        req=urllib.request.Request(url,data=json.dumps(data,allow_nan=False).encode() if data is not None else None,headers={'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json','User-Agent':'QuantumPeerSync/0.7.1'})
         with self.opener.open(req,timeout=min(20,max(1,self.end-time.monotonic()-25))) as response:
             return json.loads(response.read(4_000_001).decode())
     def roic(self,path):
@@ -116,3 +116,4 @@ def run():
     if failed and not saved:raise SystemExit('No usable data received; last valid database values retained')
 
 if __name__=='__main__':run()
+

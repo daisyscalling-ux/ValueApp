@@ -1,7 +1,7 @@
 name: quantum-peer-universe
 on:
   schedule:
-    - cron: '17 3 * * *'
+    - cron: '17 3,9,15,21 * * *'
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -11,7 +11,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -19,11 +19,17 @@ jobs:
           python-version: '3.12'
       - name: Kennzahlen prüfen
         run: python -m unittest discover -s value_radar -p test_quantum_peers.py
-      - name: ROIC-Kennzahlen nach Quantum übertragen
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Bewertungs-Engine prüfen
+        run: python -m unittest discover -s quantum_sync -p test_engine.py
+      - name: Screener und Branchenkennzahlen aktualisieren
         env:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           QUANTUM_SYNC_TOKEN: ${{ secrets.QUANTUM_SYNC_TOKEN }}
           QUANTUM_URL: https://quantum-equity-research.daisyscalling.workers.dev
-          QUANTUM_BUDGET_MIN: '30'
-          QUANTUM_MAX_COMPANIES: '250'
-        run: python value_radar/quantum_peers.py
+          QUANTUM_BUDGET_MIN: '6'
+          QUANTUM_MAX_COMPANIES: '150'
+        run: node quantum_sync/sync.mjs
+

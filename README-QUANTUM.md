@@ -1,28 +1,25 @@
-# ValueApp → Quantum: geprüfte GitHub-Ergänzung
+# Quantum: Screener und Branchenkennzahlen
 
-Diese Ergänzung fügt drei Dateien hinzu. Den vorhandenen precompute.yml und precompute.py NICHT ersetzen.
+Der Workflow quantum-peer-universe aktualisiert jetzt vollständige Screener-Analysen und die Branchenkennzahlen in Cloudflare. Der bestehende value-radar-update bleibt unverändert.
 
-1. .github/workflows/quantum-peers.yml
-2. value_radar/quantum_peers.py
-3. value_radar/test_quantum_peers.py
+## Aktivierung
 
-Der Workflow läuft täglich um 03:17 UTC und kann über Actions → quantum-peer-universe → Run workflow manuell gestartet werden. Er benötigt keine Pakete außer Python. Es werden keine E-Mails, Depotaktionen oder KI-Aufrufe aus ValueApp gestartet.
+Diesen Pull Request in main übernehmen, anschließend unter Actions → quantum-peer-universe → Run workflow starten. ROIC_API_KEY und QUANTUM_SYNC_TOKEN bleiben dieselben vorhandenen Secrets. Keine weiteren Schlüssel erforderlich.
 
-GitHub: Settings → Secrets and variables → Actions → New repository secret:
-- ROIC_API_KEY: bereits im vorhandenen Projekt verwendet.
-- QUANTUM_SYNC_TOKEN: derselbe Wert wie das gleichnamige Cloudflare-Secret. Nicht als Datei ins Repository hochladen.
+## Ablauf
 
-Der Zielserver ist https://quantum-equity-research.daisyscalling.workers.dev . Das Secret erlaubt nur das Lesen des Sync-Fortschritts und das Schreiben der Branchenkennzahlen, keinen Dashboard-Login. Der Cloudflare-Endpunkt ist /api/peer-sync. Ohne gesetztes Secret bleibt er gesperrt.
+Vier Starts täglich: 03:17, 09:17, 15:17 und 21:17 UTC. Pro Lauf sechs Minuten Datenbudget, maximal 150 Titel, 20 Sekunden je Abruf und etwa 214 ROIC-Anfragen pro Minute. Das Zeitbudget begrenzt den tatsächlichen Umfang; es wird kein weltweiter Tagesvollbestand versprochen. Die GitHub-Laufzeit fällt zusätzlich zum vorhandenen ValueApp-Job an.
 
-Pro Lauf: höchstens 250 Unternehmen, 30 Minuten Zeitbudget, 20 Sekunden je Netzwerkabruf, maximal etwa 230 ROIC-Abrufe pro Minute. Jeder erfolgreich gespeicherte Datensatz und die nächste Katalogposition werden gemeinsam abgelegt. Abbrüche führen beim nächsten Lauf zur Fortsetzung; ein abgeschlossener Katalog startet im nächsten Lauf erneut. Fehlerhafte Titel behalten ihre bisherigen Werte und werden im nächsten Durchlauf erneut versucht. Ein weltweites Universum benötigt bei 250 Titeln täglich mehrere Wochen; Aufrufzahl und Laufzeit müssen nach dem ersten realen Lauf abgestimmt werden.
+ROIC-Seitentokens verfallen nach einer Stunde (https://www.roic.ai/api/docs/response-format). Jeder Lauf lädt deshalb den Katalog mit Seiten von 2.000 Einträgen neu und setzt die Finanzanalyse anhand einer dauerhaft gespeicherten Aktien-ID in stabiler Sortierung fort. Der erste Lauf beginnt am Kataloganfang. Ein kompletter Durchlauf beginnt anschließend wieder vorn. Fehlgeschlagene Aktien werden im nächsten Durchlauf erneut versucht; vorherige gute Daten bleiben erhalten.
 
-Der Import verwendet ausschließlich ROIC-TTM mit passender Währung, Aktienkennung und Finanzstichtag. Margen bleiben Prozentwerte. FCFF wird nicht als Free Cash Flow übernommen; unvollständige Investitionsausgaben erzeugen keinen erfundenen FCF. Jahresdaten werden nicht als TTM ausgegeben. Veraltete/neue Datensätze überschreiben keine neueren Abschlussdaten.
+## Berechnung und Speicherung
 
-Der bestehende Cloudflare-Sammler bleibt während der Inbetriebnahme aktiv. Erst nach einem nachgewiesenen erfolgreichen GitHub-Import sollte man entscheiden, ob dieser zusätzliche Sammler weiter benötigt wird. Beide zusammen plus interaktive Abfragen können das gemeinsame ROIC-Limit beanspruchen; HTTP 429 stoppt den GitHub-Lauf.
+quantum_sync/sync.mjs ist aus dem ROIC-Adapter des Dashboards erzeugt. Node 24 und Python 3.12 sind ausreichend, pip-Abhängigkeiten sind nicht nötig. Die Python-Dateien unter quantum_sync/engine entsprechen der eingebundenen valuation.py des Dashboards; sie ersetzen ValueApps vorhandene Bewertungsdateien nicht.
 
-Befunde im gelieferten ZIP:
-- _fuer_sektormessung behält nur Sektor/Branche und wenige Multiples; keine Margen, Finanzstichtage oder eindeutigen IDs.
-- roic.bundle_light übernimmt ttm_free_cash_flow_firm als free_cashflow. Deshalb keine ungeprüfte Übernahme dieses Dictionarys.
-- Die vorhandenen Zeitbudgets und Fortschrittsanzeigen sind sinnvoll, aber der Export benötigt eine eigene persistente Fortsetzungsposition.
+Jeder Import speichert Finanzdaten, Python-Bewertung, serverseitig abgeleiteten Fundamental Score und die Fortsetzungsposition gemeinsam. Ältere Importe überschreiben keine neueren Analysen. Fehlende Eingaben und Bewertungs-Prüffälle bleiben gekennzeichnet. Der Screener-Score enthält kein Momentum; Kurshistorie und Nachrichten werden beim Öffnen der Einzelanalyse nachgeladen. FMP-Free-Ziele werden nicht vorausgesetzt.
 
-Getestet: Perioden/Währungsabgleich, FCFF/FCF-Trennung, vollständige CapEx, Prozent-Einheiten, Import-Authentifizierung, Größenlimit und Ablehnung ungültiger Batches. Ein echter GitHub-Lauf erfordert das Einfügen der Dateien und des Repository-Secrets.
+Cloudflare nutzt /api/screener-sync mit dem vorhandenen Import-Token. Die zusätzliche Tabelle ist bereits durch worker/migrations/0002-screener.sql vorbereitet. Kein Token darf ins Repository.
+
+## Prüfung
+
+Lokal geprüft: Original-Python-Gleichheit, Import und Filter gegen SQLite, ungültige Importe, ältere Daten, Authentifizierung, Körpergrößenlimit sowie Wiederaufnahme nach abgelaufenem ROIC-Cursor. GitHub führt Kennzahlen- und Engine-Tests vor dem Abgleich aus. Ein echter Lauf dieses neuen Workflows steht vor dem Zusammenführen noch aus.

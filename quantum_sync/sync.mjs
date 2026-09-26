@@ -29,7 +29,7 @@ function mapPeriods(income, balance, cash, profit, type) {
 		if (mismatch) notes.push("ROIC-Free-Cashflow weicht von operativem Cashflow plus Investitionsausgaben ab. FCF wurde nachvollziehbar neu berechnet.");
 		const interest = number(i.is_int_expense), tax = number(r.eff_tax_rate) ?? number(i.eff_tax_rate);
 		const fcff = (computed !== null && interest !== null && interest >= 0 && tax !== null && tax >= 0 && tax <= 100 ? computed + interest * (1 - tax / 100) : null) ?? (computed !== null && reportedFcf !== null && !mismatch ? reportedFcff : null);
-		if (fcff === null) notes.push("FCFF nicht verifiziert: keine vollständige Überleitung für das berichtete DCF.");
+		if (fcff === null) notes.push("FCFF nicht verifiziert: Zusaetzliche Ueberleitung fehlt. Das aktive Python-DCF verwendet geprueften FCF, keinen FCFF.");
 		const short = number(b.bs_st_borrow), long = number(b.bs_lt_borrow), total = number(b.bs_total_equity), parent = number(b.bs_eqty_bef_minority_int_detailed);
 		return {
 			interestExpense: interest,
@@ -162,8 +162,8 @@ var safeLink = (v) => {
 		return "";
 	}
 };
-var cache = /* @__PURE__ */ new Map();
-var cooldown = /* @__PURE__ */ new Map();
+var cache$2 = /* @__PURE__ */ new Map();
+var cooldown$1 = /* @__PURE__ */ new Map();
 var flights = /* @__PURE__ */ new Map();
 async function fingerprint(key) {
 	return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)))).map((n) => n.toString(16).padStart(2, "0")).join("");
@@ -187,10 +187,10 @@ var RoicClient = class {
 		const url = new URL(path, "https://api.roic.ai");
 		if (url.origin !== "https://api.roic.ai" || !/^\/(v3\.0\.0|v2)\//.test(url.pathname) || url.username || url.password || url.searchParams.has("apikey")) throw new DataError("Ungültiger Datenpfad", 400);
 		const hash = await this.hash, id = hash + url.href;
-		const saved = cache.get(id);
+		const saved = cache$2.get(id);
 		if (!refresh && saved && saved.expires > Date.now()) return saved.data;
 		if (flights.has(id)) return flights.get(id);
-		const until = cooldown.get(hash) ?? 0;
+		const until = cooldown$1.get(hash) ?? 0;
 		if (until > Date.now()) throw new DataError("ROIC-Anfragelimit erreicht. Bitte nach der Wartezeit erneut laden.", 429, Math.ceil((until - Date.now()) / 1e3));
 		const pending = (async () => {
 			const budget = budgetFor(hash);
@@ -240,7 +240,7 @@ var RoicClient = class {
 				if (response.status === 429) {
 					const raw = response.headers.get("Retry-After") ?? "60";
 					const seconds = Math.max(1, Number(raw) || Math.ceil((Date.parse(raw) - Date.now()) / 1e3) || 60);
-					cooldown.set(hash, Date.now() + seconds * 1e3);
+					cooldown$1.set(hash, Date.now() + seconds * 1e3);
 					budget.pause(seconds);
 					throw new DataError("ROIC-Anfragelimit erreicht. Die Daten wurden nicht ersetzt.", 429, seconds);
 				}
@@ -256,8 +256,8 @@ var RoicClient = class {
 			const data = await response.json().catch(() => {
 				throw new DataError("Ungültige Antwort von ROIC.");
 			});
-			if (cache.size >= 300) cache.delete(cache.keys().next().value);
-			cache.set(id, {
+			if (cache$2.size >= 300) cache$2.delete(cache$2.keys().next().value);
+			cache$2.set(id, {
 				data,
 				expires: Date.now() + ttl
 			});
@@ -382,6 +382,7 @@ var RoicClient = class {
 		if (financials[0] && Date.now() - Date.parse(financials[0].date) > 550 * 864e5) issues.push("Der jüngste Jahresabschluss ist älter als 18 Monate.");
 		if (!financials.length) issues.push("Keine jährlichen Finanzberichte verfügbar. Es wird keine Bewertung berechnet.");
 		return {
+			cik: s(t.cik) || s(profile.cik),
 			isin: s(t.isin) || s(profile.isin),
 			id: s(t.id, identifier),
 			symbol: s(t.symbol, identifier),
@@ -419,6 +420,340 @@ var RoicClient = class {
 			securityType: s(t.type),
 			valuationBlocked
 		};
+	}
+};
+//#endregion
+//#region lib/quantum/analysts.ts
+var cache$1 = /* @__PURE__ */ new Map();
+var cooldown = /* @__PURE__ */ new Map();
+var deniedEndpoints = /* @__PURE__ */ new Map();
+var pending$1 = /* @__PURE__ */ new Map();
+/** FMP stable API. Keys stay in the server-side apikey header. No caller-supplied URLs. */
+var AnalystClient = class {
+	constructor(key, fetcher = (...args) => fetch(...args)) {
+		this.key = key;
+		this.fetcher = fetcher;
+		this.key = key.trim();
+		this.hash = fingerprint(this.key);
+	}
+	async get(endpoint, symbol) {
+		const hash = await this.hash, id = `${hash}:${endpoint}:${symbol}`, saved = cache$1.get(id);
+		if (saved && saved.expires > Date.now()) return saved.result;
+		if (pending$1.has(id)) return pending$1.get(id);
+		if ((deniedEndpoints.get(`${hash}:${endpoint}`) ?? 0) > Date.now()) throw new DataError(`FMP ${endpoint}: zuletzt HTTP 402 (Tarifsperre). Erneute Pruefung nach einer Stunde.`, 402);
+		const until = cooldown.get(hash) ?? 0;
+		if (until > Date.now()) throw new DataError("FMP-Anfragelimit erreicht. Bitte später erneut laden.", 429, Math.ceil((until - Date.now()) / 1e3));
+		const request = (async () => {
+			let response;
+			if (!/^[\x21-\x7e]{8,512}$/.test(this.key)) throw new DataError("FMP-Schlüssel enthält ungültige Zeichen. Bitte FMP_API_KEY ohne Zusatztext neu setzen.", 500);
+			const signal = AbortSignal.timeout(2e4);
+			let current = new URL(`https://financialmodelingprep.com/stable/${endpoint}?symbol=${encodeURIComponent(symbol)}`);
+			try {
+				for (let hop = 0;; hop++) {
+					response = await this.fetcher(current.href, {
+						headers: {
+							apikey: this.key,
+							Accept: "application/json"
+						},
+						signal,
+						redirect: "manual"
+					});
+					if (![
+						301,
+						302,
+						303,
+						307,
+						308
+					].includes(response.status)) break;
+					const location = response.headers.get("Location");
+					if (!location || hop >= 2) throw new DataError("FMP: ungültige oder wiederholte Weiterleitung.", 502);
+					const next = new URL(location, current);
+					if (next.origin !== "https://financialmodelingprep.com" || next.username || next.password) throw new DataError("FMP: Weiterleitung auf anderen Server blockiert; API-Schlüssel wurde nicht weitergegeben.", 502);
+					await response.body?.cancel();
+					current = next;
+				}
+			} catch (error) {
+				if (error instanceof DataError) throw error;
+				const name = error instanceof Error ? error.name : "";
+				if (signal.aborted || name === "AbortError" || name === "TimeoutError") throw new DataError(`FMP-Zeitlimit: ${endpoint} antwortet nicht innerhalb von 20 Sekunden.`, 504);
+				throw new DataError(`FMP-Netzwerkfehler beim Endpunkt ${endpoint}. Es liegt keine HTTP-Antwort vor.`, 502);
+			}
+			if (!response.ok) {
+				if (response.status === 402) {
+					if (deniedEndpoints.size > 300) deniedEndpoints.clear();
+					deniedEndpoints.set(`${hash}:${endpoint}`, Date.now() + 36e5);
+					throw new DataError(`FMP-Zugang abgelehnt (HTTP 402): ${endpoint} für ${symbol}. Bitte Endpunkt-Freigabe und Abonnement im FMP-Konto prüfen. Die angefragten Daten wurden nicht ergänzt.`, 402);
+				}
+				if (response.status === 429) {
+					const raw = response.headers.get("Retry-After") || "60", wait = Math.max(1, Number(raw) || Math.ceil((Date.parse(raw) - Date.now()) / 1e3) || 60);
+					cooldown.set(hash, Date.now() + wait * 1e3);
+					throw new DataError("FMP-Anfragelimit erreicht.", 429, wait);
+				}
+				throw new DataError([401, 403].includes(response.status) ? "FMP hat den Schlüssel abgelehnt oder dieser Endpunkt ist in deinem Tarif nicht freigeschaltet." : `FMP-Abruf fehlgeschlagen (HTTP ${response.status}).`, [
+					401,
+					403,
+					404
+				].includes(response.status) ? response.status : 502);
+			}
+			const data = await response.json().catch(() => {
+				throw new DataError("FMP hat kein gültiges JSON geliefert.");
+			});
+			if (!Array.isArray(data)) throw new DataError("FMP hat keine gültige Datenliste geliefert. Schlüssel und Tarif prüfen.", 502);
+			if (cache$1.size >= 300) cache$1.delete(cache$1.keys().next().value);
+			const result = {
+				data,
+				retrievedAt: (/* @__PURE__ */ new Date()).toISOString()
+			};
+			cache$1.set(id, {
+				expires: Date.now() + 36e5,
+				result
+			});
+			return result;
+		})();
+		pending$1.set(id, request);
+		try {
+			return await request;
+		} finally {
+			pending$1.delete(id);
+		}
+	}
+	async verify() {
+		await this.get("price-target-consensus", "MSFT");
+	}
+	async identify(stock) {
+		const match = /^(NASDAQ|NYSE):([A-Z][A-Z0-9.-]{0,14})$/.exec(stock.symbol);
+		if (!match || stock.currency !== "USD" || !stock.isPrimary || stock.securityType !== "stock" || !stock.isin) throw new DataError("FMP-Zuordnung derzeit für bestätigte US-Hauptnotierungen (NASDAQ/NYSE, USD, ISIN) verfügbar. Diese Aktie ist noch nicht eindeutig zugeordnet.", 422);
+		const symbol = match[2];
+		const profile = rows((await this.get("profile", symbol)).data).find((p) => p.symbol === symbol && p.isin === stock.isin && p.currency === stock.currency && (p.exchange === match[1] || p.exchangeShortName === match[1]));
+		if (!profile || profile.isAdr === true || profile.isEtf === true) throw new DataError("Analystenziele gesperrt: FMP- und ROIC-Aktiengattung, ISIN, Börse oder Währung stimmen nicht überein.", 422);
+		return symbol;
+	}
+	async supplement(stock) {
+		const latest = stock.financials[0];
+		if (!latest || valid(latest.capex) || !["annual", "ttm"].includes(latest.periodType ?? "")) return stock;
+		try {
+			const symbol = await this.identify(stock);
+			const endpoint = latest.periodType === "ttm" ? "cash-flow-statement-ttm" : "cash-flow-statement";
+			const fetched = await this.get(endpoint, symbol);
+			const row = rows(fetched.data).find((r) => r.symbol === symbol && r.date === latest.date && r.reportedCurrency === latest.currency && (latest.periodType === "ttm" || r.period === "FY"));
+			if (!row) throw new DataError("FMP: kein Cashflow mit identischem Stichtag, Zeitraum und Währung.", 422);
+			return supplementCashflow(stock, row, endpoint, fetched.retrievedAt);
+		} catch (error) {
+			return {
+				...stock,
+				issues: [...stock.issues, error instanceof DataError ? error.message : "FMP-Cashflow konnte nicht ergänzt werden."]
+			};
+		}
+	}
+	async target(stock) {
+		const symbol = await this.identify(stock);
+		const fetched = await this.get("price-target-consensus", symbol);
+		const result = rows(fetched.data).find((r) => r.symbol === symbol);
+		if (!result) throw new DataError("FMP liefert für diese Aktie keine Analystenkursziele.", 404);
+		return normalizeTarget(object(result), symbol, stock.currency, fetched.retrievedAt);
+	}
+};
+function normalizeTarget(r, symbol, currency, retrievedAt = (/* @__PURE__ */ new Date()).toISOString()) {
+	const positive = (v) => valid(v) && v > 0 ? v : null;
+	const mean = positive(r.targetConsensus), median = positive(r.targetMedian), low = positive(r.targetLow), high = positive(r.targetHigh);
+	if (!mean && !median) throw new DataError("FMP liefert keinen gültigen Kursziel-Konsens.", 404);
+	if (low && high && low > high || [mean, median].some((v) => v !== null && (low !== null && v < low || high !== null && v > high))) throw new DataError("FMP-Kursziele sind widersprüchlich; Anzeige wurde unterdrückt.", 502);
+	return {
+		provider: "FMP",
+		symbol,
+		currency,
+		mean,
+		median,
+		low,
+		high,
+		updatedAt: null,
+		retrievedAt,
+		sourceUrl: "https://site.financialmodelingprep.com/developer/docs/stable/price-target-consensus"
+	};
+}
+function supplementCashflow(stock, row, endpoint, retrievedAt, provider = "FMP") {
+	const f = stock.financials[0], op = row.operatingCashFlow, capex = row.capitalExpenditure, reported = row.freeCashFlow;
+	if (!f || valid(f.capex)) return stock;
+	if (row.date !== f.date || row.reportedCurrency !== f.currency) throw new DataError(`${provider}-Cashflow: Zeitraum oder Währung passen nicht.`, 422);
+	if (!valid(op) || !valid(capex) || capex > 0 || !valid(reported) || Math.abs(op + capex - reported) > Math.max(1, Math.abs(op) * .01)) throw new DataError(`${provider}-Cashflow: CapEx, Vorzeichen oder FCF-Überleitung sind unvollständig / widersprüchlich.`, 422);
+	if (!valid(f.operatingCashFlow) || Math.abs(f.operatingCashFlow - op) > Math.max(1, Math.abs(op) * .01)) throw new DataError(`${provider} und ROIC weichen beim operativen Cashflow ab; keine automatische Vermischung.`, 422);
+	const fcf = op + capex;
+	const fcff = valid(f.interestExpense) && f.interestExpense >= 0 && valid(f.effectiveTaxRate) && f.effectiveTaxRate >= 0 && f.effectiveTaxRate <= 100 ? fcf + f.interestExpense * (1 - f.effectiveTaxRate / 100) : null;
+	const source = `${provider} ${endpoint} · ${f.date} · ${f.currency} · Abruf ${retrievedAt}`;
+	const notes = fcff === null ? [`${provider}: FCF geprüft. Die zusätzliche FCFF-Überleitung bleibt ohne Zinsaufwand/Steuersatz offen; das aktive Python-DCF verwendet FCF.`] : [];
+	const replacement = {
+		...f,
+		operatingCashFlow: op,
+		capex,
+		fcf,
+		fcff,
+		cashflowVerified: fcff !== null,
+		cashflowSource: source,
+		cashflowNotes: notes
+	};
+	const replace = (items) => items.map((p) => p.date === f.date && p.periodType === f.periodType && p.currency === f.currency ? replacement : p);
+	return {
+		...stock,
+		financials: replace(stock.financials),
+		ttmFinancials: stock.ttmFinancials ? replace(stock.ttmFinancials) : void 0,
+		issues: [
+			...stock.issues.filter((n) => !(f.cashflowNotes ?? []).includes(n)),
+			`Cashflow ergänzt: ${source}. Operativer Cashflow mit ROIC abgeglichen.`,
+			...notes
+		]
+	};
+}
+//#endregion
+//#region lib/quantum/finnhub.ts
+var day = 864e5;
+var date = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : "";
+var days = (start, end) => (Date.parse(end) - Date.parse(start)) / day;
+var cik = (v) => String(v ?? "").replace(/^0+/, "");
+var cache = /* @__PURE__ */ new Map();
+var pending = /* @__PURE__ */ new Map();
+var denied = /* @__PURE__ */ new Map();
+var gate$1 = Promise.resolve(), next$1 = 0;
+/** Read only explicit USD consolidated cash-flow concepts; no label guessing or null-as-zero. */
+function flow(raw) {
+	const start = date(raw.startDate), end = date(raw.endDate), cf = rows(object(raw.report).cf);
+	const value = (concept) => {
+		const matches = cf.filter((r) => r.concept === concept || r.concept === concept.replace("_", ":"));
+		if (matches.length !== 1 || String(matches[0].unit).toUpperCase() !== "USD" || !valid(matches[0].value)) return null;
+		return matches[0].value;
+	};
+	const op = value("us-gaap_NetCashProvidedByUsedInOperatingActivities");
+	const combined = value("us-gaap_PaymentsToAcquireProductiveAssets");
+	const ppe = value("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment");
+	const intangible = value("us-gaap_PaymentsToAcquireIntangibleAssets");
+	const unknown = cf.some((r) => /PaymentsToAcquire.*(?:Intangible|Software|Property|Equipment|Productive)/i.test(String(r.concept)) && ![
+		"us-gaap_PaymentsToAcquireProductiveAssets",
+		"us-gaap_PaymentsToAcquirePropertyPlantAndEquipment",
+		"us-gaap_PaymentsToAcquireIntangibleAssets"
+	].includes(String(r.concept).replace(":", "_")));
+	const spend = combined ?? (ppe === null ? null : ppe + (intangible ?? 0));
+	if (!start || !end || days(start, end) <= 0 || op === null || spend === null || spend < 0 || unknown || ppe !== null && ppe < 0 || intangible !== null && intangible < 0) return null;
+	return {
+		start,
+		end,
+		op,
+		capex: -spend
+	};
+}
+function reportedCashflow(stock, payloads) {
+	const f = stock.financials[0], symbol = stock.symbol.split(":")[1];
+	if (!f || !stock.cik || f.currency !== "USD") throw new DataError("Finnhub: bestätigte CIK und USD-Abschluss erforderlich.", 422);
+	const reports = payloads.flatMap((payload) => {
+		const p = object(payload);
+		if (p.symbol !== symbol || cik(p.cik) !== cik(stock.cik)) throw new DataError("Finnhub: Unternehmen/CIK stimmt nicht mit ROIC überein.", 422);
+		return rows(p.data).filter((r) => (!r.symbol || r.symbol === symbol) && cik(r.cik) === cik(stock.cik) && [
+			"10-K",
+			"10-K/A",
+			"10-Q",
+			"10-Q/A"
+		].includes(String(r.form)));
+	});
+	reports.sort((a, b) => String(b.filedDate ?? b.acceptedDate).localeCompare(String(a.filedDate ?? a.acceptedDate)));
+	const unique = /* @__PURE__ */ new Map();
+	for (const r of reports) {
+		const v = flow(r);
+		if (v && !unique.has(v.start + v.end)) unique.set(v.start + v.end, v);
+	}
+	const flows = [...unique.values()], annual = flows.filter((v) => days(v.start, v.end) >= 350 && days(v.start, v.end) <= 380);
+	let selected = annual.find((v) => v.end === f.date);
+	if (!selected && f.periodType === "ttm") for (const current of flows.filter((v) => v.end === f.date && days(v.start, v.end) < 300)) {
+		const base = annual.find((v) => Math.abs(days(v.end, current.start) - 1) <= 1);
+		const prior = base && flows.find((v) => v.start === base.start && Math.abs(days(v.end, current.end) - 365) <= 8 && Math.abs(days(v.start, v.end) - days(current.start, current.end)) <= 8);
+		if (base && prior) {
+			selected = {
+				start: prior.end,
+				end: current.end,
+				op: base.op + current.op - prior.op,
+				capex: base.capex + current.capex - prior.capex
+			};
+			break;
+		}
+	}
+	if (!selected || selected.capex > 0) throw new DataError("Finnhub: kein passender Jahresabschluss bzw. keine vollständige TTM-Überleitung (Jahr + laufendes YTD − Vorjahres-YTD).", 422);
+	return {
+		date: f.date,
+		reportedCurrency: "USD",
+		operatingCashFlow: selected.op,
+		capitalExpenditure: selected.capex,
+		freeCashFlow: selected.op + selected.capex
+	};
+}
+var FinnhubClient = class {
+	constructor(key, fetcher = (...args) => fetch(...args)) {
+		this.key = key;
+		this.fetcher = fetcher;
+		this.key = key.trim();
+	}
+	async get(symbol, freq) {
+		const hash = await fingerprint(this.key), id = `${hash}:${symbol}:${freq}`, saved = cache.get(id);
+		if (saved && saved.until > Date.now()) return saved.data;
+		if ((denied.get(hash) ?? 0) > Date.now()) throw new DataError("Finnhub-Zugang derzeit gesperrt oder Anfragelimit erreicht; erneute Prüfung später.", 403);
+		if (pending.has(id)) return pending.get(id);
+		const task = (async () => {
+			if (!/^[\x21-\x7e]{8,512}$/.test(this.key)) throw new DataError("Finnhub-Schlüssel ungültig.", 401);
+			const turn = gate$1.then(async () => {
+				await new Promise((r) => setTimeout(r, Math.max(0, next$1 - Date.now())));
+				next$1 = Date.now() + 1100;
+			});
+			gate$1 = turn;
+			await turn;
+			let response;
+			try {
+				response = await this.fetcher(`https://finnhub.io/api/v1/stock/financials-reported?symbol=${encodeURIComponent(symbol)}&freq=${freq}`, {
+					headers: {
+						"X-Finnhub-Token": this.key,
+						Accept: "application/json"
+					},
+					redirect: "error",
+					signal: AbortSignal.timeout(12e3)
+				});
+			} catch {
+				throw new DataError("Finnhub-Cashflowabruf fehlgeschlagen oder Zeitlimit von 12 Sekunden erreicht.", 502);
+			}
+			if (!response.ok) {
+				if ([
+					401,
+					402,
+					403,
+					429
+				].includes(response.status)) denied.set(hash, Date.now() + (response.status === 429 ? 6e4 : 36e5));
+				throw new DataError(`Finnhub financials-reported: HTTP ${response.status}. ${[402, 403].includes(response.status) ? "Endpunkt im Tarif nicht freigegeben." : "Zugang oder Anfragelimit prüfen."}`, response.status);
+			}
+			const data = await response.json();
+			if (!Array.isArray(object(data).data)) throw new DataError("Finnhub liefert keine berichteten Cashflows.", 422);
+			if (cache.size >= 200) cache.delete(cache.keys().next().value);
+			cache.set(id, {
+				until: Date.now() + 36e5,
+				data
+			});
+			return data;
+		})();
+		pending.set(id, task);
+		try {
+			return await task;
+		} finally {
+			pending.delete(id);
+		}
+	}
+	async supplement(stock) {
+		const f = stock.financials[0];
+		if (!f || valid(f.fcf) || !["annual", "ttm"].includes(f.periodType ?? "")) return stock;
+		try {
+			if (!/^(NYSE|NASDAQ):[A-Z][A-Z0-9.-]*$/.test(stock.symbol) || !stock.isPrimary || stock.securityType !== "stock" || !stock.cik || stock.currency !== "USD") throw new DataError("Finnhub-Cashflow: keine eindeutig bestätigte US-Hauptnotierung mit CIK.", 422);
+			const symbol = stock.symbol.split(":")[1];
+			const data = [await this.get(symbol, "annual")];
+			if (f.periodType === "ttm") data.push(await this.get(symbol, "quarterly"));
+			return supplementCashflow(stock, reportedCashflow(stock, data), "financials-reported (PPE-CapEx, berichtete immaterielle Investitionen eingeschlossen)", (/* @__PURE__ */ new Date()).toISOString(), "Finnhub");
+		} catch (error) {
+			return {
+				...stock,
+				issues: [...stock.issues, error instanceof DataError ? error.message : "Finnhub-Cashflow nicht verfügbar."]
+			};
+		}
 	}
 };
 //#endregion
@@ -463,6 +798,8 @@ var paced = async (input, init) => {
 	});
 };
 var client = new RoicClient(key, paced);
+var finnhub = process.env.FINNHUB_API_KEY ? new FinnhubClient(process.env.FINNHUB_API_KEY, paced) : null;
+var fmp = process.env.FMP_API_KEY ? new AnalystClient(process.env.FMP_API_KEY, paced) : null;
 var state = (await sync()).checkpoint || {
 	cursor: null,
 	remaining: [],
@@ -492,6 +829,8 @@ for (const ticker of all.slice(start)) {
 	try {
 		if (ticker.is_primary === true && ticker.type === "stock" && (!ticker.type_specifications?.length || ticker.type_specifications.includes("common"))) {
 			stock = await client.stock(ticker.id, ticker, true);
+			if (finnhub) stock = await finnhub.supplement(stock);
+			if (fmp && stock.financials[0]?.fcf == null) stock = await fmp.supplement(stock);
 			if (!stock.financials.length) throw Error("No financial statements");
 			const result = spawnSync(process.env.PYTHON || "python", [fileURLToPath(new URL("./engine/bridge.py", "" + import.meta.url))], {
 				input: JSON.stringify(stock),
@@ -540,4 +879,3 @@ for (const ticker of all.slice(start)) {
 console.log(`Screener complete: ${processed} processed, ${saved} saved, ${failed} failed; checkpoint persisted`);
 if (failed && !saved) throw Error("No analyses saved; review data access");
 //#endregion
-

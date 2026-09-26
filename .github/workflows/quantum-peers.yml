@@ -27,9 +27,10 @@ jobs:
       - name: Screener und Branchenkennzahlen aktualisieren
         env:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           QUANTUM_SYNC_TOKEN: ${{ secrets.QUANTUM_SYNC_TOKEN }}
           QUANTUM_URL: https://quantum-equity-research.daisyscalling.workers.dev
           QUANTUM_BUDGET_MIN: '6'
           QUANTUM_MAX_COMPANIES: '150'
         run: node quantum_sync/sync.mjs
-

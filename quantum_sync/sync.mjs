@@ -468,27 +468,26 @@ var state = (await sync()).checkpoint || {
 	remaining: [],
 	complete: false
 };
-if (state.complete && !state.remaining.length) state = {
-	cursor: null,
-	remaining: [],
-	complete: false
-};
+var catalog = /* @__PURE__ */ new Map();
+var cursor;
+var visited = /* @__PURE__ */ new Set();
+do {
+	if (Date.now() > end - 9e4) throw Error("Catalogue exceeded budget; prior analysis position retained");
+	const page = await client.catalog(cursor, void 0, 2e3, true);
+	for (const ticker of page.data) if (typeof ticker.id === "string") catalog.set(ticker.id, ticker);
+	cursor = page.next || void 0;
+	if (cursor) {
+		if (visited.has(cursor)) throw Error("Repeated catalogue cursor");
+		visited.add(cursor);
+	}
+} while (cursor);
+var all = [...catalog.values()].filter((t) => t.is_primary === true && t.type === "stock" && (!t.type_specifications?.length || t.type_specifications.includes("common"))).sort((a, b) => String(a.id).localeCompare(String(b.id), "en"));
+var start = state.lastId ? all.findIndex((t) => String(t.id).localeCompare(String(state.lastId), "en") > 0) : 0;
+if (start < 0) start = 0;
 var max = Math.min(1e3, Math.max(1, Number(process.env.QUANTUM_MAX_COMPANIES) || 250));
 var processed = 0, saved = 0, failed = 0;
-while (processed < max && Date.now() < end - 9e4) {
-	if (!state.remaining.length) {
-		if (state.complete) break;
-		const page = await client.catalog(state.cursor || void 0, void 0, 20, true);
-		if (page.next && page.next === state.cursor) throw Error("Repeated cursor");
-		state = {
-			cursor: page.next,
-			remaining: page.data,
-			complete: !page.next
-		};
-		await sync({ checkpoint: state });
-		if (!state.remaining.length) break;
-	}
-	const ticker = state.remaining[0];
+for (const ticker of all.slice(start)) {
+	if (processed >= max || Date.now() > end - 9e4) break;
 	let stock;
 	try {
 		if (ticker.is_primary === true && ticker.type === "stock" && (!ticker.type_specifications?.length || ticker.type_specifications.includes("common"))) {
@@ -520,7 +519,11 @@ while (processed < max && Date.now() < end - 9e4) {
 	}
 	const nextState = {
 		...state,
-		remaining: state.remaining.slice(1),
+		cursor: null,
+		remaining: [],
+		complete: false,
+		lastId: ticker.id,
+		catalogCount: all.length,
 		updatedAt: Date.now(),
 		processed: (state.processed || 0) + 1,
 		failed: (state.failed || 0) + (stock ? 0 : 1)

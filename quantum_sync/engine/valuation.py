@@ -1600,14 +1600,13 @@ def datenqualitaet(fund, preset: str = "quality",
              else m) for m in ausgefallen)
         warnungen.append(
             f"{verlust / gesamt:.0%} des Methodengewichts entfallen: {_mit_grund}. "
-            f"Der Fair Value stuetzt sich auf einen Bruchteil der vorgesehenen "
-            f"Methoden.")
+            f"Die verbleibenden {(gesamt-verlust)/gesamt:.0%} werden neu gewichtet. "
+            f"Die Bewertung hat dadurch eine schmalere Datenbasis.")
     if fund.get("target_mean") is None and gewichte.get("analyst", 0) > 0:
         warnungen.append(
-            "Kein Analystenziel vorhanden - der Marktanker fehlt. Die Quelle "
-            "dafuer (yfinance) wird aus Rechenzentren haeufig blockiert; ein "
-            "frueher geholter Wert wird bis zum naechsten Quartalsbericht "
-            "weiterverwendet, sofern einer vorliegt.")
+            "Kein Analystenkursziel verfuegbar. Das Analystenmodell entfaellt; "
+            "verfuegbare Modelle werden neu gewichtet. Ein gespeicherter Analystenwert "
+            "wird nur beruecksichtigt, wenn er mit den Eingabedaten vorliegt.")
     _aus_sp = fund.get("_schaetzfelder_aus_speicher")
     if _aus_sp:
         warnungen.append(
@@ -2748,4 +2747,3 @@ def reverse_dcf_analyse(fund, anker: Dict[str, Optional[float]],
                    "terminal_growth": b["g_term"],
                    "g1_modell": round(b["g1_modell"], 4)},
     }
-

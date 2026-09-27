@@ -1364,22 +1364,111 @@ def index_universum(mit_dax=True) -> list:
     return liste
 
 
-def _wiki_tickers(url: str, spalten: tuple, suffix: str = "") -> list:
+# Boersen-Code (aus ETF-Holdings) -> Yahoo-Suffix
+_BOERSE_YAHOO = {
+    "XETRA": ".DE", "Frankfurt": ".DE", "Deutsche Boerse": ".DE",
+    "Euronext Paris": ".PA", "Paris": ".PA",
+    "Euronext Amsterdam": ".AS", "Amsterdam": ".AS",
+    "Euronext Brussels": ".BR", "Brussels": ".BR",
+    "London": ".L", "London Stock Exchange": ".L", "LSE": ".L",
+    "SIX Swiss": ".SW", "Swiss": ".SW", "Zurich": ".SW",
+    "Borsa Italiana": ".MI", "Milan": ".MI",
+    "Nasdaq Stockholm": ".ST", "Stockholm": ".ST",
+    "Nasdaq Copenhagen": ".CO", "Copenhagen": ".CO",
+    "Nasdaq Helsinki": ".HE", "Helsinki": ".HE",
+    "Oslo": ".OL", "Oslo Bors": ".OL",
+    "Bolsa de Madrid": ".MC", "Madrid": ".MC",
+    "Wiener Boerse": ".VI", "Vienna": ".VI",
+    "Euronext Lisbon": ".LS", "Lisbon": ".LS",
+    "Euronext Dublin": ".IR", "Dublin": ".IR",
+}
+
+
+def _stoxx600_tickers() -> list:
+    """STOXX Europe 600 Mitglieder aus den iShares-ETF-Holdings (EXSA / IMEU).
+    Die CSV listet Ticker + Boerse; daraus wird das Yahoo-Suffix gebildet.
+    Zuverlaessiger als Wikipedia (das hat keine vollstaendige Liste)."""
+    import sys as _sys
+    urls = [
+        # iShares STOXX Europe 600 UCITS ETF - Holdings-CSV
+        "https://www.ishares.com/uk/individual/en/products/251931/"
+        "ishares-stoxx-europe-600-ucits-etf-de-fund/"
+        "1478label=holdings&columns=all&dataType=fund&asOfDate=&formatType=csv",
+    ]
+    import pandas as _pd, io as _io, urllib.request as _rq
+    for url in urls:
+        try:
+            req = _rq.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            raw = _rq.urlopen(req, timeout=30).read().decode("utf-8", "ignore")
+            # iShares-CSV hat Kopfzeilen vor der Tabelle - ab "Ticker" lesen
+            zeilen = raw.splitlines()
+            start = next((i for i, z in enumerate(zeilen)
+                          if z.lower().startswith(("ticker", '"ticker"'))), None)
+            if start is None:
+                continue
+            df = _pd.read_csv(_io.StringIO("\n".join(zeilen[start:])))
+            df.columns = [str(c).strip().strip('"') for c in df.columns]
+            tsp = next((c for c in df.columns if c.lower() == "ticker"), None)
+            esp = next((c for c in df.columns if "exchange" in c.lower()), None)
+            if not tsp:
+                continue
+            out = []
+            for _, row in df.iterrows():
+                t = str(row.get(tsp, "")).strip().upper()
+                if not t or t == "NAN" or len(t) > 10:
+                    continue
+                boerse = str(row.get(esp, "")).strip() if esp else ""
+                suffix = _BOERSE_YAHOO.get(boerse, "")
+                if suffix and "." not in t:
+                    t = t + suffix
+                out.append(t)
+            if out:
+                print(f"[stoxx] {len(out)} Titel aus iShares-CSV",
+                      file=_sys.stderr, flush=True)
+                return out
+        except Exception as e:
+            print(f"[stoxx] iShares FEHLER: {e}", file=_sys.stderr, flush=True)
+    return []
+
+
+def _wiki_tickers(urls, spalten: tuple, suffix: str = "") -> list:
     """Ticker aus einer Wikipedia-Mitgliederliste ziehen.
 
+    urls:    eine URL oder eine Liste von Kandidaten-URLs (die erste, die eine
+             passende Tabelle liefert, gewinnt - Seitennamen variieren).
     spalten: moegliche Spaltennamen fuer das Ticker-Feld.
-    suffix:  Boersen-Suffix (z.B. '.T' fuer Tokio, '.PA' fuer Paris) - nur
-             anhaengen, wo noch keiner da ist.
+    suffix:  Boersen-Suffix (z.B. '.T' fuer Tokio) - nur wo keiner da ist.
     """
+    import sys as _sys
+    if isinstance(urls, str):
+        urls = [urls]
+    for url in urls:
+        out = _wiki_tickers_eine(url, spalten, suffix)
+        if out:
+            return out
+    return []
+
+
+def _html_tabellen(url: str):
+    """HTML-Tabellen einer Seite holen - mit User-Agent (viele Seiten blocken
+    sonst). Faellt auf read_html(url) direkt zurueck, falls urllib scheitert."""
+    import pandas as _pd
+    try:
+        import urllib.request as _rq, io as _io
+        req = _rq.Request(url, headers={"User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"})
+        html = _rq.urlopen(req, timeout=30).read()
+        return _pd.read_html(_io.BytesIO(html))
+    except Exception:
+        return _pd.read_html(url)   # letzter Versuch: pandas direkt
+
+
+def _wiki_tickers_eine(url: str, spalten: tuple, suffix: str = "") -> list:
+    import sys as _sys
     out = []
     try:
-        import pandas as _pd
-        import urllib.request as _rq
-        # Wikipedia blockt Abrufe ohne User-Agent (403). Mit Header holen.
-        req = _rq.Request(url, headers={"User-Agent": "Mozilla/5.0 (ValueRadar)"})
-        html = _rq.urlopen(req, timeout=30).read()
-        import io as _io
-        for tab in _pd.read_html(_io.BytesIO(html)):
+        for tab in _html_tabellen(url):
             # Spaltennamen koennen Tupel sein (MultiIndex) - flach machen
             tab.columns = [str(c[-1]) if isinstance(c, tuple) else str(c)
                            for c in tab.columns]
@@ -1431,8 +1520,12 @@ def _wiki_tickers(url: str, spalten: tuple, suffix: str = "") -> list:
             else:
                 continue
             break
-    except Exception:
-        pass
+    except Exception as _e:
+        print(f"[wiki] {url.split('/')[-1]} FEHLER: {type(_e).__name__}: {_e}",
+              file=_sys.stderr, flush=True)
+    if not out:
+        print(f"[wiki] {url.split('/')[-1]}: keine Ticker gefunden "
+              f"(Spalten passten nicht?)", file=_sys.stderr, flush=True)
     return out
 
 
@@ -1466,17 +1559,26 @@ def export_universum() -> list:
         _log(f"[universum] S&P 500 FEHLER: {e}")
 
     # US: NASDAQ-100
-    nd = _wiki_tickers("https://en.wikipedia.org/wiki/Nasdaq-100", ("Ticker", "Symbol"))
+    nd = _wiki_tickers([
+        "https://www.slickcharts.com/nasdaq100",
+        "https://en.wikipedia.org/wiki/Nasdaq-100",
+    ], ("Symbol", "Ticker"))
     tk.extend(nd)
     _log(f"[universum] NASDAQ-100: {len(nd)} Titel")
 
     # Europa: STOXX Europe 600 (Ticker MIT Boersensuffix)
-    st = _wiki_tickers("https://en.wikipedia.org/wiki/STOXX_Europe_600", ("Ticker", "Symbol"))
+    st = _stoxx600_tickers()
+    if not st:  # Rueckfall auf Wikipedia
+        st = _wiki_tickers(["https://en.wikipedia.org/wiki/EURO_STOXX_50"],
+                           ("Ticker", "Symbol"))
     tk.extend(st)
     _log(f"[universum] STOXX 600: {len(st)} Titel")
 
     # Asien: Nikkei 225 (vierstellige Codes -> '.T'-Suffix fuer Tokio)
-    nk = _wiki_tickers("https://en.wikipedia.org/wiki/Nikkei_225", ("Code", "Ticker", "Symbol"), suffix=".T")
+    nk = _wiki_tickers([
+        "https://indexes.nikkei.co.jp/en/nkave/index/component",
+        "https://en.wikipedia.org/wiki/Nikkei_225",
+    ], ("Code", "Ticker", "Symbol"), suffix=".T")
     tk.extend(nk)
     _log(f"[universum] Nikkei 225: {len(nk)} Titel")
 

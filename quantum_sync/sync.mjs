@@ -1,5 +1,77 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+//#region portable/screening-rules.mjs
+var scanCountries = [
+	"US",
+	"DE",
+	"AF",
+	"AM",
+	"AZ",
+	"BH",
+	"BD",
+	"BT",
+	"BN",
+	"KH",
+	"CN",
+	"CY",
+	"GE",
+	"HK",
+	"IN",
+	"ID",
+	"IR",
+	"IQ",
+	"IL",
+	"JP",
+	"JO",
+	"KZ",
+	"KW",
+	"KG",
+	"LA",
+	"LB",
+	"MO",
+	"MY",
+	"MV",
+	"MN",
+	"MM",
+	"NP",
+	"KP",
+	"OM",
+	"PK",
+	"PS",
+	"PH",
+	"QA",
+	"SA",
+	"SG",
+	"KR",
+	"LK",
+	"SY",
+	"TW",
+	"TJ",
+	"TH",
+	"TL",
+	"TR",
+	"TM",
+	"AE",
+	"UZ",
+	"VN",
+	"YE"
+];
+function listingCountry(t) {
+	return String(t.listing_country_code || t.listingCountry || {
+		NASDAQ: "US",
+		NYSE: "US",
+		AMEX: "US",
+		CBOE: "US",
+		XETR: "DE",
+		FWB: "DE",
+		GETTEX: "DE",
+		TRADEGATE: "DE"
+	}[t.exchange] || "").toUpperCase();
+}
+function inScanRegion(t) {
+	return scanCountries.includes(listingCountry(t));
+}
+//#endregion
 //#region lib/quantum/financial-periods.ts
 var number = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
 var rows$1 = (v) => {
@@ -340,7 +412,7 @@ var RoicClient = class {
 		]);
 		const inc = rows(income);
 		const start = (/* @__PURE__ */ new Date(Date.now() - 370 * 864e5)).toISOString().slice(0, 10);
-		const [history, splits] = await Promise.all([screenTicker ? null : optional(`/v3.0.0/stock-prices/${id}?adjustment=splits&order=desc&limit=400&date.gte=${start}`, "Kurshistorie", 36e5), optional(`/v3.0.0/stock-splits?identifier=${id}&date.gt=${s(inc[0]?.period_end_date, start)}&date.lte=${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}&limit=100`, "Splitprüfung")]);
+		const [history, splits] = await Promise.all([optional(`/v3.0.0/stock-prices/${id}?adjustment=splits&order=desc&limit=400&date.gte=${start}`, "Kurshistorie", 36e5), optional(`/v3.0.0/stock-splits?identifier=${id}&date.gt=${s(inc[0]?.period_end_date, start)}&date.lte=${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}&limit=100`, "Splitprüfung")]);
 		const t = object(ticker), p = object(latest);
 		const address = object(profile.address);
 		const newsId = s(t.isin) || s(profile.isin) || s(t.cik) || s(profile.cik);
@@ -382,6 +454,7 @@ var RoicClient = class {
 		if (financials[0] && Date.now() - Date.parse(financials[0].date) > 550 * 864e5) issues.push("Der jüngste Jahresabschluss ist älter als 18 Monate.");
 		if (!financials.length) issues.push("Keine jährlichen Finanzberichte verfügbar. Es wird keine Bewertung berechnet.");
 		return {
+			listingCountry: s(t.listing_country_code),
 			cik: s(t.cik) || s(profile.cik),
 			isin: s(t.isin) || s(profile.isin),
 			id: s(t.id, identifier),
@@ -603,6 +676,27 @@ function supplementCashflow(stock, row, endpoint, retrievedAt, provider = "FMP")
 		]
 	};
 }
+/** Keep successful supplemental data through outages, without extending its original age. */
+function reuseSupplement(stock, previous, now = Date.now()) {
+	if (!previous || previous.id !== stock.id || previous.symbol !== stock.symbol || previous.currency !== stock.currency || !stock.isin || previous.isin !== stock.isin) return stock;
+	const f = stock.financials[0], old = previous.financials[0];
+	if (!f || !old || old.date !== f.date || old.periodType !== f.periodType || old.currency !== f.currency) return stock;
+	const target = previous.analystTarget, age = target ? now - Date.parse(target.retrievedAt) : Infinity;
+	if (!stock.analystTarget && target && age >= 0 && age <= 45 * 864e5 && target.currency === stock.currency) stock = {
+		...stock,
+		analystTarget: target
+	};
+	if (f.fcf == null && old.fcf != null && old.capex != null && old.cashflowSource) try {
+		stock = supplementCashflow(stock, {
+			date: old.date,
+			reportedCurrency: old.currency,
+			operatingCashFlow: old.operatingCashFlow,
+			capitalExpenditure: old.capex,
+			freeCashFlow: old.fcf
+		}, "gespeicherter, erneut abgeglichener Cashflow", previous.retrievedAt, old.cashflowSource.startsWith("Yahoo") ? "Yahoo Finance" : old.cashflowSource.startsWith("Finnhub") ? "Finnhub" : "FMP");
+	} catch {}
+	return stock;
+}
 //#endregion
 //#region lib/quantum/finnhub.ts
 var day = 864e5;
@@ -763,8 +857,8 @@ if (new URL(base).origin !== base || !base.startsWith("https://")) throw Error("
 var key = process.env.ROIC_API_KEY, token = process.env.QUANTUM_SYNC_TOKEN;
 if (!key || !token) throw Error("ROIC_API_KEY and QUANTUM_SYNC_TOKEN required");
 var endpoint = base + "/api/screener-sync", end = Date.now() + Math.min(35, Math.max(2, Number(process.env.QUANTUM_BUDGET_MIN) || 30)) * 6e4;
-async function sync(body) {
-	const r = await fetch(endpoint, {
+async function sync(body, id) {
+	const r = await fetch(endpoint + (id ? "?id=" + encodeURIComponent(id) : ""), {
 		method: body === void 0 ? "GET" : "POST",
 		redirect: "error",
 		signal: AbortSignal.timeout(2e4),
@@ -818,7 +912,13 @@ do {
 		visited.add(cursor);
 	}
 } while (cursor);
-var all = [...catalog.values()].filter((t) => t.is_primary === true && t.type === "stock" && (!t.type_specifications?.length || t.type_specifications.includes("common"))).sort((a, b) => String(a.id).localeCompare(String(b.id), "en"));
+var all = [...catalog.values()].filter((t) => inScanRegion(t)).filter((t) => t.is_primary === true && t.type === "stock" && (!t.type_specifications?.length || t.type_specifications.includes("common"))).sort((a, b) => String(a.id).localeCompare(String(b.id), "en"));
+if (state.scope !== "us-de-asia-v1") state = {
+	...state,
+	lastId: null,
+	scope: "us-de-asia-v1"
+};
+console.log("Selected listing countries:", scanCountries.join(","), "eligible companies:", all.length);
 var start = state.lastId ? all.findIndex((t) => String(t.id).localeCompare(String(state.lastId), "en") > 0) : 0;
 if (start < 0) start = 0;
 var max = Math.min(1e3, Math.max(1, Number(process.env.QUANTUM_MAX_COMPANIES) || 250));
@@ -829,9 +929,31 @@ for (const ticker of all.slice(start)) {
 	try {
 		if (ticker.is_primary === true && ticker.type === "stock" && (!ticker.type_specifications?.length || ticker.type_specifications.includes("common"))) {
 			stock = await client.stock(ticker.id, ticker, true);
+			try {
+				stock = reuseSupplement(stock, (await sync(void 0, stock.id)).stock);
+			} catch {}
 			if (finnhub) stock = await finnhub.supplement(stock);
 			if (fmp && stock.financials[0]?.fcf == null) stock = await fmp.supplement(stock);
 			if (!stock.financials.length) throw Error("No financial statements");
+			const yahoo = spawnSync(process.env.PYTHON || "python", [fileURLToPath(new URL("./yahoo_supplement.py", "" + import.meta.url))], {
+				input: JSON.stringify(stock),
+				encoding: "utf8",
+				timeout: 25e3,
+				maxBuffer: 1e6,
+				env: {
+					...process.env,
+					PYTHONIOENCODING: "utf-8"
+				}
+			});
+			if (yahoo.status === 0) try {
+				const extra = JSON.parse(yahoo.stdout);
+				if (extra.analystTarget) stock.analystTarget = extra.analystTarget;
+				if (extra.cashflow) stock = supplementCashflow(stock, extra.cashflow, "periodenabgeglichener Cashflow", (/* @__PURE__ */ new Date()).toISOString(), "Yahoo Finance");
+				if (extra.error) stock.issues.push(extra.error);
+			} catch {
+				stock.issues.push("Yahoo-Zusatzdaten unvollstaendig oder nicht mit ROIC vereinbar.");
+			}
+			else stock.issues.push("Yahoo-Zusatzabruf nach 25 Sekunden abgebrochen oder nicht verfuegbar.");
 			const result = spawnSync(process.env.PYTHON || "python", [fileURLToPath(new URL("./engine/bridge.py", "" + import.meta.url))], {
 				input: JSON.stringify(stock),
 				encoding: "utf8",

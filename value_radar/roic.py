@@ -1364,6 +1364,135 @@ def index_universum(mit_dax=True) -> list:
     return liste
 
 
+def _wiki_tickers(url: str, spalten: tuple, suffix: str = "") -> list:
+    """Ticker aus einer Wikipedia-Mitgliederliste ziehen.
+
+    spalten: moegliche Spaltennamen fuer das Ticker-Feld.
+    suffix:  Boersen-Suffix (z.B. '.T' fuer Tokio, '.PA' fuer Paris) - nur
+             anhaengen, wo noch keiner da ist.
+    """
+    out = []
+    try:
+        import pandas as _pd
+        import urllib.request as _rq
+        # Wikipedia blockt Abrufe ohne User-Agent (403). Mit Header holen.
+        req = _rq.Request(url, headers={"User-Agent": "Mozilla/5.0 (ValueRadar)"})
+        html = _rq.urlopen(req, timeout=30).read()
+        import io as _io
+        for tab in _pd.read_html(_io.BytesIO(html)):
+            # Spaltennamen koennen Tupel sein (MultiIndex) - flach machen
+            tab.columns = [str(c[-1]) if isinstance(c, tuple) else str(c)
+                           for c in tab.columns]
+            # Zuerst die genannten Spalten, dann Auto-Erkennung.
+            kandidat_spalten = [sp for sp in spalten if sp in tab.columns]
+            if not kandidat_spalten:
+                # Auto: die Spalte, deren Werte am ehesten wie Ticker aussehen
+                # (kurz, kein Leerzeichen, mehrheitlich Buchstaben/Ziffern).
+                import re as _re2
+                bestes, beste_wert = None, -1.0
+                for c in tab.columns:
+                    werte = [str(v).strip() for v in tab[c].tolist()[:20]]
+                    gueltig = [v for v in werte if v and v != "nan"
+                               and " " not in v and len(v) <= 14
+                               and _re2.match(r"^[A-Za-z0-9.\-]+$", v)]
+                    if not gueltig:
+                        continue
+                    quote = len(gueltig) / max(1, len(werte))
+                    if quote < 0.6:
+                        continue
+                    # Ticker sind KURZ: mittlere Laenge belohnen, lange bestrafen.
+                    # Ziffern deuten auf Boersencodes (Nikkei 7203) hin.
+                    avg_len = sum(len(v) for v in gueltig) / len(gueltig)
+                    hat_ziffern = any(any(ch.isdigit() for ch in v) for v in gueltig)
+                    punkte = quote - avg_len * 0.1 + (0.3 if hat_ziffern else 0)
+                    if punkte > beste_wert:
+                        bestes, beste_wert = c, punkte
+                if bestes:
+                    kandidat_spalten = [bestes]
+            for sp in kandidat_spalten:
+                if sp in tab.columns:
+                    for raw in tab[sp].tolist():
+                        t = str(raw).strip().upper()
+                        if not t or t == "NAN" or " " in t or len(t) > 14:
+                            continue
+                        # Boersen-Suffix erkennen: '.XX' am Ende (2-4 Zeichen).
+                        # Europa (NESN.SW, MC.PA) MUSS es behalten. Nur ein
+                        # US-interner Punkt (BRK.B) wird zu Bindestrich.
+                        import re as _re
+                        hat_boerse = bool(_re.search(r"\.[A-Z]{2,4}$", t))
+                        if suffix:
+                            if "." not in t:
+                                t = t + suffix
+                        elif not hat_boerse:
+                            # reiner US-Ticker: Klassen-Punkt -> Bindestrich
+                            t = t.replace(".", "-")
+                        out.append(t)
+                    break
+            else:
+                continue
+            break
+    except Exception:
+        pass
+    return out
+
+
+_EXPORT_CACHE: dict = {}
+
+
+def export_universum() -> list:
+    """Grosses Universum fuer den Cloudflare-Export:
+    S&P 500 + NASDAQ-100 + STOXX Europe 600 + Nikkei 225, entdoppelt.
+
+    Rund 1300-1400 Titel ueber US, Europa und Asien. Quellen: Wikipedia-
+    Mitgliederlisten (kostenlos, taeglich aktuell gepflegt). Boersensuffixe
+    werden je Region gesetzt, damit yfinance/roic die Titel findet.
+    """
+    if "liste" in _EXPORT_CACHE:
+        return _EXPORT_CACHE["liste"]
+
+    import sys as _sys
+    def _log(msg):
+        print(msg, file=_sys.stderr, flush=True)
+
+    tk = []
+
+    # US: S&P 500 (ueber regime, mit eigenem Rueckfall)
+    try:
+        import regime as _rg
+        sp = _rg.sp500_tickers() or []
+        tk.extend(sp)
+        _log(f"[universum] S&P 500: {len(sp)} Titel")
+    except Exception as e:
+        _log(f"[universum] S&P 500 FEHLER: {e}")
+
+    # US: NASDAQ-100
+    nd = _wiki_tickers("https://en.wikipedia.org/wiki/Nasdaq-100", ("Ticker", "Symbol"))
+    tk.extend(nd)
+    _log(f"[universum] NASDAQ-100: {len(nd)} Titel")
+
+    # Europa: STOXX Europe 600 (Ticker MIT Boersensuffix)
+    st = _wiki_tickers("https://en.wikipedia.org/wiki/STOXX_Europe_600", ("Ticker", "Symbol"))
+    tk.extend(st)
+    _log(f"[universum] STOXX 600: {len(st)} Titel")
+
+    # Asien: Nikkei 225 (vierstellige Codes -> '.T'-Suffix fuer Tokio)
+    nk = _wiki_tickers("https://en.wikipedia.org/wiki/Nikkei_225", ("Code", "Ticker", "Symbol"), suffix=".T")
+    tk.extend(nk)
+    _log(f"[universum] Nikkei 225: {len(nk)} Titel")
+
+    # DAX (groesstenteils schon in STOXX, als Sicherheitsnetz)
+    tk.extend(t if "." in t else t + ".DE" for t in DAX40)
+
+    def _ist_ticker(t):
+        return bool(t) and " " not in t and 0 < len(t) <= 14
+
+    liste = [t for t in dict.fromkeys(tk) if _ist_ticker(t)]
+    _log(f"[universum] GESAMT entdoppelt: {len(liste)} Titel")
+    _EXPORT_CACHE["liste"] = liste
+    return liste
+
+
+
 _RECHTSFORMEN_T = (" plc", " inc.", " inc", " corp.", " corp", " ag", " se",
                   " nv", " sa", " ltd.", " ltd", " limited", " group",
                   " holdings", " co.", " company", ",", ".")

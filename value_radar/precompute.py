@@ -306,6 +306,17 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         "analyst_count": f.get("analyst_count"),
         "value_trap": s.get("value_trap"),
         "kauf_urteil": _urteil,
+        # Kursziel-Felder aus dem fund (yfinance/roic) - fuer den CF-Export,
+        # damit Cloudflare fuer Europa/Asien Kursziele hat.
+        "target_mean": f.get("target_mean"),
+        "eps_forward": f.get("eps_forward"),
+        "eps_trailing": f.get("eps_trailing"),
+        "beta": f.get("beta"),
+        "52w_high": f.get("52w_high"),
+        "52w_low": f.get("52w_low"),
+        "hist_pe_median": f.get("hist_pe_median"),
+        "currency": f.get("currency"),
+        "industry": f.get("industry"),
         # Value-Trap-Warnungen aus dem Quantum Score (fuer das Symbol in Listen)
         "vt_warnung": q.get("value_trap_warnung") or [],
         "revenue_growth": (round(f["revenue_growth"] * 100, 1)

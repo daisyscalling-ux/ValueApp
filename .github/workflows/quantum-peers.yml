@@ -11,7 +11,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -24,6 +24,10 @@ jobs:
           node-version: "24"
       - name: Yahoo-Zusatzdaten vorbereiten
         run: python -m pip install yfinance==1.1.0
+      - name: Angeforderte Einzelanalysen vorziehen
+        env:
+          QUANTUM_SYNC_TOKEN: ${{ secrets.QUANTUM_SYNC_TOKEN }}
+        run: python quantum_sync/on_demand.py
       - name: Bewertungs-Engine prüfen
         run: python -m unittest discover -s quantum_sync
       - name: Screener und Branchenkennzahlen aktualisieren
@@ -36,3 +40,4 @@ jobs:
           QUANTUM_BUDGET_MIN: '6'
           QUANTUM_MAX_COMPANIES: '150'
         run: node quantum_sync/sync.mjs
+

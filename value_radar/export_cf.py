@@ -34,7 +34,7 @@ AUSGABE = Path(os.getenv("EXPORT_PFAD", "daten/cf_universum.json"))
 
 # Nur die Felder, die der Cloudflare-Scanner + die Einzelanalyse nutzen.
 EXPORT_FELDER = (
-    "ticker", "name", "composite", "fair_value", "upside", "quantum",
+    "ticker", "name", "currency", "industry", "composite", "fair_value", "upside", "quantum",
     "entry", "price", "sector", "momentum", "quality", "value", "growth",
     "catalyst", "kauf_urteil", "analyst_count", "value_trap",
     "revenue_growth", "pe", "pb", "ev_ebitda", "roe", "ebitda_margin",
@@ -107,7 +107,7 @@ def main() -> int:
         "universum_groesse": len(universum),
         "kandidaten": ergebnisse,
     }
-    AUSGABE.write_text(json.dumps(ausgabe, ensure_ascii=False), encoding="utf-8")
+    AUSGABE.write_text(json.dumps(ausgabe, ensure_ascii=False, allow_nan=False), encoding="utf-8")
 
     dauer = (time.time() - start) / 60.0
     _melde(f"[export] FERTIG: {len(ergebnisse)} Titel nach {AUSGABE} "

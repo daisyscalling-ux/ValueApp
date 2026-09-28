@@ -1451,17 +1451,25 @@ def _wiki_tickers(urls, spalten: tuple, suffix: str = "") -> list:
 
 def _html_tabellen(url: str):
     """HTML-Tabellen einer Seite holen - mit User-Agent (viele Seiten blocken
-    sonst). Faellt auf read_html(url) direkt zurueck, falls urllib scheitert."""
+    sonst). Nutzt den bs4/html5lib-Parser, falls lxml fehlt."""
     import pandas as _pd
-    try:
-        import urllib.request as _rq, io as _io
-        req = _rq.Request(url, headers={"User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"})
-        html = _rq.urlopen(req, timeout=30).read()
-        return _pd.read_html(_io.BytesIO(html))
-    except Exception:
-        return _pd.read_html(url)   # letzter Versuch: pandas direkt
+    import urllib.request as _rq, io as _io
+    req = _rq.Request(url, headers={"User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"})
+    html = _rq.urlopen(req, timeout=30).read()
+    # Parser-Reihenfolge: lxml (schnell) -> bs4+html5lib -> pandas-Default.
+    for flavor in ("lxml", "bs4", None):
+        try:
+            if flavor:
+                return _pd.read_html(_io.BytesIO(html), flavor=flavor)
+            return _pd.read_html(_io.BytesIO(html))
+        except ImportError:
+            continue
+        except Exception:
+            # Kein Parser-Problem (z.B. keine Tabelle) - nicht weiterprobieren
+            raise
+    raise ImportError("Kein HTML-Parser verfuegbar (lxml/bs4/html5lib fehlen)")
 
 
 def _wiki_tickers_eine(url: str, spalten: tuple, suffix: str = "") -> list:

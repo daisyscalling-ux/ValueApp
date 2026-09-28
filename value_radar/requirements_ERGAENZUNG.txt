@@ -1,0 +1,8 @@
+# ============================================================
+# WICHTIG: Fuege diese ZWEI Zeilen zu deiner bestehenden
+# requirements.txt hinzu (nicht ersetzen!). lxml fehlt und ist
+# der Grund, warum NASDAQ/STOXX/Nikkei 0 Titel lieferten -
+# pandas.read_html braucht es zum HTML-Parsen.
+# ============================================================
+lxml
+beautifulsoup4

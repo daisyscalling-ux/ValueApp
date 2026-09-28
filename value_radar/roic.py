@@ -1572,6 +1572,24 @@ def export_universum() -> list:
 
     tk = []
 
+    # WICHTIG - Reihenfolge: Europa + Asien ZUERST. Diese Titel bekommen ihre
+    # Kursziele NUR ueber diesen Export (Finnhub/FMP im Worker decken sie nicht
+    # ab). US-Titel bekommen Kursziele auch live - deshalb zuletzt. Falls der
+    # Lauf abschneidet, sind die wichtigen (nicht-US) Daten schon gesichert.
+
+    # Europa: STOXX Europe 600 (feste Liste)
+    st = _liste_aus_datei("stoxx600_liste.txt")
+    tk.extend(st)
+    _log(f"[universum] STOXX 600: {len(st)} Titel "
+         f"{'(feste Liste)' if st else '(keine Liste hinterlegt)'}")
+
+    # Asien: Nikkei 225 (feste Liste, 4-stellige Codes -> '.T')
+    nk_roh = _liste_aus_datei("nikkei225_liste.txt")
+    nk = [t if "." in t else t + ".T" for t in nk_roh]
+    tk.extend(nk)
+    _log(f"[universum] Nikkei 225: {len(nk)} Titel "
+         f"{'(feste Liste)' if nk else '(keine Liste hinterlegt)'}")
+
     # US: S&P 500 (ueber regime, mit eigenem Rueckfall)
     try:
         import regime as _rg
@@ -1588,22 +1606,6 @@ def export_universum() -> list:
     ], ("Symbol", "Ticker"))
     tk.extend(nd)
     _log(f"[universum] NASDAQ-100: {len(nd)} Titel")
-
-    # Europa: STOXX Europe 600. Web-Scraping ist hier unzuverlaessig (iShares
-    # 500, Wikipedia hat keine saubere Liste). Deshalb: feste Ticker-Liste aus
-    # stoxx600_liste.txt, falls vorhanden - aendert sich nur 1-2x/Jahr.
-    st = _liste_aus_datei("stoxx600_liste.txt")
-    tk.extend(st)
-    _log(f"[universum] STOXX 600: {len(st)} Titel "
-         f"{'(feste Liste)' if st else '(keine Liste hinterlegt)'}")
-
-    # Asien: Nikkei 225. Offizielle Seite ist JS-geladen (nicht scrapebar).
-    # Feste Liste aus nikkei225_liste.txt (4-stellige Codes -> '.T').
-    nk_roh = _liste_aus_datei("nikkei225_liste.txt")
-    nk = [t if "." in t else t + ".T" for t in nk_roh]
-    tk.extend(nk)
-    _log(f"[universum] Nikkei 225: {len(nk)} Titel "
-         f"{'(feste Liste)' if nk else '(keine Liste hinterlegt)'}")
 
     # DAX (groesstenteils schon in STOXX, als Sicherheitsnetz)
     tk.extend(t if "." in t else t + ".DE" for t in DAX40)

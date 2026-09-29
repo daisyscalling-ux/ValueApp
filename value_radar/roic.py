@@ -1834,6 +1834,25 @@ def peer_median(reihen: list, feld: str):
     return w[m] if len(w) % 2 else (w[m - 1] + w[m]) / 2
 
 
+# Boersensuffix -> Handelswaehrung. Letzter Rueckfall, wenn roic kein
+# currency liefert - sonst scheitert _SCAN_PFLICHT und der Titel faellt auf
+# yfinance zurueck (der eigentliche Grund fuer die Export-Ausfaelle).
+_SUFFIX_WAEHRUNG = {
+    "DE": "EUR", "F": "EUR", "PA": "EUR", "AS": "EUR", "BR": "EUR",
+    "MI": "EUR", "MC": "EUR", "VI": "EUR", "LS": "EUR", "HE": "EUR",
+    "IR": "EUR", "LU": "EUR", "L": "GBP", "IL": "GBP", "SW": "CHF",
+    "VX": "CHF", "ST": "SEK", "OL": "NOK", "CO": "DKK", "WA": "PLN",
+    "T": "JPY", "HK": "HKD", "TO": "CAD", "AX": "AUD",
+}
+
+
+def _waehrung_aus_suffix(ticker: str):
+    if not ticker or "." not in ticker:
+        return "USD"          # US-Titel ohne Suffix
+    suffix = ticker.rsplit(".", 1)[-1].upper()
+    return _SUFFIX_WAEHRUNG.get(suffix)
+
+
 def bundle_light(t: str) -> dict:
     """Sparfassung mit 4 statt 9 Abrufen - fuer breite Scans.
 
@@ -1860,6 +1879,14 @@ def bundle_light(t: str) -> dict:
     ev = enterprise_value(t)
     rp = ratios_profitability(t)
     mu = multiples(t) if multiples_ok(t) else None
+    # Kurs + Waehrung kommen oft NICHT aus dem Profil (roic-Profil hat kein
+    # 'price'/'currency' fuer viele europ./jap. Titel). Der quote-Endpunkt hat
+    # sie. Ohne diesen Abruf faellt der Titel auf yfinance zurueck (Timeout,
+    # 404) - genau der Grund, warum der Export nur 27 von 1378 schaffte.
+    try:
+        _q = quote(t)
+    except Exception:
+        _q = None
     # Vierter Abruf: ohne revenue_growth/earnings_growth stuft
     # valuation.classify_playbook() im breiten Scan jeden Wachstumstitel als
     # Qualitaetstitel ein - genau der Fehler, der NVDA/MU auf -50 % geschickt
@@ -1874,8 +1901,10 @@ def bundle_light(t: str) -> dict:
         "sector": _g(prof, "sector"),
         "industry": _g(prof, "industry"),
         "country": _g(prof, "country_code") or (aufloesen(t) or {}).get("country"),
-        "currency": _g(prof, "currency"),
-        "price": _num(_g(prof, "price")),
+        "currency": (_g(_q, "currency") if _q else None) or _g(prof, "currency")
+                    or _waehrung_aus_suffix(t),
+        "price": (_num(_g(_q, "price", "close", "adj_close")) if _q else None)
+                 or _num(_g(prof, "price")),
         "market_cap": _num(_g(ev, "market_cap")),
         "enterprise_value": _num(_g(ev, "enterprise_value")),
         "total_debt": _num(_g(ev, "short_and_long_term_debt")),

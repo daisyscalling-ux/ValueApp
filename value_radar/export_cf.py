@@ -34,7 +34,7 @@ AUSGABE = Path(os.getenv("EXPORT_PFAD", "daten/cf_universum.json"))
 
 # Nur die Felder, die der Cloudflare-Scanner + die Einzelanalyse nutzen.
 EXPORT_FELDER = (
-    "ticker", "name", "currency", "industry", "composite", "fair_value", "upside", "quantum",
+    "ticker", "name", "composite", "fair_value", "upside", "quantum",
     "entry", "price", "sector", "momentum", "quality", "value", "growth",
     "catalyst", "kauf_urteil", "analyst_count", "value_trap",
     "revenue_growth", "pe", "pb", "ev_ebitda", "roe", "ebitda_margin",
@@ -67,8 +67,21 @@ def main() -> int:
     except Exception as e:
         _melde(f"[export] Universum laden fehlgeschlagen: {e}")
         return 1
-    _melde(f"[export] Universum: {len(universum)} Titel "
+    _melde(f"[export] Universum roh: {len(universum)} Titel "
            f"(S&P500 + NASDAQ100 + STOXX600 + Nikkei225).")
+
+    # WICHTIG: dieselbe Ticker-Aufbereitung wie der funktionierende Nachtlauf.
+    # Ohne sie laufen Pence-Titel (BP.L), Zweitnotierungen (BHPL.XC) und
+    # kaputte Symbole in yfinance-404 mit 30s-Timeout - genau der Grund, warum
+    # der erste Lauf nur 28 von 1390 schaffte.
+    try:
+        universum = precompute.filter_boersen(
+            precompute.collapse_listings(
+                precompute.ersetze_pence_durch_adr(universum)))
+        _melde(f"[export] Universum aufbereitet: {len(universum)} Titel "
+               f"(ADR-ersetzt, Zweitnotierungen entfernt).")
+    except Exception as e:
+        _melde(f"[export] Aufbereitung fehlgeschlagen (nutze roh): {e}")
 
     if not roic.enabled():
         _melde("[export] ROIC NICHT AKTIV - Abbruch (kein Schluessel?).")
@@ -107,7 +120,7 @@ def main() -> int:
         "universum_groesse": len(universum),
         "kandidaten": ergebnisse,
     }
-    AUSGABE.write_text(json.dumps(ausgabe, ensure_ascii=False, allow_nan=False), encoding="utf-8")
+    AUSGABE.write_text(json.dumps(ausgabe, ensure_ascii=False), encoding="utf-8")
 
     dauer = (time.time() - start) / 60.0
     _melde(f"[export] FERTIG: {len(ergebnisse)} Titel nach {AUSGABE} "

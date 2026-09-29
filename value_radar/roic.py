@@ -671,7 +671,7 @@ def bundle(t: str) -> dict:
         "employees": _num(_g(prof, "number_of_employees")),
         "country": _g(prof, "country_code") or (aufloesen(t) or {}).get("country"),
         "currency": _g(prof, "currency"),
-        "price": _num(_g(prof, "price")),
+        "price": (_num(_g(_q, "price", "close", "adj_close")) if _q else None) or _num(_g(prof, "price")),
         "dividend_yield": _num(_g(prof, "dividend_yield")),
         "isin": _g(prof, "isin") or (aufloesen(t) or {}).get("isin"),
 

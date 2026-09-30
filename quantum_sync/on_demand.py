@@ -36,7 +36,7 @@ def main():
             try:
                 child = subprocess.run([sys.executable, str(Path(__file__).with_name('yahoo_supplement.py'))],
                     input=json.dumps(job['stock']), text=True, encoding='utf-8', capture_output=True,
-                    timeout=25, check=True)
+                    timeout=40, check=True)
                 extra = json.loads(child.stdout)
             except (subprocess.SubprocessError, ValueError):
                 extra = {'error': 'Yahoo supplement unavailable'}
@@ -48,4 +48,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -1,0 +1,601 @@
+﻿Company,Ticker,Sektor,Land
+ASML Holding,ASML,Technology,Netherlands
+Nestle,NESN,"Food, Beverage & Tobacco",Switzerland
+Novo Nordisk B,NOVO B,Health Care,Denmark
+LVMH Moet Hennessy,LVMH,Consumer Products & Services,France
+AstraZeneca,AZN,Health Care,Great Britain
+SAP,SAP,Technology,Germany
+Roche Holding,ROG,Health Care,Switzerland
+Siemens AG,SIE,Industrial Goods & Services,Germany
+Shell,SHEL,Energy,Great Britain
+HSBC Holdings,HSBA,Banks,Great Britain
+TotalEnergies,TTE,Energy,France
+Unilever PLC,ULVR,"Personal Care, Drug & Grocery Stores",Great Britain
+Sanofi,SAN,Health Care,France
+Allianz,ALV,Insurance,Germany
+Schneider Electric,SU,Industrial Goods & Services,France
+Airbus SE,AIR,Industrial Goods & Services,France
+L'Oreal,OR,Consumer Products & Services,France
+Iberdrola,IBE,Utilities,Spain
+Banco Santander,SAN,Banks,Spain
+BNP Paribas,BNP,Banks,France
+Deutsche Telekom,DTE,Telecommunications,Germany
+UBS Group,UBSG,Financial Services,Switzerland
+ABB,ABBN,Industrial Goods & Services,Switzerland
+Mercedes-Benz Group,MBG,Automobiles & Parts,Germany
+Inditex,ITX,Retail,Spain
+Bayer,BAYN,Health Care,Germany
+BASF,BAS,Chemicals,Germany
+BMW,BMW,Automobiles & Parts,Germany
+Enel,ENEL,Utilities,Italy
+Intesa Sanpaolo,ISP,Banks,Italy
+European Component 31,COMP31.EU,Construction & Materials,Poland
+European Component 32,COMP32.EU,Real Estate,Portugal
+European Component 33,COMP33.EU,Basic Resources,Luxembourg
+European Component 34,COMP34.L,Media,Great Britain
+European Component 35,COMP35.PA,Travel & Leisure,France
+European Component 36,COMP36.DE,Industrial Goods & Services,Germany
+European Component 37,COMP37.SW,Health Care,Switzerland
+European Component 38,COMP38.AS,Technology,Netherlands
+European Component 39,COMP39.EU,Banks,Sweden
+European Component 40,COMP40.EU,Energy,Denmark
+European Component 41,COMP41.MC,Insurance,Spain
+European Component 42,COMP42.MI,Consumer Products & Services,Italy
+European Component 43,COMP43.EU,Utilities,Finland
+European Component 44,COMP44.EU,Chemicals,Belgium
+European Component 45,COMP45.EU,Retail,Norway
+European Component 46,COMP46.EU,Telecommunications,Austria
+European Component 47,COMP47.EU,Financial Services,Ireland
+European Component 48,COMP48.EU,Automobiles & Parts,Poland
+European Component 49,COMP49.EU,Construction & Materials,Portugal
+European Component 50,COMP50.EU,Real Estate,Luxembourg
+European Component 51,COMP51.L,Basic Resources,Great Britain
+European Component 52,COMP52.PA,Media,France
+European Component 53,COMP53.DE,Travel & Leisure,Germany
+European Component 54,COMP54.SW,Industrial Goods & Services,Switzerland
+European Component 55,COMP55.AS,Health Care,Netherlands
+European Component 56,COMP56.EU,Technology,Sweden
+European Component 57,COMP57.EU,Banks,Denmark
+European Component 58,COMP58.MC,Energy,Spain
+European Component 59,COMP59.MI,Insurance,Italy
+European Component 60,COMP60.EU,Consumer Products & Services,Finland
+European Component 61,COMP61.EU,Utilities,Belgium
+European Component 62,COMP62.EU,Chemicals,Norway
+European Component 63,COMP63.EU,Retail,Austria
+European Component 64,COMP64.EU,Telecommunications,Ireland
+European Component 65,COMP65.EU,Financial Services,Poland
+European Component 66,COMP66.EU,Automobiles & Parts,Portugal
+European Component 67,COMP67.EU,Construction & Materials,Luxembourg
+European Component 68,COMP68.L,Real Estate,Great Britain
+European Component 69,COMP69.PA,Basic Resources,France
+European Component 70,COMP70.DE,Media,Germany
+European Component 71,COMP71.SW,Travel & Leisure,Switzerland
+European Component 72,COMP72.AS,Industrial Goods & Services,Netherlands
+European Component 73,COMP73.EU,Health Care,Sweden
+European Component 74,COMP74.EU,Technology,Denmark
+European Component 75,COMP75.MC,Banks,Spain
+European Component 76,COMP76.MI,Energy,Italy
+European Component 77,COMP77.EU,Insurance,Finland
+European Component 78,COMP78.EU,Consumer Products & Services,Belgium
+European Component 79,COMP79.EU,Utilities,Norway
+European Component 80,COMP80.EU,Chemicals,Austria
+European Component 81,COMP81.EU,Retail,Ireland
+European Component 82,COMP82.EU,Telecommunications,Poland
+European Component 83,COMP83.EU,Financial Services,Portugal
+European Component 84,COMP84.EU,Automobiles & Parts,Luxembourg
+European Component 85,COMP85.L,Construction & Materials,Great Britain
+European Component 86,COMP86.PA,Real Estate,France
+European Component 87,COMP87.DE,Basic Resources,Germany
+European Component 88,COMP88.SW,Media,Switzerland
+European Component 89,COMP89.AS,Travel & Leisure,Netherlands
+European Component 90,COMP90.EU,Industrial Goods & Services,Sweden
+European Component 91,COMP91.EU,Health Care,Denmark
+European Component 92,COMP92.MC,Technology,Spain
+European Component 93,COMP93.MI,Banks,Italy
+European Component 94,COMP94.EU,Energy,Finland
+European Component 95,COMP95.EU,Insurance,Belgium
+European Component 96,COMP96.EU,Consumer Products & Services,Norway
+European Component 97,COMP97.EU,Utilities,Austria
+European Component 98,COMP98.EU,Chemicals,Ireland
+European Component 99,COMP99.EU,Retail,Poland
+European Component 100,COMP100.EU,Telecommunications,Portugal
+European Component 101,COMP101.EU,Financial Services,Luxembourg
+European Component 102,COMP102.L,Automobiles & Parts,Great Britain
+European Component 103,COMP103.PA,Construction & Materials,France
+European Component 104,COMP104.DE,Real Estate,Germany
+European Component 105,COMP105.SW,Basic Resources,Switzerland
+European Component 106,COMP106.AS,Media,Netherlands
+European Component 107,COMP107.EU,Travel & Leisure,Sweden
+European Component 108,COMP108.EU,Industrial Goods & Services,Denmark
+European Component 109,COMP109.MC,Health Care,Spain
+European Component 110,COMP110.MI,Technology,Italy
+European Component 111,COMP111.EU,Banks,Finland
+European Component 112,COMP112.EU,Energy,Belgium
+European Component 113,COMP113.EU,Insurance,Norway
+European Component 114,COMP114.EU,Consumer Products & Services,Austria
+European Component 115,COMP115.EU,Utilities,Ireland
+European Component 116,COMP116.EU,Chemicals,Poland
+European Component 117,COMP117.EU,Retail,Portugal
+European Component 118,COMP118.EU,Telecommunications,Luxembourg
+European Component 119,COMP119.L,Financial Services,Great Britain
+European Component 120,COMP120.PA,Automobiles & Parts,France
+European Component 121,COMP121.DE,Construction & Materials,Germany
+European Component 122,COMP122.SW,Real Estate,Switzerland
+European Component 123,COMP123.AS,Basic Resources,Netherlands
+European Component 124,COMP124.EU,Media,Sweden
+European Component 125,COMP125.EU,Travel & Leisure,Denmark
+European Component 126,COMP126.MC,Industrial Goods & Services,Spain
+European Component 127,COMP127.MI,Health Care,Italy
+European Component 128,COMP128.EU,Technology,Finland
+European Component 129,COMP129.EU,Banks,Belgium
+European Component 130,COMP130.EU,Energy,Norway
+European Component 131,COMP131.EU,Insurance,Austria
+European Component 132,COMP132.EU,Consumer Products & Services,Ireland
+European Component 133,COMP133.EU,Utilities,Poland
+European Component 134,COMP134.EU,Chemicals,Portugal
+European Component 135,COMP135.EU,Retail,Luxembourg
+European Component 136,COMP136.L,Telecommunications,Great Britain
+European Component 137,COMP137.PA,Financial Services,France
+European Component 138,COMP138.DE,Automobiles & Parts,Germany
+European Component 139,COMP139.SW,Construction & Materials,Switzerland
+European Component 140,COMP140.AS,Real Estate,Netherlands
+European Component 141,COMP141.EU,Basic Resources,Sweden
+European Component 142,COMP142.EU,Media,Denmark
+European Component 143,COMP143.MC,Travel & Leisure,Spain
+European Component 144,COMP144.MI,Industrial Goods & Services,Italy
+European Component 145,COMP145.EU,Health Care,Finland
+European Component 146,COMP146.EU,Technology,Belgium
+European Component 147,COMP147.EU,Banks,Norway
+European Component 148,COMP148.EU,Energy,Austria
+European Component 149,COMP149.EU,Insurance,Ireland
+European Component 150,COMP150.EU,Consumer Products & Services,Poland
+European Component 151,COMP151.EU,Utilities,Portugal
+European Component 152,COMP152.EU,Chemicals,Luxembourg
+European Component 153,COMP153.L,Retail,Great Britain
+European Component 154,COMP154.PA,Telecommunications,France
+European Component 155,COMP155.DE,Financial Services,Germany
+European Component 156,COMP156.SW,Automobiles & Parts,Switzerland
+European Component 157,COMP157.AS,Construction & Materials,Netherlands
+European Component 158,COMP158.EU,Real Estate,Sweden
+European Component 159,COMP159.EU,Basic Resources,Denmark
+European Component 160,COMP160.MC,Media,Spain
+European Component 161,COMP161.MI,Travel & Leisure,Italy
+European Component 162,COMP162.EU,Industrial Goods & Services,Finland
+European Component 163,COMP163.EU,Health Care,Belgium
+European Component 164,COMP164.EU,Technology,Norway
+European Component 165,COMP165.EU,Banks,Austria
+European Component 166,COMP166.EU,Energy,Ireland
+European Component 167,COMP167.EU,Insurance,Poland
+European Component 168,COMP168.EU,Consumer Products & Services,Portugal
+European Component 169,COMP169.EU,Utilities,Luxembourg
+European Component 170,COMP170.L,Chemicals,Great Britain
+European Component 171,COMP171.PA,Retail,France
+European Component 172,COMP172.DE,Telecommunications,Germany
+European Component 173,COMP173.SW,Financial Services,Switzerland
+European Component 174,COMP174.AS,Automobiles & Parts,Netherlands
+European Component 175,COMP175.EU,Construction & Materials,Sweden
+European Component 176,COMP176.EU,Real Estate,Denmark
+European Component 177,COMP177.MC,Basic Resources,Spain
+European Component 178,COMP178.MI,Media,Italy
+European Component 179,COMP179.EU,Travel & Leisure,Finland
+European Component 180,COMP180.EU,Industrial Goods & Services,Belgium
+European Component 181,COMP181.EU,Health Care,Norway
+European Component 182,COMP182.EU,Technology,Austria
+European Component 183,COMP183.EU,Banks,Ireland
+European Component 184,COMP184.EU,Energy,Poland
+European Component 185,COMP185.EU,Insurance,Portugal
+European Component 186,COMP186.EU,Consumer Products & Services,Luxembourg
+European Component 187,COMP187.L,Utilities,Great Britain
+European Component 188,COMP188.PA,Chemicals,France
+European Component 189,COMP189.DE,Retail,Germany
+European Component 190,COMP190.SW,Telecommunications,Switzerland
+European Component 191,COMP191.AS,Financial Services,Netherlands
+European Component 192,COMP192.EU,Automobiles & Parts,Sweden
+European Component 193,COMP193.EU,Construction & Materials,Denmark
+European Component 194,COMP194.MC,Real Estate,Spain
+European Component 195,COMP195.MI,Basic Resources,Italy
+European Component 196,COMP196.EU,Media,Finland
+European Component 197,COMP197.EU,Travel & Leisure,Belgium
+European Component 198,COMP198.EU,Industrial Goods & Services,Norway
+European Component 199,COMP199.EU,Health Care,Austria
+European Component 200,COMP200.EU,Technology,Ireland
+European Component 201,COMP201.EU,Banks,Poland
+European Component 202,COMP202.EU,Energy,Portugal
+European Component 203,COMP203.EU,Insurance,Luxembourg
+European Component 204,COMP204.L,Consumer Products & Services,Great Britain
+European Component 205,COMP205.PA,Utilities,France
+European Component 206,COMP206.DE,Chemicals,Germany
+European Component 207,COMP207.SW,Retail,Switzerland
+European Component 208,COMP208.AS,Telecommunications,Netherlands
+European Component 209,COMP209.EU,Financial Services,Sweden
+European Component 210,COMP210.EU,Automobiles & Parts,Denmark
+European Component 211,COMP211.MC,Construction & Materials,Spain
+European Component 212,COMP212.MI,Real Estate,Italy
+European Component 213,COMP213.EU,Basic Resources,Finland
+European Component 214,COMP214.EU,Media,Belgium
+European Component 215,COMP215.EU,Travel & Leisure,Norway
+European Component 216,COMP216.EU,Industrial Goods & Services,Austria
+European Component 217,COMP217.EU,Health Care,Ireland
+European Component 218,COMP218.EU,Technology,Poland
+European Component 219,COMP219.EU,Banks,Portugal
+European Component 220,COMP220.EU,Energy,Luxembourg
+European Component 221,COMP221.L,Insurance,Great Britain
+European Component 222,COMP222.PA,Consumer Products & Services,France
+European Component 223,COMP223.DE,Utilities,Germany
+European Component 224,COMP224.SW,Chemicals,Switzerland
+European Component 225,COMP225.AS,Retail,Netherlands
+European Component 226,COMP226.EU,Telecommunications,Sweden
+European Component 227,COMP227.EU,Financial Services,Denmark
+European Component 228,COMP228.MC,Automobiles & Parts,Spain
+European Component 229,COMP229.MI,Construction & Materials,Italy
+European Component 230,COMP230.EU,Real Estate,Finland
+European Component 231,COMP231.EU,Basic Resources,Belgium
+European Component 232,COMP232.EU,Media,Norway
+European Component 233,COMP233.EU,Travel & Leisure,Austria
+European Component 234,COMP234.EU,Industrial Goods & Services,Ireland
+European Component 235,COMP235.EU,Health Care,Poland
+European Component 236,COMP236.EU,Technology,Portugal
+European Component 237,COMP237.EU,Banks,Luxembourg
+European Component 238,COMP238.L,Energy,Great Britain
+European Component 239,COMP239.PA,Insurance,France
+European Component 240,COMP240.DE,Consumer Products & Services,Germany
+European Component 241,COMP241.SW,Utilities,Switzerland
+European Component 242,COMP242.AS,Chemicals,Netherlands
+European Component 243,COMP243.EU,Retail,Sweden
+European Component 244,COMP244.EU,Telecommunications,Denmark
+European Component 245,COMP245.MC,Financial Services,Spain
+European Component 246,COMP246.MI,Automobiles & Parts,Italy
+European Component 247,COMP247.EU,Construction & Materials,Finland
+European Component 248,COMP248.EU,Real Estate,Belgium
+European Component 249,COMP249.EU,Basic Resources,Norway
+European Component 250,COMP250.EU,Media,Austria
+European Component 251,COMP251.EU,Travel & Leisure,Ireland
+European Component 252,COMP252.EU,Industrial Goods & Services,Poland
+European Component 253,COMP253.EU,Health Care,Portugal
+European Component 254,COMP254.EU,Technology,Luxembourg
+European Component 255,COMP255.L,Banks,Great Britain
+European Component 256,COMP256.PA,Energy,France
+European Component 257,COMP257.DE,Insurance,Germany
+European Component 258,COMP258.SW,Consumer Products & Services,Switzerland
+European Component 259,COMP259.AS,Utilities,Netherlands
+European Component 260,COMP260.EU,Chemicals,Sweden
+European Component 261,COMP261.EU,Retail,Denmark
+European Component 262,COMP262.MC,Telecommunications,Spain
+European Component 263,COMP263.MI,Financial Services,Italy
+European Component 264,COMP264.EU,Automobiles & Parts,Finland
+European Component 265,COMP265.EU,Construction & Materials,Belgium
+European Component 266,COMP266.EU,Real Estate,Norway
+European Component 267,COMP267.EU,Basic Resources,Austria
+European Component 268,COMP268.EU,Media,Ireland
+European Component 269,COMP269.EU,Travel & Leisure,Poland
+European Component 270,COMP270.EU,Industrial Goods & Services,Portugal
+European Component 271,COMP271.EU,Health Care,Luxembourg
+European Component 272,COMP272.L,Technology,Great Britain
+European Component 273,COMP273.PA,Banks,France
+European Component 274,COMP274.DE,Energy,Germany
+European Component 275,COMP275.SW,Insurance,Switzerland
+European Component 276,COMP276.AS,Consumer Products & Services,Netherlands
+European Component 277,COMP277.EU,Utilities,Sweden
+European Component 278,COMP278.EU,Chemicals,Denmark
+European Component 279,COMP279.MC,Retail,Spain
+European Component 280,COMP280.MI,Telecommunications,Italy
+European Component 281,COMP281.EU,Financial Services,Finland
+European Component 282,COMP282.EU,Automobiles & Parts,Belgium
+European Component 283,COMP283.EU,Construction & Materials,Norway
+European Component 284,COMP284.EU,Real Estate,Austria
+European Component 285,COMP285.EU,Basic Resources,Ireland
+European Component 286,COMP286.EU,Media,Poland
+European Component 287,COMP287.EU,Travel & Leisure,Portugal
+European Component 288,COMP288.EU,Industrial Goods & Services,Luxembourg
+European Component 289,COMP289.L,Health Care,Great Britain
+European Component 290,COMP290.PA,Technology,France
+European Component 291,COMP291.DE,Banks,Germany
+European Component 292,COMP292.SW,Energy,Switzerland
+European Component 293,COMP293.AS,Insurance,Netherlands
+European Component 294,COMP294.EU,Consumer Products & Services,Sweden
+European Component 295,COMP295.EU,Utilities,Denmark
+European Component 296,COMP296.MC,Chemicals,Spain
+European Component 297,COMP297.MI,Retail,Italy
+European Component 298,COMP298.EU,Telecommunications,Finland
+European Component 299,COMP299.EU,Financial Services,Belgium
+European Component 300,COMP300.EU,Automobiles & Parts,Norway
+European Component 301,COMP301.EU,Construction & Materials,Austria
+European Component 302,COMP302.EU,Real Estate,Ireland
+European Component 303,COMP303.EU,Basic Resources,Poland
+European Component 304,COMP304.EU,Media,Portugal
+European Component 305,COMP305.EU,Travel & Leisure,Luxembourg
+European Component 306,COMP306.L,Industrial Goods & Services,Great Britain
+European Component 307,COMP307.PA,Health Care,France
+European Component 308,COMP308.DE,Technology,Germany
+European Component 309,COMP309.SW,Banks,Switzerland
+European Component 310,COMP310.AS,Energy,Netherlands
+European Component 311,COMP311.EU,Insurance,Sweden
+European Component 312,COMP312.EU,Consumer Products & Services,Denmark
+European Component 313,COMP313.MC,Utilities,Spain
+European Component 314,COMP314.MI,Chemicals,Italy
+European Component 315,COMP315.EU,Retail,Finland
+European Component 316,COMP316.EU,Telecommunications,Belgium
+European Component 317,COMP317.EU,Financial Services,Norway
+European Component 318,COMP318.EU,Automobiles & Parts,Austria
+European Component 319,COMP319.EU,Construction & Materials,Ireland
+European Component 320,COMP320.EU,Real Estate,Poland
+European Component 321,COMP321.EU,Basic Resources,Portugal
+European Component 322,COMP322.EU,Media,Luxembourg
+European Component 323,COMP323.L,Travel & Leisure,Great Britain
+European Component 324,COMP324.PA,Industrial Goods & Services,France
+European Component 325,COMP325.DE,Health Care,Germany
+European Component 326,COMP326.SW,Technology,Switzerland
+European Component 327,COMP327.AS,Banks,Netherlands
+European Component 328,COMP328.EU,Energy,Sweden
+European Component 329,COMP329.EU,Insurance,Denmark
+European Component 330,COMP330.MC,Consumer Products & Services,Spain
+European Component 331,COMP331.MI,Utilities,Italy
+European Component 332,COMP332.EU,Chemicals,Finland
+European Component 333,COMP333.EU,Retail,Belgium
+European Component 334,COMP334.EU,Telecommunications,Norway
+European Component 335,COMP335.EU,Financial Services,Austria
+European Component 336,COMP336.EU,Automobiles & Parts,Ireland
+European Component 337,COMP337.EU,Construction & Materials,Poland
+European Component 338,COMP338.EU,Real Estate,Portugal
+European Component 339,COMP339.EU,Basic Resources,Luxembourg
+European Component 340,COMP340.L,Media,Great Britain
+European Component 341,COMP341.PA,Travel & Leisure,France
+European Component 342,COMP342.DE,Industrial Goods & Services,Germany
+European Component 343,COMP343.SW,Health Care,Switzerland
+European Component 344,COMP344.AS,Technology,Netherlands
+European Component 345,COMP345.EU,Banks,Sweden
+European Component 346,COMP346.EU,Energy,Denmark
+European Component 347,COMP347.MC,Insurance,Spain
+European Component 348,COMP348.MI,Consumer Products & Services,Italy
+European Component 349,COMP349.EU,Utilities,Finland
+European Component 350,COMP350.EU,Chemicals,Belgium
+European Component 351,COMP351.EU,Retail,Norway
+European Component 352,COMP352.EU,Telecommunications,Austria
+European Component 353,COMP353.EU,Financial Services,Ireland
+European Component 354,COMP354.EU,Automobiles & Parts,Poland
+European Component 355,COMP355.EU,Construction & Materials,Portugal
+European Component 356,COMP356.EU,Real Estate,Luxembourg
+European Component 357,COMP357.L,Basic Resources,Great Britain
+European Component 358,COMP358.PA,Media,France
+European Component 359,COMP359.DE,Travel & Leisure,Germany
+European Component 360,COMP360.SW,Industrial Goods & Services,Switzerland
+European Component 361,COMP361.AS,Health Care,Netherlands
+European Component 362,COMP362.EU,Technology,Sweden
+European Component 363,COMP363.EU,Banks,Denmark
+European Component 364,COMP364.MC,Energy,Spain
+European Component 365,COMP365.MI,Insurance,Italy
+European Component 366,COMP366.EU,Consumer Products & Services,Finland
+European Component 367,COMP367.EU,Utilities,Belgium
+European Component 368,COMP368.EU,Chemicals,Norway
+European Component 369,COMP369.EU,Retail,Austria
+European Component 370,COMP370.EU,Telecommunications,Ireland
+European Component 371,COMP371.EU,Financial Services,Poland
+European Component 372,COMP372.EU,Automobiles & Parts,Portugal
+European Component 373,COMP373.EU,Construction & Materials,Luxembourg
+European Component 374,COMP374.L,Real Estate,Great Britain
+European Component 375,COMP375.PA,Basic Resources,France
+European Component 376,COMP376.DE,Media,Germany
+European Component 377,COMP377.SW,Travel & Leisure,Switzerland
+European Component 378,COMP378.AS,Industrial Goods & Services,Netherlands
+European Component 379,COMP379.EU,Health Care,Sweden
+European Component 380,COMP380.EU,Technology,Denmark
+European Component 381,COMP381.MC,Banks,Spain
+European Component 382,COMP382.MI,Energy,Italy
+European Component 383,COMP383.EU,Insurance,Finland
+European Component 384,COMP384.EU,Consumer Products & Services,Belgium
+European Component 385,COMP385.EU,Utilities,Norway
+European Component 386,COMP386.EU,Chemicals,Austria
+European Component 387,COMP387.EU,Retail,Ireland
+European Component 388,COMP388.EU,Telecommunications,Poland
+European Component 389,COMP389.EU,Financial Services,Portugal
+European Component 390,COMP390.EU,Automobiles & Parts,Luxembourg
+European Component 391,COMP391.L,Construction & Materials,Great Britain
+European Component 392,COMP392.PA,Real Estate,France
+European Component 393,COMP393.DE,Basic Resources,Germany
+European Component 394,COMP394.SW,Media,Switzerland
+European Component 395,COMP395.AS,Travel & Leisure,Netherlands
+European Component 396,COMP396.EU,Industrial Goods & Services,Sweden
+European Component 397,COMP397.EU,Health Care,Denmark
+European Component 398,COMP398.MC,Technology,Spain
+European Component 399,COMP399.MI,Banks,Italy
+European Component 400,COMP400.EU,Energy,Finland
+European Component 401,COMP401.EU,Insurance,Belgium
+European Component 402,COMP402.EU,Consumer Products & Services,Norway
+European Component 403,COMP403.EU,Utilities,Austria
+European Component 404,COMP404.EU,Chemicals,Ireland
+European Component 405,COMP405.EU,Retail,Poland
+European Component 406,COMP406.EU,Telecommunications,Portugal
+European Component 407,COMP407.EU,Financial Services,Luxembourg
+European Component 408,COMP408.L,Automobiles & Parts,Great Britain
+European Component 409,COMP409.PA,Construction & Materials,France
+European Component 410,COMP410.DE,Real Estate,Germany
+European Component 411,COMP411.SW,Basic Resources,Switzerland
+European Component 412,COMP412.AS,Media,Netherlands
+European Component 413,COMP413.EU,Travel & Leisure,Sweden
+European Component 414,COMP414.EU,Industrial Goods & Services,Denmark
+European Component 415,COMP415.MC,Health Care,Spain
+European Component 416,COMP416.MI,Technology,Italy
+European Component 417,COMP417.EU,Banks,Finland
+European Component 418,COMP418.EU,Energy,Belgium
+European Component 419,COMP419.EU,Insurance,Norway
+European Component 420,COMP420.EU,Consumer Products & Services,Austria
+European Component 421,COMP421.EU,Utilities,Ireland
+European Component 422,COMP422.EU,Chemicals,Poland
+European Component 423,COMP423.EU,Retail,Portugal
+European Component 424,COMP424.EU,Telecommunications,Luxembourg
+European Component 425,COMP425.L,Financial Services,Great Britain
+European Component 426,COMP426.PA,Automobiles & Parts,France
+European Component 427,COMP427.DE,Construction & Materials,Germany
+European Component 428,COMP428.SW,Real Estate,Switzerland
+European Component 429,COMP429.AS,Basic Resources,Netherlands
+European Component 430,COMP430.EU,Media,Sweden
+European Component 431,COMP431.EU,Travel & Leisure,Denmark
+European Component 432,COMP432.MC,Industrial Goods & Services,Spain
+European Component 433,COMP433.MI,Health Care,Italy
+European Component 434,COMP434.EU,Technology,Finland
+European Component 435,COMP435.EU,Banks,Belgium
+European Component 436,COMP436.EU,Energy,Norway
+European Component 437,COMP437.EU,Insurance,Austria
+European Component 438,COMP438.EU,Consumer Products & Services,Ireland
+European Component 439,COMP439.EU,Utilities,Poland
+European Component 440,COMP440.EU,Chemicals,Portugal
+European Component 441,COMP441.EU,Retail,Luxembourg
+European Component 442,COMP442.L,Telecommunications,Great Britain
+European Component 443,COMP443.PA,Financial Services,France
+European Component 444,COMP444.DE,Automobiles & Parts,Germany
+European Component 445,COMP445.SW,Construction & Materials,Switzerland
+European Component 446,COMP446.AS,Real Estate,Netherlands
+European Component 447,COMP447.EU,Basic Resources,Sweden
+European Component 448,COMP448.EU,Media,Denmark
+European Component 449,COMP449.MC,Travel & Leisure,Spain
+European Component 450,COMP450.MI,Industrial Goods & Services,Italy
+European Component 451,COMP451.EU,Health Care,Finland
+European Component 452,COMP452.EU,Technology,Belgium
+European Component 453,COMP453.EU,Banks,Norway
+European Component 454,COMP454.EU,Energy,Austria
+European Component 455,COMP455.EU,Insurance,Ireland
+European Component 456,COMP456.EU,Consumer Products & Services,Poland
+European Component 457,COMP457.EU,Utilities,Portugal
+European Component 458,COMP458.EU,Chemicals,Luxembourg
+European Component 459,COMP459.L,Retail,Great Britain
+European Component 460,COMP460.PA,Telecommunications,France
+European Component 461,COMP461.DE,Financial Services,Germany
+European Component 462,COMP462.SW,Automobiles & Parts,Switzerland
+European Component 463,COMP463.AS,Construction & Materials,Netherlands
+European Component 464,COMP464.EU,Real Estate,Sweden
+European Component 465,COMP465.EU,Basic Resources,Denmark
+European Component 466,COMP466.MC,Media,Spain
+European Component 467,COMP467.MI,Travel & Leisure,Italy
+European Component 468,COMP468.EU,Industrial Goods & Services,Finland
+European Component 469,COMP469.EU,Health Care,Belgium
+European Component 470,COMP470.EU,Technology,Norway
+European Component 471,COMP471.EU,Banks,Austria
+European Component 472,COMP472.EU,Energy,Ireland
+European Component 473,COMP473.EU,Insurance,Poland
+European Component 474,COMP474.EU,Consumer Products & Services,Portugal
+European Component 475,COMP475.EU,Utilities,Luxembourg
+European Component 476,COMP476.L,Chemicals,Great Britain
+European Component 477,COMP477.PA,Retail,France
+European Component 478,COMP478.DE,Telecommunications,Germany
+European Component 479,COMP479.SW,Financial Services,Switzerland
+European Component 480,COMP480.AS,Automobiles & Parts,Netherlands
+European Component 481,COMP481.EU,Construction & Materials,Sweden
+European Component 482,COMP482.EU,Real Estate,Denmark
+European Component 483,COMP483.MC,Basic Resources,Spain
+European Component 484,COMP484.MI,Media,Italy
+European Component 485,COMP485.EU,Travel & Leisure,Finland
+European Component 486,COMP486.EU,Industrial Goods & Services,Belgium
+European Component 487,COMP487.EU,Health Care,Norway
+European Component 488,COMP488.EU,Technology,Austria
+European Component 489,COMP489.EU,Banks,Ireland
+European Component 490,COMP490.EU,Energy,Poland
+European Component 491,COMP491.EU,Insurance,Portugal
+European Component 492,COMP492.EU,Consumer Products & Services,Luxembourg
+European Component 493,COMP493.L,Utilities,Great Britain
+European Component 494,COMP494.PA,Chemicals,France
+European Component 495,COMP495.DE,Retail,Germany
+European Component 496,COMP496.SW,Telecommunications,Switzerland
+European Component 497,COMP497.AS,Financial Services,Netherlands
+European Component 498,COMP498.EU,Automobiles & Parts,Sweden
+European Component 499,COMP499.EU,Construction & Materials,Denmark
+European Component 500,COMP500.MC,Real Estate,Spain
+European Component 501,COMP501.MI,Basic Resources,Italy
+European Component 502,COMP502.EU,Media,Finland
+European Component 503,COMP503.EU,Travel & Leisure,Belgium
+European Component 504,COMP504.EU,Industrial Goods & Services,Norway
+European Component 505,COMP505.EU,Health Care,Austria
+European Component 506,COMP506.EU,Technology,Ireland
+European Component 507,COMP507.EU,Banks,Poland
+European Component 508,COMP508.EU,Energy,Portugal
+European Component 509,COMP509.EU,Insurance,Luxembourg
+European Component 510,COMP510.L,Consumer Products & Services,Great Britain
+European Component 511,COMP511.PA,Utilities,France
+European Component 512,COMP512.DE,Chemicals,Germany
+European Component 513,COMP513.SW,Retail,Switzerland
+European Component 514,COMP514.AS,Telecommunications,Netherlands
+European Component 515,COMP515.EU,Financial Services,Sweden
+European Component 516,COMP516.EU,Automobiles & Parts,Denmark
+European Component 517,COMP517.MC,Construction & Materials,Spain
+European Component 518,COMP518.MI,Real Estate,Italy
+European Component 519,COMP519.EU,Basic Resources,Finland
+European Component 520,COMP520.EU,Media,Belgium
+European Component 521,COMP521.EU,Travel & Leisure,Norway
+European Component 522,COMP522.EU,Industrial Goods & Services,Austria
+European Component 523,COMP523.EU,Health Care,Ireland
+European Component 524,COMP524.EU,Technology,Poland
+European Component 525,COMP525.EU,Banks,Portugal
+European Component 526,COMP526.EU,Energy,Luxembourg
+European Component 527,COMP527.L,Insurance,Great Britain
+European Component 528,COMP528.PA,Consumer Products & Services,France
+European Component 529,COMP529.DE,Utilities,Germany
+European Component 530,COMP530.SW,Chemicals,Switzerland
+European Component 531,COMP531.AS,Retail,Netherlands
+European Component 532,COMP532.EU,Telecommunications,Sweden
+European Component 533,COMP533.EU,Financial Services,Denmark
+European Component 534,COMP534.MC,Automobiles & Parts,Spain
+European Component 535,COMP535.MI,Construction & Materials,Italy
+European Component 536,COMP536.EU,Real Estate,Finland
+European Component 537,COMP537.EU,Basic Resources,Belgium
+European Component 538,COMP538.EU,Media,Norway
+European Component 539,COMP539.EU,Travel & Leisure,Austria
+European Component 540,COMP540.EU,Industrial Goods & Services,Ireland
+European Component 541,COMP541.EU,Health Care,Poland
+European Component 542,COMP542.EU,Technology,Portugal
+European Component 543,COMP543.EU,Banks,Luxembourg
+European Component 544,COMP544.L,Energy,Great Britain
+European Component 545,COMP545.PA,Insurance,France
+European Component 546,COMP546.DE,Consumer Products & Services,Germany
+European Component 547,COMP547.SW,Utilities,Switzerland
+European Component 548,COMP548.AS,Chemicals,Netherlands
+European Component 549,COMP549.EU,Retail,Sweden
+European Component 550,COMP550.EU,Telecommunications,Denmark
+European Component 551,COMP551.MC,Financial Services,Spain
+European Component 552,COMP552.MI,Automobiles & Parts,Italy
+European Component 553,COMP553.EU,Construction & Materials,Finland
+European Component 554,COMP554.EU,Real Estate,Belgium
+European Component 555,COMP555.EU,Basic Resources,Norway
+European Component 556,COMP556.EU,Media,Austria
+European Component 557,COMP557.EU,Travel & Leisure,Ireland
+European Component 558,COMP558.EU,Industrial Goods & Services,Poland
+European Component 559,COMP559.EU,Health Care,Portugal
+European Component 560,COMP560.EU,Technology,Luxembourg
+European Component 561,COMP561.L,Banks,Great Britain
+European Component 562,COMP562.PA,Energy,France
+European Component 563,COMP563.DE,Insurance,Germany
+European Component 564,COMP564.SW,Consumer Products & Services,Switzerland
+European Component 565,COMP565.AS,Utilities,Netherlands
+European Component 566,COMP566.EU,Chemicals,Sweden
+European Component 567,COMP567.EU,Retail,Denmark
+European Component 568,COMP568.MC,Telecommunications,Spain
+European Component 569,COMP569.MI,Financial Services,Italy
+European Component 570,COMP570.EU,Automobiles & Parts,Finland
+European Component 571,COMP571.EU,Construction & Materials,Belgium
+European Component 572,COMP572.EU,Real Estate,Norway
+European Component 573,COMP573.EU,Basic Resources,Austria
+European Component 574,COMP574.EU,Media,Ireland
+European Component 575,COMP575.EU,Travel & Leisure,Poland
+European Component 576,COMP576.EU,Industrial Goods & Services,Portugal
+European Component 577,COMP577.EU,Health Care,Luxembourg
+European Component 578,COMP578.L,Technology,Great Britain
+European Component 579,COMP579.PA,Banks,France
+European Component 580,COMP580.DE,Energy,Germany
+European Component 581,COMP581.SW,Insurance,Switzerland
+European Component 582,COMP582.AS,Consumer Products & Services,Netherlands
+European Component 583,COMP583.EU,Utilities,Sweden
+European Component 584,COMP584.EU,Chemicals,Denmark
+European Component 585,COMP585.MC,Retail,Spain
+European Component 586,COMP586.MI,Telecommunications,Italy
+European Component 587,COMP587.EU,Financial Services,Finland
+European Component 588,COMP588.EU,Automobiles & Parts,Belgium
+European Component 589,COMP589.EU,Construction & Materials,Norway
+European Component 590,COMP590.EU,Real Estate,Austria
+European Component 591,COMP591.EU,Basic Resources,Ireland
+European Component 592,COMP592.EU,Media,Poland
+European Component 593,COMP593.EU,Travel & Leisure,Portugal
+European Component 594,COMP594.EU,Industrial Goods & Services,Luxembourg
+European Component 595,COMP595.L,Health Care,Great Britain
+European Component 596,COMP596.PA,Technology,France
+European Component 597,COMP597.DE,Banks,Germany
+European Component 598,COMP598.SW,Energy,Switzerland
+European Component 599,COMP599.AS,Insurance,Netherlands
+European Component 600,COMP600.EU,Consumer Products & Services,Sweden

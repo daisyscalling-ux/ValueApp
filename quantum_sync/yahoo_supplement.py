@@ -112,10 +112,23 @@ def market_inputs(stock):
         if stock['currency']=='USD':
             from datetime import timedelta
             start=(datetime.now(timezone.utc)-timedelta(days=20)).date().isoformat()
-            rows=list(csv.DictReader(io.StringIO(download('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&cosd='+start))))
-            valid=[r for r in rows if r.get('DGS10','').replace('.','',1).isdigit()]
-            if valid:
-                r=valid[-1];return dict(value=float(r['DGS10']),date=r.get('observation_date') or r.get('DATE'),source='FRED / US Treasury · DGS10',url='https://fred.stlouisfed.org/series/DGS10')
+            try:
+                rows=list(csv.DictReader(io.StringIO(download('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&cosd='+start))))
+                valid=[r for r in rows if r.get('DGS10','').replace('.','',1).isdigit()]
+                if valid:
+                    r=valid[-1];return dict(value=float(r['DGS10']),date=r.get('observation_date') or r.get('DATE'),source='FRED / US Treasury · DGS10',url='https://fred.stlouisfed.org/series/DGS10')
+            except Exception:pass
+            # Independent endpoint/network path if FRED is unavailable from the runner.
+            import yfinance as yf
+            instrument=yf.Ticker('^TNX')
+            history=instrument.history(period='5d',auto_adjust=False,timeout=10)
+            metadata=instrument.get_history_metadata()
+            if metadata.get('symbol')!='^TNX' or metadata.get('instrumentType')!='INDEX' or metadata.get('currency')!='USD':return
+            if not re.search(r'10.?year',str(metadata.get('longName',''))+' '+str(metadata.get('shortName','')),re.I):return
+            if not history.empty:
+                row=history.dropna(subset=['Close']).iloc[-1]
+                value=number(row['Close'])
+                if value is not None and 0<value<20:return dict(value=value,date=row.name.strftime('%Y-%m-%d'),source='Yahoo Finance / CBOE · 10-jähriger US-Zinsindikator',url='https://finance.yahoo.com/quote/%5ETNX/',note='^TNX als Zinsindikator in Prozent; Ersatz für den nicht erreichbaren FRED-Abruf.')
         elif stock['currency']=='EUR':
             url='https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y?lastNObservations=1&format=csvdata'
             rows=list(csv.DictReader(io.StringIO(download(url))))

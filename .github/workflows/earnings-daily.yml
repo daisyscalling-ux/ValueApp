@@ -11,6 +11,8 @@ on:
 jobs:
   earnings:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # noetig fuer git push (sonst 403)
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6

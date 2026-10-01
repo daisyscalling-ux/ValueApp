@@ -12,15 +12,11 @@ on:
     - cron: "0 3 */3 * *"    # 03:00 UTC, alle 3 Tage
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-concurrency:
-  group: precompute-3tage
-  cancel-in-progress: false
-
 jobs:
   precompute:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # noetig fuer git push (sonst 403)
     # 180 min: roic-Ratenlimit (300/min) bremst, nicht das GitHub-Fenster.
     # ~1350 Titel x 15 Aufrufe / 300 = ~67 min reine Abrufzeit + Puffer.
     timeout-minutes: 260
@@ -64,17 +60,6 @@ jobs:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: python export_cf.py
 
-      - name: Vorberechneten Screener nach Cloudflare übertragen
-        env:
-          QUANTUM_SYNC_TOKEN: ${{ secrets.QUANTUM_SYNC_TOKEN }}
-        run: python quantum_sync/import_preloaded.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cf-universum
-          path: value_radar/daten/cf_universum.json
-          retention-days: 7
-
       # 3) JSON ins Repo committen, damit Cloudflare sie lesen kann
       - name: JSON committen
         working-directory: value_radar
@@ -82,7 +67,5 @@ jobs:
           git config user.name "value-radar-bot"
           git config user.email "bot@value-radar"
           git add daten/cf_universum.json
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Cloudflare-Universum aktualisiert [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git commit -m "Cloudflare-Universum aktualisiert [skip ci]" || echo "keine Aenderung"
+          git push || echo "push uebersprungen"

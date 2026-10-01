@@ -11,7 +11,7 @@ on:
 jobs:
   earnings:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -26,8 +26,18 @@ jobs:
         working-directory: value_radar
         env:
           NETZ_TIMEOUT_S: "20"
-          TRANSKRIPT_DECKEL: "600"
+          TRANSKRIPT_DECKEL: "1500"
           GSHEET_ID: ${{ secrets.GSHEET_ID }}
           GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
         run: python earnings_only.py
+
+      # cf_earnings.json ins Repo committen, damit Cloudflare sie lesen kann
+      - name: Earnings-JSON committen
+        working-directory: value_radar
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add daten/cf_earnings.json
+          git commit -m "Earnings-Calls aktualisiert [skip ci]" || echo "keine Aenderung"
+          git push || echo "push uebersprungen"

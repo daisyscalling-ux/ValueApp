@@ -1,0 +1,35 @@
+name: backtest-fundamental
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Pakete installieren
+        working-directory: value_radar
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance pandas numpy pyarrow requests
+      - name: Fundamentaler Backtest
+        working-directory: value_radar
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          NETZ_TIMEOUT_S: "20"
+        run: python backtest_fundamental.py
+      - name: Ergebnis committen
+        working-directory: value_radar
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add daten/backtest_fund_ergebnis.json backtest_fund_ergebnis.json 2>/dev/null || true
+          git commit -m "Fundamentaler Backtest [skip ci]" || echo "keine Aenderung"
+          git push || echo "push uebersprungen"

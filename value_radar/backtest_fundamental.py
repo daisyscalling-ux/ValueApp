@@ -36,7 +36,7 @@ import pandas as pd
 
 # --- Parameter -------------------------------------------------------------
 MITGLIEDER_CSV = "sp500_alle_mitglieder_seit_2020_bis_2026-10-03.csv"
-START = "2019-01-01"
+START = "2017-01-01"   # frueher Start: genug Fundamental-Historie fuer 2020er-Stichtage
 ENDE = "2026-10-03"
 SPRUNG_SCHWELLE = 0.10
 PUBLIKATIONS_PUFFER = 60            # Tage nach Periodenende bis "bekannt"
@@ -85,7 +85,7 @@ def hole_fundamentals(ticker: str) -> pd.DataFrame | None:
     sym = _roic_symbol(ticker)
     url = f"https://api.roic.ai/v3.0.0/fundamental/income-statement/{sym}"
     try:
-        r = requests.get(url, params={"period_type": "quarterly", "limit": 32, "apikey": key},
+        r = requests.get(url, params={"period_type": "quarterly", "limit": 40, "apikey": key},
                          timeout=NETZ_TIMEOUT)
         if not r.ok:
             return None
@@ -173,15 +173,16 @@ def faktoren_an(fund: pd.DataFrame, t: pd.Timestamp, preis_t: float) -> dict:
     """Nur Quartale, die zu T BEKANNT waren (period_end + Puffer <= T)."""
     grenze = t - pd.Timedelta(days=PUBLIKATIONS_PUFFER)
     bekannt = fund[fund["period_end"] <= grenze]
-    if len(bekannt) < 8:   # mind. 2 Jahre bekannt
+    if len(bekannt) < 4:   # mind. 1 Jahr bekannt (TTM)
         return {}
     letzte4 = bekannt.tail(4)
-    vor4 = bekannt.tail(8).head(4)
+    hat_vorjahr = len(bekannt) >= 8
+    vor4 = bekannt.tail(8).head(4) if hat_vorjahr else None
 
     eps_ttm = letzte4["eps"].sum()
-    eps_ttm_vor = vor4["eps"].sum()
     rev_ttm = letzte4["revenue"].sum()
-    rev_ttm_vor = vor4["revenue"].sum()
+    eps_ttm_vor = vor4["eps"].sum() if vor4 is not None else np.nan
+    rev_ttm_vor = vor4["revenue"].sum() if vor4 is not None else np.nan
 
     f = {}
     # BEWERTUNG

@@ -1,0 +1,242 @@
+{
+  "schlaegt_markt_1J": {
+    "basisrate_train": NaN,
+    "basisrate_test": 37.0,
+    "n_train": 0,
+    "n_test": 17798,
+    "faktoren": {
+      "kgv": {
+        "test": {
+          "oberstes_drittel": 35.6,
+          "unterstes_drittel": 40.6,
+          "spread": -5.0,
+          "z": -5.42,
+          "signifikant": true
+        }
+      },
+      "gross_margin": {
+        "test": {
+          "oberstes_drittel": 35.3,
+          "unterstes_drittel": 38.8,
+          "spread": -3.5,
+          "z": -3.75,
+          "signifikant": true
+        }
+      },
+      "oper_margin": {
+        "test": {
+          "oberstes_drittel": 34.8,
+          "unterstes_drittel": 37.9,
+          "spread": -3.1,
+          "z": -3.38,
+          "signifikant": true
+        }
+      },
+      "profit_margin": {
+        "test": {
+          "oberstes_drittel": 37.9,
+          "unterstes_drittel": 38.4,
+          "spread": -0.5,
+          "z": -0.61,
+          "signifikant": false
+        }
+      },
+      "umsatz_wachstum": {
+        "test": {
+          "oberstes_drittel": 41.1,
+          "unterstes_drittel": 37.1,
+          "spread": 4.1,
+          "z": 3.73,
+          "signifikant": true
+        }
+      },
+      "eps_wachstum": {
+        "test": {
+          "oberstes_drittel": 41.4,
+          "unterstes_drittel": 37.8,
+          "spread": 3.6,
+          "z": 3.2,
+          "signifikant": true
+        }
+      },
+      "wachstum_beschleunigung": {
+        "test": {
+          "oberstes_drittel": 38.9,
+          "unterstes_drittel": 40.6,
+          "spread": -1.7,
+          "z": -1.75,
+          "signifikant": false
+        }
+      },
+      "margen_trend": {
+        "test": {
+          "oberstes_drittel": 40.4,
+          "unterstes_drittel": 35.1,
+          "spread": 5.2,
+          "z": 4.62,
+          "signifikant": true
+        }
+      }
+    }
+  },
+  "schlaegt_markt_2J": {
+    "basisrate_train": NaN,
+    "basisrate_test": 32.5,
+    "n_train": 0,
+    "n_test": 12929,
+    "faktoren": {
+      "kgv": {
+        "test": {
+          "oberstes_drittel": 30.4,
+          "unterstes_drittel": 38.2,
+          "spread": -7.9,
+          "z": -7.44,
+          "signifikant": true
+        }
+      },
+      "gross_margin": {
+        "test": {
+          "oberstes_drittel": 29.4,
+          "unterstes_drittel": 34.9,
+          "spread": -5.5,
+          "z": -5.17,
+          "signifikant": true
+        }
+      },
+      "oper_margin": {
+        "test": {
+          "oberstes_drittel": 28.4,
+          "unterstes_drittel": 36.1,
+          "spread": -7.7,
+          "z": -7.26,
+          "signifikant": true
+        }
+      },
+      "profit_margin": {
+        "test": {
+          "oberstes_drittel": 33.0,
+          "unterstes_drittel": 36.3,
+          "spread": -3.3,
+          "z": -3.19,
+          "signifikant": true
+        }
+      },
+      "umsatz_wachstum": {
+        "test": {
+          "oberstes_drittel": 33.0,
+          "unterstes_drittel": 37.0,
+          "spread": -4.0,
+          "z": -2.93,
+          "signifikant": true
+        }
+      },
+      "eps_wachstum": {
+        "test": {
+          "oberstes_drittel": 33.4,
+          "unterstes_drittel": 35.8,
+          "spread": -2.4,
+          "z": -1.67,
+          "signifikant": false
+        }
+      },
+      "wachstum_beschleunigung": {
+        "test": {
+          "oberstes_drittel": 36.1,
+          "unterstes_drittel": 33.9,
+          "spread": 2.2,
+          "z": 1.88,
+          "signifikant": false
+        }
+      },
+      "margen_trend": {
+        "test": {
+          "oberstes_drittel": 28.4,
+          "unterstes_drittel": 35.4,
+          "spread": -7.0,
+          "z": -4.99,
+          "signifikant": true
+        }
+      }
+    }
+  },
+  "schlaegt_markt_3J": {
+    "basisrate_train": NaN,
+    "basisrate_test": 27.6,
+    "n_train": 0,
+    "n_test": 8111,
+    "faktoren": {
+      "kgv": {
+        "test": {
+          "oberstes_drittel": 22.2,
+          "unterstes_drittel": 35.7,
+          "spread": -13.5,
+          "z": -10.5,
+          "signifikant": true
+        }
+      },
+      "gross_margin": {
+        "test": {
+          "oberstes_drittel": 24.9,
+          "unterstes_drittel": 31.2,
+          "spread": -6.3,
+          "z": -4.87,
+          "signifikant": true
+        }
+      },
+      "oper_margin": {
+        "test": {
+          "oberstes_drittel": 23.6,
+          "unterstes_drittel": 32.2,
+          "spread": -8.7,
+          "z": -6.73,
+          "signifikant": true
+        }
+      },
+      "profit_margin": {
+        "test": {
+          "oberstes_drittel": 28.8,
+          "unterstes_drittel": 32.6,
+          "spread": -3.8,
+          "z": -3.02,
+          "signifikant": true
+        }
+      },
+      "umsatz_wachstum": {
+        "test": {
+          "oberstes_drittel": 27.0,
+          "unterstes_drittel": 31.3,
+          "spread": -4.2,
+          "z": -1.88,
+          "signifikant": false
+        }
+      },
+      "eps_wachstum": {
+        "test": {
+          "oberstes_drittel": 29.7,
+          "unterstes_drittel": 28.3,
+          "spread": 1.4,
+          "z": 0.6,
+          "signifikant": false
+        }
+      },
+      "wachstum_beschleunigung": {
+        "test": {
+          "oberstes_drittel": 30.1,
+          "unterstes_drittel": 30.7,
+          "spread": -0.6,
+          "z": -0.37,
+          "signifikant": false
+        }
+      },
+      "margen_trend": {
+        "test": {
+          "oberstes_drittel": 23.6,
+          "unterstes_drittel": 26.8,
+          "spread": -3.3,
+          "z": -1.46,
+          "signifikant": false
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+name: market-news
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch: {}
+concurrency:
+  group: market-news-export
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  export:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Public RSS feeds exportieren
+        run: python scripts/export_market_news.py
+      - name: Export speichern
+        if: always()
+        shell: bash
+        run: |
+          test -f value_radar/daten/cf_news.json || exit 1
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add value_radar/daten/cf_news.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Update general news feed [skip ci]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1

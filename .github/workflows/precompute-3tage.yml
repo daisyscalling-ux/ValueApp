@@ -9,7 +9,7 @@ name: precompute-3tage
 # (06:00), damit sie sich nicht das roic-Ratenlimit (300/min) teilen muessen.
 on:
   schedule:
-    - cron: "0 3 */3 * *"    # 03:00 UTC, alle 3 Tage
+    - cron: "17 1 * * *"    # daily
   workflow_dispatch: {}
 
 jobs:

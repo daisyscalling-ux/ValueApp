@@ -365,7 +365,8 @@ def aufloesen(t: str) -> dict | None:
         "symbol": beste.get("symbol"),
         "isin": beste.get("isin"),
         "exchange": beste.get("exchange"),
-        "is_primary": bool(beste.get("is_primary")),
+        "is_primary": beste.get("is_primary") if isinstance(beste.get("is_primary"), bool) else None,
+        "type": beste.get("type"),
         "country": _land_von(beste),
     }
     _RESOLVE_CACHE[schluessel] = erg if erg.get("symbol") else None
@@ -645,6 +646,10 @@ def bundle(t: str) -> dict:
         return {}
 
     prof = profile(t)
+    try:
+        _q = quote(t)
+    except Exception:
+        _q = None
     ev = enterprise_value(t)
     rp = ratios_profitability(t)
     rc = ratios_credit(t)
@@ -657,6 +662,7 @@ def bundle(t: str) -> dict:
 
     out = {
         "_src": "roic",
+        **__import__("peer_metadata").metadata(prof, aufloesen(t) or {}),
         # --- Stammdaten (Profil liefert auch den AKTUELLEN Kurs -
         #     prices/latest gibt es im Plan nicht)
         "name": _g(prof, "name", "company_name"),
@@ -1896,6 +1902,7 @@ def bundle_light(t: str) -> dict:
 
     out = {
         "_src": "roic_light",
+        **__import__("peer_metadata").metadata(prof, aufloesen(t) or {}),
         "name": _g(prof, "name", "company_name"),
         "isin": _g(prof, "isin") or (aufloesen(t) or {}).get("isin"),
         "sector": _g(prof, "sector"),

@@ -33,6 +33,8 @@ NETZ_TIMEOUT_S = int(os.getenv("NETZ_TIMEOUT_S", "20"))
 AUSGABE = Path(os.getenv("EXPORT_PFAD", "daten/cf_universum.json"))
 
 # Nur die Felder, die der Cloudflare-Scanner + die Einzelanalyse nutzen.
+from peer_metadata import FIELDS as PEER_FIELDS, coverage
+
 EXPORT_FELDER = (
     "ticker", "name", "composite", "fair_value", "upside", "quantum",
     "entry", "price", "sector", "momentum", "quality", "value", "growth",
@@ -43,6 +45,7 @@ EXPORT_FELDER = (
     "target_mean", "eps_forward", "eps_trailing", "beta",
     "52w_high", "52w_low", "hist_pe_median",
 )
+EXPORT_FELDER = tuple(dict.fromkeys(EXPORT_FELDER + PEER_FIELDS))
 
 
 def _melde(msg: str) -> None:
@@ -119,6 +122,8 @@ def main() -> int:
         "anzahl": len(ergebnisse),
         "universum_groesse": len(universum),
         "kandidaten": ergebnisse,
+        "peer_schema_version": 1,
+        "peer_metadata_coverage": coverage(ergebnisse),
     }
     AUSGABE.write_text(json.dumps(ausgabe, ensure_ascii=False), encoding="utf-8")
 

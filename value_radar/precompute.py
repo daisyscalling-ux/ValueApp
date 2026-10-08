@@ -280,7 +280,9 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
     except Exception:
         pass
 
+    from peer_metadata import export_metadata
     return {
+        **export_metadata(f),
         "ticker": t,
         "_quelle": _quelle,
         "name": (f.get("name") or "")[:40],

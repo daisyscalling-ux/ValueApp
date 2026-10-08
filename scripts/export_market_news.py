@@ -3,12 +3,20 @@ import concurrent.futures, datetime as dt, email.utils, html, json, os, re, time
 import urllib.request, urllib.parse, xml.etree.ElementTree as ET
 from pathlib import Path
 SOURCES = {
+ 'marketwatch': ('MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories', 'Publisher-RSS'),
  'fool': ('The Motley Fool', 'https://www.fool.com/feeds/index.aspx', 'Publisher-RSS'),
- 'investing': ('Investing.com', 'https://www.investing.com/rss/news_25.rss', 'Publisher-RSS'),
+ 'investing': ('Investing.com', 'https://www.investing.com/rss/news_25.rss', 'Publisher-RSS · Stock Market News'),
  'yahoo': ('Yahoo Finance', 'https://news.google.com/rss/search?' + urllib.parse.urlencode({'q':'site:finance.yahoo.com (markets OR stocks OR earnings OR economy) when:3d','hl':'en-US','gl':'US','ceid':'US:en'}), 'Google-News-Index · Link über Google')
 }
 def clean(value):
  return html.unescape(re.sub(r'<[^>]*>', '', value or '')).strip()
+def parse_date(value):
+ # Investing RSS omits the zone. Interpret its ISO-like timestamps as UTC,
+ # consistently with the Worker; never use the runner's local timezone.
+ try: parsed=email.utils.parsedate_to_datetime(value)
+ except (ValueError,TypeError): parsed=dt.datetime.fromisoformat(value.replace('Z','+00:00'))
+ if parsed.tzinfo is None: parsed=parsed.replace(tzinfo=dt.timezone.utc)
+ return parsed.timestamp()
 def parse_rss(raw, name, via, now):
  if len(raw)>2000000 or b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
   raise ValueError('Ungültiger RSS-Feed')
@@ -19,7 +27,7 @@ def parse_rss(raw, name, via, now):
   title=clean(item.findtext('title')); url=clean(item.findtext('link'))
   if not title or urllib.parse.urlsplit(url).scheme not in ('http','https'): continue
   try:
-   stamp=email.utils.parsedate_to_datetime(item.findtext('pubDate') or '').timestamp()
+   stamp=parse_date(item.findtext('pubDate') or '')
   except (ValueError,TypeError,OverflowError): continue
   if stamp>now+300 or now-stamp>7*86400: continue
   articles.append({'title':title,'url':url,'publishedAt':dt.datetime.fromtimestamp(stamp,dt.timezone.utc).isoformat(),'publisher':clean(item.findtext('source')) or name,'via':via})

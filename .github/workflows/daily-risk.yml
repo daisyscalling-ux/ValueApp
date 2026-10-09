@@ -1,0 +1,48 @@
+name: daily-risk
+
+on:
+  schedule:
+    - cron: '23 7 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-risk
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  risk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Exportprogramm bauen
+        run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-risk.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-export.mjs
+      - name: Risiko-Historien vorberechnen
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          RISK_BUDGET_MIN: '90'
+        run: node /tmp/risk-export.mjs
+      - name: Ergebnisse und Teilfortschritt veröffentlichen
+        if: ${{ always() && !cancelled() }}
+        run: |
+          set -euo pipefail
+          test -s value_radar/daten/cf_risk.json || exit 0
+          git config user.name 'value-radar-bot'
+          git config user.email 'bot@value-radar'
+          git add value_radar/daten/cf_risk.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Risikodaten aktualisiert [skip ci]'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1

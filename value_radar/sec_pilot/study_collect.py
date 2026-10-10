@@ -1,4 +1,4 @@
-"""Fixed ex-ante technical sample. No selection by subsequent stock performance."""
+"""Fixed current-company technical sample. No selection by subsequent stock performance."""
 import contextlib
 import datetime as dt
 import json
@@ -22,6 +22,18 @@ SAMPLE = {
  'WMT':('0000104169','consumer'), 'COST':('0000909832','consumer'),
  'KO':('0000021344','consumer'), 'PEP':('0000077476','consumer')}
 
+SAMPLE.update({
+ 'IBM':('0000051143','technology'), 'INTC':('0000050863','technology'),
+ 'CSCO':('0000858877','technology'), 'TXN':('0000097476','technology'),
+ 'SLB':('0000087347','energy'), 'HAL':('0000045012','energy'),
+ 'OXY':('0000797468','energy'), 'PSX':('0001534701','energy'),
+ 'ABBV':('0001551152','health'), 'BMY':('0000014272','health'),
+ 'AMGN':('0000318154','health'), 'GILD':('0000882095','health'),
+ 'UPS':('0001090727','industrial'), 'FDX':('0001048911','industrial'),
+ 'LMT':('0000936468','industrial'), 'NOC':('0001133421','industrial'),
+ 'PG':('0000080424','consumer'), 'CL':('0000021665','consumer'),
+ 'MDLZ':('0001103982','consumer'), 'KMB':('0000055785','consumer')})
+
 def run():
  import yfinance as yf
  out=Path('sec-study-output');out.mkdir(exist_ok=True)
@@ -44,7 +56,7 @@ def run():
    companies[symbol]={'cik':cik,'sector':sector,'filings':filing_index(blocks),'facts_file':'api_xbrl_companyfacts_CIK'+cik+'.json'}
    t=yf.Ticker(symbol)
    with contextlib.redirect_stdout(sys.stderr):
-    f=t.history(start=(now-dt.timedelta(days=5*365)).date().isoformat(),end=now.date().isoformat(),auto_adjust=False,repair=False,timeout=15,raise_errors=True)
+    f=t.history(start=(now-dt.timedelta(days=12*365)).date().isoformat(),end=now.date().isoformat(),auto_adjust=False,repair=False,timeout=15,raise_errors=True)
     m=t.get_history_metadata()
    if m.get('symbol')!=symbol or m.get('instrumentType')!='EQUITY' or m.get('currency')!='USD' or 'Adj Close' not in f:raise ValueError('Yahoo identity or adjustment missing')
    histories[symbol]={'symbol':symbol,'adjustment':'total_return','retrievedAt':now.isoformat(),'bars':[{'date':i.date().isoformat(),'close':float(v)} for i,v in f['Adj Close'].items()]}

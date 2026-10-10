@@ -1,6 +1,6 @@
 // Risk-specific listing resolution: a traded ADR need not be the issuer's primary listing.
 type Row=Record<string,any>;
-const venues:Record<string,[string,string[]]>={DE:['DE',['XETR','ETR','GER']],F:['DE',['FRA']],SW:['CH',['SIX','SWX']],T:['JP',['TSE','JPX','TYO']],L:['GB',['LSE']],PA:['FR',['EURONEXTPAR','PAR','EURONEXT']],AS:['NL',['EURONEXTAMS','AMS','EURONEXT']],MI:['IT',['MIL']],MC:['ES',['BME']],HK:['HK',['HKEX']],ST:['SE',['OMXSTO']],CO:['DK',['OMXCOP']],HE:['FI',['OMXHEX']],OL:['NO',['OSL']],BR:['BE',['EURONEXTBRU','EURONEXT']],VI:['AT',['VIE']],NS:['IN',['NSE']],BO:['IN',['BSE']]};
+const venues:Record<string,[string,string[]]>={WA:['PL',['GPW']],IR:['IE',['EURONEXTDUB','ISE']],AT:['GR',['ATHEX']],LS:['PT',['EURONEXTLIS','LIS']],DE:['DE',['XETR','ETR','GER']],F:['DE',['FRA']],SW:['CH',['SIX','SWX']],T:['JP',['TSE','JPX','TYO']],L:['GB',['LSE']],PA:['FR',['EURONEXTPAR','PAR','EURONEXT']],AS:['NL',['EURONEXTAMS','AMS','EURONEXT']],MI:['IT',['MIL']],MC:['ES',['BME']],HK:['HK',['HKEX']],ST:['SE',['OMXSTO']],CO:['DK',['OMXCOP']],HE:['FI',['OMXHEX']],OL:['NO',['OSL']],BR:['BE',['EURONEXTBRU','EURONEXT']],VI:['AT',['VIE']],NS:['IN',['NSE']],BO:['IN',['BSE']]};
 export function chooseRiskListing(input:string,rows:Row[]){
  const raw=input.toUpperCase().trim(),qualified=raw.includes(':'),suffix=!qualified?raw.match(/\.([A-Z]{1,2})$/)?.[1]:undefined;
  const venue=suffix?venues[suffix]:undefined,query=venue?raw.slice(0,-suffix!.length-1):raw;

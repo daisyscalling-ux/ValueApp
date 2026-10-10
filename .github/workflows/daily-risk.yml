@@ -35,12 +35,22 @@ jobs:
         timeout-minutes: 13
         continue-on-error: true
         run: python value_radar/risk_precompute/yahoo_benchmarks.py
+      - uses: actions/cache@v4
+        with:
+          path: .risk-validation-cache.json
+          key: risk-validation-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: risk-validation-v1-
       - name: Exportprogramm bauen
         run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-risk.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-export.mjs
+      - name: Historische Berechnung testen
+        run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/validation-check.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-validation-check.mjs
+          node /tmp/risk-validation-check.mjs
       - name: Risiko-Historien vorberechnen
         env:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           RISK_BUDGET_MIN: '90'
+          RISK_VALIDATION_ENABLED: '1'
         run: node /tmp/risk-export.mjs
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -50,6 +60,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
+          if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi
           git diff --cached --quiet && exit 0
           git commit -m 'Risikodaten aktualisiert [skip ci]'
           for attempt in 1 2 3; do

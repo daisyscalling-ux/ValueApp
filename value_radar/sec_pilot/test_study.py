@@ -14,10 +14,22 @@ class StudyTests(unittest.TestCase):
   f,s=self.fixture();self.assertIsNone(financial_features(f,s,'2023-02-01')[0]);v,e=financial_features(f,s,'2023-03-01')
   self.assertIsNone(e);self.assertEqual(v['negative_fcf_assets'],-.08);self.assertEqual(v['liabilities_assets'],.4)
   self.assertIsNone(financial_features(f,s,'2026-01-01')[0])
- def test_assets_equity_fallback_and_conflict(self):
-  f,s=self.fixture();del f['facts']['us-gaap']['Liabilities'];v,e=financial_features(f,s,'2023-03-01');self.assertEqual(v['liabilities_assets'],.4)
+ def test_no_unverified_equity_residual_and_independent_features(self):
+  f,s=self.fixture();del f['facts']['us-gaap']['Liabilities'];v,e=financial_features(f,s,'2023-03-01');self.assertIsNone(v['liabilities_assets']);self.assertEqual(v['negative_fcf_assets'],-.08)
   f,s=self.fixture();f['facts']['us-gaap']['Liabilities']['units']['USD'][0]['val']=999
-  self.assertEqual(financial_features(f,s,'2023-03-01')[1],'balance sheet does not reconcile')
+  v,e=financial_features(f,s,'2023-03-01');self.assertIsNone(e);self.assertIsNone(v['liabilities_assets']);self.assertEqual(v['negative_fcf_assets'],-.08)
+ def test_redeemable_minority_reconciles_but_is_not_debt(self):
+  f,s=self.fixture();f['facts']['us-gaap']['Liabilities']['units']['USD'][0]['val']=390
+  row=dict(f['facts']['us-gaap']['Assets']['units']['USD'][0],val=10)
+  f['facts']['us-gaap']['RedeemableNoncontrollingInterestEquityCarryingAmount']={'units':{'USD':[row]}}
+  v,e=financial_features(f,s,'2023-03-01');self.assertEqual(v['liabilities_assets'],.39);self.assertIsNone(v['net_debt_assets'])
+  row['val']=9;v,e=financial_features(f,s,'2023-03-01');self.assertEqual(v['liabilities_assets'],.39)
+  row['val']=5;v,e=financial_features(f,s,'2023-03-01');self.assertIsNone(v['liabilities_assets'])
+ def test_explicit_liability_components(self):
+  f,s=self.fixture();del f['facts']['us-gaap']['Liabilities']
+  for tag,val in [('LiabilitiesCurrent',100),('LiabilitiesNoncurrent',300)]:
+   f['facts']['us-gaap'][tag]={'units':{'USD':[dict(f['facts']['us-gaap']['Assets']['units']['USD'][0],val=val)]}}
+  v,e=financial_features(f,s,'2023-03-01');self.assertEqual(v['liabilities_assets'],.4)
  def test_later_labels_never_change_fitted_predictions(self):
   train=[{'score':i,'negative_fcf_assets':i/100,'loss':i/100} for i in range(40)]
   a=[{'score':1,'negative_fcf_assets':.01,'loss':.1}]

@@ -19,4 +19,4 @@ Workflow sec-financial-study. Erstlauf automatisch, wenn seine Workflow-Datei au
 
 Artefakt enthält Original-SEC-Daten und Prüfsummen, Kurshistorien, Beobachtungsfenster, zugeordnete Jahresdaten, Abdeckungsfehler und study-report.json/md. 90 Tage Aufbewahrung; für ein dauerhaftes Archiv herunterladen. Ein abgebrochener Lauf kann Teilfortschritt liefern. Keine nutzbaren Vergleiche führt zu fehlgeschlagenem Job mit Bericht.
 
-Lokal: zwölf Offline-Tests bestanden; mit dem vorhandenen Zwei-Firmen-Archiv wurden 56 Kursfenster zugeordnet, alle Modellvergleiche wegen zu geringer Stichprobe gesperrt. Ergebnisse des 20-Firmen-Laufs stehen zunächst aus.
+Lokal: zwölf Offline-Tests bestanden; mit dem vorhandenen Zwei-Firmen-Archiv wurden 56 Kursfenster zugeordnet, alle Modellvergleiche wegen zu geringer Stichprobe gesperrt. Der erweiterte Lauf ist erfolgreich abgeschlossen: 19 geladene Unternehmen, 532 Kursfenster, 18 auswertbare Vergleiche und sechs wegen fehlender Nettoschuldendaten gesperrte Vergleiche. Ergebnisse und Einschränkungen: [STUDY-RESULTS.md](STUDY-RESULTS.md).

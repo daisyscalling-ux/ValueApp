@@ -1,0 +1,1624 @@
+{
+  "schema": 2,
+  "generated_at": "2026-10-10T19:32:02.486029+00:00",
+  "sample": {
+    "MSFT": [
+      "0000789019",
+      "technology"
+    ],
+    "ORCL": [
+      "0001341439",
+      "technology"
+    ],
+    "ADBE": [
+      "0000796343",
+      "technology"
+    ],
+    "CRM": [
+      "0001108524",
+      "technology"
+    ],
+    "XOM": [
+      "0000034088",
+      "energy"
+    ],
+    "CVX": [
+      "0000093410",
+      "energy"
+    ],
+    "COP": [
+      "0001163165",
+      "energy"
+    ],
+    "EOG": [
+      "0000821189",
+      "energy"
+    ],
+    "JNJ": [
+      "0000200406",
+      "health"
+    ],
+    "MRK": [
+      "0000310158",
+      "health"
+    ],
+    "PFE": [
+      "0000078003",
+      "health"
+    ],
+    "UNH": [
+      "0000731766",
+      "health"
+    ],
+    "CAT": [
+      "0000018230",
+      "industrial"
+    ],
+    "DE": [
+      "0000315189",
+      "industrial"
+    ],
+    "HON": [
+      "0000773840",
+      "industrial"
+    ],
+    "GE": [
+      "0000040545",
+      "industrial"
+    ],
+    "WMT": [
+      "0000104169",
+      "consumer"
+    ],
+    "COST": [
+      "0000909832",
+      "consumer"
+    ],
+    "KO": [
+      "0000021344",
+      "consumer"
+    ],
+    "PEP": [
+      "0000077476",
+      "consumer"
+    ],
+    "IBM": [
+      "0000051143",
+      "technology"
+    ],
+    "INTC": [
+      "0000050863",
+      "technology"
+    ],
+    "CSCO": [
+      "0000858877",
+      "technology"
+    ],
+    "TXN": [
+      "0000097476",
+      "technology"
+    ],
+    "SLB": [
+      "0000087347",
+      "energy"
+    ],
+    "HAL": [
+      "0000045012",
+      "energy"
+    ],
+    "OXY": [
+      "0000797468",
+      "energy"
+    ],
+    "PSX": [
+      "0001534701",
+      "energy"
+    ],
+    "ABBV": [
+      "0001551152",
+      "health"
+    ],
+    "BMY": [
+      "0000014272",
+      "health"
+    ],
+    "AMGN": [
+      "0000318154",
+      "health"
+    ],
+    "GILD": [
+      "0000882095",
+      "health"
+    ],
+    "UPS": [
+      "0001090727",
+      "industrial"
+    ],
+    "FDX": [
+      "0001048911",
+      "industrial"
+    ],
+    "LMT": [
+      "0000936468",
+      "industrial"
+    ],
+    "NOC": [
+      "0001133421",
+      "industrial"
+    ],
+    "PG": [
+      "0000080424",
+      "consumer"
+    ],
+    "CL": [
+      "0000021665",
+      "consumer"
+    ],
+    "MDLZ": [
+      "0001103982",
+      "consumer"
+    ],
+    "KMB": [
+      "0000055785",
+      "consumer"
+    ]
+  },
+  "coverage": {
+    "MSFT": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 11,
+        "negative_fcf_assets": 31
+      }
+    },
+    "ORCL": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 38,
+        "negative_fcf_assets": 32
+      }
+    },
+    "ADBE": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 4,
+        "negative_fcf_assets": 38
+      }
+    },
+    "CRM": {
+      "price_windows": 112,
+      "finance_dates": 36,
+      "excluded_windows": {
+        "annual period older than 550 days": 6
+      },
+      "available_feature_dates": {
+        "liabilities_assets": 36,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 36
+      }
+    },
+    "CVX": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 9,
+        "negative_fcf_assets": 0
+      }
+    },
+    "COP": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 0
+      }
+    },
+    "EOG": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 0
+      }
+    },
+    "JNJ": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 25,
+        "negative_fcf_assets": 38
+      }
+    },
+    "MRK": {
+      "price_windows": 112,
+      "finance_dates": 36,
+      "excluded_windows": {
+        "unreconciled annual amendment": 5
+      },
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 23,
+        "negative_fcf_assets": 7
+      }
+    },
+    "PFE": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 38
+      }
+    },
+    "UNH": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 38,
+        "negative_fcf_assets": 38
+      }
+    },
+    "CAT": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 21
+      }
+    },
+    "DE": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 34
+      }
+    },
+    "HON": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 6,
+        "negative_fcf_assets": 33
+      }
+    },
+    "GE": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 4,
+        "negative_fcf_assets": 29
+      }
+    },
+    "WMT": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 38,
+        "negative_fcf_assets": 38
+      }
+    },
+    "COST": {
+      "price_windows": 112,
+      "finance_dates": 34,
+      "excluded_windows": {
+        "unreconciled annual amendment": 12
+      },
+      "available_feature_dates": {
+        "liabilities_assets": 34,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 26
+      }
+    },
+    "KO": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 12,
+        "negative_fcf_assets": 38
+      }
+    },
+    "PEP": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 0
+      }
+    },
+    "IBM": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 37
+      }
+    },
+    "INTC": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 25
+      }
+    },
+    "CSCO": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 31
+      }
+    },
+    "TXN": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 29
+      }
+    },
+    "SLB": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 30
+      }
+    },
+    "HAL": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 6,
+        "negative_fcf_assets": 0
+      }
+    },
+    "OXY": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 38
+      }
+    },
+    "PSX": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 29,
+        "negative_fcf_assets": 0
+      }
+    },
+    "ABBV": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 25
+      }
+    },
+    "BMY": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 33,
+        "negative_fcf_assets": 38
+      }
+    },
+    "AMGN": {
+      "price_windows": 112,
+      "finance_dates": 34,
+      "excluded_windows": {
+        "unreconciled annual amendment": 12
+      },
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 34
+      }
+    },
+    "GILD": {
+      "price_windows": 112,
+      "finance_dates": 35,
+      "excluded_windows": {
+        "unreconciled annual amendment": 9
+      },
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 9,
+        "negative_fcf_assets": 21
+      }
+    },
+    "UPS": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 38
+      }
+    },
+    "FDX": {
+      "price_windows": 112,
+      "finance_dates": 34,
+      "excluded_windows": {
+        "unreconciled annual amendment": 12
+      },
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 0
+      }
+    },
+    "LMT": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 0
+      }
+    },
+    "NOC": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 38
+      }
+    },
+    "PG": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 38
+      }
+    },
+    "CL": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 29
+      }
+    },
+    "MDLZ": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 38,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 38
+      }
+    },
+    "KMB": {
+      "price_windows": 112,
+      "finance_dates": 38,
+      "excluded_windows": {},
+      "available_feature_dates": {
+        "liabilities_assets": 0,
+        "net_debt_assets": 0,
+        "negative_fcf_assets": 0
+      }
+    }
+  },
+  "collection_errors": {
+    "XOM": "SEC issuer identity mismatch"
+  },
+  "tests": [
+    {
+      "horizon": 1,
+      "financial_features": [
+        "negative_fcf_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 798,
+      "later_windows": 168,
+      "earlier_companies": 30,
+      "later_companies": 28,
+      "status": "exploratory",
+      "mse_baseline": 0.005084641011873157,
+      "mse_with_financials": 0.005064771491768612,
+      "mse_improvement": 1.9869520104544985e-05,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0006351219095826339,
+          "mse_with_financials": 0.0006473441874292736
+        },
+        "energy": {
+          "n": 12,
+          "mse_baseline": 0.010320986927623649,
+          "mse_with_financials": 0.010249563802389844
+        },
+        "health": {
+          "n": 48,
+          "mse_baseline": 0.003885463337798932,
+          "mse_with_financials": 0.0038887132089487964
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.004728341473313867,
+          "mse_with_financials": 0.004708408449291073
+        },
+        "technology": {
+          "n": 48,
+          "mse_baseline": 0.007978368857540889,
+          "mse_with_financials": 0.007928250663693667
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "negative_fcf_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 798,
+      "later_windows": 168,
+      "earlier_companies": 30,
+      "later_companies": 28,
+      "status": "exploratory",
+      "mse_baseline": 0.00497324620166137,
+      "mse_with_financials": 0.004956172639721827,
+      "mse_improvement": 1.7073561939542903e-05,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0006517433444633804,
+          "mse_with_financials": 0.0006625394337929565
+        },
+        "energy": {
+          "n": 12,
+          "mse_baseline": 0.009110648176698261,
+          "mse_with_financials": 0.009092190775476504
+        },
+        "health": {
+          "n": 48,
+          "mse_baseline": 0.0038183966154356117,
+          "mse_with_financials": 0.003821596889504269
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.004635239495057433,
+          "mse_with_financials": 0.004623681028150605
+        },
+        "technology": {
+          "n": 48,
+          "mse_baseline": 0.008005938771504106,
+          "mse_with_financials": 0.00794807186693827
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "liabilities_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 826,
+      "later_windows": 156,
+      "earlier_companies": 26,
+      "later_companies": 26,
+      "status": "exploratory",
+      "mse_baseline": 0.005129385543844123,
+      "mse_with_financials": 0.00513498247124666,
+      "mse_improvement": -5.596927402537651e-06,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0006945296415932858,
+          "mse_with_financials": 0.0006986494935806556
+        },
+        "energy": {
+          "n": 30,
+          "mse_baseline": 0.007712547133963217,
+          "mse_with_financials": 0.007670753717456591
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.005762985740955722,
+          "mse_with_financials": 0.005776787213473207
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.004718983253156696,
+          "mse_with_financials": 0.004763649892299256
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.006383111576079759,
+          "mse_with_financials": 0.006391018554548259
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "liabilities_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 826,
+      "later_windows": 156,
+      "earlier_companies": 26,
+      "later_companies": 26,
+      "status": "exploratory",
+      "mse_baseline": 0.004933141516147649,
+      "mse_with_financials": 0.004934124904412209,
+      "mse_improvement": -9.833882645597994e-07,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0007162239534614749,
+          "mse_with_financials": 0.0007166766388254864
+        },
+        "energy": {
+          "n": 30,
+          "mse_baseline": 0.006991517799782232,
+          "mse_with_financials": 0.006990634618715386
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.005685816953718398,
+          "mse_with_financials": 0.005686934060010064
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.004522513287956379,
+          "mse_with_financials": 0.00452558824143861
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.006338162342709268,
+          "mse_with_financials": 0.006339287682825681
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "net_debt_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 235,
+      "later_windows": 50,
+      "earlier_companies": 14,
+      "later_companies": 9,
+      "status": "exploratory",
+      "mse_baseline": 0.005256148319761186,
+      "mse_with_financials": 0.005312264673488075,
+      "mse_improvement": -5.611635372688908e-05,
+      "sectors": {
+        "consumer": {
+          "n": 6,
+          "mse_baseline": 0.000908176205312952,
+          "mse_with_financials": 0.0009327053391571267
+        },
+        "energy": {
+          "n": 8,
+          "mse_baseline": 0.007250703058864052,
+          "mse_with_financials": 0.007266321644708489
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.0056505760780137535,
+          "mse_with_financials": 0.005681645766801081
+        },
+        "industrial": {
+          "n": 6,
+          "mse_baseline": 0.003151337605952381,
+          "mse_with_financials": 0.0031486833226610175
+        },
+        "technology": {
+          "n": 6,
+          "mse_baseline": 0.00747181379620413,
+          "mse_with_financials": 0.007772471690433501
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "net_debt_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 235,
+      "later_windows": 50,
+      "earlier_companies": 14,
+      "later_companies": 9,
+      "status": "exploratory",
+      "mse_baseline": 0.005392182323734119,
+      "mse_with_financials": 0.005530135862090874,
+      "mse_improvement": -0.0001379535383567547,
+      "sectors": {
+        "consumer": {
+          "n": 6,
+          "mse_baseline": 0.0008402132552514202,
+          "mse_with_financials": 0.000891240609939302
+        },
+        "energy": {
+          "n": 8,
+          "mse_baseline": 0.006555565731831829,
+          "mse_with_financials": 0.006578524828658532
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.0056992341377851445,
+          "mse_with_financials": 0.005744900085508508
+        },
+        "industrial": {
+          "n": 6,
+          "mse_baseline": 0.002667006668463947,
+          "mse_with_financials": 0.002647715581169698
+        },
+        "technology": {
+          "n": 6,
+          "mse_baseline": 0.009889941913819271,
+          "mse_with_financials": 0.010794542546069534
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "liabilities_assets",
+        "negative_fcf_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 561,
+      "later_windows": 108,
+      "earlier_companies": 20,
+      "later_companies": 18,
+      "status": "exploratory",
+      "mse_baseline": 0.005256915553637,
+      "mse_with_financials": 0.005232631867227792,
+      "mse_improvement": 2.4283686409208062e-05,
+      "sectors": {
+        "consumer": {
+          "n": 18,
+          "mse_baseline": 0.0005733844115466371,
+          "mse_with_financials": 0.0005721951433583524
+        },
+        "energy": {
+          "n": 6,
+          "mse_baseline": 0.008156443302826367,
+          "mse_with_financials": 0.00815620603109318
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.005857118416950072,
+          "mse_with_financials": 0.005826018992976298
+        },
+        "industrial": {
+          "n": 18,
+          "mse_baseline": 0.005011309686060123,
+          "mse_with_financials": 0.004983106329610351
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.006612211528859867,
+          "mse_with_financials": 0.006580169598313683
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 1,
+      "financial_features": [
+        "liabilities_assets",
+        "negative_fcf_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 561,
+      "later_windows": 108,
+      "earlier_companies": 20,
+      "later_companies": 18,
+      "status": "exploratory",
+      "mse_baseline": 0.005094506929631603,
+      "mse_with_financials": 0.005080057067830035,
+      "mse_improvement": 1.4449861801568188e-05,
+      "sectors": {
+        "consumer": {
+          "n": 18,
+          "mse_baseline": 0.0005825382041499493,
+          "mse_with_financials": 0.0005822327818360679
+        },
+        "energy": {
+          "n": 6,
+          "mse_baseline": 0.007552166994600769,
+          "mse_with_financials": 0.007568524958248454
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.005707824234150369,
+          "mse_with_financials": 0.005691940966240742
+        },
+        "industrial": {
+          "n": 18,
+          "mse_baseline": 0.004931011427145895,
+          "mse_with_financials": 0.004912388927905217
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.006396715986897011,
+          "mse_with_financials": 0.006374410466929333
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "negative_fcf_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 798,
+      "later_windows": 168,
+      "earlier_companies": 30,
+      "later_companies": 28,
+      "status": "exploratory",
+      "mse_baseline": 0.007533345595198869,
+      "mse_with_financials": 0.007535509543500045,
+      "mse_improvement": -2.1639483011757707e-06,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.00184755359657788,
+          "mse_with_financials": 0.0020017186567305124
+        },
+        "energy": {
+          "n": 12,
+          "mse_baseline": 0.010237196112671031,
+          "mse_with_financials": 0.01006099477238437
+        },
+        "health": {
+          "n": 48,
+          "mse_baseline": 0.007714604653246426,
+          "mse_with_financials": 0.007639816348373143
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.005402461479213828,
+          "mse_with_financials": 0.005362169312963362
+        },
+        "technology": {
+          "n": 48,
+          "mse_baseline": 0.011561546479412042,
+          "mse_with_financials": 0.011616788379722255
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "negative_fcf_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 798,
+      "later_windows": 168,
+      "earlier_companies": 30,
+      "later_companies": 28,
+      "status": "exploratory",
+      "mse_baseline": 0.007389633918851898,
+      "mse_with_financials": 0.007375337769771541,
+      "mse_improvement": 1.4296149080357014e-05,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0018811382912684537,
+          "mse_with_financials": 0.0020141486019086214
+        },
+        "energy": {
+          "n": 12,
+          "mse_baseline": 0.009410056305493878,
+          "mse_with_financials": 0.009380284956220156
+        },
+        "health": {
+          "n": 48,
+          "mse_baseline": 0.007570157331665217,
+          "mse_with_financials": 0.007504517220146347
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.005435495162173101,
+          "mse_with_financials": 0.00541277012434883
+        },
+        "technology": {
+          "n": 48,
+          "mse_baseline": 0.011368151399541988,
+          "mse_with_financials": 0.0113222695310881
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "liabilities_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 826,
+      "later_windows": 156,
+      "earlier_companies": 26,
+      "later_companies": 26,
+      "status": "exploratory",
+      "mse_baseline": 0.007807925870528924,
+      "mse_with_financials": 0.007862422497326925,
+      "mse_improvement": -5.449662679800089e-05,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0017943721657621005,
+          "mse_with_financials": 0.0017973321621453928
+        },
+        "energy": {
+          "n": 30,
+          "mse_baseline": 0.007240059202666118,
+          "mse_with_financials": 0.0072213945590798604
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.012700121126501361,
+          "mse_with_financials": 0.012791890465433832
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.005738275137343838,
+          "mse_with_financials": 0.005819706393166919
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.011191722228412323,
+          "mse_with_financials": 0.011294751070971982
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "liabilities_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 826,
+      "later_windows": 156,
+      "earlier_companies": 26,
+      "later_companies": 26,
+      "status": "exploratory",
+      "mse_baseline": 0.007603298550065602,
+      "mse_with_financials": 0.007639568669553646,
+      "mse_improvement": -3.6270119488044164e-05,
+      "sectors": {
+        "consumer": {
+          "n": 30,
+          "mse_baseline": 0.0016917483588078553,
+          "mse_with_financials": 0.0017034270618512342
+        },
+        "energy": {
+          "n": 30,
+          "mse_baseline": 0.007299350452288577,
+          "mse_with_financials": 0.007350485045560286
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.012328097724974863,
+          "mse_with_financials": 0.012368098874397743
+        },
+        "industrial": {
+          "n": 30,
+          "mse_baseline": 0.005657662673177884,
+          "mse_with_financials": 0.005659725433856592
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.0107327948543478,
+          "mse_with_financials": 0.010798314600637614
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "net_debt_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 235,
+      "later_windows": 50,
+      "earlier_companies": 14,
+      "later_companies": 9,
+      "status": "exploratory",
+      "mse_baseline": 0.010103002082689591,
+      "mse_with_financials": 0.010015828068969324,
+      "mse_improvement": 8.717401372026687e-05,
+      "sectors": {
+        "consumer": {
+          "n": 6,
+          "mse_baseline": 0.0019830128531270214,
+          "mse_with_financials": 0.0019263012040598342
+        },
+        "energy": {
+          "n": 8,
+          "mse_baseline": 0.006330691252091673,
+          "mse_with_financials": 0.006330857907194667
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.01227390725908496,
+          "mse_with_financials": 0.012266302170565952
+        },
+        "industrial": {
+          "n": 6,
+          "mse_baseline": 0.0027380230126642538,
+          "mse_with_financials": 0.0027397867747836827
+        },
+        "technology": {
+          "n": 6,
+          "mse_baseline": 0.021934097450826587,
+          "mse_with_financials": 0.0212927933707108
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "net_debt_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 235,
+      "later_windows": 50,
+      "earlier_companies": 14,
+      "later_companies": 9,
+      "status": "exploratory",
+      "mse_baseline": 0.010492514349039918,
+      "mse_with_financials": 0.010532706516075763,
+      "mse_improvement": -4.0192167035844883e-05,
+      "sectors": {
+        "consumer": {
+          "n": 6,
+          "mse_baseline": 0.0018895919252157464,
+          "mse_with_financials": 0.0019098951891761615
+        },
+        "energy": {
+          "n": 8,
+          "mse_baseline": 0.007278814170681488,
+          "mse_with_financials": 0.0073016351546952105
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.011941077478751762,
+          "mse_with_financials": 0.011932773119187029
+        },
+        "industrial": {
+          "n": 6,
+          "mse_baseline": 0.0023379655322532207,
+          "mse_with_financials": 0.0023368894199160208
+        },
+        "technology": {
+          "n": 6,
+          "mse_baseline": 0.025740666641948007,
+          "mse_with_financials": 0.026059163675197446
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "liabilities_assets",
+        "negative_fcf_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 561,
+      "later_windows": 108,
+      "earlier_companies": 20,
+      "later_companies": 18,
+      "status": "exploratory",
+      "mse_baseline": 0.009108763684828823,
+      "mse_with_financials": 0.009100917172964762,
+      "mse_improvement": 7.846511864060407e-06,
+      "sectors": {
+        "consumer": {
+          "n": 18,
+          "mse_baseline": 0.0016589468025102088,
+          "mse_with_financials": 0.0017067120773410845
+        },
+        "energy": {
+          "n": 6,
+          "mse_baseline": 0.006790585653371122,
+          "mse_with_financials": 0.006763821410592219
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.012955383811446458,
+          "mse_with_financials": 0.012885930029357277
+        },
+        "industrial": {
+          "n": 18,
+          "mse_baseline": 0.006325717590444455,
+          "mse_with_financials": 0.006283053315016726
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.011627376035556834,
+          "mse_with_financials": 0.011648524486895856
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 3,
+      "financial_features": [
+        "liabilities_assets",
+        "negative_fcf_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 561,
+      "later_windows": 108,
+      "earlier_companies": 20,
+      "later_companies": 18,
+      "status": "exploratory",
+      "mse_baseline": 0.008740513199295506,
+      "mse_with_financials": 0.008733408166340061,
+      "mse_improvement": 7.105032955444235e-06,
+      "sectors": {
+        "consumer": {
+          "n": 18,
+          "mse_baseline": 0.0015522782307336217,
+          "mse_with_financials": 0.0015798576395531394
+        },
+        "energy": {
+          "n": 6,
+          "mse_baseline": 0.0067332681218607434,
+          "mse_with_financials": 0.006766268891178794
+        },
+        "health": {
+          "n": 24,
+          "mse_baseline": 0.01248643530551174,
+          "mse_with_financials": 0.012455457781064426
+        },
+        "industrial": {
+          "n": 18,
+          "mse_baseline": 0.006419861851367035,
+          "mse_with_financials": 0.006382167918281855
+        },
+        "technology": {
+          "n": 42,
+          "mse_baseline": 0.010961972571015633,
+          "mse_with_financials": 0.010961024329311371
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "negative_fcf_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 771,
+      "later_windows": 140,
+      "earlier_companies": 30,
+      "later_companies": 28,
+      "status": "exploratory",
+      "mse_baseline": 0.010636140792626397,
+      "mse_with_financials": 0.01088200802465396,
+      "mse_improvement": -0.0002458672320275624,
+      "sectors": {
+        "consumer": {
+          "n": 25,
+          "mse_baseline": 0.003814241091099699,
+          "mse_with_financials": 0.004153229662686124
+        },
+        "energy": {
+          "n": 10,
+          "mse_baseline": 0.00853857823515421,
+          "mse_with_financials": 0.008132532590160127
+        },
+        "health": {
+          "n": 40,
+          "mse_baseline": 0.010052372378766375,
+          "mse_with_financials": 0.009801263421418122
+        },
+        "industrial": {
+          "n": 25,
+          "mse_baseline": 0.006858773270852857,
+          "mse_with_financials": 0.006868170039223376
+        },
+        "technology": {
+          "n": 40,
+          "mse_baseline": 0.018368841860417113,
+          "mse_with_financials": 0.019364256703637266
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "negative_fcf_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 771,
+      "later_windows": 140,
+      "earlier_companies": 30,
+      "later_companies": 28,
+      "status": "exploratory",
+      "mse_baseline": 0.010339563783735675,
+      "mse_with_financials": 0.010552315264151827,
+      "mse_improvement": -0.0002127514804161519,
+      "sectors": {
+        "consumer": {
+          "n": 25,
+          "mse_baseline": 0.003885755561367715,
+          "mse_with_financials": 0.004187203563530174
+        },
+        "energy": {
+          "n": 10,
+          "mse_baseline": 0.007433259071647841,
+          "mse_with_financials": 0.007310756779073321
+        },
+        "health": {
+          "n": 40,
+          "mse_baseline": 0.009821525291019692,
+          "mse_with_financials": 0.009593290964026877
+        },
+        "industrial": {
+          "n": 25,
+          "mse_baseline": 0.0072430175720630706,
+          "mse_with_financials": 0.007251492447546601
+        },
+        "technology": {
+          "n": 40,
+          "mse_baseline": 0.017553149975748965,
+          "mse_with_financials": 0.0183629382588132
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "liabilities_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 800,
+      "later_windows": 130,
+      "earlier_companies": 26,
+      "later_companies": 26,
+      "status": "exploratory",
+      "mse_baseline": 0.011301263725571055,
+      "mse_with_financials": 0.011301934602825348,
+      "mse_improvement": -6.708772542930036e-07,
+      "sectors": {
+        "consumer": {
+          "n": 25,
+          "mse_baseline": 0.004124339925384531,
+          "mse_with_financials": 0.004062852566052263
+        },
+        "energy": {
+          "n": 25,
+          "mse_baseline": 0.007215623830745096,
+          "mse_with_financials": 0.007272954902940061
+        },
+        "health": {
+          "n": 20,
+          "mse_baseline": 0.01673788759044454,
+          "mse_with_financials": 0.016904842008411632
+        },
+        "industrial": {
+          "n": 25,
+          "mse_baseline": 0.006087485986959156,
+          "mse_with_financials": 0.005928076544134606
+        },
+        "technology": {
+          "n": 35,
+          "mse_baseline": 0.01996343682680363,
+          "mse_with_financials": 0.019987358796311125
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "liabilities_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 800,
+      "later_windows": 130,
+      "earlier_companies": 26,
+      "later_companies": 26,
+      "status": "exploratory",
+      "mse_baseline": 0.011019737994485801,
+      "mse_with_financials": 0.011036936689490715,
+      "mse_improvement": -1.719869500491425e-05,
+      "sectors": {
+        "consumer": {
+          "n": 25,
+          "mse_baseline": 0.003972200460776744,
+          "mse_with_financials": 0.003957669419589648
+        },
+        "energy": {
+          "n": 25,
+          "mse_baseline": 0.00790267284426754,
+          "mse_with_financials": 0.00806237204910926
+        },
+        "health": {
+          "n": 20,
+          "mse_baseline": 0.01611749162956678,
+          "mse_with_financials": 0.01620338953178911
+        },
+        "industrial": {
+          "n": 25,
+          "mse_baseline": 0.006735235209009214,
+          "mse_with_financials": 0.00651406397278935
+        },
+        "technology": {
+          "n": 35,
+          "mse_baseline": 0.018427525538299468,
+          "mse_with_financials": 0.018496609798880126
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "net_debt_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 229,
+      "later_windows": 41,
+      "earlier_companies": 14,
+      "later_companies": 9,
+      "status": "exploratory",
+      "mse_baseline": 0.014158792527613848,
+      "mse_with_financials": 0.013583263622141668,
+      "mse_improvement": 0.0005755289054721804,
+      "sectors": {
+        "consumer": {
+          "n": 5,
+          "mse_baseline": 0.003848967054122393,
+          "mse_with_financials": 0.003522367601963084
+        },
+        "energy": {
+          "n": 6,
+          "mse_baseline": 0.00790204548891807,
+          "mse_with_financials": 0.007982238896705195
+        },
+        "health": {
+          "n": 20,
+          "mse_baseline": 0.01627595444534521,
+          "mse_with_financials": 0.01628942101220129
+        },
+        "industrial": {
+          "n": 5,
+          "mse_baseline": 0.004360128204350648,
+          "mse_with_financials": 0.004359653397449557
+        },
+        "technology": {
+          "n": 5,
+          "mse_baseline": 0.03330673109987795,
+          "mse_with_financials": 0.02876436997729761
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "net_debt_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 229,
+      "later_windows": 41,
+      "earlier_companies": 14,
+      "later_companies": 9,
+      "status": "exploratory",
+      "mse_baseline": 0.015184228503205175,
+      "mse_with_financials": 0.014906907058359021,
+      "mse_improvement": 0.0002773214448461535,
+      "sectors": {
+        "consumer": {
+          "n": 5,
+          "mse_baseline": 0.003696117846002968,
+          "mse_with_financials": 0.003566290302551968
+        },
+        "energy": {
+          "n": 6,
+          "mse_baseline": 0.01041226967940322,
+          "mse_with_financials": 0.010321681760723912
+        },
+        "health": {
+          "n": 20,
+          "mse_baseline": 0.015592572682364553,
+          "mse_with_financials": 0.015662716557257667
+        },
+        "industrial": {
+          "n": 5,
+          "mse_baseline": 0.004237802725866877,
+          "mse_with_financials": 0.004221909093429281
+        },
+        "technology": {
+          "n": 5,
+          "mse_baseline": 0.041711738809670516,
+          "mse_with_financials": 0.039411554140663364
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "liabilities_assets",
+        "negative_fcf_assets"
+      ],
+      "baseline": "volatility",
+      "earlier_windows": 543,
+      "later_windows": 90,
+      "earlier_companies": 20,
+      "later_companies": 18,
+      "status": "exploratory",
+      "mse_baseline": 0.014251001331974263,
+      "mse_with_financials": 0.014316045763142821,
+      "mse_improvement": -6.504443116855767e-05,
+      "sectors": {
+        "consumer": {
+          "n": 15,
+          "mse_baseline": 0.0037316290804443324,
+          "mse_with_financials": 0.0037505504927315618
+        },
+        "energy": {
+          "n": 5,
+          "mse_baseline": 0.006160464294939232,
+          "mse_with_financials": 0.00612236291926003
+        },
+        "health": {
+          "n": 20,
+          "mse_baseline": 0.017235485839263903,
+          "mse_with_financials": 0.017083315034941014
+        },
+        "industrial": {
+          "n": 15,
+          "mse_baseline": 0.007351319120684154,
+          "mse_with_financials": 0.007238443085111366
+        },
+        "technology": {
+          "n": 35,
+          "mse_baseline": 0.021166681674308074,
+          "mse_with_financials": 0.02146660284914542
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    },
+    {
+      "horizon": 6,
+      "financial_features": [
+        "liabilities_assets",
+        "negative_fcf_assets"
+      ],
+      "baseline": "score",
+      "earlier_windows": 543,
+      "later_windows": 90,
+      "earlier_companies": 20,
+      "later_companies": 18,
+      "status": "exploratory",
+      "mse_baseline": 0.013447319106963623,
+      "mse_with_financials": 0.013508227487849902,
+      "mse_improvement": -6.0908380886279256e-05,
+      "sectors": {
+        "consumer": {
+          "n": 15,
+          "mse_baseline": 0.0036258805068946037,
+          "mse_with_financials": 0.0036275257150588393
+        },
+        "energy": {
+          "n": 5,
+          "mse_baseline": 0.006533229798565417,
+          "mse_with_financials": 0.006545832278647507
+        },
+        "health": {
+          "n": 20,
+          "mse_baseline": 0.01644618130451831,
+          "mse_with_financials": 0.01636392863452133
+        },
+        "industrial": {
+          "n": 15,
+          "mse_baseline": 0.007917447564708262,
+          "mse_with_financials": 0.007803338342527133
+        },
+        "technology": {
+          "n": 35,
+          "mse_baseline": 0.0193005435276997,
+          "mse_with_financials": 0.019550565113115353
+        }
+      },
+      "interpretation": "Positive improvement means lower squared error in this sample, not proven general benefit."
+    }
+  ],
+  "first_decision": "2016-12-30",
+  "last_decision": "2026-06-30",
+  "limitations": [
+    "40 deliberately selected current US nonfinancial companies; selection and survivorship bias.",
+    "Annual filings only, up to 550 days old. Quarterly releases and earlier earnings announcements not reconstructed.",
+    "Only matched standard taxonomy fields. Financial model is separate from ROIC FCFF/EBITDA score.",
+    "Twelve-year adjusted price history requested; split 2025-01-01. Crises before 2025 are training data, not independent crisis validation.",
+    "Ridge alpha=1 fixed; scaling trained on earlier data only. Same complete-case sample for each paired comparison.",
+    "Repeated firms, overlapping windows and shared market shocks; no independent-observation significance claim.",
+    "The later period has already been inspected in the initial study and is not an untouched holdout. Multiple exploratory comparisons; do not select winning features/weights from these results. No production score changes."
+  ]
+}

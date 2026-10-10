@@ -23,5 +23,5 @@ export function historyStatistics(h:Row|null,now=Date.now()):Row{
  return s;
 }
 export function compactHistory(h:Row,now=Date.now()){
- return {format:'risk-summary',schema:RISK_SCHEMA,symbol:h.symbol,currency:h.currency,adjustment:h.adjustment,retrievedAt:h.retrievedAt,requestedFrom:h.requestedFrom,requestedYears:h.requestedYears,historyNote:h.historyNote,statistics:historyStatistics(h,now),...(h.proxy?{proxy:h.proxy,region:h.region,note:h.note}:{})};
+ return {format:'risk-summary',schema:RISK_SCHEMA,symbol:h.symbol,currency:h.currency,adjustment:h.adjustment,retrievedAt:h.retrievedAt,requestedFrom:h.requestedFrom,requestedYears:h.requestedYears,historyNote:h.historyNote,provider:h.provider,statistics:historyStatistics(h,now),...(h.proxy?{proxy:h.proxy,region:h.region,note:h.note}:{})};
 }

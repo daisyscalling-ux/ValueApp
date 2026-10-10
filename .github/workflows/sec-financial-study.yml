@@ -1,0 +1,54 @@
+name: sec-financial-study
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ['codex/sec-financial-study']
+    paths: ['.github/workflows/sec-financial-study.yml']
+  pull_request:
+    paths: ['value_radar/sec_pilot/**', '.github/workflows/sec-financial-study.yml']
+permissions:
+  contents: read
+concurrency:
+  group: sec-financial-study-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Abhängigkeiten installieren
+        run: python -m pip install yfinance==0.2.66 numpy==2.3.3
+      - name: Stichtagsauswahl und Vergleich testen
+        run: python -m unittest discover -s value_radar/sec_pilot -p 'test_*.py'
+      - name: SEC und Kurse der festen Stichprobe laden
+        if: github.event_name != 'pull_request'
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python value_radar/sec_pilot/study_collect.py
+      - name: Historische Kursfenster berechnen
+        if: github.event_name != 'pull_request'
+        run: |
+          npx --yes esbuild@0.24.2 value_radar/sec_pilot/study_prices.ts --bundle --platform=node --format=esm --outfile=/tmp/sec-study-prices.mjs
+          node /tmp/sec-study-prices.mjs
+      - name: Finanzkennzahlen im späteren Zeitraum prüfen
+        if: github.event_name != 'pull_request'
+        run: python value_radar/sec_pilot/study_evaluate.py
+      - name: Ergebnis anzeigen
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          if test -f sec-study-output/study-report.md; then cat sec-study-output/study-report.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Daten und Ergebnisse sichern
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sec-financial-study-${{ github.run_id }}-${{ github.run_attempt }}
+          path: sec-study-output/
+          retention-days: 90
+          if-no-files-found: warn

@@ -27,7 +27,8 @@ def field(facts, tag, selected, duration=True):
 def select_annual(facts, filings, cutoff):
     # Candidates come from CFO even if capex is missing/conflicting: never silently
     # fall back to an older "complete" filing of the same period.
-    rows = facts.get('facts', {}).get('us-gaap', {}).get('NetCashProvidedByUsedInOperatingActivities', {}).get('units', {}).get('USD', [])
+    rows = [r for tag in ('NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations')
+            for r in facts.get('facts', {}).get('us-gaap', {}).get(tag, {}).get('units', {}).get('USD', [])]
     periods = {}
     for r in rows:
         try:
@@ -65,6 +66,11 @@ def select_annual(facts, filings, cutoff):
             ('amortization', 'AmortizationOfIntangibleAssets', True),
             ('operating_income', 'OperatingIncomeLoss', True)]}
         fields['assets'] = field(facts, 'Assets', chosen, False)
+        fields['cfo_continuing'] = field(facts, 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations', chosen)
+        fields['cfo_discontinued'] = field(facts, 'CashProvidedByUsedInOperatingActivitiesDiscontinuedOperations', chosen)
+        fields['redeemable_minority'] = field(facts, 'RedeemableNoncontrollingInterestEquityCarryingAmount', chosen, False)
+        fields['liabilities_current'] = field(facts, 'LiabilitiesCurrent', chosen, False)
+        fields['liabilities_noncurrent'] = field(facts, 'LiabilitiesNoncurrent', chosen, False)
         fields['liabilities'] = field(facts, 'Liabilities', chosen, False)
         fields['equity_including_minority'] = field(facts, 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', chosen, False)
         v = {k: f['value'] for k, f in fields.items()}
@@ -77,11 +83,15 @@ def select_annual(facts, filings, cutoff):
         if v['debt_total'] is not None and all(x is not None and x >= 0 for x in components) and abs(sum(components)-v['debt_total']) > max(1, abs(v['debt_total'])*.001):
             debt, debt_method = None, 'conflicting_debt_definitions'
         cfo, capex = v['cfo'], v['capex']
+        cfo_method = 'reported_total' if cfo is not None else 'unresolved'
+        if fields['cfo']['status'] == 'missing' and v['cfo_continuing'] is not None and v['cfo_discontinued'] is not None:
+            cfo = v['cfo_continuing'] + v['cfo_discontinued']
+            cfo_method = 'explicit_continuing_plus_discontinued'
         fcf = cfo-capex if cfo is not None and capex is not None and capex >= 0 else None
         da = [v['depreciation'], v['amortization']]
         proxy = v['operating_income']+sum(da) if v['operating_income'] is not None and all(x is not None and x >= 0 for x in da) else None
         chosen.update(status='selected', currency='USD', fields=fields, cfo_minus_capex=fcf,
-                      debt=debt, debt_method=debt_method,
+                      debt=debt, debt_method=debt_method, cfo_method=cfo_method,
                       net_debt=debt-v['cash'] if debt is not None and v['cash'] is not None and v['cash'] >= 0 else None,
                       operating_income_plus_da_proxy=proxy,
                       missing_or_conflicting=[k for k, f in fields.items() if f['status'] != 'available'])

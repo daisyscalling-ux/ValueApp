@@ -8,6 +8,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+from point_in_time import select_annual
 
 COMPANIES = {'MSFT': '0000789019', 'ORCL': '0001341439'}
 TAGS = ['NetCashProvidedByUsedInOperatingActivities', 'PaymentsToAcquirePropertyPlantAndEquipment',
@@ -136,7 +137,8 @@ def run():
                 coverage = {tag: len(facts.get('facts', {}).get('us-gaap', {}).get(tag, {}).get('units', {}).get('USD', [])) for tag in TAGS}
                 cutoffs = [dt.date(year, 12, 31) for year in range(2020, dt.date.today().year)] + [dt.date.today()]
                 audits = [annual_pairs(facts, index, cutoff) for cutoff in cutoffs]
-                report['companies'][symbol] = {'cik': cik, 'status': 'audited', 'submissions': len(index), 'tag_rows': coverage, 'annual_cashflow_checks': audits}
+                selection = [select_annual(facts, index, cutoff) for cutoff in cutoffs]
+                report['companies'][symbol] = {'cik': cik, 'status': 'audited', 'submissions': len(index), 'tag_rows': coverage, 'annual_cashflow_checks': audits, 'point_in_time': selection}
             except Exception as exc:
                 # Do not emit response bodies, request headers or contact details.
                 message = str(exc) if isinstance(exc, (ValueError, RuntimeError)) else type(exc).__name__

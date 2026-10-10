@@ -29,3 +29,5 @@ Die Jahresauswahl berücksichtigt auch CFO aus fortgeführten Aktivitäten. Ein 
 Die API liefert nur Standardtaxonomie-Fakten für das gesamte Unternehmen; individuelle Tags und dimensionale Details bleiben eine Datenlücke ([SEC-Dokumentation](https://www.sec.gov/search-filings/edgar-application-programming-interfaces)). Definitionen der verwendeten Tags stammen außerdem aus den archivierten Companyfacts-Antworten.
 
 Der erste Ergebnisbericht mit 19 geladenen Unternehmen bleibt unverändert als Vergleichsstand erhalten. Die Erweiterung ist ein neuer explorativer Lauf mit anderer Stichprobe, längerer Historie und korrigierter Datenzuordnung. Ein Unterschied zum Erstlauf isoliert deshalb keinen einzelnen Änderungseffekt.
+
+Erweiterter Lauf abgeschlossen: 39 geladene Unternehmen, 4.368 Fenster, alle 24 Mindeststichproben erfüllt. Ergebnisse: [STUDY-EXPANDED-RESULTS.md](STUDY-EXPANDED-RESULTS.md). Auch daraus werden keine produktiven Gewichte abgeleitet.

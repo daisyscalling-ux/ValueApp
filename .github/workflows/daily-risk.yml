@@ -23,6 +23,18 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Yahoo-Helfer installieren
+        continue-on-error: true
+        run: python -m pip install "yfinance==0.2.66"
+      - name: Yahoo-Datenprüfung testen
+        run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
+      - name: Markt-ETFs als Ersatzquelle laden
+        timeout-minutes: 13
+        continue-on-error: true
+        run: python value_radar/risk_precompute/yahoo_benchmarks.py
       - name: Exportprogramm bauen
         run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-risk.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-export.mjs
       - name: Risiko-Historien vorberechnen

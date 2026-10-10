@@ -1,3 +1,4 @@
+import {validateHistory,validationReport,VALIDATION_VERSION} from './src/lib/risk-validation';
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -14,14 +15,16 @@ export async function exportRisk(options:any={}){
  const universe=read(input);if(!Array.isArray(universe?.kandidaten)||!universe.kandidaten.length)throw Error('Universum fehlt oder ist leer.');
  const budget=Number(env.RISK_BUDGET_MIN||90);if(!Number.isFinite(budget)||budget<1||budget>110)throw Error('Ungültiges Zeitbudget.');
  const yahoo=read(env.RISK_YAHOO_PATH||'/tmp/risk-yahoo.json');
+ const validationEnabled=env.RISK_VALIDATION_ENABLED==='1',studyPath=env.RISK_VALIDATION_STATE||'.risk-validation-cache.json',studyOutput=env.RISK_VALIDATION_OUTPUT||'value_radar/daten/cf_risk_validation.json';
+ const oldStudy=validationEnabled?read(studyPath):null,study:any=oldStudy?.schema===VALIDATION_VERSION?oldStudy:{schema:VALIDATION_VERSION,series:{}};
  const previous=read(output),data:any=previous?.schema===RISK_SCHEMA?previous:{schema:RISK_SCHEMA,stocks:{},benchmarks:{}};
  data.attempts=data.attempts||{};
  const inputs=[...new Set<string>(universe.kandidaten.map((r:any)=>String(r.listing_symbol||r.ticker||'').trim().toUpperCase()).filter((s:string)=>/^[A-Z0-9._:-]{1,100}$/.test(s)))];
  inputs.sort((a,b)=>(Date.parse(data.attempts[a])||0)-(Date.parse(data.attempts[b])||0));
  const sleep=options.sleep||((ms:number)=>new Promise(r=>setTimeout(r,ms)));
  const started=clock(),deadline=started+budget*60000;let last=0,spacing=650,blockedUntil=0,requests=0,aborted=false,historyDenied=0;let preferredYears:2|5=5;
- const report:any={attempted:0,updated:0,failed:0,skippedFresh:0,universe:inputs.length,errors:[],failureReasons:{},rateLimitEvents:0,retries:0,benchmarkFallbacks:0,benchmarkWarnings:[],budgetReached:false};
- const save=()=>{data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output)};
+ const report:any={attempted:0,updated:0,failed:0,skippedFresh:0,universe:inputs.length,errors:[],failureReasons:{},rateLimitEvents:0,retries:0,benchmarkFallbacks:0,benchmarkWarnings:[],validation:{enabled:validationEnabled,eligible:0,excluded:0,metadataMissing:0},budgetReached:false};
+ const save=()=>{data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output);if(validationEnabled){fs.mkdirSync(path.dirname(studyPath),{recursive:true});fs.writeFileSync(studyPath+'.tmp',JSON.stringify(study));fs.renameSync(studyPath+'.tmp',studyPath);const allowed=new Set(inputs),active=Object.fromEntries(Object.entries(study.series).filter(([,v]:any)=>allowed.has(v.inputSymbol)&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<7*86400000));const audit:any=validationReport(active,clock());audit.universeSize=inputs.length;audit.refresh={...report.validation};fs.mkdirSync(path.dirname(studyOutput),{recursive:true});fs.writeFileSync(studyOutput+'.tmp',JSON.stringify(audit));fs.renameSync(studyOutput+'.tmp',studyOutput)}};
  const paced:typeof fetch=async(url,opts)=>{
   if(clock()>deadline)throw Error('Zeitbudget erreicht.');
   const wait=Math.max(0,spacing-(clock()-last));if(wait)await sleep(wait);
@@ -45,11 +48,16 @@ export async function exportRisk(options:any={}){
  for(const inputSymbol of inputs){
   if(clock()>deadline||blockedUntil>=deadline||aborted){report.budgetReached=clock()>deadline||blockedUntil>=deadline;break}
   processed++;data.attempts[inputSymbol]=new Date(clock()).toISOString();
-  if(fresh(data.stocks[inputSymbol])){report.skippedFresh++;continue}
+  if(!validationEnabled&&fresh(data.stocks[inputSymbol])){report.skippedFresh++;continue}
   report.attempted++;
-  try{const symbol=inputSymbol.includes(':')?inputSymbol:String((await retry(()=>resolveRiskListing(inputSymbol,env.ROIC_API_KEY,paced))).symbol);
-   if(fresh(data.stocks[symbol])){report.skippedFresh++;continue}
-   const h=await retry(()=>riskHistory(symbol,env.ROIC_API_KEY,paced,clock(),preferredYears));preferredYears=h.requestedYears;historyDenied=0;data.stocks[symbol]=accept(h);report.updated++;
+  try{let listing:any=null;
+   if(!inputSymbol.includes(':'))listing=await retry(()=>resolveRiskListing(inputSymbol,env.ROIC_API_KEY,paced));
+   const symbol=inputSymbol.includes(':')?inputSymbol:String(listing.symbol);
+   if(validationEnabled&&!listing)try{listing=await retry(()=>resolveRiskListing(symbol,env.ROIC_API_KEY,paced))}catch{report.validation.metadataMissing++}
+   const eligible=validationEnabled&&listing?.is_primary===true&&listing.type==='stock'&&Array.isArray(listing.type_specifications)&&listing.type_specifications.includes('common')&&!listing.type_specifications.includes('preferred');
+   if(validationEnabled){if(eligible)report.validation.eligible++;else{report.validation.excluded++;if(listing)delete study.series[symbol]}}
+   if(fresh(data.stocks[symbol])&&(!eligible||study.series[symbol]?.version===VALIDATION_VERSION&&fresh(study.series[symbol]))){if(eligible&&study.series[symbol])study.series[symbol].inputSymbol=inputSymbol;report.skippedFresh++;continue}
+   const h=await retry(()=>riskHistory(symbol,env.ROIC_API_KEY,paced,clock(),preferredYears));preferredYears=h.requestedYears;historyDenied=0;data.stocks[symbol]=accept(h);report.updated++;if(eligible)study.series[symbol]={version:VALIDATION_VERSION,schema:RISK_SCHEMA,inputSymbol,retrievedAt:h.retrievedAt,observations:validateHistory(h,clock())};
   }catch(e){failure(inputSymbol,e)}
   if(processed%25===0){save();console.log('Risiko: '+processed+'/'+inputs.length+' geprüft; '+report.updated+' aktualisiert; '+report.failed+' fehlgeschlagen.')}
  }

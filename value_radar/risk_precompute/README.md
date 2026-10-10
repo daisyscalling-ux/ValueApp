@@ -48,3 +48,8 @@ Notierungsauflösung ergänzt .WA (Polen), .IR (Irland), .AT (Griechenland) und 
 Lokaler Live-Test: Yahoo lieferte neun ETFs im ersten Lauf; INDA wurde zunächst wegen der noch nicht unterstützten Börsenkennung BTS abgelehnt. Diese tatsächlich beobachtete US-ETF-Kennung ist ergänzt. Ein Live-Test auf dem GitHub-Runner mit den ROIC-Retries steht nach dem Merge aus.
 
 Nachprüfung: Auch INDA wurde anschließend erfolgreich geladen. Alle zehn lokalen Live-Historien bestehen Identitäts-, Aktualitäts- und Statistikprüfung, letzter Kurs 9. Oktober 2026. Die Tests verwenden yfinance 0.2.66; diese Version ist im Workflow festgelegt.
+
+## Historische Prüfung
+RISK_VALIDATION_ENABLED=1 aktiviert den kursbasierten Quartalsvergleich (21/63/126 Handelstage), getrennt von der täglichen Scoreberechnung. Die Detailbeobachtungen werden in .risk-validation-cache.json über Actions Cache gespeichert; nur cf_risk_validation.json wird veröffentlicht. Verwendet werden primäre common-Aktien mit bestätigter Anbieterklassifikation. Kein zusätzliches vollständiges Kursuniversum wird geladen; bei fehlenden Detailbeobachtungen reicht ein vorhandener kompakter Risikosnapshot allerdings nicht aus, sodass der Erstlauf frische Aktien erneut abrufen kann.
+
+Dies ist eine explorative Prüfung mit heutigen Universumsmitgliedern und variabler verfügbarer Rückblicklänge, keine historische Kalibrierung oder bestätigte Verlustwahrscheinlichkeit. Gewichte bleiben unverändert. Split: 2025-01-01, grenzüberschreitende Fenster ausgeschlossen; Score aus Daten bis Quartalsende, Einstieg nächste Sitzung. Bei Methodenänderungen Validierungsversion und Cache-Key gemeinsam erhöhen.

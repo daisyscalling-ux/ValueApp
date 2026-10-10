@@ -24,3 +24,13 @@ Sequentielle Abfragen mit mindestens 650 ms Abstand (höchstens etwa 92/min), 90
 Zwischenstände werden alle 25 bearbeiteten Einträge gespeichert; nicht erfolgreich erneuerte Daten behalten ihren ursprünglichen retrievedAt-Zeitstempel. Einträge mit ältestem Versuch werden zuerst geprüft, damit ein abgebrochener Lauf am Folgetag nicht dieselben Titel bevorzugt. Ein Bericht mit Fehlern und Restmenge steht unter report. Ein Teilfehler erzeugt eine Actions-Warnung; kompletter Fehlschlag einen roten Lauf. Der Veröffentlichungs-Schritt speichert Teilfortschritte auch nach einem Programmfehler, sofern die Ausgabedatei vorhanden ist. Bei hartem Runner-Abbruch können seit dem letzten veröffentlichten Lauf erzielte Fortschritte verloren gehen.
 
 Die App übernimmt nur passende, gültige Einzelwerte mit Abrufalter maximal 36 Stunden. Der tatsächliche letzte Kurs darf höchstens sieben Tage alt sein (Wochenenden/Feiertage). Bei fehlenden/veralteten Exportdaten folgt der bestehende ROIC-Direktabruf mit 24-Stunden-KV-Cache. GitHub-Snapshots werden im Worker bis zu fünf Minuten wiederverwendet. Eine tägliche Aktualisierung ist keine Echtzeitüberwachung und garantiert keine vollständige Anbieterabdeckung.
+
+## Korrektur nach dem ersten Live-Lauf (10. Oktober 2026)
+
+Der erste Export vom 9. Oktober 23:22 UTC aktualisierte 0 von 1326 Aktien. Die Historienschnittstelle antwortete mit HTTP 402; dazu kamen nicht aufgelöste Notierungen und fehlende ETF-Treffer. Die Dokumentation nennt tarifabhängig zwei oder fünf Jahre, während der erste Export sechs Jahre anforderte. Das ist eine plausible, noch mit einem neuen Live-Lauf zu bestätigende Ursache.
+
+Jetzt: zunächst knapp fünf Jahre (zwei Tage Abstand zur Tarifgrenze). Bei HTTP 402 auf der ersten Seite einmaliger Rückfall auf knapp zwei Jahre. Keine Wiederholung bei 401/403, keine Wiederholung oder Teilübernahme bei Fehlern späterer Seiten. Bei wiederholten 402 für drei Aktien stoppt der Lauf, statt alle Titel erfolglos abzufragen. Die Aktienauflösung erlaubt eindeutig zugeordnete US-ADRs, die nicht die primäre Emittentennotierung sind, und berücksichtigt bekannte Yahoo-Börsensuffixe. Für ETFs ist eine eindeutige US-Fondsnotierung ausreichend. Mehrdeutige Treffer bleiben ausgeschlossen.
+
+Die 505 erforderlichen Handelstage für historische Verlustkennzahlen bleiben unverändert. Eine knapp zweijährige Reihe kann diese Mindestlänge unterschreiten; dann ist gegebenenfalls nur der Jahreshoch-Abstand verfügbar. Der Exportbericht nennt frische Datensätze und nutzbare Historien/Umfeldwerte gesondert. Das ist noch keine historische Kalibrierung des Scores.
+
+Quelle: https://www.roic.ai/api/docs/stock-prices/historical und https://www.roic.ai/api/docs/tickers/search

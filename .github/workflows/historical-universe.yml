@@ -1,0 +1,32 @@
+name: historical-universe-audit
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths: ['value_radar/sec_pilot/historical_*.py', 'value_radar/sec_pilot/test_historical_*.py', '.github/workflows/historical-universe.yml']
+  push:
+    branches: ['codex/historical-universe']
+    paths: ['.github/workflows/historical-universe.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Mitgliedschaften und Abwicklungsrenditen testen
+        run: python -m unittest discover -s value_radar/sec_pilot -p 'test_historical_*.py'
+      - name: Vorhandenen Datenzugang prÃ¼fen
+        if: github.event_name != 'pull_request'
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: python value_radar/sec_pilot/historical_sources.py
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: historical-universe-audit-${{ github.run_id }}
+          path: historical-universe-output/
+          retention-days: 90

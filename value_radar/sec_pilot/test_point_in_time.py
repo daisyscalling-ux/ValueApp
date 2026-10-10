@@ -4,6 +4,19 @@ import test_pilot
 from point_in_time import select_annual
 
 class SelectionTests(unittest.TestCase):
+    def test_continuing_cashflow_selects_new_filing_without_inventing_total(self):
+        facts, filings = test_pilot.AuditTests().fixture()
+        gaap=facts['facts']['us-gaap']
+        gaap['NetCashProvidedByUsedInOperatingActivitiesContinuingOperations']=gaap.pop('NetCashProvidedByUsedInOperatingActivities')
+        r=select_annual(facts,filings,dt.date(2024,12,31))['latest_annual']
+        self.assertEqual(r['accession'],'amended')
+        self.assertIsNone(r['cfo_minus_capex'])
+        rows=gaap['NetCashProvidedByUsedInOperatingActivitiesContinuingOperations']['units']['USD']
+        gaap['CashProvidedByUsedInOperatingActivitiesDiscontinuedOperations']={'units':{'USD':[dict(x,val=-5) for x in rows]}}
+        r=select_annual(facts,filings,dt.date(2024,12,31))['latest_annual']
+        self.assertEqual(r['cfo_minus_capex'],95)
+        self.assertEqual(r['cfo_method'],'explicit_continuing_plus_discontinued')
+
     def test_latest_known_version_once_per_period(self):
         facts, filings = test_pilot.AuditTests().fixture()
         for cutoff, expected in [('2023-12-31', 80), ('2024-12-31', 100)]:

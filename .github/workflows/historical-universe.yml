@@ -1,0 +1,26 @@
+name: historical-universe-audit
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ['codex/historical-universe']
+    paths: ['.github/workflows/historical-universe.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Vorhandenen Datenzugang prÃ¼fen
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: python value_radar/sec_pilot/historical_sources.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: historical-universe-audit-${{ github.run_id }}
+          path: historical-universe-output/
+          retention-days: 90

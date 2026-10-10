@@ -64,6 +64,9 @@ def select_annual(facts, filings, cutoff):
             ('depreciation', 'Depreciation', True),
             ('amortization', 'AmortizationOfIntangibleAssets', True),
             ('operating_income', 'OperatingIncomeLoss', True)]}
+        fields['assets'] = field(facts, 'Assets', chosen, False)
+        fields['liabilities'] = field(facts, 'Liabilities', chosen, False)
+        fields['equity_including_minority'] = field(facts, 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', chosen, False)
         v = {k: f['value'] for k, f in fields.items()}
         debt, debt_method = v['debt_total'], 'reported_combined'
         components = [v[k] for k in ('debt_current', 'debt_noncurrent', 'short_borrowing')]

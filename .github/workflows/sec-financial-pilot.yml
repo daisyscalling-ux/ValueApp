@@ -1,0 +1,40 @@
+name: sec-financial-pilot
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'value_radar/sec_pilot/**'
+      - '.github/workflows/sec-financial-pilot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Zeitliche Zuordnung testen
+        run: python -m unittest discover -s value_radar/sec_pilot -p 'test_*.py'
+      - name: Microsoft und Oracle prüfen
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python value_radar/sec_pilot/pilot.py
+      - name: Bericht im Lauf anzeigen
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          if test -f sec-pilot-output/report.md; then cat sec-pilot-output/report.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Originaldaten und Prüfbericht sichern
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sec-financial-pilot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: sec-pilot-output/
+          retention-days: 90
+          if-no-files-found: warn

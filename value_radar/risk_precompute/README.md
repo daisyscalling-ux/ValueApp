@@ -34,3 +34,17 @@ Jetzt: zunächst knapp fünf Jahre (zwei Tage Abstand zur Tarifgrenze). Bei HTTP
 Die 505 erforderlichen Handelstage für historische Verlustkennzahlen bleiben unverändert. Eine knapp zweijährige Reihe kann diese Mindestlänge unterschreiten; dann ist gegebenenfalls nur der Jahreshoch-Abstand verfügbar. Der Exportbericht nennt frische Datensätze und nutzbare Historien/Umfeldwerte gesondert. Das ist noch keine historische Kalibrierung des Scores.
 
 Quelle: https://www.roic.ai/api/docs/stock-prices/historical und https://www.roic.ai/api/docs/tickers/search
+
+## Marktvergleich und verbleibende Lücken
+
+Der GitHub-Lauf lädt vor dem ROIC-Export zehn feste Markt-ETFs über yfinance. Das ist eine Ersatzquelle ausschließlich für den Marktvergleich, kein stiller Austausch von Unternehmenshistorien. Der Export bevorzugt weiterhin einen gültigen ROIC-Marktvergleich; andernfalls übernimmt er den aktuellen Yahoo-Datensatz. Die Prüfung verlangt exaktes Symbol, ETF-Typ, USD, bekannte US-Börse, Adjusted Close, aktuellen Abruf und eine verwertbare Kurshistorie. Fehlende Quellen bleiben offen. Die rohen Yahoo-Kurse liegen nur temporär auf dem Runner; ins Repository gelangen dieselben kompakten Statistiken wie bisher. Quelle und Wechselkurseinfluss stehen im Risiko-Block.
+
+Yahoo benötigt keinen API-Key, kann jedoch ebenfalls ausfallen. Der Helfer besitzt pro ETF einen eigenen Prozess mit 40 Sekunden Grenze und höchstens zwei Versuchen. Fehler in der optionalen Installation oder beim Yahoo-Abruf verhindern den ROIC-Export nicht.
+
+ROIC HTTP 429: Retry-After wird berücksichtigt (mindestens 30 Sekunden), maximal zwei Wiederholungen des vollständigen Datenabrufs mit frischen Zeitlimits. Der Abstand zwischen Aufrufen wächst bei Ratenlimits von 650 ms bis maximal 3000 ms. Das Gesamtbudget bleibt 90 Minuten. Lange Wartezeiten, die nicht mehr hineinpassen, beenden den Lauf. Das Kontingent kann weiterhin mit anderen Jobs geteilt sein.
+
+Notierungsauflösung ergänzt .WA (Polen), .IR (Irland), .AT (Griechenland) und .LS (Portugal). Unklare oder nicht unterstützte Wertpapiere werden nicht erfunden oder auf Stammaktien umgebogen. Fehler bei kurzen, veralteten oder lückenhaften Historien werden jetzt mit konkretem Grund protokolliert. Alle Fehler bis zur Größe des derzeitigen Universums bleiben im Bericht sichtbar.
+
+Lokaler Live-Test: Yahoo lieferte neun ETFs im ersten Lauf; INDA wurde zunächst wegen der noch nicht unterstützten Börsenkennung BTS abgelehnt. Diese tatsächlich beobachtete US-ETF-Kennung ist ergänzt. Ein Live-Test auf dem GitHub-Runner mit den ROIC-Retries steht nach dem Merge aus.
+
+Nachprüfung: Auch INDA wurde anschließend erfolgreich geladen. Alle zehn lokalen Live-Historien bestehen Identitäts-, Aktualitäts- und Statistikprüfung, letzter Kurs 9. Oktober 2026. Die Tests verwenden yfinance 0.2.66; diese Version ist im Workflow festgelegt.

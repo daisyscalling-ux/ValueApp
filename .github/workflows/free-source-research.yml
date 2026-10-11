@@ -2,10 +2,10 @@ name: free-source-research
 on:
   workflow_dispatch: {}
   push:
-    branches: ['codex/free-source-research']
+    branches: ['codex/historical-identity-audit']
     paths: ['.github/workflows/free-source-research.yml']
   pull_request:
-    paths: ['value_radar/sec_pilot/free_sources.py', 'value_radar/sec_pilot/test_free_sources.py', '.github/workflows/free-source-research.yml']
+    paths: ['value_radar/sec_pilot/free_sources.py', 'value_radar/sec_pilot/test_free_sources.py', 'value_radar/sec_pilot/identity_audit.py', 'value_radar/sec_pilot/security_identity_evidence.json', '.github/workflows/free-source-research.yml']
 permissions:
   contents: read
 jobs:
@@ -22,6 +22,9 @@ jobs:
       - name: Kostenlose Forschungsdaten sammeln
         if: github.event_name != 'pull_request'
         run: python value_radar/sec_pilot/free_sources.py
+      - name: Historische Wertpapieridentitaeten abgleichen
+        if: github.event_name != 'pull_request'
+        run: python value_radar/sec_pilot/identity_audit.py free-source-output free-source-output/identity-review
       - uses: actions/upload-artifact@v4
         if: always() && github.event_name != 'pull_request'
         with:

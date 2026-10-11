@@ -1,0 +1,29 @@
+{
+  "reviewed_at": "2026-10-11",
+  "renames": [
+    {"old": "FLT", "new": "CPAY", "effective": "2024-03-25", "source": "https://investor.corpay.com/news-releases/news-release-details/fleetcor-announces-rebranding-corpay-0"},
+    {"old": "RE", "new": "EG", "effective": "2023-07-10", "source": "https://investors.everestglobal.com/news/news-details/2023/Everest-to-Rebrand-Company-Name-and-NYSE-Ticker-to-Reflect-its-Evolution-Global-Growth-and-Diversification-Strategy/default.aspx"},
+    {"old": "SATS", "new": "ECHO", "effective": "2026-06-24", "source": "https://ir.echostar.com/news-releases/news-release-details/echostar-changing-stocker-ticker-sats-echo-marking-companys-next"},
+    {"old": "GPS", "new": "GAP", "effective": "2024-08-22", "source": "https://www.miaxglobal.com/alert/2024/08/21/miax-exchange-group-options-markets-corporate-action-alert-gap-incgps-will-0"},
+    {"old": "WLTW", "new": "WTW", "effective": "2022-01-10", "source": "https://investors.wtwco.com/news-releases/news-release-details/willis-towers-watson-announces-nasdaq-ticker-symbol-change-wltw"}
+  ],
+  "under_armour": {
+    "class_c_issuance": "2016-04-08", "ticker_change": "2016-12-07",
+    "source": "https://www.sec.gov/Archives/edgar/data/1336917/000133691717000017/ua-20161231x10k.htm",
+    "note": "Class A: UA until 2016-12-06, UAA thereafter. Class C: UA.C from 2016-04-08, UA thereafter. Wikipedia backfills modern Class C ticker in the 2016 entry. Do not combine share classes. Distribution total-return treatment remains unverified."
+  },
+  "allergan": {
+    "reuse_date": "2015-06-15",
+    "old_identity": "ALLERGAN_INC_PRE2015", "new_identity": "ACTAVIS_ALLERGAN_PLC",
+    "source": "https://www.sec.gov/Archives/edgar/data/1578845/000119312515223399/d942720dex991.htm",
+    "index_source": "https://press.spglobal.com/2015-03-16-American-Airlines-Group-Set-to-Join-the-S-P-500",
+    "note": "Old Allergan Inc. and Actavis plc were separate S&P500 constituents. Actavis acquired old Allergan then reused AGN. No price stitching or successor-price substitution."
+  },
+  "blocked_quotes": [
+    {"symbol": "STI", "historical_company": "SunTrust Banks", "wrong_provider_name": "Solidion", "source": "https://www.sec.gov/Archives/edgar/data/1881551/000121390024032308/ea0202064-10k_solidiontech.htm", "note": "Current Yahoo STI belongs to Solidion; not SunTrust."}
+  ],
+  "settlement_evidence": [
+    {"identity": "STI", "effective": "2019-12-06", "successor": "TFC", "stock_ratio": 1.295, "cash_per_share": 0, "currency": "USD", "source": "https://www.sec.gov/Archives/edgar/data/92230/000119312519308844/d841243d8k.htm", "return_included": false, "note": "Terms only. Terminal return not calculated: verified pre-event price and settlement valuation still required."},
+    {"identity": "ACTAVIS_ALLERGAN_PLC", "effective": "2020-05-08", "successor": "ABBV", "stock_ratio": 0.866, "cash_per_share": 120.30, "currency": "USD", "source": "https://news.abbvie.com/2020-05-08-AbbVie-Completes-Transformative-Acquisition-of-Allergan", "return_included": false, "note": "Terms only; no fixed terminal price inferred from illustrative announcement valuation."}
+  ]
+}

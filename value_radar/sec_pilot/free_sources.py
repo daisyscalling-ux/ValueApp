@@ -108,6 +108,9 @@ def run():
     current,events,source_audit=load_wikipedia(out,end)
     intervals,issues=reconstruct(current,events,START,end)
     symbols=sorted(set(current)|{s for r in events for s in (r['added'],r['removed']) if s})
+    # Fetch reviewed rename targets as additional candidates, keeping raw history intact.
+    evidence=json.loads(Path(__file__).with_name('security_identity_evidence.json').read_text(encoding='utf8'))
+    symbols=sorted(set(symbols)|{a['new'] for a in evidence['renames'] if a['old'] in symbols and a['effective']<end})
     members=[dict(Research_ID=research_id(r['symbol']),Symbol=r['symbol'],Eintrittsdatum=r['start'],Austrittsdatum=r['end'],Links_abgeschnitten=r['left_censored'],Status='provisional_wikipedia_reconstruction',Quelle=HISTORY) for r in intervals]
     write_csv(out/'sp500_historische_mitglieder_vorlaeufig.csv',members,['Research_ID','Symbol','Eintrittsdatum','Austrittsdatum','Links_abgeschnitten','Status','Quelle'])
     write_csv(out/'indexaenderungen.csv',events,['date','added','added_name','removed','removed_name','reason','source'])

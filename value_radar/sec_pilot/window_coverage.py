@@ -17,6 +17,41 @@ COUNTS = ('expected_windows', 'pending_windows', 'mature_windows',
           'missing_path_windows', 'post_exit_mature_windows', 'post_exit_covered_windows')
 
 
+def recovery_priorities(details, identities):
+    """Rank gaps in the preselected primary horizon, not by observed performance."""
+    metadata = {r['identity']:r for r in identities}
+    groups = {}
+    for row in details:
+        groups.setdefault(row['identity'],{})[int(row['sessions'])] = row
+    ranked = []
+    for sid, horizons in groups.items():
+        primary = horizons[63]
+        if not any(int(r['incomplete_windows']) for r in horizons.values()):
+            continue
+        identity = metadata[sid]
+        status = identity['status']
+        if status.startswith('blocked'):
+            action = 'Verify security identity before obtaining its historical series'
+        elif status in ('missing_prices','insufficient_price_rows'):
+            action = 'Obtain full historical adjusted series with identity and corporate-action evidence'
+        else:
+            action = 'Recover exact missing observations and verify adjacent daily returns'
+        post_exit = int(primary['post_exit_mature_windows'])-int(primary['post_exit_covered_windows'])
+        ranked.append(dict(identity=sid,identity_status=status,
+                           incomplete_21=int(horizons[21]['incomplete_windows']),
+                           incomplete_63=int(primary['incomplete_windows']),
+                           incomplete_126=int(horizons[126]['incomplete_windows']),
+                           incomplete_post_exit_63=post_exit,
+                           last_index_exit=identity.get('last_index_exit',''),
+                           exit_hint_unverified=identity.get('exit_reason',''),
+                           next_data_step=action,
+                           settlement_review_required=bool(post_exit),
+                           # Index removal is not a delisting or a zero return.
+                           settlement_note='Check continued trading or documented terminal proceeds; index exit alone proves neither' if post_exit else ''))
+    ranked.sort(key=lambda r:(-r['incomplete_63'],-r['incomplete_126'],r['identity']))
+    return [dict(priority=n,**r) for n,r in enumerate(ranked,1)]
+
+
 def inspect_windows(sessions, spans, rows, start, horizons=HORIZONS):
     """Decision at close, entry next close, then n daily returns. Never stop at exit."""
     _, missing_prices, missing_returns = inspect_rows(sessions, sessions, rows)
@@ -92,10 +127,15 @@ def run(source, output):
         write_csv(output/'fenster_je_wertpapier.csv',details,list(details[0]))
         write_csv(output/'luecken_beispiele.csv',examples,
                   ['identity','decision','entry','end','sessions','missing_entry','missing_path','crosses_index_exit'])
+        priorities = recovery_priorities(details,identities)
+        write_csv(output/'datenbeschaffung_prioritaeten.csv',priorities,
+                  list(priorities[0]) if priorities else ['priority','identity'])
         report = dict(decision_start_inclusive=start,end_exclusive=end.isoformat(),
                       decision_schedule='Every reference-calendar session during provisional membership',
                       entry_rule='Next session close; subsequent 21/63/126 daily returns',
                       source_generated_at=raw['generated_at'],horizons=aggregate,
+                      identities_with_window_gaps=len(priorities),
+                      priority_basis='Descending incomplete 63-session windows, then 126-session windows; no return-based selection',
                       identity_evidence_sha256=hashlib.sha256(read('identity-review/security_identity_evidence.json').encode()).hexdigest(),
                       production_eligible=False,complete_historical_universe_verified=False,
                       limitations=['Coverage only: no return estimates or calibrated risk probabilities.',

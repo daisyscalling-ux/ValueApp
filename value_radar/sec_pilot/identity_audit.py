@@ -51,6 +51,11 @@ def normalize(current, events, evidence):
         for side in ('added', 'removed'):
             symbol = event[side]
             identity, source = resolve(symbol, event['date'], event.get(side + '_name', ''), evidence)
+            override = next((o for o in evidence.get('event_overrides', [])
+                             if o['symbol'] == symbol and o['date'] == event['date']
+                             and o['side'] == side and o['name'] == event.get(side + '_name')), None)
+            if override:
+                identity, source = override['identity'], override['source']
             row[side] = identity
             if source:
                 changes.append({'date': event['date'], 'side': side, 'original_symbol': symbol,
@@ -119,6 +124,7 @@ def audit(source, output):
                          'first':d.get('first',''), 'last':d.get('last',''), 'former_symbols':';'.join(a['old'] for a in aliases),
                          'rename_sources':';'.join(a['source'] for a in aliases), 'last_index_exit':last_exit.get('date',''),
                          'exit_hint':hint, 'exit_reason':reason, 'exit_source':last_exit.get('source',''),
+                         'capital_actions_to_review':'; '.join(a['date']+' '+a['action'] for a in evidence.get('capital_actions_review',[]) if a['identity']==identity),
                          'price_file': 'prices/'+research_id(identity)+'.csv' if status.startswith('research_only') else '',
                          'production_eligible':False})
         write_csv(output/'identitaetspruefung.csv', rows, list(rows[0]))
@@ -126,6 +132,7 @@ def audit(source, output):
         write_csv(output/'belegte_zuordnungen.csv', changes, ['date','side','original_symbol','research_identity','source'])
         write_csv(output/'mitglieder_korrigiert_vorlaeufig.csv', intervals, ['symbol','start','end','left_censored'])
         write_csv(output/'abwicklung_nur_konditionen.csv', evidence['settlement_evidence'], list(evidence['settlement_evidence'][0]))
+        write_csv(output/'kapitalmassnahmen_pruefen.csv', evidence.get('capital_actions_review',[]), ['identity','date','action','source'])
         (output/'security_identity_evidence.json').write_text(json.dumps(evidence,indent=2),encoding='utf8')
         summary = {'source_generated_at':report['generated_at'], 'raw_reconstruction_issues':report['reconstruction_issues'],
                    'remaining_reconstruction_issues':issues, 'applied_event_mappings':len(changes),

@@ -38,6 +38,14 @@ class IdentityTests(unittest.TestCase):
         self.assertFalse(issues)
         self.assertEqual({s['symbol']:s['start'] for s in spans},
                          {'Q':'2025-11-03','IQV':'2017-08-29'})
+    def test_ceridian_rename_is_not_an_exit_or_second_security(self):
+        events=[dict(date='2026-02-09',added='',removed='DAY'),
+                dict(date='2024-02-01',added='DAY',removed='CDAY'),
+                dict(date='2021-09-20',added='CDAY',removed='')]
+        cur,events,_=normalize({},events,self.e)
+        spans,issues=reconstruct(cur,events,'2014-01-01','2026-10-12')
+        self.assertFalse(issues)
+        self.assertEqual(spans,[dict(symbol='DAY',start='2021-09-20',end='2026-02-09',left_censored=False)])
     def test_three_renames_repair_membership_without_extra_members(self):
         events=[dict(date='2018-06-20',added='FLT',removed='',added_name='FleetCor')]
         cur, corrected, changes=normalize({'CPAY':{}},events,self.e)

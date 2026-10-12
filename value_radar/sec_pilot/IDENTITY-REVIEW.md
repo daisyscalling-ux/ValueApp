@@ -16,7 +16,7 @@ Rohdateien bleiben zur Nachvollziehbarkeit unverändert und können falsche hist
 
 ## Regeln
 
-1. Belegte reine Umbenennungen verbinden die historische Mitgliedschaft mit derselben Forschungsidentität. Aktuell: FLT→CPAY, RE→EG, SATS→ECHO, GPS→GAP, WLTW→WTW.
+1. Belegte reine Umbenennungen verbinden die historische Mitgliedschaft mit derselben Forschungsidentität. Aktuell: ADS→BFH, FBHS→FBIN, FLT→CPAY, RE→EG, SATS→ECHO, GPS→GAP, WLTW→WTW.
 2. Schon in der Quelldatei ausdrücklich erfasste Tickerwechsel erzeugen keine zusätzliche Mitgliedschaft oder Indexentfernung.
 3. Under Armour: frühere Class-A-Aktie UA wird dem heutigen UAA zugeordnet. Die spätere Class-C-Aktie UA bleibt getrennt. Die Gesamtrendite der Klassenausschüttung ist gesondert zu prüfen.
 4. Allergan Inc. vor 2015 und Actavis/Allergan plc sind getrennte Identitäten. Keine Verkettung aufgrund desselben Kürzels AGN; keine Verwendung heutiger ACT-Kurse.
@@ -36,3 +36,11 @@ Für die verifizierte Studie fehlen insbesondere dauerhafte Kennungen für alle 
 `python value_radar/sec_pilot/identity_audit.py free-source-results.zip identity-review`
 
 Dies arbeitet lokal ohne Netzabruf. Ein neuer Gesamtlauf lädt zusätzlich die in der Quellenliste dokumentierten Zielkürzel.
+
+## Ergänzung vom 12.10.2026
+
+ADS/BFH und FBHS/FBIN wurden mit SEC-Berichten abgeglichen. Der Indexausschluss von Fortune Brands am 19.12.2022 verwendete noch FBHS; eine ausschließlich auf Datum, Ereignisseite und Unternehmensname passende Ausnahme ordnet diesen Eintrag FBIN zu. Fremde oder spätere Verwendungen von FBHS bleiben unberührt.
+
+`kapitalmassnahmen_pruefen.csv` und das Feld `capital_actions_to_review` dokumentieren die Loyalty-Ventures- und MasterBrand-Abspaltungen. Die Behandlung in Yahoo-Gesamtrenditen ist weiterhin ungeprüft.
+
+Gezielter Yahoo-Abruf 2019-01-01 bis 2020-01-01 für EA, AVB, LEG, QRVO und WBD lieferte YFPricesMissingError; daraus folgt keine endgültige Unverfügbarkeit anderer Quellen. Die Sperren bleiben bestehen. BFH und FBIN lieferten je 3.212 Tageswerte im vollständigen Abruf ab 2014 bis einschließlich 09.10.2026.

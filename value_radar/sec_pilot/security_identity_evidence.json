@@ -1,11 +1,20 @@
 {
-  "reviewed_at": "2026-10-11",
+  "reviewed_at": "2026-10-12",
   "renames": [
+    {"old": "ADS", "new": "BFH", "effective": "2022-04-04", "source": "https://www.sec.gov/Archives/edgar/data/1101215/000110121523000049/bfh-20221231.htm"},
+    {"old": "FBHS", "new": "FBIN", "effective": "2022-12-15", "source": "https://www.sec.gov/Archives/edgar/data/1519751/000119312522306146/d420098d8k.htm"},
     {"old": "FLT", "new": "CPAY", "effective": "2024-03-25", "source": "https://investor.corpay.com/news-releases/news-release-details/fleetcor-announces-rebranding-corpay-0"},
     {"old": "RE", "new": "EG", "effective": "2023-07-10", "source": "https://investors.everestglobal.com/news/news-details/2023/Everest-to-Rebrand-Company-Name-and-NYSE-Ticker-to-Reflect-its-Evolution-Global-Growth-and-Diversification-Strategy/default.aspx"},
     {"old": "SATS", "new": "ECHO", "effective": "2026-06-24", "source": "https://ir.echostar.com/news-releases/news-release-details/echostar-changing-stocker-ticker-sats-echo-marking-companys-next"},
     {"old": "GPS", "new": "GAP", "effective": "2024-08-22", "source": "https://www.miaxglobal.com/alert/2024/08/21/miax-exchange-group-options-markets-corporate-action-alert-gap-incgps-will-0"},
     {"old": "WLTW", "new": "WTW", "effective": "2022-01-10", "source": "https://investors.wtwco.com/news-releases/news-release-details/willis-towers-watson-announces-nasdaq-ticker-symbol-change-wltw"}
+  ],
+  "event_overrides": [
+    {"symbol": "FBHS", "date": "2022-12-19", "side": "removed", "name": "Fortune Brands Home & Security", "identity": "FBIN", "source": "https://www.spglobal.com/spdji/en/documents/indexnews/announcements/20221212-1460145/1460145_5fbhs.pdf", "note": "Index announcement used old ticker for deletion after legal ticker change. Exact event override only."}
+  ],
+  "capital_actions_review": [
+    {"identity": "BFH", "date": "2021-11-05", "action": "Loyalty Ventures spin-off; adjusted-return treatment unverified", "source": "https://www.sec.gov/Archives/edgar/data/1101215/000110121523000049/bfh-20221231.htm"},
+    {"identity": "FBIN", "date": "2022-12-14", "action": "MasterBrand spin-off, one MBC share per parent share; adjusted-return treatment unverified", "source": "https://www.sec.gov/Archives/edgar/data/1519751/000119312522306146/d420098d8k.htm"}
   ],
   "under_armour": {
     "class_c_issuance": "2016-04-08", "ticker_change": "2016-12-07",

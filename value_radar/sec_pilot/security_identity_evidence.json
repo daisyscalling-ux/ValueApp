@@ -1,6 +1,7 @@
 {
   "reviewed_at": "2026-10-12",
   "renames": [
+    {"old":"CDAY", "new":"DAY", "effective":"2024-02-01", "source":"https://www.sec.gov/Archives/edgar/data/1725057/000095017024009619/day-20240131.htm"},
     {"old": "Q", "new": "IQV", "effective": "2017-11-15", "source": "https://www.iqvia.com/newsroom/2017/11/quintilesims-is-now-iqvia"},
     {"old": "ADS", "new": "BFH", "effective": "2022-04-04", "source": "https://www.sec.gov/Archives/edgar/data/1101215/000110121523000049/bfh-20221231.htm"},
     {"old": "FBHS", "new": "FBIN", "effective": "2022-12-15", "source": "https://www.sec.gov/Archives/edgar/data/1519751/000119312522306146/d420098d8k.htm"},

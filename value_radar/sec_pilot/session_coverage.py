@@ -106,14 +106,20 @@ def run(source, output):
             complete = bool(expected) and not missing and not missing_returns and not result['duplicate_dates'] and not result['numeric_errors']
             status = 'calendar_complete_research_only' if complete else ('no_expected_sessions' if not expected else 'incomplete')
             summaries.append(dict(identity=sid, identity_status=identity['status'], calendar_status=status,
+                                  listing_boundary=identity.get('listing_boundary',''),
+                                  listing_boundary_source=identity.get('listing_boundary_source',''),
                                   **result, production_eligible=False))
             for kind, days in [('price',missing),('daily_return',missing_returns)]:
                 for span in spans:
                     window=expected_sessions(sessions,[span])
-                    gaps.extend(dict(identity=sid,kind=kind,**g) for g in gap_ranges(window,days))
+                    for g in gap_ranges(window,days):
+                        boundary = identity.get('listing_boundary','')
+                        note = ('listing_boundary_return_unverified' if kind=='daily_return' and
+                                g['first']==boundary else 'missing_observation')
+                        gaps.append(dict(identity=sid,kind=kind,**g,review_reason=note))
         write_csv(output/'handelskalender.csv', [{'date':d} for d in sessions], ['date'])
         write_csv(output/'abdeckung_je_wertpapier.csv',summaries,list(summaries[0]))
-        write_csv(output/'luecken_zeitraeume.csv',gaps,['identity','kind','first','last','sessions'])
+        write_csv(output/'luecken_zeitraeume.csv',gaps,['identity','kind','first','last','sessions','review_reason'])
         totals={k:sum(r[k] for r in summaries) for k in ('expected_price_sessions','observed_price_sessions','missing_price_sessions','expected_return_sessions','valid_return_sessions','missing_or_invalid_return_sessions')}
         report={'calendar':'XNYS','calendar_library':'exchange_calendars','calendar_version':xcals.__version__,
                 'start_inclusive':start,'end_exclusive':end,'calendar_sessions':len(sessions),
@@ -146,3 +152,4 @@ if __name__ == '__main__':
     parser.add_argument('source');parser.add_argument('output')
     args=parser.parse_args()
     print(json.dumps(run(args.source,args.output),indent=2))
+

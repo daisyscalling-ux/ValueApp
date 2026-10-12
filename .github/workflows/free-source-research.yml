@@ -5,7 +5,7 @@ on:
     branches: ['codex/historical-identity-audit']
     paths: ['.github/workflows/free-source-research.yml']
   pull_request:
-    paths: ['value_radar/sec_pilot/free_sources.py', 'value_radar/sec_pilot/test_free_sources.py', 'value_radar/sec_pilot/identity_audit.py', 'value_radar/sec_pilot/security_identity_evidence.json', 'value_radar/sec_pilot/session_coverage.py', 'value_radar/sec_pilot/test_session_coverage.py', 'value_radar/sec_pilot/review_capture.py', 'value_radar/sec_pilot/test_review_capture.py', 'value_radar/sec_pilot/window_coverage.py', 'value_radar/sec_pilot/test_window_coverage.py', '.github/workflows/free-source-research.yml']
+    paths: ['value_radar/sec_pilot/free_sources.py', 'value_radar/sec_pilot/test_free_sources.py', 'value_radar/sec_pilot/identity_audit.py', 'value_radar/sec_pilot/security_identity_evidence.json', 'value_radar/sec_pilot/session_coverage.py', 'value_radar/sec_pilot/test_session_coverage.py', 'value_radar/sec_pilot/settlement_review.py', 'value_radar/sec_pilot/test_settlement_review.py', 'value_radar/sec_pilot/review_capture.py', 'value_radar/sec_pilot/test_review_capture.py', 'value_radar/sec_pilot/window_coverage.py', 'value_radar/sec_pilot/test_window_coverage.py', '.github/workflows/free-source-research.yml']
 permissions:
   contents: read
 jobs:
@@ -22,6 +22,7 @@ jobs:
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_session_coverage.py'
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_window_coverage.py'
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_review_capture.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_settlement_review.py'
       - name: Kostenlose Forschungsdaten sammeln
         if: github.event_name != 'pull_request'
         run: python value_radar/sec_pilot/free_sources.py

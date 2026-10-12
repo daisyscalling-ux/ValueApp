@@ -1,5 +1,5 @@
 import unittest
-from window_coverage import inspect_windows
+from window_coverage import inspect_windows, recovery_priorities
 
 
 class WindowCoverageTests(unittest.TestCase):
@@ -32,6 +32,15 @@ class WindowCoverageTests(unittest.TestCase):
     def test_duplicate_and_missing_session_never_valid(self):
         self.assertEqual(self.check(self.rows[:3]+[self.rows[2]]+self.rows[3:])['incomplete_windows'],1)
         self.assertEqual(self.check(self.rows[:2]+self.rows[3:])['incomplete_windows'],1)
+    def test_priority_includes_long_only_gaps_and_sorts_primary_first(self):
+        details=[dict(identity=sid,sessions=n,incomplete_windows=(count if n==126 or sid=='A' else 0),
+                      post_exit_mature_windows=2,post_exit_covered_windows=1)
+                 for sid,count in [('A',3),('B',20)] for n in (21,63,126)]
+        identities=[dict(identity='A',status='missing_prices'),dict(identity='B',status='blocked_known_ticker_reuse')]
+        r=recovery_priorities(details,identities)
+        self.assertEqual([x['identity'] for x in r],['A','B'])
+        self.assertIn('Verify security identity',r[1]['next_data_step'])
+        self.assertEqual(r[0]['incomplete_post_exit_63'],1)
 
 
 if __name__=='__main__':unittest.main()

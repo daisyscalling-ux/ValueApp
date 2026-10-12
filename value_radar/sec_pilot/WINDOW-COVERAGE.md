@@ -40,6 +40,15 @@ Die geringere Abdeckung nach Austritten ist fuer die spaetere Risikostudie wesen
 - window_coverage.json: Summen, Methodik, Datenzeitpunkt und Fingerabdruck des Identitaetsregisters.
 - fenster_je_wertpapier.csv: vollstaendige Zaehler je Wertpapier/Horizont, auch bei fehlenden Reihen.
 - luecken_beispiele.csv: maximal drei Beispiele je Wertpapier/Horizont; ausdruecklich keine vollstaendige Liste aller Fenster.
+- datenbeschaffung_prioritaeten.csv: alle Wertpapiere mit Luecken, absteigend nach unvollstaendigen 63-Tage-Fenstern, danach 126-Tage-Fenstern. Auch reine Sechsmonatsluecken bleiben enthalten. Enthaelt je Fall den naechsten benoetigten Datentyp und einen gesonderten Hinweis auf die Pruefung von Handel bzw. Abwicklung nach Indexaustritt. Austrittsgruende aus Wikipedia sind ausdruecklich unbestaetigte Hinweise.
 
 52 lokale Tests erfolgreich. Neue Regressionstests pruefen Fortsetzung nach Austritt, fehlende Nachaustrittsdaten, Einstiegstag, unreife Fenster, Wiederaufnahme, doppelte und fehlende Beobachtungen. Produktionsbewertung bleibt unveraendert.
+
+## Nachtrag: Priorisierung und Dayforce
+
+Die nachfolgende Identitaetskorrektur fasst CDAY und DAY zusammen. Der belegte reine Tickerwechsel am 01.02.2024 ist kein Indexaustritt und kein zweites Wertpapier. Primaerbeleg im Evidenzregister. Die historischen Kurse fehlen weiterhin; eine Umbenennung erzeugt keine neuen Beobachtungen. Die obigen Zahlen dokumentieren den Stand vor dieser Korrektur; aktuelle Summen stehen immer im neu erzeugten window_coverage.json.
+
+Die Beschaffungsliste priorisiert ausschliesslich Datenluecken, nicht erwartete Gewinne, Verluste oder die spaetere Ergebnisrichtung. Fuer fehlende ganze Reihen werden historische bereinigte Kurse inklusive Identitaets- und Kapitalmassnahmenbelegen benoetigt. Fuer gesperrte Reihen muss zuerst die richtige Aktiengattung geklaert werden. Bei einzelnen Luecken muessen die exakten Handelstage und angrenzenden Tagesrenditen nachgeliefert werden. Nach einem Indexaustritt ist zu pruefen, ob dieselbe Aktie weitergehandelt wurde oder ein belegter Abwicklungspfad erforderlich ist; pauschale Nullrenditen bleiben ausgeschlossen.
+
+54 lokale Tests erfolgreich nach diesem Nachtrag, einschliesslich CDAY/DAY-Kontinuitaet und Priorisierung von Haupt- und Nebenhorizonten.
 

@@ -14,7 +14,8 @@ from session_coverage import expected_sessions, inspect_rows
 HORIZONS = (21, 63, 126)
 COUNTS = ('expected_windows', 'pending_windows', 'mature_windows',
           'covered_windows', 'incomplete_windows', 'missing_entry_windows',
-          'missing_path_windows', 'post_exit_mature_windows', 'post_exit_covered_windows')
+          'missing_path_windows', 'post_exit_mature_windows', 'post_exit_covered_windows',
+          'nontradable_entry_windows')
 
 
 def recovery_priorities(details, identities):
@@ -52,8 +53,8 @@ def recovery_priorities(details, identities):
     return [dict(priority=n,**r) for n,r in enumerate(ranked,1)]
 
 
-def inspect_windows(sessions, spans, rows, start, horizons=HORIZONS):
-    """Decision at close, entry next close, then n daily returns. Never stop at exit."""
+def inspect_windows(sessions, spans, rows, start, horizons=HORIZONS, entry_before=None):
+    """Next-close entry, then n returns. entry_before gates entries, not existing holdings."""
     _, missing_prices, missing_returns = inspect_rows(sessions, sessions, rows)
     bad_prices, bad_returns = set(missing_prices), set(missing_returns)
     prefix = [0]
@@ -76,18 +77,20 @@ def inspect_windows(sessions, spans, rows, start, horizons=HORIZONS):
             crossed = sessions[finish]>=exit_day
             c['post_exit_mature_windows'] += crossed
             missing_entry = sessions[entry] in bad_prices
+            nontradable = entry_before is not None and sessions[entry]>=entry_before
             # entry+1 through finish inclusive, excluding entry-day return.
             missing_path = prefix[finish+1]-prefix[entry+1]>0
             c['missing_entry_windows'] += missing_entry
             c['missing_path_windows'] += missing_path
-            incomplete = missing_entry or missing_path
+            c['nontradable_entry_windows'] += nontradable
+            incomplete = missing_entry or missing_path or nontradable
             c['incomplete_windows'] += incomplete
             c['covered_windows'] += not incomplete
             c['post_exit_covered_windows'] += crossed and not incomplete
             if incomplete and len([e for e in examples if e['sessions']==n])<3:
                 examples.append(dict(decision=day,entry=sessions[entry],end=sessions[finish],
                                      sessions=n,missing_entry=missing_entry,missing_path=missing_path,
-                                     crosses_index_exit=crossed))
+                                     crosses_index_exit=crossed,nontradable_entry=nontradable))
     return totals, examples
 
 
@@ -152,4 +155,3 @@ def run(source, output):
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('source');parser.add_argument('output')
     args=parser.parse_args();print(json.dumps(run(args.source,args.output),indent=2))
-

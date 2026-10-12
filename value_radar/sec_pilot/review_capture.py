@@ -1,4 +1,4 @@
-"""Offline review of a saved public issuer table. Never changes the raw archive."""
+"""Offline review of saved public price tables. Never changes the raw archive."""
 import argparse
 import csv
 import datetime as dt
@@ -15,15 +15,40 @@ from session_coverage import inspect_rows
 from window_coverage import inspect_windows
 
 
+def capture_items(capture):
+    """Keep the source's adjustment declaration, never substitute its Change column."""
+    if capture.get('headers') is None:
+        if capture['adjustment']!='Adjusted: Splits and Dividends':
+            raise ValueError('Unsupported adjustment declaration')
+        return capture['rows']
+    required=['Date','Open','High','Low','Close','Adj. Close','Change','Volume']
+    source=urlparse(capture['source'])
+    if (capture['headers']!=required or capture['adjustment']!='Adj. Close'
+            or source.hostname!='stockanalysis.com'
+            or source.path!=f"/stocks/{capture['symbol'].lower()}/history/"):
+        raise ValueError('Unknown table schema or security source')
+    months={name:i+1 for i,name in enumerate('Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split())}
+    items=[]
+    for row in capture['rows']:
+        if len(row)!=len(required):raise ValueError('Incomplete visible table row')
+        month,day,year=row[0].replace(',','').split()
+        date=dt.date(int(year),months[month],int(day)).isoformat()
+        raw=float(row[4].replace(',',''))
+        if not math.isfinite(raw) or raw<=0:raise ValueError('Invalid raw close')
+        items.append(dict(date=date,close=row[5].replace(',',''),
+                          volume=row[7].replace(',',''),raw_close=str(raw)))
+    return items
+
+
 def normalize_capture(capture, sessions):
-    if capture['adjustment'] != 'Adjusted: Splits and Dividends' or capture['currency']!='USD':
+    if capture['currency']!='USD':
         raise ValueError('Unsupported or unconfirmed adjustment/currency')
     source = urlparse(capture['source'])
     if source.scheme!='https' or not source.hostname or source.username or source.password:
         raise ValueError('Public HTTPS source required')
     previous_session = dict(zip(sessions[1:],sessions))
     rows=[];seen=set();previous=None
-    for item in sorted(capture['rows'],key=lambda r:r['date']):
+    for item in sorted(capture_items(capture),key=lambda r:r['date']):
         day=item['date'];price=float(item['close']);volume=float(item['volume'])
         if dt.date.fromisoformat(day).isoformat()!=day or day in seen or day not in sessions:
             raise ValueError('Duplicate or non-session date')
@@ -35,7 +60,8 @@ def normalize_capture(capture, sessions):
                          Datum=day,Adjusted_Close=str(price),
                          Tagesrendite=str(value) if value is not None else '',
                          Quelle=capture['source'],Anbieter=capture['provider'],
-                         Identitaet='issuer_table_candidate_not_independently_verified',
+                         Schlusskurs=item.get('raw_close',''),
+                         Identitaet='public_table_candidate_not_independently_verified',
                          Abwicklung_bestaetigt=False))
         previous=(day,price)
     if len(rows)<2:raise ValueError('Insufficient observations')
@@ -69,11 +95,12 @@ def review(capture_path, archive_path, output):
         report=dict(symbol=capture['symbol'],source=capture['source'],provider=capture['provider'],
                     captured_at=capture['captured_at'],capture_sha256=hashlib.sha256(raw).hexdigest(),
                     rows=len(rows),first=rows[0]['Datum'],last=rows[-1]['Datum'],
+                    provider_adjustment_label=capture['adjustment'],
                     series_checks=checks,missing_prices=missing,missing_or_invalid_returns=bad_returns,
                     baseline_windows=before,candidate_windows=after,production_eligible=False,
                     automatically_imported=False,
                     limitations=['Candidate replaces, never stitches, the baseline in this comparison only.',
-                                 'Issuer widget declares split/dividend adjustment; not independently certified.',
+                                 'Provider-adjusted prices are not independently certified; displayed rounding is preserved.',
                                  'No terminal proceeds or successor returns have been added.',
                                  'Public browser availability does not establish an automated API entitlement.'])
         output.mkdir(parents=True,exist_ok=True)
@@ -85,4 +112,3 @@ def review(capture_path, archive_path, output):
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('capture');p.add_argument('archive');p.add_argument('output')
     a=p.parse_args();print(json.dumps(review(a.capture,a.archive,a.output),indent=2))
-

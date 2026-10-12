@@ -5,7 +5,7 @@ on:
     branches: ['codex/historical-identity-audit']
     paths: ['.github/workflows/free-source-research.yml']
   pull_request:
-    paths: ['value_radar/sec_pilot/free_sources.py', 'value_radar/sec_pilot/test_free_sources.py', 'value_radar/sec_pilot/identity_audit.py', 'value_radar/sec_pilot/security_identity_evidence.json', '.github/workflows/free-source-research.yml']
+    paths: ['value_radar/sec_pilot/free_sources.py', 'value_radar/sec_pilot/test_free_sources.py', 'value_radar/sec_pilot/identity_audit.py', 'value_radar/sec_pilot/security_identity_evidence.json', 'value_radar/sec_pilot/session_coverage.py', 'value_radar/sec_pilot/test_session_coverage.py', '.github/workflows/free-source-research.yml']
 permissions:
   contents: read
 jobs:
@@ -17,14 +17,18 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m pip install yfinance==0.2.66 pandas==2.3.3 lxml==6.0.2
+      - run: python -m pip install yfinance==0.2.66 pandas==2.3.3 lxml==6.0.2 exchange-calendars==4.11.2
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_free_sources.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_session_coverage.py'
       - name: Kostenlose Forschungsdaten sammeln
         if: github.event_name != 'pull_request'
         run: python value_radar/sec_pilot/free_sources.py
       - name: Historische Wertpapieridentitaeten abgleichen
         if: github.event_name != 'pull_request'
         run: python value_radar/sec_pilot/identity_audit.py free-source-output free-source-output/identity-review
+      - name: Handelstage und Tagesrenditen auf Luecken pruefen
+        if: github.event_name != 'pull_request'
+        run: python value_radar/sec_pilot/session_coverage.py free-source-output free-source-output/session-review
       - uses: actions/upload-artifact@v4
         if: always() && github.event_name != 'pull_request'
         with:

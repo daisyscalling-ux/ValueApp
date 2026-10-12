@@ -17,6 +17,27 @@ class FreeSourceTests(unittest.TestCase):
 class IdentityTests(unittest.TestCase):
     def setUp(self):
         self.e=load_evidence()
+    def test_reused_symbols_keep_old_issuers_separate(self):
+        for symbol,day in [('DOW','2017-09-01'),('SNDK','2016-05-13')]:
+            self.assertNotEqual(resolve(symbol,day,'',self.e)[0],symbol)
+            self.assertEqual(resolve(symbol,'2026-01-01','',self.e)[0],symbol)
+        for symbol in ['FOX','FOXA']:
+            event=dict(date='2019-03-19',added=symbol,removed=symbol,
+                       added_name='Fox Corporation',removed_name='21st Century Fox')
+            cur,events,_=normalize({symbol:{}},[event],self.e)
+            spans,issues=reconstruct(cur,events,'2014-01-01','2026-01-01')
+            self.assertFalse(issues)
+            self.assertEqual(len({s['symbol'] for s in spans}),2)
+            self.assertEqual(next(s for s in spans if s['symbol']==symbol)['start'],'2019-03-19')
+    def test_q_rename_preserves_iqvia_and_separate_qnity(self):
+        events=[dict(date='2025-11-03',added='Q',removed=''),
+                dict(date='2017-11-15',added='IQV',removed='Q'),
+                dict(date='2017-08-29',added='Q',removed='')]
+        cur,events,_=normalize({'Q':{},'IQV':{}},events,self.e)
+        spans,issues=reconstruct(cur,events,'2014-01-01','2026-01-01')
+        self.assertFalse(issues)
+        self.assertEqual({s['symbol']:s['start'] for s in spans},
+                         {'Q':'2025-11-03','IQV':'2017-08-29'})
     def test_three_renames_repair_membership_without_extra_members(self):
         events=[dict(date='2018-06-20',added='FLT',removed='',added_name='FleetCor')]
         cur, corrected, changes=normalize({'CPAY':{}},events,self.e)
@@ -66,3 +87,4 @@ class IdentityTests(unittest.TestCase):
         self.assertTrue(any(a['identity']=='FBIN' for a in self.e['capital_actions_review']))
 
 if __name__=='__main__':unittest.main()
+

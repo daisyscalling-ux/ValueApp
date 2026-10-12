@@ -54,5 +54,15 @@ class IdentityTests(unittest.TestCase):
         intervals,issues=reconstruct(current,corrected,'2014-01-01','2026-10-11')
         self.assertFalse(issues);self.assertEqual(len(intervals),1)
         self.assertEqual(intervals[0]['start'],'2016-01-05')
+    def test_bread_rename_and_fortune_exact_event_override(self):
+        self.assertEqual(resolve('ADS','2020-06-22','Alliance Data Systems',self.e)[0],'BFH')
+        event=dict(date='2022-12-19',added='FSLR',removed='FBHS',removed_name='Fortune Brands Home & Security')
+        _,fixed,_=normalize({},[event],self.e)
+        self.assertEqual(fixed[0]['removed'],'FBIN')
+        for key,value in [('date','2023-12-19'),('removed_name','Different company')]:
+            changed=dict(event);changed[key]=value
+            _,fixed,_=normalize({},[changed],self.e)
+            self.assertEqual(fixed[0]['removed'],'FBHS')
+        self.assertTrue(any(a['identity']=='FBIN' for a in self.e['capital_actions_review']))
 
 if __name__=='__main__':unittest.main()

@@ -18,6 +18,10 @@ def load_evidence():
 
 def resolve(symbol, date, name, evidence):
     """Map historical events to research identities, not blindly to today's ticker."""
+    for item in evidence.get('identity_splits', []):
+        if symbol == item['symbol'] and (date < item['before'] or
+                (date == item['before'] and name == item.get('boundary_old_name', '\0'))):
+            return item['old_identity'], item['source']
     for item in evidence['renames']:
         if symbol == item['old'] and date < item['effective']:
             return item['new'], item['source']
@@ -125,6 +129,8 @@ def audit(source, output):
                          'rename_sources':';'.join(a['source'] for a in aliases), 'last_index_exit':last_exit.get('date',''),
                          'exit_hint':hint, 'exit_reason':reason, 'exit_source':last_exit.get('source',''),
                          'capital_actions_to_review':'; '.join(a['date']+' '+a['action'] for a in evidence.get('capital_actions_review',[]) if a['identity']==identity),
+                         'listing_boundary':next((a['date'] for a in evidence.get('listing_boundaries',[]) if a['identity']==identity),''),
+                         'listing_boundary_source':next((a['source'] for a in evidence.get('listing_boundaries',[]) if a['identity']==identity),''),
                          'price_file': 'prices/'+research_id(identity)+'.csv' if status.startswith('research_only') else '',
                          'production_eligible':False})
         write_csv(output/'identitaetspruefung.csv', rows, list(rows[0]))
@@ -164,3 +170,4 @@ if __name__ == '__main__':
     parser.add_argument('output')
     args = parser.parse_args()
     print(json.dumps(audit(args.source,args.output),indent=2))
+

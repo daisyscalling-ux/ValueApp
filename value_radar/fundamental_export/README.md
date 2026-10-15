@@ -39,3 +39,11 @@ Keine Quelle garantiert alle Felder für jede Aktie. Vollständige Methodeneinga
 Python: Datums-/Währungsbasis, veraltete Yahoo-Tabellen, exakte Notierungen, SEC-Zeiträume und gleiche Einreichung, Erhalt älterer Bestätigungsdaten.
 TypeScript: echte Blockübernahme, Nichtvermischung mit altem FCFF, falsche Währung/Identität, veraltete/future Snapshots, Primärdaten neuer als Ersatzdaten, begrenzte GitHub-Abrufe und Fehlerbehandlung.
 
+## Dauerhafte Aufnahme neuer Aktien
+
+Neue Zeilen in cf_universum.json werden im nächsten täglichen Lauf automatisch berücksichtigt. Explizit angefragte EXCHANGE:SYMBOL-Notierungen werden vor dem ersten Netzabruf in index.json unter registered gespeichert. Auch ein fehlgeschlagener erster Versuch oder ein erschöpftes Laufbudget entfernt diese Registrierung nicht. Erfolgreiche ältere Einzelabrufe werden ebenfalls in die tägliche Auswahl aufgenommen. Unbekannte unqualifizierte Namen werden abgewiesen; keine erfundene Börsenzuordnung.
+
+Der Cloudflare-Worker benötigt zusätzlich sein aktualisiertes Deployment: Einzelanfragen werden dauerhaft in UNIVERSE unter fundamental-pending: gespeichert. Der vorhandene Viertelstunden-Cron prüft maximal fünf Einträge pro Durchgang mit fortgesetztem Seitencursor. Er bündelt Wiederholungen und wartet nach einem akzeptierten erneuten Start mindestens sechs Stunden. Ein Eintrag wird erst gelöscht, wenn ein neuerer, zur Notierung passender Datensatz veröffentlicht ist, nicht bereits nach HTTP 204. Das fängt ersetzte wartende GitHub-Läufe ab. Voraussetzung bleiben QUANTUM_GITHUB_TOKEN mit Actions-Zugriff und die bestehende UNIVERSE-Bindung.
+
+Diese Mechanik garantiert Aufnahme und erneute Versuche, nicht die Verfügbarkeit beliebiger Daten beim Anbieter. Währungs-/ADR-Konflikte und unbekannte Börsen bleiben offen statt mit Ersatzwerten kaschiert zu werden. Der globale Coverage-Bericht beschreibt weiterhin den jeweils angefragten Lauf; ein Einzelabruf ist kein vollständiger Universumsnachweis.
+

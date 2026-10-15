@@ -1,0 +1,62 @@
+name: risk-data-recovery
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'Erster angefragter Tag (YYYY-MM-DD)'
+        default: '2014-10-12'
+        required: true
+      end:
+        description: 'Enddatum exklusiv (YYYY-MM-DD)'
+        default: '2026-10-12'
+        required: true
+  pull_request:
+    paths:
+      - 'value_radar/sec_pilot/batch_capture_review.py'
+      - 'value_radar/sec_pilot/test_batch_capture_review.py'
+      - 'value_radar/sec_pilot/collect_market_context.py'
+      - 'value_radar/sec_pilot/review_market_context.py'
+      - 'value_radar/sec_pilot/test_market_context.py'
+      - '.github/workflows/risk-data-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_batch_capture_review.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_market_context.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_review_capture.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_window_coverage.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_settlement_review.py'
+      - name: Datenbibliothek installieren
+        if: github.event_name == 'workflow_dispatch'
+        run: python -m pip install yfinance==0.2.66 pandas==2.3.3
+      - name: Markt- und Branchenreihen sichern
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RESEARCH_START: ${{ inputs.start }}
+          RESEARCH_END: ${{ inputs.end }}
+        run: python value_radar/sec_pilot/collect_market_context.py --start "$RESEARCH_START" --end "$RESEARCH_END" --output market-context-output
+      - name: Abrufstatus pruefen
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('market-context-output/manifest.json').read_text())
+          bad=[x['symbol'] for x in r['series'] if x['status']!='captured_not_verified']
+          print('Abgerufene Reihen:',len(r['series']),'Fehlgeschlagen:',bad)
+          if bad or not r['complete']:raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'workflow_dispatch'
+        with:
+          name: market-context-${{ github.run_id }}
+          path: market-context-output/
+          retention-days: 90

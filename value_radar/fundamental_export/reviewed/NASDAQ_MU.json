@@ -1,0 +1,27 @@
+{
+  "symbol": "NASDAQ:MU",
+  "annual": {
+    "end": "2026-09-03",
+    "published_at": "2026-09-30",
+    "reviewed_at": "2026-10-15",
+    "currency": "USD",
+    "period_type": "annual",
+    "source": "Micron issuer release / SEC EX-99.1 (reviewed, unaudited)",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000018/a2026q4ex991-pressrelease.htm",
+    "fields": {
+      "revenue": 133188000000.0,
+      "net_income": 84969000000.0,
+      "operating_cashflow": 89675000000.0,
+      "eps_trailing": 74.33,
+      "gross_profit": 107504000000.0,
+      "ebit": 99340000000.0,
+      "total_debt": 5179000000.0,
+      "cash": 38364000000.0,
+      "total_assets": 195888000000.0,
+      "equity": 138378000000.0,
+      "weighted_shares": 1143000000.0,
+      "capex": 30712000000.0,
+      "revenue_growth": 2.563272513243084
+    }
+  }
+}

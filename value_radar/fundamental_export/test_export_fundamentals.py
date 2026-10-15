@@ -1,5 +1,5 @@
 import unittest,datetime as dt
-from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual
+from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows
 NOW=dt.date(2026,10,15)
 class Tests(unittest.TestCase):
  def test_failed_or_older_response_preserves_original_observation_age(self):
@@ -31,6 +31,18 @@ class Tests(unittest.TestCase):
   self.assertEqual(merged['field_sources']['total_debt']['source'],'Issuer')
   for bad in [{**b,'end':'2025-09-03'},{**b,'currency':'EUR'},{**b,'fields':{**b['fields'],'eps_trailing':6}}]:
    self.assertNotIn('total_debt',enrich_matching_annual(copy.deepcopy(a),bad)['fields'])
+ def test_new_request_persists_after_failure_and_returns_in_daily_run(self):
+  index={'listings':{},'attempts':{}}
+  requested=select_registered_rows([],index,' nasdaq:new ')
+  self.assertEqual(requested[0]['listing_symbol'],'NASDAQ:NEW')
+  # No successful snapshot is needed for enrollment to survive.
+  self.assertEqual(select_registered_rows([],index,'')[0]['listing_symbol'],'NASDAQ:NEW')
+ def test_registry_migration_dedup_and_new_universe_precedence(self):
+  index={'listings':{'NASDAQ:OLD':'NASDAQ_OLD.json'},'registered':{'EURONEXT:SHELL':{'listing_symbol':'EURONEXT:SHELL','ticker':'SHELL'}}}
+  rows=select_registered_rows([{'listing_symbol':'EURONEXT:SHELL','ticker':'SHELL.AS'}],index,'')
+  self.assertEqual(len(rows),2)
+  self.assertEqual(next(r for r in rows if r['listing_symbol']=='EURONEXT:SHELL')['ticker'],'SHELL.AS')
+  with self.assertRaises(ValueError):select_registered_rows([],index,'Unknown Company')
  def test_sec_requires_same_accession_and_annual_duration(self):
   def fact(v,acc='A',start='2025-09-01'):return {'val':v,'start':start,'end':'2026-08-31','filed':'2026-10-01','form':'10-K','accn':acc}
   data={'cik':123,'facts':{'us-gaap':{'Revenues':{'units':{'USD':[fact(100)]}},'EarningsPerShareDiluted':{'units':{'USD/shares':[fact(5)]}},'NetIncomeLoss':{'units':{'USD':[fact(10,'B')]}}}}}

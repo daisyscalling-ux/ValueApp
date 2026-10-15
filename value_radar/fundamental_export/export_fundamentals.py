@@ -109,21 +109,38 @@ def collect(row):
  currency=info.get('currency'); observed=info.get('regularMarketTime')
  market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta'}.items()}
  return {'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
+def select_registered_rows(universe,index,symbols):
+ registry=index.setdefault('registered',{})
+ # Remember explicit requests even if their first provider request fails.
+ all_rows={k:dict(v) for k,v in registry.items()}
+ for row in universe:
+  key=row.get('listing_symbol') or row.get('ticker')
+  if key: all_rows[key]=row
+ # Migrate old successful on-demand observations into recurring coverage.
+ for key in index.get('listings',{}):
+  if key not in all_rows and re.fullmatch(r'[A-Z0-9._-]+:[A-Z0-9._-]+',key):
+   all_rows[key]={'listing_symbol':key,'ticker':key}
+ wanted={x.strip().upper() for x in symbols.split(',') if x.strip()}
+ if wanted:
+  selected={k:v for k,v in all_rows.items() if k.upper() in wanted or str(v.get('ticker','')).upper() in wanted}
+  found={str(v.get(k,'')).upper() for v in selected.values() for k in ('listing_symbol','ticker')}
+  for key in wanted-found:
+   if not re.fullmatch(r'[A-Z0-9._-]+:[A-Z0-9._-]+',key): raise ValueError('Unknown ticker requires EXCHANGE:SYMBOL')
+   selected[key]={'listing_symbol':key,'ticker':key}
+  for key,row in selected.items():
+   registry[key]={k:row[k] for k in ('listing_symbol','ticker','cik') if k in row}
+  return list(selected.values())
+ return list(all_rows.values())
+
 def main():
  ap=argparse.ArgumentParser(); ap.add_argument('--universe',default='daten/cf_universum.json');ap.add_argument('--out',default='daten/fundamentals');ap.add_argument('--symbols',default='');ap.add_argument('--budget-min',type=float,default=120);ap.add_argument('--child');ap.add_argument('--result');args=ap.parse_args()
  if args.child:
   save(pathlib.Path(args.result),collect(json.loads(args.child)));return
  out=pathlib.Path(args.out); rows=json.loads(pathlib.Path(args.universe).read_text(encoding='utf-8'))['kandidaten']
- wanted=set(args.symbols.split(',')) if args.symbols else set()
- if wanted:
-  selected=[r for r in rows if r.get('ticker') in wanted or r.get('listing_symbol') in wanted]
-  found={str(r.get(k)) for r in selected for k in ('ticker','listing_symbol')}
-  for symbol in wanted-found:
-   if re.fullmatch(r'[A-Z0-9._-]+:[A-Z0-9._-]+',symbol):selected.append({'ticker':symbol,'listing_symbol':symbol})
-  rows=selected
  index_path=out/'index.json'; index=json.loads(index_path.read_text(encoding='utf-8')) if index_path.exists() else {'schema':1,'listings':{},'attempts':{}}
  index.setdefault('failures',{})
- rows=list({r.get('listing_symbol') or r['ticker']:r for r in rows}.values())
+ rows=select_registered_rows(rows,index,args.symbols)
+ save(index_path,index) # Persist enrollment before network requests or budget expiry.
  rows.sort(key=lambda r:index['attempts'].get(r.get('listing_symbol') or r['ticker'],''))
  deadline=time.monotonic()+args.budget_min*60; success=failed=0
  for row in rows:

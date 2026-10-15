@@ -1,5 +1,9 @@
 name: fundamentals-daily
 on:
+  pull_request:
+    paths:
+      - 'value_radar/fundamental_export/**'
+      - '.github/workflows/fundamentals-daily.yml'
   schedule:
     - cron: '37 6 * * *'
   workflow_dispatch:
@@ -14,7 +18,20 @@ concurrency:
 permissions:
   contents: write
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - working-directory: value_radar/fundamental_export
+        run: python -m unittest -v test_export_fundamentals.py
   collect:
+    if: github.event_name != 'pull_request'
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 140
     steps:

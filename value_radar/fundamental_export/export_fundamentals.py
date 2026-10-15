@@ -20,9 +20,13 @@ def yahoo_symbol(row):
  if not re.fullmatch(r'[A-Za-z0-9:._^-]+',symbol): raise ValueError('invalid symbol')
  if ':' not in symbol: return symbol
  ex,t=symbol.split(':',1)
- suffix={'NASDAQ':'','NYSE':'','AMEX':'','XETR':'.DE','ETR':'.DE','FRA':'.F','TSE':'.T','TYO':'.T','JPX':'.T','HKEX':'.HK','HKG':'.HK','LSE':'.L','EPA':'.PA','AMS':'.AS','MIL':'.MI','SIX':'.SW','STO':'.ST','TSX':'.TO','ASX':'.AX'}
+ suffix={'NASDAQ':'','NYSE':'','AMEX':'','XETR':'.DE','ETR':'.DE','FRA':'.F','TSE':'.T','TYO':'.T','JPX':'.T','HKEX':'.HK','HKG':'.HK','LSE':'.L','EPA':'.PA','AMS':'.AS','MIL':'.MI','SIX':'.SW','STO':'.ST','TSX':'.TO','ASX':'.AX','OTC':'','BME':'.MC','OSL':'.OL','HEL':'.HE','CPH':'.CO','GPW':'.WA','VIE':'.VI','ATHEX':'.AT','SET':'.BK','MYX':'.KL'}
+ if ex=='EURONEXT':
+  original=str(row.get('ticker',''))
+  if original.rsplit('.',1)[0]==t and original.endswith(('.PA','.AS','.BR','.LS')): return original
+  raise ValueError('ambiguous Euronext venue; original exchange suffix required')
  if ex not in suffix: raise ValueError('unsupported exchange mapping')
- return t.replace('.','-') if ex in ('NASDAQ','NYSE','AMEX') else t+suffix[ex]
+ return t.replace('.','-') if ex in ('NASDAQ','NYSE','AMEX','OTC') else t+suffix[ex]
 FIELDS={'revenue':'Total Revenue','net_income':'Net Income','eps_trailing':'Diluted EPS','gross_profit':'Gross Profit','ebit':'Operating Income','ebitda':'EBITDA','weighted_shares':'Diluted Average Shares','operating_cashflow':'Operating Cash Flow','capex':'Capital Expenditure','total_debt':'Total Debt','cash':'Cash And Cash Equivalents','total_assets':'Total Assets','equity':'Stockholders Equity'}
 def yahoo_annual(frames,info,now=None):
  now=now or dt.datetime.now(UTC).date()
@@ -60,6 +64,20 @@ def sec_annual(data,cik,now=None):
  if not eligible: return None
  (end,accn,filed),fields=max(eligible,key=lambda x:(x[0][0],x[0][2]))
  return {'end':end,'published_at':filed,'accession':accn,'period_type':'annual','currency':'USD','source':'SEC companyfacts / US-GAAP','source_url':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accn.replace("-","")}/','fields':fields}
+def enrich_matching_annual(primary,secondary):
+ # Only supplement missing fields when both providers describe the exact
+ # same annual period/currency and agree on revenue and diluted EPS.
+ if not primary or not secondary or any(primary.get(k)!=secondary.get(k) for k in ('end','period_type','currency')): return primary
+ a,b=primary['fields'],secondary['fields']
+ for key in ('revenue','eps_trailing'):
+  x,y=number(a.get(key)),number(b.get(key))
+  if x is None or y is None or abs(x-y)>max(abs(x),abs(y),1)*0.001: return primary
+ for key,value in b.items():
+  if a.get(key) is None and number(value) is not None:
+   a[key]=value
+   primary.setdefault('field_sources',{})[key]={'source':secondary.get('source'),'source_url':secondary.get('source_url'),'published_at':secondary.get('published_at'),'end':secondary['end']}
+ return primary
+
 def collect(row):
  import yfinance as yf
  ys=yahoo_symbol(row); t=yf.Ticker(ys); info=t.get_info()
@@ -73,7 +91,7 @@ def collect(row):
   try:
    req=urllib.request.Request(f'https://data.sec.gov/api/xbrl/companyfacts/CIK{int(cik):010d}.json',headers={'User-Agent':ua,'Accept':'application/json'})
    with urllib.request.urlopen(req,timeout=12) as response: sec=sec_annual(json.load(response),cik)
-   if sec and (not annual or sec['end']>=annual['end']): annual=sec
+   if sec and (not annual or sec['end']>=annual['end']): annual=enrich_matching_annual(sec,annual)
   except Exception: errors.append('SEC unavailable; no replacement fabricated')
  # Reviewed issuer releases bridge the interval before structured 10-K facts
  # appear. Data records, not issuer-specific valuation code; automatically
@@ -83,6 +101,7 @@ def collect(row):
   r=json.loads(reviewed.read_text(encoding='utf-8'))
   if r.get('symbol')==(row.get('listing_symbol') or row['ticker']) and r.get('annual',{}).get('reviewed_at') and r['annual'].get('published_at','9999')<=dt.datetime.now(UTC).date().isoformat():
    if not annual or r['annual']['end']>annual['end']: annual=r['annual']
+   else: annual=enrich_matching_annual(annual,r['annual'])
  latest=info.get('lastFiscalYearEnd')
  if annual and latest and dt.datetime.fromtimestamp(latest,UTC).date()>dt.date.fromisoformat(annual['end'])+dt.timedelta(days=35):
   errors.append('Latest completed fiscal year missing from statement sources'); annual=None
@@ -102,7 +121,9 @@ def main():
   for symbol in wanted-found:
    if re.fullmatch(r'[A-Z0-9._-]+:[A-Z0-9._-]+',symbol):selected.append({'ticker':symbol,'listing_symbol':symbol})
   rows=selected
- index_path=out/'index.json'; index=json.loads(index_path.read_text()) if index_path.exists() else {'schema':1,'listings':{},'attempts':{}}
+ index_path=out/'index.json'; index=json.loads(index_path.read_text(encoding='utf-8')) if index_path.exists() else {'schema':1,'listings':{},'attempts':{}}
+ index.setdefault('failures',{})
+ rows=list({r.get('listing_symbol') or r['ticker']:r for r in rows}.values())
  rows.sort(key=lambda r:index['attempts'].get(r.get('listing_symbol') or r['ticker'],''))
  deadline=time.monotonic()+args.budget_min*60; success=failed=0
  for row in rows:
@@ -110,15 +131,31 @@ def main():
   symbol=row.get('listing_symbol') or row['ticker']; filename=re.sub('[^A-Za-z0-9._-]','_',symbol)+'.json'; dest=out/filename; temp=out/(filename+'.pending')
   out.mkdir(parents=True,exist_ok=True)
   try:
+   yahoo_symbol(row) # Validate mappings before starting a network subprocess.
    result=subprocess.run([sys.executable,__file__,'--child',json.dumps(row),'--result',str(temp)],timeout=45,capture_output=True)
    if result.returncode or not temp.exists(): raise ValueError('collector failed')
-   data=json.loads(temp.read_text()); old=json.loads(dest.read_text()) if dest.exists() else None
+   data=json.loads(temp.read_text(encoding='utf-8')); old=json.loads(dest.read_text(encoding='utf-8')) if dest.exists() else None
    # Never overwrite a newer retained annual block with an older/missing one.
    data=preserve_annual(data,old)
-   save(dest,data);index['listings'][symbol]=filename;success+=1
-  except Exception: failed+=1
+   save(dest,data);index['listings'][symbol]=filename;index['failures'].pop(symbol,None);success+=1
+  except Exception as exc:
+   failed+=1
+   reason='timeout' if isinstance(exc,subprocess.TimeoutExpired) else 'mapping' if isinstance(exc,ValueError) and str(exc)!='collector failed' else 'provider_or_identity'
+   index['failures'][symbol]={'at':stamp(),'reason':reason}
   finally:
    temp.unlink(missing_ok=True);index['attempts'][symbol]=stamp();index['generated_at']=stamp();index['last_run']={'success':success,'failed':failed};save(index_path,index)
+ report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[]}
+ for row in rows:
+  symbol=row.get('listing_symbol') or row['ticker']; filename=index['listings'].get(symbol)
+  if not filename or not (out/filename).exists(): report['missing'].append(symbol);continue
+  data=json.loads((out/filename).read_text(encoding='utf-8')); report['covered']+=1
+  annual=data.get('annual'); market=data.get('market',{})
+  if not annual: report['without_annual'].append(symbol)
+  elif annual.get('currency')!=market.get('currency'): report['annual_currency_mismatch'].append(symbol)
+  if not market.get('fields',{}).get('target_mean'): report['missing_analyst'].append(symbol)
+  if annual and annual.get('fields',{}).get('total_debt') is None: report['missing_debt'].append(symbol)
+ save(out/'coverage.json',report)
+ print(json.dumps({'coverage':{k:len(v) if isinstance(v,list) else v for k,v in report.items()}}))
  print(json.dumps({'success':success,'failed':failed,'queued':len(rows)-success-failed}))
  if not success: raise SystemExit(1)
 if __name__=='__main__': main()

@@ -297,70 +297,12 @@ def aufloesen(t: str) -> dict | None:
         ex = (tr.get("exchange") or "").upper()
         return _EXCH_LAND.get(ex, "")
 
-    kandidaten = []
-    for tr in treffer:
-        sym = tr.get("symbol") or ""
-        sym_basis = sym.split(":")[-1].upper()
-        if sym_basis != basis:                 # Basis muss exakt passen
-            continue
-        ex = (sym.split(":")[0] or "").upper()
-        land = _land_von(tr)
-        prim = bool(tr.get("is_primary"))
-
-        if suffix:
-            # Harte Sperre: Land muss passen. Kennen wir das Land nicht UND
-            # die Boerse ist nicht die erwartete -> verwerfen (kein Raten).
-            if ziel_land:
-                if land and land != ziel_land:
-                    continue
-                if not land and ziel_exch and ex not in ziel_exch:
-                    continue
-            exch_ok = bool(ziel_exch and ex in ziel_exch)
-        else:
-            # nackter Ticker = US-Heimatnotierung
-            if ex not in ("NASDAQ", "NYSE", "NYSEAMERICAN", "AMEX"):
-                # nur akzeptieren, wenn Land US oder unbekannt
-                if land and land != "US":
-                    continue
-            exch_ok = ex in ("NASDAQ", "NYSE", "NYSEAMERICAN", "AMEX")
-
-        # Rang: erwartete Boerse zuerst, dann is_primary
-        rang = (0 if exch_ok else 1, 0 if prim else 1)
-        kandidaten.append((rang, tr))
-
-    if not kandidaten and not suffix:
-        # Rueckfall NUR fuer nackte Ticker: den is_primary-Treffer nehmen.
-        for tr in treffer:
-            if tr.get("is_primary"):
-                kandidaten.append(((2, 0), tr))
-                break
-
-    if not kandidaten and suffix and ziel_land:
-        # ISIN-LAND-RUECKFALL: roic listet fuer manche Titel KEINE Notierung
-        # im Heimatland (BP.L -> nur SIX:BP/Schweiz; RR.L -> nur CSE:RR/Kanada).
-        # Aber die ISIN verraet die wahre Nationalitaet: GB0007980591 = GB.
-        # Ein Treffer mit passender ISIN-Nationalitaet ist DIESELBE Firma -
-        # die Fundamentaldaten sind ISIN-gebunden, egal an welcher Boerse die
-        # einzelne Notierung haengt. Wir bevorzugen dabei is_primary.
-        passende = []
-        for tr in treffer:
-            sym = tr.get("symbol") or ""
-            if sym.split(":")[-1].upper() != basis:
-                continue
-            isin = (tr.get("isin") or "").upper()
-            if isin[:2] == ziel_land:                  # ISIN-Land == Suffix-Land
-                passende.append(tr)
-        # is_primary zuerst, damit wir die "Hauptnotierung" der Firma treffen
-        passende.sort(key=lambda tr: 0 if tr.get("is_primary") else 1)
-        if passende:
-            kandidaten.append(((3, 0), passende[0]))
-
-    if not kandidaten:
+    # Strict identity: never fall back to another primary issuer or ISIN country.
+    from listing_identity import select_listing
+    beste = select_listing(t, treffer)
+    if beste is None:
         _RESOLVE_CACHE[schluessel] = None
         return None
-
-    kandidaten.sort(key=lambda x: x[0])
-    beste = kandidaten[0][1]
     erg = {
         "symbol": beste.get("symbol"),
         "isin": beste.get("isin"),
@@ -2042,3 +1984,4 @@ def call_reaktionsprofil(t: str) -> dict:
         "gedreht_pct": round(gedreht / len(z) * 100),
         "zeilen": z,
     }
+

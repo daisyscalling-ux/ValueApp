@@ -1,5 +1,6 @@
 """Dated supplemental observations. No calculated fair values, no credentials in output."""
 import argparse, datetime as dt, json, math, os, pathlib, re, subprocess, sys, time, urllib.request
+from listing_identity import listing_matches,SUFFIXES
 from reference_data import fetch_ecb,fetch_sec_listings
 UTC=dt.timezone.utc
 def stamp(): return dt.datetime.now(UTC).isoformat()
@@ -21,10 +22,10 @@ def yahoo_symbol(row):
  if not re.fullmatch(r'[A-Za-z0-9:._^-]+',symbol): raise ValueError('invalid symbol')
  if ':' not in symbol: return symbol
  ex,t=symbol.split(':',1)
- suffix={'NASDAQ':'','NYSE':'','AMEX':'','XETR':'.DE','ETR':'.DE','FRA':'.F','TSE':'.T','TYO':'.T','JPX':'.T','HKEX':'.HK','HKG':'.HK','LSE':'.L','EPA':'.PA','AMS':'.AS','MIL':'.MI','SIX':'.SW','STO':'.ST','TSX':'.TO','ASX':'.AX','OTC':'','BME':'.MC','OSL':'.OL','HEL':'.HE','CPH':'.CO','GPW':'.WA','VIE':'.VI','ATHEX':'.AT','SET':'.BK','MYX':'.KL'}
+ suffix={'NASDAQ':'','NYSE':'','AMEX':'','XETR':'.DE','ETR':'.DE','FRA':'.F','TSE':'.T','TYO':'.T','JPX':'.T','HKEX':'.HK','HKG':'.HK','LSE':'.L','EPA':'.PA','AMS':'.AS','MIL':'.MI','SIX':'.SW','STO':'.ST','TSX':'.TO','ASX':'.AX','OTC':'','BME':'.MC','OSL':'.OL','HEL':'.HE','CPH':'.CO','GPW':'.WA','VIE':'.VI','ATHEX':'.AT','SET':'.BK','MYX':'.KL','ISE':'.IR','DUB':'.IR'}
  if ex=='EURONEXT':
   original=str(row.get('ticker',''))
-  if original.rsplit('.',1)[0]==t and original.endswith(('.PA','.AS','.BR','.LS')): return original
+  if original.rsplit('.',1)[0]==t and original.endswith(('.PA','.AS','.BR','.LS','.IR')): return original
   raise ValueError('ambiguous Euronext venue; original exchange suffix required')
  if ex not in suffix: raise ValueError('unsupported exchange mapping')
  return t.replace('.','-') if ex in ('NASDAQ','NYSE','AMEX','OTC') else t+suffix[ex]
@@ -127,10 +128,21 @@ def select_registered_rows(universe,index,symbols):
  all_rows={k:dict(v) for k,v in registry.items()}
  for row in universe:
   key=row.get('listing_symbol') or row.get('ticker')
-  if key: all_rows[key]=row
+  if key:
+   ticker=row.get('ticker')
+   if ticker and row.get('listing_symbol') and not listing_matches(ticker,key):
+    index.setdefault('identity_rejected',{})[str(ticker)]={'rejected_listing':key,'at':stamp()}
+    # Never transfer contaminated name/ISIN/CIK or financials to a repaired key.
+    if '.' in ticker:
+     base,suffix=ticker.upper().rsplit('.',1); exchanges=SUFFIXES.get(suffix)
+     if exchanges:
+      correct=exchanges[0]+':'+base
+      all_rows[correct]={'ticker':ticker,'listing_symbol':correct}
+    continue
+   all_rows[key]=row
  # Migrate old successful on-demand observations into recurring coverage.
  for key in index.get('listings',{}):
-  if key not in all_rows and re.fullmatch(r'[A-Z0-9._-]+:[A-Z0-9._-]+',key):
+  if key not in {v['rejected_listing'] for v in index.get('identity_rejected',{}).values()} and key not in all_rows and re.fullmatch(r'[A-Z0-9._-]+:[A-Z0-9._-]+',key):
    all_rows[key]={'listing_symbol':key,'ticker':key}
  wanted={x.strip().upper() for x in symbols.split(',') if x.strip()}
  if wanted:

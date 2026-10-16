@@ -43,6 +43,11 @@ class Tests(unittest.TestCase):
   self.assertEqual(len(rows),2)
   self.assertEqual(next(r for r in rows if r['listing_symbol']=='EURONEXT:SHELL')['ticker'],'SHELL.AS')
   with self.assertRaises(ValueError):select_registered_rows([],index,'Unknown Company')
+ def test_missing_eps_keeps_current_financial_statements(self):
+  a=yahoo_annual({'income':{'2026-03-31':{'Total Revenue':100,'Net Income':20}}},{'symbol':'TEST','financialCurrency':'GBP'},NOW)
+  self.assertEqual(a['fields']['revenue'],100)
+  self.assertIsNone(a['fields']['eps_trailing'])
+  self.assertIn('eps_trailing',a['missing_fields'])
  def test_sec_requires_same_accession_and_annual_duration(self):
   def fact(v,acc='A',start='2025-09-01'):return {'val':v,'start':start,'end':'2026-08-31','filed':'2026-10-01','form':'10-K','accn':acc}
   data={'cik':123,'facts':{'us-gaap':{'Revenues':{'units':{'USD':[fact(100)]}},'EarningsPerShareDiluted':{'units':{'USD/shares':[fact(5)]}},'NetIncomeLoss':{'units':{'USD':[fact(10,'B')]}}}}}

@@ -72,5 +72,20 @@ class ReferenceTests(unittest.TestCase):
   m=sec_listing_map({'fields':['cik','ticker','exchange'],'data':[[1,'ABC','Nasdaq'],[2,'ABC','NYSE'],[3,'BAD','NYSE'],[4,'BAD','NYSE']]})
   self.assertEqual(m,{'NASDAQ:ABC':'1','NYSE:ABC':'2'})
 
+
+
+class IdentityTests(unittest.TestCase):
+ def test_exact_venue_and_share_class(self):
+  from listing_identity import listing_matches,select_listing
+  for query,bad in [('PKO.WA','NYSE:PKO'),('MBK.WA','ASX:MBK'),('SSNLF','NYSE:SSNI'),('BRK-B','NYSE:BRK.A'),('PBR-A','NYSE:ABR-PB'),('ALPHA.AT','MYX:ALPHA'),('UNKNOWN.ZZ','NYSE:UNKNOWN')]:
+   self.assertFalse(listing_matches(query,bad))
+   self.assertIsNone(select_listing(query,[{'symbol':bad,'is_primary':True}]))
+  for query,good in [('PKO.WA','GPW:PKO'),('A5G.IR','EURONEXT:A5G'),('BRK-B','NYSE:BRK.B'),('SSNLF','OTC:SSNLF')]:self.assertTrue(listing_matches(query,good))
+ def test_repaired_listing_does_not_inherit_wrong_company_metadata(self):
+  index={}
+  rows=select_registered_rows([{'ticker':'PKO.WA','listing_symbol':'NYSE:PKO','cik':'999','isin':'USWRONG','name':'Wrong company'}],index,'')
+  self.assertEqual(rows,[{'ticker':'PKO.WA','listing_symbol':'GPW:PKO'}])
+  self.assertEqual(index['identity_rejected']['PKO.WA']['rejected_listing'],'NYSE:PKO')
+
 if __name__=='__main__':unittest.main()
 

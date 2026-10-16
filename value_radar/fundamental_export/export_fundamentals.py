@@ -39,11 +39,11 @@ def yahoo_annual(frames,info,now=None):
   merged={}
   for rows in frames.values(): merged.update(rows.get(date,{}))
   fields={k:number(merged.get(v)) for k,v in FIELDS.items()}
-  if fields['revenue'] is None or fields['eps_trailing'] is None: continue
+  if fields['revenue'] is None or fields['revenue']<=0: continue
   prior=next((inc[d] for d in candidates if 330<=(end-dt.date.fromisoformat(d[:10])).days<=400),None)
   prior_rev=number((prior or {}).get('Total Revenue'))
   if prior_rev and prior_rev>0: fields['revenue_growth']=fields['revenue']/prior_rev-1
-  return {'end':str(end),'period_type':'annual','currency':info.get('financialCurrency'),'source':'Yahoo annual statements','source_url':'https://finance.yahoo.com/quote/'+info['symbol']+'/financials/','published_at':None,'fields':fields}
+  return {'end':str(end),'period_type':'annual','currency':info.get('financialCurrency'),'source':'Yahoo annual statements','source_url':'https://finance.yahoo.com/quote/'+info['symbol']+'/financials/','published_at':None,'missing_fields':[k for k in ('eps_trailing','total_debt','operating_cashflow','capex') if fields.get(k) is None],'fields':fields}
  return None
 TAGS={'revenue':['RevenueFromContractWithCustomerExcludingAssessedTax','Revenues','SalesRevenueNet'],'net_income':['NetIncomeLoss'],'eps_trailing':['EarningsPerShareDiluted'],'gross_profit':['GrossProfit'],'ebit':['OperatingIncomeLoss'],'weighted_shares':['WeightedAverageNumberOfDilutedSharesOutstanding'],'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],'capex':['PaymentsToAcquirePropertyPlantAndEquipment'],'cash':['CashAndCashEquivalentsAtCarryingValue'],'total_assets':['Assets'],'equity':['StockholdersEquity']}
 def sec_annual(data,cik,now=None):
@@ -106,6 +106,7 @@ def collect(row):
  if annual and latest and dt.datetime.fromtimestamp(latest,UTC).date()>dt.date.fromisoformat(annual['end'])+dt.timedelta(days=35):
   errors.append('Latest completed fiscal year missing from statement sources'); annual=None
  if not annual: errors.append('No current dated annual statements available')
+ elif annual['fields'].get('eps_trailing') is None: errors.append('Current annual statements available; diluted EPS missing, earnings multiple excluded')
  currency=info.get('currency'); observed=info.get('regularMarketTime')
  market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta'}.items()}
  return {'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
@@ -161,14 +162,17 @@ def main():
    index['failures'][symbol]={'at':stamp(),'reason':reason}
   finally:
    temp.unlink(missing_ok=True);index['attempts'][symbol]=stamp();index['generated_at']=stamp();index['last_run']={'success':success,'failed':failed};save(index_path,index)
- report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[]}
+ report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[],'missing_eps':[],'minor_unit_difference':[]}
  for row in rows:
   symbol=row.get('listing_symbol') or row['ticker']; filename=index['listings'].get(symbol)
   if not filename or not (out/filename).exists(): report['missing'].append(symbol);continue
   data=json.loads((out/filename).read_text(encoding='utf-8')); report['covered']+=1
   annual=data.get('annual'); market=data.get('market',{})
   if not annual: report['without_annual'].append(symbol)
-  elif annual.get('currency')!=market.get('currency'): report['annual_currency_mismatch'].append(symbol)
+  elif annual.get('currency')!=market.get('currency'):
+   report['annual_currency_mismatch'].append(symbol)
+   if annual.get('currency')=='GBP' and market.get('currency') in ('GBp','GBX'): report['minor_unit_difference'].append(symbol)
+  if annual and annual.get('fields',{}).get('eps_trailing') is None: report['missing_eps'].append(symbol)
   if not market.get('fields',{}).get('target_mean'): report['missing_analyst'].append(symbol)
   if annual and annual.get('fields',{}).get('total_debt') is None: report['missing_debt'].append(symbol)
  save(out/'coverage.json',report)

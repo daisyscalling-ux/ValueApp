@@ -57,5 +57,20 @@ class Tests(unittest.TestCase):
   self.assertIsNone(sec_annual(data,'999',NOW))
   data['facts']['us-gaap']['Revenues']['units']['USD'][0]['start']='2026-06-01'
   self.assertIsNone(sec_annual(data,'123',NOW))
+
+
+class ReferenceTests(unittest.TestCase):
+ def test_ecb_cross_rates_and_dates(self):
+  from reference_data import parse_ecb
+  xml='<Envelope><Cube time="2026-10-15"><Cube currency="USD" rate="1.2"/><Cube currency="GBP" rate="0.8"/></Cube></Envelope>'
+  result=parse_ecb(xml,NOW)
+  self.assertAlmostEqual(result['rates']['GBP']/result['rates']['USD'],2/3)
+  for bad in [xml.replace('2026-10-15','2027-10-15'),xml.replace('2026-10-15','2025-10-15'),xml.replace('1.2','NaN'),xml.replace('1.2','-1')]:
+   with self.assertRaises(ValueError):parse_ecb(bad,NOW)
+ def test_sec_mapping_exact_exchange_and_ambiguous_identity(self):
+  from reference_data import sec_listing_map
+  m=sec_listing_map({'fields':['cik','ticker','exchange'],'data':[[1,'ABC','Nasdaq'],[2,'ABC','NYSE'],[3,'BAD','NYSE'],[4,'BAD','NYSE']]})
+  self.assertEqual(m,{'NASDAQ:ABC':'1','NYSE:ABC':'2'})
+
 if __name__=='__main__':unittest.main()
 

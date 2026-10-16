@@ -1,5 +1,6 @@
 """Dated supplemental observations. No calculated fair values, no credentials in output."""
 import argparse, datetime as dt, json, math, os, pathlib, re, subprocess, sys, time, urllib.request
+from reference_data import fetch_ecb,fetch_sec_listings
 UTC=dt.timezone.utc
 def stamp(): return dt.datetime.now(UTC).isoformat()
 def number(x):
@@ -107,9 +108,19 @@ def collect(row):
   errors.append('Latest completed fiscal year missing from statement sources'); annual=None
  if not annual: errors.append('No current dated annual statements available')
  elif annual['fields'].get('eps_trailing') is None: errors.append('Current annual statements available; diluted EPS missing, earnings multiple excluded')
+ latest_table=max(frames.get('income',{}),default=None)
+ annual_state='partial' if annual and annual['fields'].get('eps_trailing') is None else 'available' if annual else 'provider_table_empty' if not latest_table else 'statement_outdated_or_incomplete'
+ diagnostics={'state':annual_state,'latest_income_table_end':latest_table[:10] if latest_table else None}
  currency=info.get('currency'); observed=info.get('regularMarketTime')
  market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta'}.items()}
- return {'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
+ references={}
+ reference_path=os.getenv('FUNDAMENTAL_REFERENCES_PATH')
+ if reference_path:
+  try: references=json.loads(pathlib.Path(reference_path).read_text(encoding='utf-8'))
+  except (OSError,ValueError):pass
+ basis_path=pathlib.Path(__file__).parent/'share_basis.json'
+ bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
+ return {'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.
@@ -143,6 +154,19 @@ def main():
  rows=select_registered_rows(rows,index,args.symbols)
  save(index_path,index) # Persist enrollment before network requests or budget expiry.
  rows.sort(key=lambda r:index['attempts'].get(r.get('listing_symbol') or r['ticker'],''))
+ references={'retrieved_at':stamp(),'issues':[]}
+ try:references['fx']=fetch_ecb()
+ except Exception:references['issues'].append('ECB reference rates unavailable; no rate substituted')
+ ua=os.getenv('SEC_USER_AGENT','')
+ if ua and any(not r.get('cik') for r in rows):
+  try:
+   ciks=fetch_sec_listings(ua)
+   for row in rows:
+    key=row.get('listing_symbol') or row['ticker']
+    if not row.get('cik') and key in ciks: row['cik']=ciks[key]
+  except Exception:references['issues'].append('SEC listing map unavailable; existing identifiers retained')
+ reference_path=out/'references.json';save(reference_path,references)
+ os.environ['FUNDAMENTAL_REFERENCES_PATH']=str(reference_path.resolve())
  deadline=time.monotonic()+args.budget_min*60; success=failed=0
  for row in rows:
   if time.monotonic()+50>deadline: break
@@ -162,13 +186,15 @@ def main():
    index['failures'][symbol]={'at':stamp(),'reason':reason}
   finally:
    temp.unlink(missing_ok=True);index['attempts'][symbol]=stamp();index['generated_at']=stamp();index['last_run']={'success':success,'failed':failed};save(index_path,index)
- report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[],'missing_eps':[],'minor_unit_difference':[]}
+ report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[],'missing_eps':[],'minor_unit_difference':[],'annual_gap_reasons':{}}
  for row in rows:
   symbol=row.get('listing_symbol') or row['ticker']; filename=index['listings'].get(symbol)
   if not filename or not (out/filename).exists(): report['missing'].append(symbol);continue
   data=json.loads((out/filename).read_text(encoding='utf-8')); report['covered']+=1
   annual=data.get('annual'); market=data.get('market',{})
-  if not annual: report['without_annual'].append(symbol)
+  if not annual:
+   report['without_annual'].append(symbol)
+   report['annual_gap_reasons'][symbol]=data.get('annual_diagnostics',{'state':'not_classified'})
   elif annual.get('currency')!=market.get('currency'):
    report['annual_currency_mismatch'].append(symbol)
    if annual.get('currency')=='GBP' and market.get('currency') in ('GBp','GBX'): report['minor_unit_difference'].append(symbol)

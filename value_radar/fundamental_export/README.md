@@ -55,3 +55,11 @@ Der Cloudflare-Adapter kann GBP und GBp/GBX über den festen Einheitenfaktor umr
 
 Quellen: London Stock Exchange, https://www.londonstockexchange.com/stock/SSE/sse-plc/company-page (Handelswerte kleiner Einheiten werden in Hauptwährungen dargestellt); SEC/Investor.gov, https://www.investor.gov/introduction-investing/investing-basics/glossary/american-depositary-receipts-adrs (ein ADR kann mehrere Aktien oder einen Bruchteil repräsentieren).
 
+## Datierte FX-Referenzen und bestätigte Aktienbasis
+
+Ein EZB-Abruf pro Lauf liefert references.json und die FX-Metadaten in jedem Datensatz. Veraltete (>7 Tage), zukünftige, leere oder ungültige Referenzen werden abgewiesen. Es werden keine Ersatzkurse aus Aktienpreisen errechnet. Die Umrechnung dient der Bewertung in heutiger Handelswährung, nicht der historischen Neuberechnung des Jahresabschlusses.
+
+share_basis.json enthält zunächst die primär belegten 1:1-Zuordnungen NYSE:SAP und LSE:EXPN mit Quelle und Prüfdatum. Der lokale Adapter benötigt eine exakt passende Notierung, Berichts-/Handelswährung, gewöhnliche EPS-Basis und maximal 180 Tage alte Prüfung. Andere ADR-Verhältnisse bleiben ausgeschlossen, bis auch der Nenner der Unternehmensbewertung verifiziert ist. Neue Währungspaare werden nicht pauschal freigeschaltet. SAP: https://www.sap.com/investors/en/stock/adr.html; Experian: https://www.experianplc.com/investors/shareholders.
+
+Fehlende CIKs werden einmal je Lauf aus der offiziellen SEC-Börsen-/Tickerliste ergänzt. Symbol und Börse müssen exakt passen; mehrdeutige Treffer bleiben leer. Voraussetzung ist SEC_USER_AGENT. Ein Fehler dieser Referenzquelle verhindert nicht die bisherigen Abrufe. annual_diagnostics und annual_gap_reasons helfen zwischen leeren Anbietertabellen und veralteten/unvollständigen Jahresdaten zu unterscheiden.
+

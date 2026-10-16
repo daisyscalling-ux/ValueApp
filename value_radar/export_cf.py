@@ -34,6 +34,7 @@ AUSGABE = Path(os.getenv("EXPORT_PFAD", "daten/cf_universum.json"))
 
 # Nur die Felder, die der Cloudflare-Scanner + die Einzelanalyse nutzen.
 from peer_metadata import FIELDS as PEER_FIELDS, coverage
+from listing_identity import listing_matches
 
 EXPORT_FELDER = (
     "ticker", "name", "composite", "fair_value", "upside", "quantum",
@@ -91,6 +92,7 @@ def main() -> int:
         return 1
 
     ergebnisse = []
+    identity_rejected = []
     uebersprungen = 0
     for i, ticker in enumerate(universum):
         verbraucht = (time.time() - start) / 60.0
@@ -104,6 +106,9 @@ def main() -> int:
             row = None
         if not row or not row.get("price"):
             uebersprungen += 1
+            continue
+        if row.get('listing_symbol') and not listing_matches(ticker,row['listing_symbol']):
+            identity_rejected.append({'ticker':ticker,'rejected_listing':row['listing_symbol']})
             continue
         # Nur die Export-Felder behalten
         schlank = {k: row.get(k) for k in EXPORT_FELDER if k in row}
@@ -122,6 +127,7 @@ def main() -> int:
         "anzahl": len(ergebnisse),
         "universum_groesse": len(universum),
         "kandidaten": ergebnisse,
+        "identity_rejected": identity_rejected,
         "peer_schema_version": 1,
         "peer_metadata_coverage": coverage(ergebnisse),
     }
@@ -135,3 +141,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

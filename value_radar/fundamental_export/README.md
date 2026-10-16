@@ -63,3 +63,8 @@ share_basis.json enthält zunächst die primär belegten 1:1-Zuordnungen NYSE:SA
 
 Fehlende CIKs werden einmal je Lauf aus der offiziellen SEC-Börsen-/Tickerliste ergänzt. Symbol und Börse müssen exakt passen; mehrdeutige Treffer bleiben leer. Voraussetzung ist SEC_USER_AGENT. Ein Fehler dieser Referenzquelle verhindert nicht die bisherigen Abrufe. annual_diagnostics und annual_gap_reasons helfen zwischen leeren Anbietertabellen und veralteten/unvollständigen Jahresdaten zu unterscheiden.
 
+
+## Identität vor Datenabdeckung
+Ticker, Börse und Aktienklasse müssen passen. Ein beliebiger is_primary-Treffer oder gleicher ISIN-Ländercode genügt nicht. Der ursprüngliche Resolver verwendet listing_identity.py. Collector und Cloudflare sperren widersprüchliche Altzeilen. Für bekannte Yahoo-Suffixe erzeugt der Collector neue eindeutige Abrufe ohne alte CIK, ISIN, Namen oder Finanzdaten zu übernehmen.
+Aktivierung: Merge, Desktop/cf deployen, precompute-3tage starten, danach fundamentals-daily ohne Symbolfilter. Bis der Universumsexport erneuert ist, kann der sichtbare Bestand kleiner sein. Zusätzliche GitHub-Quelldateien liegen lokal unter github-source-updates.
+

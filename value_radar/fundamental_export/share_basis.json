@@ -1,0 +1,23 @@
+{
+  "NYSE:SAP": {
+    "symbol": "NYSE:SAP",
+    "kind": "ADR",
+    "ordinary_shares_per_unit": 1,
+    "report_currency": "EUR",
+    "quote_currency": "USD",
+    "annual_eps_basis": "ordinary",
+    "reviewed_at": "2026-10-16",
+    "source_url": "https://www.sap.com/investors/en/stock/adr.html"
+  },
+  "LSE:EXPN": {
+    "symbol": "LSE:EXPN",
+    "kind": "ordinary",
+    "ordinary_shares_per_unit": 1,
+    "report_currency": "USD",
+    "quote_currency": "GBp",
+    "annual_eps_basis": "ordinary",
+    "reviewed_at": "2026-10-16",
+    "source_url": "https://www.experianplc.com/investors/shareholders"
+  }
+}
+

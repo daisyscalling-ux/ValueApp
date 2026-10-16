@@ -47,3 +47,11 @@ Der Cloudflare-Worker benötigt zusätzlich sein aktualisiertes Deployment: Einz
 
 Diese Mechanik garantiert Aufnahme und erneute Versuche, nicht die Verfügbarkeit beliebiger Daten beim Anbieter. Währungs-/ADR-Konflikte und unbekannte Börsen bleiben offen statt mit Ersatzwerten kaschiert zu werden. Der globale Coverage-Bericht beschreibt weiterhin den jeweils angefragten Lauf; ein Einzelabruf ist kein vollständiger Universumsnachweis.
 
+## Teilabschlüsse und Währungseinheiten
+
+Aktuelle Yahoo-Jahresabschlüsse mit positivem Umsatz werden auch ohne verwässertes EPS gespeichert. Fehlende Felder werden in missing_fields ausgewiesen; fehlendes EPS wird nicht aus TTM-Werten oder aktuellen Aktienzahlen nachgerechnet. coverage.json führt missing_eps zusätzlich zu without_annual auf. Echte veraltete Abschlüsse hinter lastFiscalYearEnd werden weiterhin zurückgewiesen.
+
+Der Cloudflare-Adapter kann GBP und GBp/GBX über den festen Einheitenfaktor umrechnen. Preis, Analystenziel und 52-Wochen-Band erhalten dieselbe Einheit; Aktienzahl, Beta und Analystenanzahl bleiben unverändert. Bei Finanzblöcken werden Geldbeträge und EPS skaliert, Margen und Wachstumsraten nicht. coverage.json weist reine GBP/Pence-Fälle als minor_unit_difference aus; diese Liste ist eine Teilmenge der Roh-Währungsunterschiede. Andere Devisen und ADR-Verhältnisse werden nicht geraten.
+
+Quellen: London Stock Exchange, https://www.londonstockexchange.com/stock/SSE/sse-plc/company-page (Handelswerte kleiner Einheiten werden in Hauptwährungen dargestellt); SEC/Investor.gov, https://www.investor.gov/introduction-investing/investing-basics/glossary/american-depositary-receipts-adrs (ein ADR kann mehrere Aktien oder einen Bruchteil repräsentieren).
+

@@ -67,18 +67,47 @@ def sec_annual(data,cik,now=None):
  (end,accn,filed),fields=max(eligible,key=lambda x:(x[0][0],x[0][2]))
  return {'end':end,'published_at':filed,'accession':accn,'period_type':'annual','currency':'USD','source':'SEC companyfacts / US-GAAP','source_url':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accn.replace("-","")}/','fields':fields}
 def enrich_matching_annual(primary,secondary):
- # Only supplement missing fields when both providers describe the exact
- # same annual period/currency and agree on revenue and diluted EPS.
+ # Exact period/currency and two independent matching observations required.
+ # Missing EPS must not discard a verified balance sheet. It must also never
+ # authorize transfer of per-share fields or share counts across share bases.
  if not primary or not secondary or any(primary.get(k)!=secondary.get(k) for k in ('end','period_type','currency')): return primary
  a,b=primary['fields'],secondary['fields']
- for key in ('revenue','eps_trailing'):
+ matches=[]
+ for key in ('revenue','eps_trailing','net_income'):
   x,y=number(a.get(key)),number(b.get(key))
-  if x is None or y is None or abs(x-y)>max(abs(x),abs(y),1)*0.001: return primary
+  if x is None or y is None: continue
+  if abs(x-y)>max(abs(x),abs(y),1)*0.001: return primary
+  matches.append(key)
+ if 'revenue' not in matches or not any(k in matches for k in ('eps_trailing','net_income')): return primary
  for key,value in b.items():
+  if key not in FIELDS and key!='revenue_growth': continue
+  if key in ('eps_trailing','weighted_shares') and 'eps_trailing' not in matches: continue
+  if key in ('total_debt','cash','total_assets') and number(value) is not None and number(value)<0: continue
   if a.get(key) is None and number(value) is not None:
    a[key]=value
-   primary.setdefault('field_sources',{})[key]={'source':secondary.get('source'),'source_url':secondary.get('source_url'),'published_at':secondary.get('published_at'),'end':secondary['end']}
+   primary.setdefault('field_sources',{})[key]={'source':secondary.get('source'),'source_url':secondary.get('source_url'),'published_at':secondary.get('published_at'),'end':secondary['end'],'matched_fields':matches}
+ primary['missing_fields']=[k for k in ('eps_trailing','total_debt','operating_cashflow','capex') if a.get(k) is None]
  return primary
+
+def annual_diagnostics(annual,frames,info,now=None):
+ now=now or dt.datetime.now(UTC).date()
+ latest=max(frames.get('income',{}),default=None)
+ required=('eps_trailing','total_debt','cash','operating_cashflow','capex')
+ missing=[k for k in required if not annual or number(annual.get('fields',{}).get(k)) is None]
+ reasons=[]
+ if not annual:
+  if not latest: reasons.append('income_table_empty')
+  else:
+   end=dt.date.fromisoformat(latest[:10]); age=(now-end).days
+   if age>460: reasons.append('income_table_older_than_460_days')
+   if age<0: reasons.append('income_table_future_dated')
+   revenue=number(frames['income'][latest].get('Total Revenue'))
+   if revenue is None: reasons.append('latest_income_revenue_missing')
+   elif revenue<=0: reasons.append('latest_income_revenue_nonpositive')
+   fiscal=info.get('lastFiscalYearEnd')
+   if fiscal and dt.datetime.fromtimestamp(fiscal,UTC).date()>end+dt.timedelta(days=35):reasons.append('table_behind_provider_fiscal_end')
+  if not reasons:reasons.append('no_eligible_annual_block')
+ return {'state':('partial' if missing else 'available') if annual else 'provider_table_empty' if not latest else 'statement_outdated_or_incomplete','latest_income_table_end':latest[:10] if latest else None,'selected_annual_end':annual.get('end') if annual else None,'missing_fields':missing,'reason_codes':reasons}
 
 def collect(row):
  import yfinance as yf
@@ -109,9 +138,7 @@ def collect(row):
   errors.append('Latest completed fiscal year missing from statement sources'); annual=None
  if not annual: errors.append('No current dated annual statements available')
  elif annual['fields'].get('eps_trailing') is None: errors.append('Current annual statements available; diluted EPS missing, earnings multiple excluded')
- latest_table=max(frames.get('income',{}),default=None)
- annual_state='partial' if annual and annual['fields'].get('eps_trailing') is None else 'available' if annual else 'provider_table_empty' if not latest_table else 'statement_outdated_or_incomplete'
- diagnostics={'state':annual_state,'latest_income_table_end':latest_table[:10] if latest_table else None}
+ diagnostics=annual_diagnostics(annual,frames,info)
  currency=info.get('currency'); observed=info.get('regularMarketTime')
  market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta'}.items()}
  references={}

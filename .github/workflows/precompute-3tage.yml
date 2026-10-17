@@ -1,19 +1,39 @@
 name: precompute-3tage
 
-# ALLE 3 TAGE der grosse Lauf: Fundamentaldaten, Fair Value, Scores fuer das
+# Taeglicher grosser Lauf: Fundamentaldaten, Fair Value, Scores fuer das
 # grosse Universum (S&P500 + NASDAQ100 + STOXX600 + Nikkei225, ~1350 Titel).
 # Schreibt ins Google Sheet (Streamlit) UND als JSON (Cloudflare).
 #
-# Alle 3 Tage reicht, weil sich Fundamentaldaten kaum bewegen. Kurse holen
-# Streamlit und Cloudflare live. Um 03:00 UTC - zeitversetzt zum Earnings-Lauf
-# (06:00), damit sie sich nicht das roic-Ratenlimit (300/min) teilen muessen.
+# 01:17 UTC. Der historische Workflowname bleibt fuer bestehende Aufrufer erhalten.
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/precompute-3tage.yml'
+      - 'value_radar/publish_cf.py'
+      - 'value_radar/tests/test_publish_cf.py'
   schedule:
     - cron: "17 1 * * *"    # daily
   workflow_dispatch: {}
 
+concurrency:
+  group: precompute-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+
 jobs:
+  publication-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - working-directory: value_radar
+        run: python -m unittest discover -s tests -p test_publish_cf.py -v
   precompute:
+    if: github.event_name != 'pull_request'
+    needs: publication-test
     runs-on: ubuntu-latest
     permissions:
       contents: write   # noetig fuer git push (sonst 403)
@@ -60,12 +80,24 @@ jobs:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: python export_cf.py
 
-      # 3) JSON ins Repo committen, damit Cloudflare sie lesen kann
-      - name: JSON committen
-        working-directory: value_radar
+      # Keep the expensive result downloadable even if publishing fails.
+      - name: Export als Artefakt sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: cf-universum-${{ github.run_id }}
+          path: value_radar/daten/cf_universum.json
+          if-no-files-found: error
+          retention-days: 7
+      # Other data jobs may have updated main during the long computation.
+      - name: Aktuellen Stand fuer Veroeffentlichung laden
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: publication
+          fetch-depth: 0
+      - name: JSON mit Konfliktpruefung veroeffentlichen
         run: |
-          git config user.name "value-radar-bot"
-          git config user.email "bot@value-radar"
-          git add daten/cf_universum.json
-          git commit -m "Cloudflare-Universum aktualisiert [skip ci]" || echo "keine Aenderung"
-          git push || echo "push uebersprungen"
+          git -C publication config user.name "value-radar-bot"
+          git -C publication config user.email "bot@value-radar"
+          python value_radar/publish_cf.py publication value_radar/daten/cf_universum.json
+

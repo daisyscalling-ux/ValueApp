@@ -7,6 +7,8 @@ on:
       - 'value_radar/sec_pilot/test_historical_financials.py'
       - 'value_radar/sec_pilot/point_in_time.py'
       - 'value_radar/sec_pilot/pilot.py'
+      - 'value_radar/sec_pilot/capex_evidence.py'
+      - 'value_radar/sec_pilot/test_capex_evidence.py'
       - '.github/workflows/historical-sec-financials.yml'
 permissions:
   contents: read
@@ -24,6 +26,7 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_historical_financials.py'
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_point_in_time.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_capex_evidence.py'
       - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_pilot.py'
       - name: Historische SEC-Finanzberichte archivieren
         if: github.event_name == 'workflow_dispatch'

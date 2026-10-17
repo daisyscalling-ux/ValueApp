@@ -1,7 +1,21 @@
 import unittest,datetime as dt
-from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows
+from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows,annual_diagnostics
 NOW=dt.date(2026,10,15)
 class Tests(unittest.TestCase):
+ def test_diagnostics_distinguish_missing_revenue_and_fiscal_period(self):
+  frames={'income':{'2025-09-30':{'Total Revenue':None}}}
+  info={'lastFiscalYearEnd':int(dt.datetime(2026,9,30,tzinfo=dt.timezone.utc).timestamp())}
+  result=annual_diagnostics(None,frames,info,NOW)
+  self.assertIn('latest_income_revenue_missing',result['reason_codes'])
+  self.assertIn('table_behind_provider_fiscal_end',result['reason_codes'])
+  self.assertEqual(result['selected_annual_end'],None)
+ def test_diagnostics_do_not_label_missing_cashflow_as_complete(self):
+  annual={'end':'2026-06-30','fields':{'eps_trailing':5,'total_debt':0,'cash':0,'operating_cashflow':50}}
+  result=annual_diagnostics(annual,{}, {},NOW)
+  self.assertEqual(result['state'],'partial');self.assertEqual(result['missing_fields'],['capex'])
+  annual['fields']['capex']=0
+  self.assertEqual(annual_diagnostics(annual,{}, {},NOW)['state'],'available')
+  self.assertEqual(annual_diagnostics(None,{}, {},NOW)['reason_codes'],['income_table_empty'])
  def test_failed_or_older_response_preserves_original_observation_age(self):
   old={'annual':{'end':'2026-06-30'},'retrieved_at':'2026-10-01'}
   for annual in [None,{'end':'2025-06-30'}]:
@@ -37,6 +51,35 @@ class Tests(unittest.TestCase):
   self.assertEqual(requested[0]['listing_symbol'],'NASDAQ:NEW')
   # No successful snapshot is needed for enrollment to survive.
   self.assertEqual(select_registered_rows([],index,'')[0]['listing_symbol'],'NASDAQ:NEW')
+ def test_missing_secondary_eps_allows_verified_balance_not_share_fields(self):
+  a={'end':'2026-06-30','period_type':'annual','currency':'USD','fields':{'revenue':100,'net_income':20,'eps_trailing':5}}
+  b={**a,'source':'Yahoo annual statements','fields':{'revenue':100,'net_income':20,'eps_trailing':None,'total_debt':30,'weighted_shares':999,'capex':-8}}
+  result=enrich_matching_annual(a,b)
+  self.assertEqual(result['fields']['total_debt'],30)
+  self.assertEqual(result['fields']['capex'],-8)
+  self.assertEqual(result['fields']['eps_trailing'],5)
+  self.assertNotIn('weighted_shares',result['fields'])
+  self.assertEqual(result['field_sources']['total_debt']['matched_fields'],['revenue','net_income'])
+  self.assertNotIn('total_debt',result['missing_fields'])
+ def test_income_anchor_does_not_transfer_eps_or_accept_conflicting_anchors(self):
+  import copy
+  a={'end':'2026-06-30','period_type':'annual','currency':'USD','fields':{'revenue':100,'net_income':20}}
+  b={**a,'fields':{'revenue':100,'net_income':20,'eps_trailing':5,'total_debt':30}}
+  result=enrich_matching_annual(copy.deepcopy(a),b)
+  self.assertNotIn('eps_trailing',result['fields'])
+  self.assertEqual(result['fields']['total_debt'],30)
+  for changes in [{'net_income':25},{'net_income':None},{'revenue':101}]:
+   bad={**b,'fields':{**b['fields'],**changes}}
+   self.assertNotIn('total_debt',enrich_matching_annual(copy.deepcopy(a),bad)['fields'])
+  a['fields']['eps_trailing']=4
+  self.assertNotIn('total_debt',enrich_matching_annual(a,b)['fields'])
+ def test_enrichment_preserves_existing_debt_and_rejects_negative_debt(self):
+  import copy
+  a={'end':'2026-06-30','period_type':'annual','currency':'USD','fields':{'revenue':100,'net_income':20,'total_debt':0}}
+  b={**a,'fields':{'revenue':100,'net_income':20,'total_debt':30}}
+  self.assertEqual(enrich_matching_annual(copy.deepcopy(a),b)['fields']['total_debt'],0)
+  del a['fields']['total_debt'];b['fields']['total_debt']=-1
+  self.assertNotIn('total_debt',enrich_matching_annual(a,b)['fields'])
  def test_registry_migration_dedup_and_new_universe_precedence(self):
   index={'listings':{'NASDAQ:OLD':'NASDAQ_OLD.json'},'registered':{'EURONEXT:SHELL':{'listing_symbol':'EURONEXT:SHELL','ticker':'SHELL'}}}
   rows=select_registered_rows([{'listing_symbol':'EURONEXT:SHELL','ticker':'SHELL.AS'}],index,'')

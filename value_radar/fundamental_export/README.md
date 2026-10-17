@@ -68,3 +68,13 @@ Fehlende CIKs werden einmal je Lauf aus der offiziellen SEC-Börsen-/Tickerliste
 Ticker, Börse und Aktienklasse müssen passen. Ein beliebiger is_primary-Treffer oder gleicher ISIN-Ländercode genügt nicht. Der ursprüngliche Resolver verwendet listing_identity.py. Collector und Cloudflare sperren widersprüchliche Altzeilen. Für bekannte Yahoo-Suffixe erzeugt der Collector neue eindeutige Abrufe ohne alte CIK, ISIN, Namen oder Finanzdaten zu übernehmen.
 Aktivierung: Merge, Desktop/cf deployen, precompute-3tage starten, danach fundamentals-daily ohne Symbolfilter. Bis der Universumsexport erneuert ist, kann der sichtbare Bestand kleiner sein. Zusätzliche GitHub-Quelldateien liegen lokal unter github-source-updates.
 
+## Ergänzung trotz fehlendem EPS beim Zweitanbieter
+
+Ein fehlendes Yahoo-EPS blockiert nicht länger alle Bilanz- und Cashflowwerte: Bei exakt gleicher Jahresperiode und Währung müssen Umsatz sowie entweder verwässertes EPS oder Jahresüberschuss zwischen den Quellen übereinstimmen (relative Toleranz 0,1 %). Ein vorhandener Widerspruch in einem dieser gemeinsamen Vergleichswerte sperrt die Ergänzung. Werte je Aktie und Aktienzahlen werden über den Jahresüberschuss-Abgleich nicht übertragen. Bereits vorhandene Werte und explizit gemeldete Nullen bleiben erhalten; negative Schulden werden nicht ergänzt. Fehlende Schulden werden niemals als null angenommen.
+
+field_sources dokumentiert Quelle, Periode und verwendete Vergleichsfelder. Die App zeigt die ergänzende Quelle unter Datenstand und Quellen an. Beim Wechsel des Jahresblocks wird auch ein zuvor gespeicherter CFO-minus-Capex-Wert gelöscht, wenn die neue Periode dafür keine vollständigen Daten bietet. Dieser Wert ist weiterhin kein bestätigter FCFF.
+
+annual_diagnostics nennt nun die konkret fehlenden Felder und unterscheidet fehlenden Umsatz, leere Tabellen, alte/zukünftige Perioden sowie eine Abweichung zum vom Anbieter gemeldeten Geschäftsjahresende. Daraus wird keine unbewiesene Aussage über einen noch unveröffentlichten Geschäftsbericht abgeleitet.
+
+Aktivierung dieser Ergänzung: PR zusammenführen, nach dem bereits laufenden Universumsexport fundamentals-daily auf main starten. Der laufende Export braucht nicht abgebrochen oder neu gestartet zu werden. Für Quellenanzeige und Bereinigung alten Cashflows den aktualisierten cf-Ordner deployen. Der allgemeine Abgleich des Screener-Bewertungskerns mit der Einzelanalyse bleibt ein eigenes offenes Arbeitspaket.
+

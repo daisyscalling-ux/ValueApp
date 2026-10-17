@@ -1,0 +1,39 @@
+name: historical-sec-financials
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'value_radar/sec_pilot/collect_historical_financials.py'
+      - 'value_radar/sec_pilot/test_historical_financials.py'
+      - 'value_radar/sec_pilot/point_in_time.py'
+      - 'value_radar/sec_pilot/pilot.py'
+      - '.github/workflows/historical-sec-financials.yml'
+permissions:
+  contents: read
+concurrency:
+  group: historical-sec-financials-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_historical_financials.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_point_in_time.py'
+      - run: python -m unittest discover -s value_radar/sec_pilot -p 'test_pilot.py'
+      - name: Historische SEC-Finanzberichte archivieren
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python value_radar/sec_pilot/collect_historical_financials.py
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'workflow_dispatch'
+        with:
+          name: historical-sec-${{ github.run_id }}
+          path: historical-sec-output/
+          if-no-files-found: error
+          retention-days: 90

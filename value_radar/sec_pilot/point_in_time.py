@@ -1,6 +1,7 @@
 """Conservative annual filing selection; intentionally not a TTM risk model."""
 import datetime as dt
 import math
+from capex_evidence import reviewed_capex
 
 def known(row, filing, cutoff):
     try:
@@ -83,6 +84,13 @@ def select_annual(facts, filings, cutoff):
         if v['debt_total'] is not None and all(x is not None and x >= 0 for x in components) and abs(sum(components)-v['debt_total']) > max(1, abs(v['debt_total'])*.001):
             debt, debt_method = None, 'conflicting_debt_definitions'
         cfo, capex = v['cfo'], v['capex']
+        capex_method = 'reported_standard' if capex is not None else 'unresolved'
+        capex_review = None
+        if fields['capex']['status'] == 'missing':
+            capex_review = reviewed_capex(facts, chosen, field)
+            if capex_review and capex_review['status'] == 'verified':
+                capex = capex_review['value']
+                capex_method = 'reviewed_filing_cashflow_components'
         cfo_method = 'reported_total' if cfo is not None else 'unresolved'
         if fields['cfo']['status'] == 'missing' and v['cfo_continuing'] is not None and v['cfo_discontinued'] is not None:
             cfo = v['cfo_continuing'] + v['cfo_discontinued']
@@ -91,6 +99,7 @@ def select_annual(facts, filings, cutoff):
         da = [v['depreciation'], v['amortization']]
         proxy = v['operating_income']+sum(da) if v['operating_income'] is not None and all(x is not None and x >= 0 for x in da) else None
         chosen.update(status='selected', currency='USD', fields=fields, cfo_minus_capex=fcf,
+                      capex=capex, capex_method=capex_method, capex_review=capex_review,
                       debt=debt, debt_method=debt_method, cfo_method=cfo_method,
                       net_debt=debt-v['cash'] if debt is not None and v['cash'] is not None and v['cash'] >= 0 else None,
                       operating_income_plus_da_proxy=proxy,

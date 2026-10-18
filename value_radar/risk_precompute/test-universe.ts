@@ -1,3 +1,5 @@
+import registry from './market-proxies.json';
+import {marketProxy} from './worker/risk-benchmark';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,7 +24,8 @@ test('stale retrieval hides current history',()=>{const r=risk();r.stocks[row.li
 test('listing currency conflict quarantined',()=>assert.equal(audit([row,{...row,currency:'EUR'}]).stocks[0].domains.identity.state,'blocked'));
 test('pence and pounds not mistaken for different listings',()=>{const r=risk();r.stocks[row.listing_symbol].currency='GBP';assert.equal(audit([{...row,currency:'GBp'}],fund(),r).stocks[0].domains.identity.state,'available')});
 test('general news never means company news covered',()=>assert.equal(audit().stocks[0].domains.news.state,'not_assessed'));
-test('unsupported market explicit',()=>assert.equal(audit([{...row,country:'CH'}]).stocks[0].domains.market.state,'unsupported'));
+test('all reviewed countries and aliases match',()=>{for(const r of registry)for(const a of [r.country,...r.aliases])assert.equal(marketProxy(a.toLowerCase()),r.proxy);assert.equal(new Set(registry.map(r=>r.country)).size,registry.length)});
+test('unsupported market explicit',()=>assert.equal(audit([{...row,country:'PT'}]).stocks[0].domains.market.state,'unsupported'));
 test('new unresolved listing scheduled for resolution',()=>assert(auditUniverse({kandidaten:[{ticker:'NEW.DE'}]}, {}, {},now).jobs.some(j=>j.kind==='history'&&j.state==='queued')));
 test('backoff bounded and expired retry allowed',()=>{const s=failureState('HTTP 503',undefined,now);assert(!retryDue(s,now));assert(retryDue(s,now+3*3600000));assert(retryDue({nextAttemptAt:'2099-01-01'},now))});
 test('subscription failure cools down rather than repeated requests',()=>assert(!retryDue(failureState('HTTP 402',undefined,now),now+86400000)));
@@ -30,7 +33,7 @@ test('subscription failure cools down rather than repeated requests',()=>assert(
 const folder=fs.mkdtempSync(path.join(os.tmpdir(),'risk-universe-test-'));
 const universe=path.join(folder,'universe.json'),output=path.join(folder,'risk.json');
 fs.writeFileSync(universe,JSON.stringify({kandidaten:[row]}));
-const proxies=['SPY','EWG','EWJ','EWU','EWQ','EWH','INDA','MCHI','EWY','EWT'];
+const proxies=registry.map(r=>r.proxy);
 fs.writeFileSync(output,JSON.stringify({schema:1,stocks:{},benchmarks:Object.fromEntries(proxies.map(p=>[p,summary('AMEX:'+p)]))}));
 let time=now,requests=0,mode='fail';
 const fetcher:any=async(url:string)=>{requests++;if(url.includes('/tickers/search'))return new Response(JSON.stringify([{symbol:row.listing_symbol,is_primary:true,type:'stock',type_specifications:['common'],listing_country_code:'US'}]));

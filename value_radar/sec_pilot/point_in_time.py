@@ -2,6 +2,7 @@
 import datetime as dt
 import math
 from capex_evidence import reviewed_capex
+from balance_evidence import reviewed_balance
 
 def known(row, filing, cutoff):
     try:
@@ -83,6 +84,18 @@ def select_annual(facts, filings, cutoff):
             debt, debt_method = None, 'unresolved'
         if v['debt_total'] is not None and all(x is not None and x >= 0 for x in components) and abs(sum(components)-v['debt_total']) > max(1, abs(v['debt_total'])*.001):
             debt, debt_method = None, 'conflicting_debt_definitions'
+        debt_review = cash_review = None
+        cash = v['cash']
+        if debt is None and debt_method == 'unresolved' and all(
+                fields[k]['status'] != 'conflict' and (v[k] is None or v[k] >= 0)
+                for k in ('debt_total', 'debt_current', 'debt_noncurrent', 'short_borrowing')):
+            debt_review = reviewed_balance(facts, chosen, 'debt', field)
+            if debt_review and debt_review['status'] == 'verified':
+                debt, debt_method = debt_review['value'], 'reviewed_filing_book_debt'
+        if fields['cash']['status'] == 'missing':
+            cash_review = reviewed_balance(facts, chosen, 'cash', field)
+            if cash_review and cash_review['status'] == 'verified':
+                cash = cash_review['value']
         cfo, capex = v['cfo'], v['capex']
         capex_method = 'reported_standard' if capex is not None else 'unresolved'
         capex_review = None
@@ -101,7 +114,8 @@ def select_annual(facts, filings, cutoff):
         chosen.update(status='selected', currency='USD', fields=fields, cfo_minus_capex=fcf,
                       capex=capex, capex_method=capex_method, capex_review=capex_review,
                       debt=debt, debt_method=debt_method, cfo_method=cfo_method,
-                      net_debt=debt-v['cash'] if debt is not None and v['cash'] is not None and v['cash'] >= 0 else None,
+                      debt_review=debt_review, cash_review=cash_review, cash=cash,
+                      net_debt=debt-cash if debt is not None and cash is not None and cash >= 0 else None,
                       operating_income_plus_da_proxy=proxy,
                       missing_or_conflicting=[k for k, f in fields.items() if f['status'] != 'available'])
         selected_rows.append(chosen)

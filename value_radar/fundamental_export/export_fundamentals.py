@@ -39,14 +39,30 @@ def yahoo_annual(frames,info,now=None):
   if not 0<=age<=460: continue
   latest=info.get('lastFiscalYearEnd')
   if latest and dt.datetime.fromtimestamp(latest,UTC).date()>end+dt.timedelta(days=35): continue
-  merged={}
-  for rows in frames.values(): merged.update(rows.get(date,{}))
-  fields={k:number(merged.get(v)) for k,v in FIELDS.items()}
+  # Read each metric from its own statement; a null on another table must
+  # never overwrite a reported value. Only the exact fiscal date is used.
+  balance=frames.get('balance',{}).get(date,{})
+  cashflow=frames.get('cashflow',{}).get(date,{})
+  fields={k:number((balance if k in ('total_debt','cash','total_assets','equity') else cashflow if k in ('operating_cashflow','capex') else inc[date]).get(v)) for k,v in FIELDS.items()}
+  source_url='https://finance.yahoo.com/quote/'+info['symbol']+'/financials/'
+  field_sources={}
+  def component_sum(key,table,names,negative=False):
+   if fields[key] is not None: return
+   values=[number(table.get(name)) for name in names]
+   if any(v is None or (v>0 if negative else v<0) for v in values): return
+   fields[key]=sum(values)
+   field_sources[key]={'source':'Yahoo annual statements','source_url':source_url,'end':str(end),'currency':info.get('financialCurrency'),'derivation':'sum_of_reported_components','components':dict(zip(names,values))}
+  # Both maturities include leases: never mix lease-inclusive and exclusive
+  # components or replace an unreported maturity with zero.
+  component_sum('total_debt',balance,['Current Debt And Capital Lease Obligation','Long Term Debt And Capital Lease Obligation'])
+  # Gross purchases only; net investment cash flow includes disposals and
+  # acquisitions and is not a substitute for capital expenditure.
+  component_sum('capex',cashflow,['Purchase Of PPE','Purchase Of Intangibles'],negative=True)
   if fields['revenue'] is None or fields['revenue']<=0: continue
   prior=next((inc[d] for d in candidates if 330<=(end-dt.date.fromisoformat(d[:10])).days<=400),None)
   prior_rev=number((prior or {}).get('Total Revenue'))
   if prior_rev and prior_rev>0: fields['revenue_growth']=fields['revenue']/prior_rev-1
-  return {'end':str(end),'period_type':'annual','currency':info.get('financialCurrency'),'source':'Yahoo annual statements','source_url':'https://finance.yahoo.com/quote/'+info['symbol']+'/financials/','published_at':None,'missing_fields':[k for k in ('eps_trailing','total_debt','operating_cashflow','capex') if fields.get(k) is None],'fields':fields}
+  return {'end':str(end),'period_type':'annual','currency':info.get('financialCurrency'),'source':'Yahoo annual statements','source_url':source_url,'published_at':None,'field_sources':field_sources,'missing_fields':[k for k in ('eps_trailing','total_debt','operating_cashflow','capex') if fields.get(k) is None],'fields':fields}
  return None
 TAGS={'revenue':['RevenueFromContractWithCustomerExcludingAssessedTax','Revenues','SalesRevenueNet'],'net_income':['NetIncomeLoss'],'eps_trailing':['EarningsPerShareDiluted'],'gross_profit':['GrossProfit'],'ebit':['OperatingIncomeLoss'],'weighted_shares':['WeightedAverageNumberOfDilutedSharesOutstanding'],'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],'capex':['PaymentsToAcquirePropertyPlantAndEquipment'],'cash':['CashAndCashEquivalentsAtCarryingValue'],'total_assets':['Assets'],'equity':['StockholdersEquity']}
 def sec_annual(data,cik,now=None):
@@ -86,7 +102,7 @@ def enrich_matching_annual(primary,secondary):
   if key in ('total_debt','cash','total_assets') and number(value) is not None and number(value)<0: continue
   if a.get(key) is None and number(value) is not None:
    a[key]=value
-   primary.setdefault('field_sources',{})[key]={'source':secondary.get('source'),'source_url':secondary.get('source_url'),'published_at':secondary.get('published_at'),'end':secondary['end'],'matched_fields':matches}
+   primary.setdefault('field_sources',{})[key]={**secondary.get('field_sources',{}).get(key,{}),'source':secondary.get('source'),'source_url':secondary.get('source_url'),'published_at':secondary.get('published_at'),'end':secondary['end'],'currency':secondary.get('currency'),'matched_fields':matches}
  primary['missing_fields']=[k for k in ('eps_trailing','total_debt','operating_cashflow','capex') if a.get(k) is None]
  return primary
 

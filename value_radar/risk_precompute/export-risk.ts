@@ -4,7 +4,7 @@ import {failureState,retryDue} from './universe-coverage';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {riskHistory} from './worker/risk-data';
-import {benchmarkHistory,marketProxy} from './worker/risk-benchmark';
+import {benchmarkHistory,marketProxy,MARKET_COUNTRIES} from './worker/risk-benchmark';
 import {validYahooBenchmark} from './yahoo-benchmark-check';
 import {resolveRiskListing} from './worker/risk-listing';
 import {compactHistory,historyStatistics,RISK_SCHEMA} from './src/lib/risk-statistics';
@@ -44,7 +44,7 @@ export async function exportRisk(options:any={}){
  const fresh=(v:any)=>v?.schema===RISK_SCHEMA&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<18*3600000;
  const accept=(h:any)=>{const s=compactHistory(h,clock()),v=historyStatistics(s,clock());if(!v.observations||[v.es,v.dd,v.worst,v.drawdown].every(x=>x===null))throw Error('Keine gültige Risiko-Historie: '+(v.error||'Weniger als 200 aktuelle Handelstage oder Lücken.'));return s};
  const failure=(symbol:string,e:any)=>{if(!symbol.startsWith('Markt '))data.retryState[symbol]=failureState(String(e?.message||''),data.retryState[symbol],clock());report.failed++;const category=/HTTP \d+/.exec(e?.message||'')?.[0]||(/Notierung/.test(e?.message||'')?'Notierung':'Sonstige');report.failureReasons[category]=(report.failureReasons[category]||0)+1;if(!symbol.startsWith('Markt ')&&/Kurshistorie HTTP 402/.test(e?.message||'')){historyDenied++;if(historyDenied>=3)aborted=true}if(report.errors.length<2000)report.errors.push({symbol,reason:/^(ROIC|Kurshistorie|Notierung|Markt|Keine|Zeitbudget|Eindeutige|Ungültige)/.test(e?.message||'')?e.message:'Abruf fehlgeschlagen'});};
- for(const country of ['US','DE','JP','GB','FR','HK','IN','CN','KR','TW']){
+ for(const country of MARKET_COUNTRIES){
   if(clock()>deadline||aborted)break;
   const proxyKey=marketProxy(country);if(proxyKey&&fresh(data.benchmarks[proxyKey])&&historyStatistics(data.benchmarks[proxyKey],clock()).drawdown!==null)continue;
   try{const h=await retry(()=>benchmarkHistory(country,env.ROIC_API_KEY,paced));data.benchmarks[h.proxy]=accept(h)}catch(e){const proxy=marketProxy(country),candidate=yahoo?.benchmarks?.[proxy||''];if(validYahooBenchmark(candidate,proxy,clock())){try{data.benchmarks[proxy!]=accept(candidate);report.benchmarkFallbacks++;report.benchmarkWarnings.push({country,reason:'ROIC-Marktvergleich nicht verfügbar; Yahoo-ETF übernommen.'});continue}catch{}}failure('Markt '+country,e)}

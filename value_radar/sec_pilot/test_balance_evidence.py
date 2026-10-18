@@ -5,6 +5,19 @@ from balance_evidence import reviewed_balance
 
 
 class BalanceEvidenceTests(unittest.TestCase):
+    def test_earlier_ansys_debt_has_separate_filing_evidence(self):
+        selected = dict(start='2022-01-01', end='2022-12-31',
+                        accession='0001013462-23-000013', filed='2023-02-22', form='10-K')
+        row = dict(end=selected['end'], accn=selected['accession'], filed=selected['filed'],
+                   form='10-K', val=753574000)
+        facts = {'cik': 1013462, 'facts': {'us-gaap': {
+            'LongTermDebtNoncurrent': {'units': {'USD': [row]}}}}}
+        result = reviewed_balance(facts, selected, 'debt', field)
+        self.assertEqual(result['value'], 753574000)
+        self.assertIn('000101346223000013', result['source'])
+        row['accn'] = '0001013462-24-000007'
+        self.assertIsNone(reviewed_balance(facts, selected, 'debt', field)['value'])
+
     def fixture(self):
         s = dict(start='2023-01-01', end='2023-12-31', accession='0000101778-24-000023',
                  filed='2024-02-22', form='10-K')

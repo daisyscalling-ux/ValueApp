@@ -2,6 +2,16 @@
 import math
 
 EVIDENCE = {
+    (1013462, '0001013462-24-000007'): {
+        'source': 'https://www.sec.gov/Archives/edgar/data/1013462/000101346224000007/anss-20231231.htm',
+        'tags': ['PaymentsToAcquireProductiveAssets'],
+        'values': {'2021': [23018000], '2022': [24370000], '2023': [25318000]},
+        'basis': 'Consolidated cash flow statement: capital expenditures; acquisitions separately reported.'},
+    (1013462, '0001013462-23-000013'): {
+        'source': 'https://www.sec.gov/Archives/edgar/data/1013462/000101346223000013/anss-20221231.htm',
+        'tags': ['PaymentsToAcquireProductiveAssets'],
+        'values': {'2020': [35370000], '2021': [23018000], '2022': [24370000]},
+        'basis': 'Consolidated cash flow statement: capital expenditures; acquisitions separately reported.'},
     (1013462, '0001013462-25-000009'): {
         'source': 'https://www.sec.gov/Archives/edgar/data/1013462/000101346225000009/anss-20241231.htm',
         'tags': ['PaymentsToAcquireProductiveAssets'],

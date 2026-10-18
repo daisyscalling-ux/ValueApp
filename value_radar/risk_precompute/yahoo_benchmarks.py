@@ -1,4 +1,4 @@
-"""Ten fixed market ETF histories; raw data only in the runner temp directory."""
+"""Shared reviewed market ETF histories; raw data only in the runner temp directory."""
 import contextlib
 import datetime as dt
 import json
@@ -9,7 +9,8 @@ import subprocess
 import sys
 import time
 
-PROXIES = {'SPY':'US','EWG':'DE','EWJ':'JP','EWU':'GB','EWQ':'FR','EWH':'HK','INDA':'IN','MCHI':'CN','EWY':'KR','EWT':'TW'}
+REGISTRY = json.loads(Path(__file__).with_name('market-proxies.json').read_text(encoding='utf8'))
+PROXIES = {r['proxy']: r['country'] for r in REGISTRY}
 EXCHANGES = {'PCX','NYQ','NMS','NGM','NCM','ASE','BATS','BTS'}
 
 def normalize(symbol, metadata, prices, now=None):
@@ -51,13 +52,19 @@ def main():
     output = Path(os.getenv('RISK_YAHOO_PATH','/tmp/risk-yahoo.json'))
     output.parent.mkdir(parents=True,exist_ok=True)
     result = {'benchmarks':{},'errors':[]}
-    deadline = time.monotonic()+650
+    deadline = time.monotonic()+900
     def save():
         temporary = output.with_suffix('.tmp')
         temporary.write_text(json.dumps(result,allow_nan=False),encoding='utf-8')
         temporary.replace(output)
     save()
-    for symbol in PROXIES:
+    try:
+        old = json.loads(Path(os.getenv('RISK_OUTPUT_PATH','value_radar/daten/cf_risk.json')).read_text(encoding='utf8')).get('benchmarks',{})
+    except (OSError,ValueError):
+        old = {}
+    # Missing and oldest observations first; do not starve additions after a timeout.
+    symbols = sorted(PROXIES,key=lambda s:old.get(s,{}).get('retrievedAt',''))
+    for symbol in symbols:
         if time.monotonic() > deadline:
             result['errors'].append({'symbol':symbol,'reason':'Time budget exhausted'})
             break
@@ -66,7 +73,7 @@ def main():
             if time.monotonic() > deadline:
                 break
             try:
-                run = subprocess.run([sys.executable,__file__,'--one',symbol],capture_output=True,text=True,timeout=40,check=True,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                run = subprocess.run([sys.executable,__file__,'--one',symbol],capture_output=True,text=True,timeout=max(1,min(40,deadline-time.monotonic())),check=True,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                 result['benchmarks'][symbol] = json.loads(run.stdout)
                 ok = True
                 break
@@ -77,8 +84,8 @@ def main():
             result['errors'].append({'symbol':symbol,'reason':'Yahoo history unavailable, invalid or time limit'})
         save()
     save()
-    print('Yahoo market ETFs: '+str(len(result['benchmarks']))+'/10 available')
-    if len(result['benchmarks']) < 10:
+    print('Yahoo market ETFs: '+str(len(result['benchmarks']))+'/'+str(len(PROXIES))+' available')
+    if len(result['benchmarks']) < len(PROXIES):
         print('::warning::Some Yahoo market histories remain unavailable; missing values are not scored.')
 
 if __name__ == '__main__':

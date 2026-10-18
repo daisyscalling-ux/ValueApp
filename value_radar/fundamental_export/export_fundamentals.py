@@ -30,7 +30,7 @@ def yahoo_symbol(row):
   raise ValueError('ambiguous Euronext venue; original exchange suffix required')
  if ex not in suffix: raise ValueError('unsupported exchange mapping')
  return t.replace('.','-') if ex in ('NASDAQ','NYSE','AMEX','OTC') else t+suffix[ex]
-FIELDS={'revenue':'Total Revenue','net_income':'Net Income','eps_trailing':'Diluted EPS','gross_profit':'Gross Profit','ebit':'Operating Income','ebitda':'EBITDA','weighted_shares':'Diluted Average Shares','operating_cashflow':'Operating Cash Flow','capex':'Capital Expenditure','total_debt':'Total Debt','cash':'Cash And Cash Equivalents','total_assets':'Total Assets','equity':'Stockholders Equity'}
+FIELDS={'revenue':'Total Revenue','net_income':'Net Income','eps_trailing':'Diluted EPS','gross_profit':'Gross Profit','ebit':'Operating Income','ebitda':'EBITDA','weighted_shares':'Diluted Average Shares','operating_cashflow':'Operating Cash Flow','capex':'Capital Expenditure','total_debt':'Total Debt','cash':'Cash And Cash Equivalents','total_assets':'Total Assets','equity':'Stockholders Equity','total_liabilities':'Total Liabilities Net Minority Interest','interest_expense':'Interest Expense','net_interest_income':'Net Interest Income'}
 def yahoo_annual(frames,info,now=None):
  now=now or dt.datetime.now(UTC).date()
  inc=frames.get('income',{}); candidates=sorted(inc,reverse=True)
@@ -43,7 +43,7 @@ def yahoo_annual(frames,info,now=None):
   # never overwrite a reported value. Only the exact fiscal date is used.
   balance=frames.get('balance',{}).get(date,{})
   cashflow=frames.get('cashflow',{}).get(date,{})
-  fields={k:number((balance if k in ('total_debt','cash','total_assets','equity') else cashflow if k in ('operating_cashflow','capex') else inc[date]).get(v)) for k,v in FIELDS.items()}
+  fields={k:number((balance if k in ('total_debt','cash','total_assets','equity','total_liabilities') else cashflow if k in ('operating_cashflow','capex') else inc[date]).get(v)) for k,v in FIELDS.items()}
   source_url='https://finance.yahoo.com/quote/'+info['symbol']+'/financials/'
   field_sources={}
   def component_sum(key,table,names,negative=False):

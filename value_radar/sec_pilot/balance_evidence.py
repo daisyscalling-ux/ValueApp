@@ -1,5 +1,15 @@
 """Filing-specific reviewed book debt and unrestricted cash, not market values."""
 EVIDENCE = {
+    (1013462, '0001013462-24-000007'): {
+        'source': 'https://www.sec.gov/Archives/edgar/data/1013462/000101346224000007/anss-20231231.htm',
+        'debt': {'tags': ['LongTermDebtNoncurrent'],
+                 'values': {'2022': [753574000], '2023': [753891000]},
+                 'basis': 'Note 10: total term loan carrying amount is noncurrent; no outstanding revolver, all debt matures in 2027.'}},
+    (1013462, '0001013462-23-000013'): {
+        'source': 'https://www.sec.gov/Archives/edgar/data/1013462/000101346223000013/anss-20221231.htm',
+        'debt': {'tags': ['LongTermDebtNoncurrent'],
+                 'values': {'2021': [753576000], '2022': [753574000]},
+                 'basis': 'Note 10: total term loan carrying amount is noncurrent; no outstanding revolver, all debt matures in 2027.'}},
     (1013462, '0001013462-25-000009'): {
         'source': 'https://www.sec.gov/Archives/edgar/data/1013462/000101346225000009/anss-20241231.htm',
         'debt': {'tags': ['LongTermDebtNoncurrent'],

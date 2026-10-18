@@ -29,7 +29,42 @@ test('verified history aliases retain exact-request fundamental snapshots',()=>{
  assert.equal(check(f,{...r,stocks:{[row.listing_symbol]:{...summary(),currency:'EUR'}}}).domains.balance.state,'missing');
 });
 test('zero debt valid and Yahoo cash outflow normalized',()=>{const a=audit().stocks[0].domains.balance;assert.equal(a.state,'available');assert.equal(a.ratios.fcfAssets,.07);assert.equal(a.ratios.netDebtAssets,-.2)});
-test('unknown negative capex not normalized',()=>{const f=fund();f.annual.source='Unknown';assert.equal(audit([row],f).stocks[0].domains.balance.state,'missing')});
+test('unknown negative capex not normalized',()=>{const f=fund();f.annual.source='Unknown';const b=audit([row],f).stocks[0].domains.balance;assert.equal(b.state,'partial');assert.equal(b.metrics.fcfAssets.value,null);assert.equal(b.ratios,null)});
+
+test('banks use dated book context without pretending to have regulatory capital',()=>{
+ const f:any=fund();f.annual.fields={total_assets:100,equity:-2,net_income:-1};
+ const a=audit([{...row,industry:'Major banks'}],f),b=a.stocks[0].domains.balance;
+ assert.equal(b.state,'context_only');assert.equal(b.profile,'bank');assert.equal(b.metrics.bookEquityAssets.value,-.02);
+ assert.equal(b.metrics.netDebtAssets.state,'not_applicable');assert.equal(b.ratios,null);
+ assert(!a.jobs.some(j=>j.kind==='fundamentals'));assert(a.jobs.some(j=>j.kind==='sector_financials'&&j.state==='review_required'));
+ assert.equal(a.stocks[0].score,null);
+});
+test('missing bank equity remains a real field gap',()=>{
+ const f:any=fund();f.annual.fields={total_assets:100,net_income:1};
+ const a=audit([{...row,industry:'Banks - Regional'}],f);
+ assert.equal(a.stocks[0].domains.balance.state,'partial');
+ assert.match(a.stocks[0].domains.balance.reason,/missing_equity/);
+ assert(!a.stocks[0].domains.balance.reason.includes('capex'));assert(a.jobs.some(j=>j.kind==='fundamentals'));
+});
+test('insurers and brokers not conflated; stale classification gets no generic score',()=>{
+ const f:any=fund();f.annual.fields.equity=10;f.annual.fields.net_income=2;
+ assert.equal(audit([{...row,industry:'Life/Health insurance'}],f).stocks[0].domains.balance.profile,'insurer');
+ assert.equal(audit([{...row,industry:'Insurance brokers/Services'}],f).stocks[0].domains.balance.profile,'corporate');
+ assert.equal(audit([{...row,industry:'Investment banks/Brokers'}],f).stocks[0].domains.balance.profile,'specialist_financial');
+ const b=audit([{...row,industry:'Major banks',metadata_asof:'2025-01-01'}],f).stocks[0].domains.balance;
+ assert.equal(b.profile,'unclassified');assert.equal(b.ratios,null);
+});
+test('corporate missing capex retains independently valid debt observation',()=>{
+ const f:any=fund();delete f.annual.fields.capex;
+ const b=audit([row],f).stocks[0].domains.balance;
+ assert.equal(b.state,'partial');assert.equal(b.metrics.netDebtAssets.value,-.2);assert.equal(b.metrics.fcfAssets.value,null);
+});
+test('bank context rejects stale or mixed period equity',()=>{
+ const f:any=fund();f.annual.fields.equity=10;f.annual.fields.net_income=2;
+ f.annual.field_sources={equity:{end:'2025-06-30'}};
+ const b=audit([{...row,industry:'Major banks'}],f).stocks[0].domains.balance;
+ assert.equal(b.state,'missing');assert.equal(b.metrics.bookEquityAssets.value,null);
+});
 test('future annual date blocks ratios',()=>{const f=fund();f.annual.end='2027-06-30';assert.equal(audit([row],f).stocks[0].domains.balance.ratios,null)});
 test('mixed financial periods blocked',()=>{const f:any=fund();f.annual.field_sources={total_debt:{end:'2025-06-30'}};assert.equal(audit([row],f).stocks[0].domains.balance.ratios,null)});
 test('stale retrieval hides current history',()=>{const r=risk();r.stocks[row.listing_symbol].retrievedAt='2026-10-01';assert.equal(audit([row],fund(),r).stocks[0].domains.price.state,'stale_or_invalid')});

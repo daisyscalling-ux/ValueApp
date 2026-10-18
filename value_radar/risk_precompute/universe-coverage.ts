@@ -1,0 +1,96 @@
+import {historyStatistics} from './src/lib/risk-statistics';
+import {marketProxy} from './worker/risk-benchmark';
+type Row=Record<string,any>;
+const DAY=86400000;
+const number=(v:any)=>typeof v==='number'&&Number.isFinite(v);
+const currency=(v:any)=>['GBp','GBX'].includes(v)?'GBP':v;
+const recent=(v:any,now:number,days:number)=>typeof v==='string'&&Number.isFinite(Date.parse(v))&&Date.parse(v)<=now&&now-Date.parse(v)<=days*DAY;
+const status=(state:string,reason:string,extra:Row={})=>({state,reason,...extra});
+export const listingKey=(r:Row)=>String(r.listing_symbol||r.ticker||'').trim().toUpperCase();
+export function failureState(message:string,old:Row|undefined,now:number){
+ const category=/401|403/.test(message)?'access':/402/.test(message)?'subscription':/429/.test(message)?'rate_limit':/Notierung|Währung|eindeutig/.test(message)?'identity':/200|zwei Handelsjahre|Lücken|nicht aktuell|Zukunft/.test(message)?'history_quality':'provider';
+ const count=Math.min(20,(old?.category===category&&Number.isInteger(old.count)&&old.count>=0?old.count:0)+1);
+ const hours=category==='identity'?168:category==='subscription'?168:category==='access'?24:category==='history_quality'?24:Math.min(24,2**count);
+ return {category,count,at:new Date(now).toISOString(),nextAttemptAt:new Date(now+hours*3600000).toISOString()};
+}
+export function retryDue(state:Row|undefined,now:number){
+ // Invalid or implausibly remote dates must not permanently suppress a listing.
+ const t=Date.parse(state?.nextAttemptAt);return !Number.isFinite(t)||t<=now||t>now+8*DAY;
+}
+export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,Row>,now=Date.now(),fundamentalIndex:Row={}){
+ if(!Array.isArray(universe?.kandidaten)||!universe.kandidaten.length)throw Error('Universum fehlt');
+ const grouped=new Map<string,Row[]>();let invalidRows=0;
+ for(const r of universe.kandidaten){const key=listingKey(r);if(!/^[A-Z0-9._:-]{1,100}$/.test(key)){invalidRows++;continue}grouped.set(key,[...(grouped.get(key)||[]),r]);}
+ const industries=new Map<string,Set<string>>();
+ for(const [key,rows] of grouped){const r=rows[0];if(r.industry&&recent(r.metadata_asof,now,90))industries.set(r.industry,new Set([...(industries.get(r.industry)||[]),key]));}
+ const stocks:Row[]=[];const jobs:Row[]=[];
+ for(const [key,rows] of grouped){
+  const r=rows[0],currencies=new Set(rows.map(x=>x.currency).filter(Boolean));
+  const conflict=currencies.size>1;
+  const canonical=key.includes(':')?key:risk.aliases?.[key];
+  const h=risk.stocks?.[canonical||key];
+  const identityOK=!conflict&&!!canonical&&(!h||h.symbol===canonical)&&(!h?.currency||!r.currency||currency(h.currency)===currency(r.currency));
+  const s=identityOK?historyStatistics(h,now):historyStatistics(null,now);
+  const retrieved=recent(h?.retrievedAt,now,1.5);
+  const context=identityOK&&retrieved&&s.drawdown!==null;
+  const history=identityOK&&retrieved&&s.es!==null;
+  const input=fundamentals[key]||fundamentals[canonical||''];
+  const f=input?.symbol===(canonical||key)?input:null;
+  const a=f?.annual,fields=a?.fields||{};
+  const sourceConsistent=!!a?.source&&['total_assets','total_debt','cash','operating_cashflow','capex'].every(k=>{
+   const source=a?.field_sources?.[k];return !source||(!source.end||source.end===a.end)&&(!source.currency||source.currency===a.currency)&&(!source.published_at||recent(source.published_at,now,700));
+  });
+  const annualFresh=sourceConsistent&&a?.period_type==='annual'&&recent(a?.end,now,550)&&recent(f?.annual_retrieved_at||f?.retrieved_at,now,7)&&(!a?.published_at||recent(a.published_at,now,700));
+  const capexSource=a?.field_sources?.capex?.source||a?.source||'';
+  const capex=number(fields.capex)&&fields.capex<0&&capexSource==='Yahoo annual statements'?-fields.capex:fields.capex;
+  const dated=a?.published_at?recent(a.published_at,now,700):false;
+  const balanceValid=annualFresh&&typeof a?.currency==='string'&&number(fields.total_assets)&&fields.total_assets>0
+     &&number(fields.total_debt)&&fields.total_debt>=0&&number(fields.cash)&&fields.cash>=0
+     &&number(fields.operating_cashflow)&&number(capex)&&capex>=0;
+  const quote=f?.market,quoteOK=recent(quote?.quote_at,now,7)&&number(quote?.fields?.price)&&quote.fields.price>0&&currency(quote.currency)===currency(r.currency);
+  const proxy=marketProxy(String(r.country||'')),benchmark=proxy?risk.benchmarks?.[proxy]:null;
+  const market=benchmark&&recent(benchmark.retrievedAt,now,1.5)&&historyStatistics(benchmark,now).drawdown!==null;
+  const peers=r.industry&&recent(r.metadata_asof,now,90)?(industries.get(r.industry)?.size||0)-1:0;
+  const reasons:string[]=[];
+  if(!annualFresh)reasons.push('annual_missing_or_stale');
+  if(!sourceConsistent)reasons.push('annual_source_or_field_period_inconsistent');
+  for(const name of ['total_assets','total_debt','cash','operating_cashflow','capex'])if(!number(fields[name]))reasons.push('missing_'+name);
+  if(number(fields.total_debt)&&fields.total_debt<0||number(fields.cash)&&fields.cash<0||number(capex)&&capex<0||number(fields.total_assets)&&fields.total_assets<=0)reasons.push('invalid_financial_values');
+  if(!a?.currency)reasons.push('annual_currency_missing');
+  const domains={
+   identity:status(identityOK?'available':'blocked',conflict?'conflicting_listing_currency':identityOK?'qualified_listing':'unresolved_or_mismatched_listing'),
+   quote:status(identityOK&&quoteOK?'available':'missing','dated_same_currency_quote_required'),
+   price:status(context?'available':h?'stale_or_invalid':'missing',s.error||(!retrieved?'retrieval_missing_or_stale':'current_drawdown'),{observations:s.observations,last:s.last}),
+   historical:status(history?'available':'missing',s.error||(!retrieved?'retrieval_missing_or_stale':'historical_loss_statistics')),
+   balance:status(identityOK&&balanceValid?'available':'missing',reasons.join(',')||'annual_book_ratios',{period:a?.end||null,currency:a?.currency||null,publicationDateConfirmed:dated,
+    capexNormalization:capex!==fields.capex?'yahoo_cash_outflow_to_positive_spend':'unchanged',
+    ratios:identityOK&&balanceValid?{netDebtAssets:(fields.total_debt-fields.cash)/fields.total_assets,fcfAssets:(fields.operating_cashflow-capex)/fields.total_assets}:null}),
+   market:status(market?'available':proxy?'missing':'unsupported',proxy||'country_proxy_not_mapped',{proxy,interpretation:'Country ETF; may include FX exposure, not an issuer beta or local index return.'}),
+   sector:status(peers>=5?'context_only':'missing','industry_classification_only_not_verified_competitors',{industry:r.industry||null,peerListings:Math.max(0,peers)}),
+   news:status('not_assessed','general_news_feed_is_not_company_risk_coverage')
+  };
+  stocks.push({symbol:key,name:r.name||key,country:r.country||null,domains,score:null,scoreStatus:'coverage_audit_not_calibrated_score'});
+  const add=(kind:string,owner:string,reason:string,severity:number,automatic:boolean)=>{
+   const prior=kind==='history'?risk.retryState?.[key]:kind==='fundamentals'?{nextAttemptAt:fundamentalIndex.failures?.[key]?.next_attempt_at}:null;
+   jobs.push({id:kind+':'+key,symbol:key,kind,owner,reason,severity,
+    state:!identityOK&&(!!canonical||conflict)?'identity_review':!automatic?'review_required':retryDue(prior,now)?'queued':'cooldown',
+    lastAttemptAt:kind==='history'?risk.attempts?.[key]||null:fundamentalIndex.attempts?.[key]||f?.retrieved_at||null,nextAttemptAt:prior?.nextAttemptAt||null});
+  };
+  if(!identityOK)add('identity',!canonical&&!conflict?'daily-risk':'review','listing_identity',100,!canonical&&!conflict);
+  if(!context||!history)add('history','daily-risk',!context?'current_history_missing':'long_history_missing',!context?90:60,true);
+  if(!balanceValid||!quoteOK)add('fundamentals','fundamentals-daily',reasons.join(',')||'quote_missing_or_stale',80,true);
+  if(!market)add('market','daily-risk',proxy?'benchmark_missing':'unsupported_market',70,!!proxy);
+  if(peers<5)add('sector','review','industry_context_missing',30,false);
+  add('news','review','company_news_not_archived_by_this_job',20,false);
+ }
+ jobs.sort((a,b)=>{
+  const age=(j:Row)=>!j.lastAttemptAt||now-Date.parse(j.lastAttemptAt)>7*DAY?1:0;
+  return age(b)-age(a)||b.severity-a.severity||(Date.parse(a.lastAttemptAt)||0)-(Date.parse(b.lastAttemptAt)||0)||a.id.localeCompare(b.id);
+ });
+ const domains:Row={};for(const r of stocks)for(const [key,d] of Object.entries(r.domains) as any){domains[key]??={};domains[key][d.state]=(domains[key][d.state]||0)+1;}
+ return {schema:1,generatedAt:new Date(now).toISOString(),universeAsOf:universe.stand||null,
+  summary:{inputRows:universe.kandidaten.length,uniqueListings:stocks.length,duplicateRows:universe.kandidaten.length-invalidRows-stocks.length,invalidRows,domains,
+   queue:jobs.reduce((a:Row,j:Row)=>(a[j.state]=(a[j.state]||0)+1,a),{})},stocks,jobs,
+  limitations:['Data coverage is not a risk probability or a new score.','Current annual data is not a historical point-in-time backtest.',
+   'Listing duplicates are removed; ADRs and ordinary shares remain separate listings.','Available annual ratios do not reconcile all leases, capital claims or issuer-specific definitions.']};
+}

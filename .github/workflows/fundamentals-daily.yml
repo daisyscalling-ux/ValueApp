@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - working-directory: value_radar/fundamental_export
-        run: python -m unittest -v test_export_fundamentals.py
+        run: python -m unittest -v test_export_fundamentals.py test_queue_policy.py
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_listing_identity.py
   collect:
@@ -66,5 +66,3 @@ jobs:
           git commit -m "Refresh dated fundamental observations [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main
-
-

@@ -6,6 +6,22 @@ from point_in_time import field, select_annual
 
 
 class CapexEvidenceTests(unittest.TestCase):
+    def test_earlier_filing_uses_only_its_own_evidence(self):
+        facts, selected, filings = self.fixture()
+        gaap = facts['facts']['us-gaap']
+        accession = '0001013462-24-000007'
+        for tag, value in [('PaymentsToAcquireProductiveAssets', 25318000),
+                           ('NetCashProvidedByUsedInOperatingActivities', 717122000)]:
+            gaap[tag]['units']['USD'].append(dict(start='2023-01-01', end='2023-12-31',
+                accn=accession, filed='2024-02-21', form='10-K', val=value))
+        filings[accession] = dict(filingDate='2024-02-21', form='10-K')
+        early = select_annual(facts, filings, dt.date(2024, 4, 12))['latest_annual']
+        self.assertEqual(early['accession'], accession)
+        self.assertEqual(early['cfo_minus_capex'], 691804000)
+        self.assertIn('000101346224000007', early['capex_review']['source'])
+        late = select_annual(facts, filings, dt.date(2025, 4, 12))['latest_annual']
+        self.assertEqual(late['accession'], selected['accession'])
+
     def fixture(self):
         selected = dict(start='2024-01-01', end='2024-12-31', accession='0001013462-25-000009',
                         filed='2025-02-19', form='10-K')

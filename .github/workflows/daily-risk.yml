@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs
@@ -54,7 +58,7 @@ jobs:
       - name: Yahoo-Datenprüfung testen
         run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
       - name: Markt-ETFs als Ersatzquelle laden
-        timeout-minutes: 13
+        timeout-minutes: 17
         continue-on-error: true
         run: python value_radar/risk_precompute/yahoo_benchmarks.py
       - uses: actions/cache@v4

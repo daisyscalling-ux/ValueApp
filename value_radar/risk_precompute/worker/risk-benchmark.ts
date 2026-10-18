@@ -1,5 +1,8 @@
 import {riskHistory} from './risk-data';
-export const marketProxy=(country:string)=>({US:'SPY',USA:'SPY','UNITED STATES':'SPY',DE:'EWG',GERMANY:'EWG',JP:'EWJ',JAPAN:'EWJ',GB:'EWU','UNITED KINGDOM':'EWU',FR:'EWQ',FRANCE:'EWQ',HK:'EWH','HONG KONG':'EWH',IN:'INDA',INDIA:'INDA',CN:'MCHI',CHINA:'MCHI',KR:'EWY','SOUTH KOREA':'EWY',TW:'EWT',TAIWAN:'EWT'} as Record<string,string>)[country.trim().toUpperCase()]||null;
+import registry from '../market-proxies.json';
+export const MARKET_COUNTRIES=registry.map(r=>r.country);
+const countryProxies=new Map(registry.flatMap(r=>[r.country,...r.aliases].map(a=>[a,r.proxy] as const)));
+export const marketProxy=(country:string)=>countryProxies.get(country.trim().toUpperCase())||null;
 export async function benchmarkHistory(country:string,key:string,fetcher:typeof fetch=fetch){
  const ticker=marketProxy(country);if(!ticker)throw Error('Für dieses Land ist noch kein Marktvergleich zugeordnet.');if(!key)throw Error('ROIC_API_KEY fehlt.');
  const r=await fetcher('https://api.roic.ai/v3.0.0/tickers/search?query='+ticker,{headers:{Authorization:'Bearer '+key},signal:AbortSignal.timeout(8000),redirect:'error'});if(!r.ok)throw Error('Marktvergleich: ROIC HTTP '+r.status);const raw=await r.json() as any;

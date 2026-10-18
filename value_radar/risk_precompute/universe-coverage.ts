@@ -1,3 +1,4 @@
+import {assessBalance} from './balance-profile';
 import {historyStatistics} from './src/lib/risk-statistics';
 import {marketProxy} from './worker/risk-benchmark';
 type Row=Record<string,any>;
@@ -38,35 +39,17 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   // The collector stores the requested exact listing (e.g. RR.L), while
   // history resolution stores its verified exchange symbol (LSE:RR.).
   const f=identityOK&&[key,canonical].includes(input?.symbol)?input:null;
-  const a=f?.annual,fields=a?.fields||{};
-  const sourceConsistent=!!a?.source&&['total_assets','total_debt','cash','operating_cashflow','capex'].every(k=>{
-   const source=a?.field_sources?.[k];return !source||(!source.end||source.end===a.end)&&(!source.currency||source.currency===a.currency)&&(!source.published_at||recent(source.published_at,now,700));
-  });
-  const annualFresh=sourceConsistent&&a?.period_type==='annual'&&recent(a?.end,now,550)&&recent(f?.annual_retrieved_at||f?.retrieved_at,now,7)&&(!a?.published_at||recent(a.published_at,now,700));
-  const capexSource=a?.field_sources?.capex?.source||a?.source||'';
-  const capex=number(fields.capex)&&fields.capex<0&&capexSource==='Yahoo annual statements'?-fields.capex:fields.capex;
-  const dated=a?.published_at?recent(a.published_at,now,700):false;
-  const balanceValid=annualFresh&&typeof a?.currency==='string'&&number(fields.total_assets)&&fields.total_assets>0
-     &&number(fields.total_debt)&&fields.total_debt>=0&&number(fields.cash)&&fields.cash>=0
-     &&number(fields.operating_cashflow)&&number(capex)&&capex>=0;
+  const balance=assessBalance(r,f?.annual,f?.annual_retrieved_at||f?.retrieved_at,identityOK,now);
   const quote=f?.market,quoteOK=recent(quote?.quote_at,now,7)&&number(quote?.fields?.price)&&quote.fields.price>0&&currency(quote.currency)===currency(r.currency);
   const proxy=marketProxy(String(r.country||'')),benchmark=proxy?risk.benchmarks?.[proxy]:null;
   const market=benchmark&&recent(benchmark.retrievedAt,now,1.5)&&historyStatistics(benchmark,now).drawdown!==null;
   const peers=r.industry&&recent(r.metadata_asof,now,90)?(industries.get(r.industry)?.size||0)-1:0;
-  const reasons:string[]=[];
-  if(!annualFresh)reasons.push('annual_missing_or_stale');
-  if(!sourceConsistent)reasons.push('annual_source_or_field_period_inconsistent');
-  for(const name of ['total_assets','total_debt','cash','operating_cashflow','capex'])if(!number(fields[name]))reasons.push('missing_'+name);
-  if(number(fields.total_debt)&&fields.total_debt<0||number(fields.cash)&&fields.cash<0||number(capex)&&capex<0||number(fields.total_assets)&&fields.total_assets<=0)reasons.push('invalid_financial_values');
-  if(!a?.currency)reasons.push('annual_currency_missing');
   const domains={
    identity:status(identityOK?'available':'blocked',conflict?'conflicting_listing_currency':identityOK?'qualified_listing':'unresolved_or_mismatched_listing'),
    quote:status(identityOK&&quoteOK?'available':'missing','dated_same_currency_quote_required'),
    price:status(context?'available':h?'stale_or_invalid':'missing',s.error||(!retrieved?'retrieval_missing_or_stale':'current_drawdown'),{observations:s.observations,last:s.last}),
    historical:status(history?'available':'missing',s.error||(!retrieved?'retrieval_missing_or_stale':'historical_loss_statistics')),
-   balance:status(identityOK&&balanceValid?'available':'missing',reasons.join(',')||'annual_book_ratios',{period:a?.end||null,currency:a?.currency||null,publicationDateConfirmed:dated,
-    capexNormalization:capex!==fields.capex?'yahoo_cash_outflow_to_positive_spend':'unchanged',
-    ratios:identityOK&&balanceValid?{netDebtAssets:(fields.total_debt-fields.cash)/fields.total_assets,fcfAssets:(fields.operating_cashflow-capex)/fields.total_assets}:null}),
+   balance,
    market:status(market?'available':proxy?'missing':'unsupported',proxy||'country_proxy_not_mapped',{proxy,interpretation:'Country ETF; may include FX exposure, not an issuer beta or local index return.'}),
    sector:status(peers>=5?'context_only':'missing','industry_classification_only_not_verified_competitors',{industry:r.industry||null,peerListings:Math.max(0,peers)}),
    news:status('not_assessed','general_news_feed_is_not_company_risk_coverage')
@@ -80,7 +63,8 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   };
   if(!identityOK)add('identity',!canonical&&!conflict?'daily-risk':'review','listing_identity',100,!canonical&&!conflict);
   if(!context||!history)add('history','daily-risk',!context?'current_history_missing':'long_history_missing',!context?90:60,true);
-  if(!balanceValid||!quoteOK)add('fundamentals','fundamentals-daily',reasons.join(',')||'quote_missing_or_stale',80,true);
+  if(balance.needsFinancialRefresh||!quoteOK)add('fundamentals','fundamentals-daily',balance.needsFinancialRefresh?balance.reason:'quote_missing_or_stale',80,true);
+  if(balance.sectorRequirements.length)add('sector_financials','review',balance.sectorRequirements.join(','),70,false);
   if(!market)add('market','daily-risk',proxy?'benchmark_missing':'unsupported_market',70,!!proxy);
   if(peers<5)add('sector','review','industry_context_missing',30,false);
   add('news','review','company_news_not_archived_by_this_job',20,false);

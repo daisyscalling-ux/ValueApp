@@ -2,6 +2,7 @@
 import argparse, datetime as dt, json, math, os, pathlib, re, subprocess, sys, time, urllib.request
 from listing_identity import listing_matches,SUFFIXES
 from reference_data import fetch_ecb,fetch_sec_listings
+from queue_policy import order_rows, due, failed as queue_failed
 UTC=dt.timezone.utc
 def stamp(): return dt.datetime.now(UTC).isoformat()
 def number(x):
@@ -192,7 +193,7 @@ def main():
  index.setdefault('failures',{})
  rows=select_registered_rows(rows,index,args.symbols)
  save(index_path,index) # Persist enrollment before network requests or budget expiry.
- rows.sort(key=lambda r:index['attempts'].get(r.get('listing_symbol') or r['ticker'],''))
+ rows=order_rows(rows,index,out.parent/'cf_risk_queue.json',time.time())
  references={'retrieved_at':stamp(),'issues':[]}
  try:references['fx']=fetch_ecb()
  except Exception:references['issues'].append('ECB reference rates unavailable; no rate substituted')
@@ -206,10 +207,12 @@ def main():
   except Exception:references['issues'].append('SEC listing map unavailable; existing identifiers retained')
  reference_path=out/'references.json';save(reference_path,references)
  os.environ['FUNDAMENTAL_REFERENCES_PATH']=str(reference_path.resolve())
- deadline=time.monotonic()+args.budget_min*60; success=failed=0
+ deadline=time.monotonic()+args.budget_min*60; success=failed=skipped_cooldown=0
  for row in rows:
   if time.monotonic()+50>deadline: break
   symbol=row.get('listing_symbol') or row['ticker']; filename=re.sub('[^A-Za-z0-9._-]','_',symbol)+'.json'; dest=out/filename; temp=out/(filename+'.pending')
+  if not args.symbols and not due(index['failures'].get(symbol),time.time()):
+   skipped_cooldown+=1;continue
   out.mkdir(parents=True,exist_ok=True)
   try:
    yahoo_symbol(row) # Validate mappings before starting a network subprocess.
@@ -222,7 +225,7 @@ def main():
   except Exception as exc:
    failed+=1
    reason='timeout' if isinstance(exc,subprocess.TimeoutExpired) else 'mapping' if isinstance(exc,ValueError) and str(exc)!='collector failed' else 'provider_or_identity'
-   index['failures'][symbol]={'at':stamp(),'reason':reason}
+   index['failures'][symbol]=queue_failed(index['failures'].get(symbol),reason,stamp(),time.time())
   finally:
    temp.unlink(missing_ok=True);index['attempts'][symbol]=stamp();index['generated_at']=stamp();index['last_run']={'success':success,'failed':failed};save(index_path,index)
  report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[],'missing_eps':[],'minor_unit_difference':[],'annual_gap_reasons':{}}
@@ -242,7 +245,6 @@ def main():
   if annual and annual.get('fields',{}).get('total_debt') is None: report['missing_debt'].append(symbol)
  save(out/'coverage.json',report)
  print(json.dumps({'coverage':{k:len(v) if isinstance(v,list) else v for k,v in report.items()}}))
- print(json.dumps({'success':success,'failed':failed,'queued':len(rows)-success-failed}))
- if not success: raise SystemExit(1)
+ print(json.dumps({'success':success,'failed':failed,'queued':len(rows)-success-failed-skipped_cooldown,'skipped_cooldown':skipped_cooldown}))
+ if not success and not skipped_cooldown: raise SystemExit(1)
 if __name__=='__main__': main()
-

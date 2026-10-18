@@ -1,8 +1,15 @@
 import datetime as dt
 import unittest
-from yahoo_benchmarks import normalize
+from yahoo_benchmarks import normalize, PROXIES, REGISTRY
 
 class YahooTests(unittest.TestCase):
+    def test_shared_registry_and_all_new_markets(self):
+        self.assertEqual(len(PROXIES),24)
+        self.assertEqual(len(set(r['country'] for r in REGISTRY)),24)
+        for proxy,country in PROXIES.items():
+            result=normalize(proxy,{**self.meta,'symbol':proxy},self.prices,self.now)
+            self.assertEqual(result['region'],country)
+        with self.assertRaises(ValueError):normalize('UNKNOWN',{**self.meta,'symbol':'UNKNOWN'},self.prices,self.now)
     def setUp(self):
         self.now=dt.datetime(2026,10,10,tzinfo=dt.timezone.utc)
         self.meta={'symbol':'SPY','instrumentType':'ETF','currency':'USD','exchangeName':'PCX'}

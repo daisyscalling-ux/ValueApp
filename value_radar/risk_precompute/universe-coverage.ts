@@ -35,7 +35,9 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   const context=identityOK&&retrieved&&s.drawdown!==null;
   const history=identityOK&&retrieved&&s.es!==null;
   const input=fundamentals[key]||fundamentals[canonical||''];
-  const f=input?.symbol===(canonical||key)?input:null;
+  // The collector stores the requested exact listing (e.g. RR.L), while
+  // history resolution stores its verified exchange symbol (LSE:RR.).
+  const f=identityOK&&[key,canonical].includes(input?.symbol)?input:null;
   const a=f?.annual,fields=a?.fields||{};
   const sourceConsistent=!!a?.source&&['total_assets','total_debt','cash','operating_cashflow','capex'].every(k=>{
    const source=a?.field_sources?.[k];return !source||(!source.end||source.end===a.end)&&(!source.currency||source.currency===a.currency)&&(!source.published_at||recent(source.published_at,now,700));

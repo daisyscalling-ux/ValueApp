@@ -2,6 +2,16 @@ import unittest,datetime as dt
 from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows,annual_diagnostics
 NOW=dt.date(2026,10,15)
 class Tests(unittest.TestCase):
+ def test_supplemental_balance_and_interest_fields_are_reported_not_inferred(self):
+  date='2026-06-30'
+  frames={'income':{date:{'Total Revenue':100,'Interest Expense':3,'Net Interest Income':7,'Total Liabilities Net Minority Interest':999}},'balance':{date:{'Total Liabilities Net Minority Interest':80,'Interest Expense':999}}}
+  a=yahoo_annual(frames,{'symbol':'TEST','financialCurrency':'USD'},NOW)
+  self.assertEqual(a['fields']['total_liabilities'],80)
+  self.assertEqual(a['fields']['interest_expense'],3)
+  self.assertEqual(a['fields']['net_interest_income'],7)
+  frames['balance']={}
+  a=yahoo_annual(frames,{'symbol':'TEST','financialCurrency':'USD'},NOW)
+  self.assertIsNone(a['fields']['total_liabilities'])
  def test_statement_isolation_and_component_provenance(self):
   date='2026-06-30'
   frames={'income':{date:{'Total Revenue':100,'Operating Cash Flow':None}},'balance':{date:{'Current Debt And Capital Lease Obligation':3,'Long Term Debt And Capital Lease Obligation':7,'Operating Cash Flow':None}},'cashflow':{date:{'Operating Cash Flow':15,'Purchase Of PPE':-4,'Purchase Of Intangibles':-2,'Total Revenue':None}}}

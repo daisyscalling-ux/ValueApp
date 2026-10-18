@@ -2,6 +2,30 @@ import unittest,datetime as dt
 from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows,annual_diagnostics
 NOW=dt.date(2026,10,15)
 class Tests(unittest.TestCase):
+ def test_statement_isolation_and_component_provenance(self):
+  date='2026-06-30'
+  frames={'income':{date:{'Total Revenue':100,'Operating Cash Flow':None}},'balance':{date:{'Current Debt And Capital Lease Obligation':3,'Long Term Debt And Capital Lease Obligation':7,'Operating Cash Flow':None}},'cashflow':{date:{'Operating Cash Flow':15,'Purchase Of PPE':-4,'Purchase Of Intangibles':-2,'Total Revenue':None}}}
+  a=yahoo_annual(frames,{'symbol':'TEST','financialCurrency':'USD'},NOW)
+  self.assertEqual(a['fields']['revenue'],100)
+  self.assertEqual(a['fields']['operating_cashflow'],15)
+  self.assertEqual(a['fields']['total_debt'],10)
+  self.assertEqual(a['fields']['capex'],-6)
+  self.assertEqual(a['field_sources']['capex']['end'],date)
+  self.assertEqual(len(a['field_sources']['capex']['components']),2)
+  frames['balance'][date]['Total Debt']=0
+  frames['cashflow'][date]['Capital Expenditure']=-9
+  a=yahoo_annual(frames,{'symbol':'TEST','financialCurrency':'USD'},NOW)
+  self.assertEqual(a['fields']['total_debt'],0)
+  self.assertEqual(a['fields']['capex'],-9)
+  self.assertEqual(a['field_sources'],{})
+ def test_components_require_complete_same_date_and_valid_signs(self):
+  date='2026-06-30'
+  for missing in [None,float('nan'),4]:
+   frames={'income':{date:{'Total Revenue':100}},'cashflow':{date:{'Purchase Of PPE':-4,'Purchase Of Intangibles':missing,'Free Cash Flow':10,'Operating Cash Flow':10}}}
+   self.assertIsNone(yahoo_annual(frames,{'symbol':'TEST'},NOW)['fields']['capex'])
+  frames={'income':{date:{'Total Revenue':100}},'balance':{date:{'Current Debt And Capital Lease Obligation':3},'2025-06-30':{'Long Term Debt And Capital Lease Obligation':7}},'cashflow':{date:{'Purchase Of PPE':-4},'2025-06-30':{'Purchase Of Intangibles':-2}}}
+  a=yahoo_annual(frames,{'symbol':'TEST'},NOW)
+  self.assertIsNone(a['fields']['total_debt']);self.assertIsNone(a['fields']['capex'])
  def test_diagnostics_distinguish_missing_revenue_and_fiscal_period(self):
   frames={'income':{'2025-09-30':{'Total Revenue':None}}}
   info={'lastFiscalYearEnd':int(dt.datetime(2026,9,30,tzinfo=dt.timezone.utc).timestamp())}
@@ -131,4 +155,3 @@ class IdentityTests(unittest.TestCase):
   self.assertEqual(index['identity_rejected']['PKO.WA']['rejected_listing'],'NYSE:PKO')
 
 if __name__=='__main__':unittest.main()
-

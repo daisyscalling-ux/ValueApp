@@ -16,6 +16,18 @@ const risk=()=>({stocks:{[row.listing_symbol]:summary()},benchmarks:{SPY:summary
 const audit=(rows:any[]=[row],f:any=fund(),r:any=risk())=>auditUniverse({kandidaten:rows},r,{[row.listing_symbol]:f},now);
 test('deduplicate exact listing only',()=>assert.equal(audit([row,row,{...row,listing_symbol:'XETR:TEST'}]).summary.uniqueListings,2));
 test('missing history is not low risk',()=>{const a=audit([row],fund(),{});assert.equal(a.stocks[0].score,null);assert.equal(a.stocks[0].domains.historical.state,'missing')});
+
+test('verified history aliases retain exact-request fundamental snapshots',()=>{
+ const r:any=risk();r.aliases={'TEST.US':row.listing_symbol};
+ const f={...fund(),symbol:'TEST.US'};
+ const rows=[{...row,listing_symbol:'TEST.US'}];
+ const check=(value:any,state=r)=>auditUniverse({kandidaten:rows},state,{'TEST.US':value},now).stocks[0];
+ assert.equal(check(f).domains.balance.state,'available');
+ assert.equal(check(f).domains.quote.state,'available');
+ assert.equal(check({...f,symbol:'NYSE:OTHER'}).domains.balance.state,'missing');
+ assert.equal(check(f,{...r,aliases:{}}).domains.balance.state,'missing');
+ assert.equal(check(f,{...r,stocks:{[row.listing_symbol]:{...summary(),currency:'EUR'}}}).domains.balance.state,'missing');
+});
 test('zero debt valid and Yahoo cash outflow normalized',()=>{const a=audit().stocks[0].domains.balance;assert.equal(a.state,'available');assert.equal(a.ratios.fcfAssets,.07);assert.equal(a.ratios.netDebtAssets,-.2)});
 test('unknown negative capex not normalized',()=>{const f=fund();f.annual.source='Unknown';assert.equal(audit([row],f).stocks[0].domains.balance.state,'missing')});
 test('future annual date blocks ratios',()=>{const f=fund();f.annual.end='2027-06-30';assert.equal(audit([row],f).stocks[0].domains.balance.ratios,null)});

@@ -1,5 +1,6 @@
 import {validateHistory,validationReport,VALIDATION_VERSION} from './src/lib/risk-validation';
 import fs from 'node:fs';
+import {failureState,retryDue} from './universe-coverage';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {riskHistory} from './worker/risk-data';
@@ -18,17 +19,20 @@ export async function exportRisk(options:any={}){
  const validationEnabled=env.RISK_VALIDATION_ENABLED==='1',studyPath=env.RISK_VALIDATION_STATE||'.risk-validation-cache.json',studyOutput=env.RISK_VALIDATION_OUTPUT||'value_radar/daten/cf_risk_validation.json';
  const oldStudy=validationEnabled?read(studyPath):null,study:any=oldStudy?.schema===VALIDATION_VERSION?oldStudy:{schema:VALIDATION_VERSION,series:{}};
  const previous=read(output),data:any=previous?.schema===RISK_SCHEMA?previous:{schema:RISK_SCHEMA,stocks:{},benchmarks:{}};
- data.attempts=data.attempts||{};
+ data.attempts=data.attempts||{};data.retryState=data.retryState||{};data.aliases=data.aliases||{};data.listings=data.listings||{};
  const inputs=[...new Set<string>(universe.kandidaten.map((r:any)=>String(r.listing_symbol||r.ticker||'').trim().toUpperCase()).filter((s:string)=>/^[A-Z0-9._:-]{1,100}$/.test(s)))];
- inputs.sort((a,b)=>(Date.parse(data.attempts[a])||0)-(Date.parse(data.attempts[b])||0));
+ const queue=read(env.RISK_QUEUE_PATH||'value_radar/daten/cf_risk_queue.json');
+ const validQueue=queue?.schema===1&&clock()-Date.parse(queue.generatedAt)>=0&&clock()-Date.parse(queue.generatedAt)<7*86400000;
+ const priority=new Map<string,number>((validQueue&&Array.isArray(queue.jobs)?queue.jobs:[]).filter((j:any)=>j.kind==='history'&&j.state==='queued').map((j:any,i:number)=>[j.symbol,i]));
+ inputs.sort((a,b)=>(priority.get(a)??1e9)-(priority.get(b)??1e9)||(Date.parse(data.attempts[a])||0)-(Date.parse(data.attempts[b])||0));
  const sleep=options.sleep||((ms:number)=>new Promise(r=>setTimeout(r,ms)));
- const started=clock(),deadline=started+budget*60000;let last=0,spacing=650,blockedUntil=0,requests=0,aborted=false,historyDenied=0;let preferredYears:2|5=5;
- const report:any={attempted:0,updated:0,failed:0,skippedFresh:0,universe:inputs.length,errors:[],failureReasons:{},rateLimitEvents:0,retries:0,benchmarkFallbacks:0,benchmarkWarnings:[],validation:{enabled:validationEnabled,eligible:0,excluded:0,metadataMissing:0},budgetReached:false};
+ const started=clock(),deadline=started+budget*60000;const rpm=Number(env.RISK_REQUESTS_PER_MINUTE||240);if(!Number.isFinite(rpm)||rpm<20||rpm>240)throw Error('Ungültiges Aufruflimit.');let last=0,spacing=60000/rpm,blockedUntil=0,requests=0,aborted=false,historyDenied=0;let preferredYears:2|5=5;
+ const report:any={attempted:0,updated:0,failed:0,skippedFresh:0,skippedCooldown:0,universe:inputs.length,errors:[],failureReasons:{},rateLimitEvents:0,retries:0,benchmarkFallbacks:0,benchmarkWarnings:[],validation:{enabled:validationEnabled,eligible:0,excluded:0,metadataMissing:0},budgetReached:false};
  const save=()=>{data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output);if(validationEnabled){fs.mkdirSync(path.dirname(studyPath),{recursive:true});fs.writeFileSync(studyPath+'.tmp',JSON.stringify(study));fs.renameSync(studyPath+'.tmp',studyPath);const allowed=new Set(inputs),active=Object.fromEntries(Object.entries(study.series).filter(([,v]:any)=>allowed.has(v.inputSymbol)&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<7*86400000));const audit:any=validationReport(active,clock());audit.universeSize=inputs.length;audit.refresh={...report.validation};fs.mkdirSync(path.dirname(studyOutput),{recursive:true});fs.writeFileSync(studyOutput+'.tmp',JSON.stringify(audit));fs.renameSync(studyOutput+'.tmp',studyOutput)}};
  const paced:typeof fetch=async(url,opts)=>{
   if(clock()>deadline)throw Error('Zeitbudget erreicht.');
   const wait=Math.max(0,spacing-(clock()-last));if(wait)await sleep(wait);
-  opts?.signal?.throwIfAborted();last=clock();requests++;
+  if(clock()>deadline)throw Error('Zeitbudget erreicht.');opts?.signal?.throwIfAborted();last=clock();requests++;
   const r=await fetcher(url,opts);if([401,403].includes(r.status)){aborted=true;throw Error('ROIC-Zugang abgelehnt HTTP '+r.status)}
   if(r.status===429){report.rateLimitEvents++;const header=r.headers.get('retry-after'),n=header===null?NaN:Number(header),date=header?Date.parse(header):NaN;const delay=Math.max(30000,Number.isFinite(n)?n*1000:Number.isFinite(date)?date-clock():60000);blockedUntil=Math.max(blockedUntil,clock()+delay);spacing=Math.min(3000,spacing*1.5);throw Error('ROIC-Ratenlimit HTTP 429')}
   return r;
@@ -39,30 +43,32 @@ export async function exportRisk(options:any={}){
  }};
  const fresh=(v:any)=>v?.schema===RISK_SCHEMA&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<18*3600000;
  const accept=(h:any)=>{const s=compactHistory(h,clock()),v=historyStatistics(s,clock());if(!v.observations||[v.es,v.dd,v.worst,v.drawdown].every(x=>x===null))throw Error('Keine gültige Risiko-Historie: '+(v.error||'Weniger als 200 aktuelle Handelstage oder Lücken.'));return s};
- const failure=(symbol:string,e:any)=>{report.failed++;const category=/HTTP \d+/.exec(e?.message||'')?.[0]||(/Notierung/.test(e?.message||'')?'Notierung':'Sonstige');report.failureReasons[category]=(report.failureReasons[category]||0)+1;if(!symbol.startsWith('Markt ')&&/Kurshistorie HTTP 402/.test(e?.message||'')){historyDenied++;if(historyDenied>=3)aborted=true}if(report.errors.length<2000)report.errors.push({symbol,reason:/^(ROIC|Kurshistorie|Notierung|Markt|Keine|Zeitbudget|Eindeutige|Ungültige)/.test(e?.message||'')?e.message:'Abruf fehlgeschlagen'});};
+ const failure=(symbol:string,e:any)=>{if(!symbol.startsWith('Markt '))data.retryState[symbol]=failureState(String(e?.message||''),data.retryState[symbol],clock());report.failed++;const category=/HTTP \d+/.exec(e?.message||'')?.[0]||(/Notierung/.test(e?.message||'')?'Notierung':'Sonstige');report.failureReasons[category]=(report.failureReasons[category]||0)+1;if(!symbol.startsWith('Markt ')&&/Kurshistorie HTTP 402/.test(e?.message||'')){historyDenied++;if(historyDenied>=3)aborted=true}if(report.errors.length<2000)report.errors.push({symbol,reason:/^(ROIC|Kurshistorie|Notierung|Markt|Keine|Zeitbudget|Eindeutige|Ungültige)/.test(e?.message||'')?e.message:'Abruf fehlgeschlagen'});};
  for(const country of ['US','DE','JP','GB','FR','HK','IN','CN','KR','TW']){
   if(clock()>deadline||aborted)break;
+  const proxyKey=marketProxy(country);if(proxyKey&&fresh(data.benchmarks[proxyKey])&&historyStatistics(data.benchmarks[proxyKey],clock()).drawdown!==null)continue;
   try{const h=await retry(()=>benchmarkHistory(country,env.ROIC_API_KEY,paced));data.benchmarks[h.proxy]=accept(h)}catch(e){const proxy=marketProxy(country),candidate=yahoo?.benchmarks?.[proxy||''];if(validYahooBenchmark(candidate,proxy,clock())){try{data.benchmarks[proxy!]=accept(candidate);report.benchmarkFallbacks++;report.benchmarkWarnings.push({country,reason:'ROIC-Marktvergleich nicht verfügbar; Yahoo-ETF übernommen.'});continue}catch{}}failure('Markt '+country,e)}
  }
  let processed=0;
  for(const inputSymbol of inputs){
   if(clock()>deadline||blockedUntil>=deadline||aborted){report.budgetReached=clock()>deadline||blockedUntil>=deadline;break}
-  processed++;data.attempts[inputSymbol]=new Date(clock()).toISOString();
+  processed++;if(!retryDue(data.retryState[inputSymbol],clock())){report.skippedCooldown++;continue}data.attempts[inputSymbol]=new Date(clock()).toISOString();
   if(!validationEnabled&&fresh(data.stocks[inputSymbol])){report.skippedFresh++;continue}
   report.attempted++;
-  try{let listing:any=null;
-   if(!inputSymbol.includes(':'))listing=await retry(()=>resolveRiskListing(inputSymbol,env.ROIC_API_KEY,paced));
+  try{const cached=data.listings[inputSymbol];let listing:any=cached&&clock()-Date.parse(cached.at)>=0&&clock()-Date.parse(cached.at)<7*86400000?cached.value:null;
+   if(!inputSymbol.includes(':')&&!listing)listing=await retry(()=>resolveRiskListing(inputSymbol,env.ROIC_API_KEY,paced));
    const symbol=inputSymbol.includes(':')?inputSymbol:String(listing.symbol);
    if(validationEnabled&&!listing)try{listing=await retry(()=>resolveRiskListing(symbol,env.ROIC_API_KEY,paced))}catch{report.validation.metadataMissing++}
+   if(listing){if(cached?.value!==listing)data.listings[inputSymbol]={at:new Date(clock()).toISOString(),value:listing};data.aliases[inputSymbol]=symbol;}
    const eligible=validationEnabled&&listing?.is_primary===true&&listing.type==='stock'&&Array.isArray(listing.type_specifications)&&listing.type_specifications.includes('common')&&!listing.type_specifications.includes('preferred');
    if(validationEnabled){if(eligible)report.validation.eligible++;else{report.validation.excluded++;if(listing)delete study.series[symbol]}}
    if(fresh(data.stocks[symbol])&&(!eligible||study.series[symbol]?.version===VALIDATION_VERSION&&fresh(study.series[symbol]))){if(eligible&&study.series[symbol])study.series[symbol].inputSymbol=inputSymbol;report.skippedFresh++;continue}
-   const h=await retry(()=>riskHistory(symbol,env.ROIC_API_KEY,paced,clock(),preferredYears));preferredYears=h.requestedYears;historyDenied=0;data.stocks[symbol]=accept(h);report.updated++;if(eligible)study.series[symbol]={version:VALIDATION_VERSION,schema:RISK_SCHEMA,inputSymbol,retrievedAt:h.retrievedAt,observations:validateHistory(h,clock())};
+   const h=await retry(()=>riskHistory(symbol,env.ROIC_API_KEY,paced,clock(),preferredYears));preferredYears=h.requestedYears;historyDenied=0;data.stocks[symbol]=accept(h);delete data.retryState[inputSymbol];report.updated++;if(eligible)study.series[symbol]={version:VALIDATION_VERSION,schema:RISK_SCHEMA,inputSymbol,retrievedAt:h.retrievedAt,observations:validateHistory(h,clock())};
   }catch(e){failure(inputSymbol,e)}
   if(processed%25===0){save();console.log('Risiko: '+processed+'/'+inputs.length+' geprüft; '+report.updated+' aktualisiert; '+report.failed+' fehlgeschlagen.')}
  }
  report.remaining=inputs.length-processed;report.accessDenied=aborted;report.historyWindowYears=preferredYears;report.storedStocks=Object.keys(data.stocks).length;const auditNow=clock(),freshRows=Object.values(data.stocks).filter((h:any)=>auditNow-Date.parse(h.retrievedAt)>=0&&auditNow-Date.parse(h.retrievedAt)<=36*3600000) as any[];report.freshStocks=freshRows.length;report.freshBenchmarks=Object.values(data.benchmarks).filter((h:any)=>auditNow-Date.parse(h.retrievedAt)>=0&&auditNow-Date.parse(h.retrievedAt)<=36*3600000&&historyStatistics(h,auditNow).drawdown!==null).length;report.historicalCoverage=freshRows.filter(h=>historyStatistics(h,auditNow).es!==null).length;report.contextCoverage=freshRows.filter(h=>historyStatistics(h,auditNow).drawdown!==null).length;save();
  console.log(JSON.stringify(data.report));if(report.failed||report.remaining)console.log('::warning::Risikodaten teilweise offen; Bericht in cf_risk.json prüfen. Alte Stände bleiben datiert erhalten.');
- return {ok:!aborted&&(report.updated>0||report.skippedFresh>0),report:data.report};
+ return {ok:!aborted&&(report.updated>0||report.skippedFresh>0||report.skippedCooldown>0),report:data.report};
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){exportRisk().then(r=>{if(!r.ok)process.exitCode=1}).catch(()=>{console.error('Risikoexport abgebrochen: Eingabe, Konfiguration oder Dateizugriff prüfen.');process.exitCode=1})}
+if(process.env.RISK_EXPORT_LIBRARY!=='1'&&process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){exportRisk().then(r=>{if(!r.ok)process.exitCode=1}).catch(()=>{console.error('Risikoexport abgebrochen: Eingabe, Konfiguration oder Dateizugriff prüfen.');process.exitCode=1})}

@@ -1,0 +1,55 @@
+name: regulatory-daily
+on:
+  schedule:
+    - cron: '11 6 * * *'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'value_radar/regulatory_export/**'
+      - '.github/workflows/regulatory-daily.yml'
+concurrency:
+  group: regulatory-daily
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_*.py'
+  collect:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Official institution evidence
+        run: python value_radar/regulatory_export/collect_regulatory.py
+      - name: Preserve dated observations and status
+        if: always()
+        run: |
+          set -euo pipefail
+          test -d value_radar/daten/regulatory || exit 0
+          git config user.name value-radar-bot
+          git config user.email bot@value-radar
+          git add value_radar/daten/regulatory
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refresh official regulatory evidence [skip ci]'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1

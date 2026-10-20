@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
-      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_company_news.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_*company_news.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs

@@ -30,14 +30,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_company_news.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-context.mjs
+          node /tmp/test-context.mjs
   risk:
     needs: tests
     if: github.event_name != 'pull_request' 
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v6
         with:
@@ -79,6 +82,13 @@ jobs:
           RISK_VALIDATION_ENABLED: '1'
           RISK_REQUESTS_PER_MINUTE: '240'
         run: node /tmp/risk-export.mjs
+      - name: Unternehmensnachrichten universumsweit erfassen
+        if: always() && !cancelled()
+        timeout-minutes: 22
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          NEWS_BUDGET_MIN: '20'
+        run: python value_radar/risk_precompute/company_news.py
       - name: Abdeckung nach dem Lauf neu pruefen
         if: always() && !cancelled()
         run: node /tmp/risk-audit.mjs
@@ -89,6 +99,7 @@ jobs:
           path: |
             value_radar/daten/cf_risk_coverage.json
             value_radar/daten/cf_risk_queue.json
+            value_radar/daten/cf_company_news.json
           retention-days: 90
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -98,7 +109,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_coverage.json cf_risk_queue.json; do
+          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

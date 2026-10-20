@@ -36,9 +36,10 @@ export function industryContexts(universe:Row,risk:Row,now:number){
 export function newsContext(symbol:string,archive:Row,now:number){
  const r=archive?.stocks?.[symbol];
  if(archive?.schema!==1||!r)return {state:'not_assessed',reason:'company_news_not_yet_fetched'};
- if(!fresh(r.successAt,now,1.5))return {state:'missing',reason:'company_news_missing_or_stale',lastAttemptAt:r.attemptedAt||null,error:r.error||null};
+ if(!fresh(r.successAt,now,1.5))return {state:'missing',reason:'company_news_missing_or_stale',lastAttemptAt:r.attemptedAt||null,error:r.error||null,fallbackAttemptAt:r.fallbackAttemptAt||null,fallbackError:r.fallbackError||null};
  const items=Array.isArray(r.items)?r.items.filter((i:Row)=>fresh(i.publishedAt,now,7)):[];
  return {state:items.length?'review_required':'observed_empty',reason:items.length?'headlines_are_unverified_event_candidates':'no_recent_articles_is_not_low_risk',
   checkedAt:r.successAt,lastAttemptError:r.error||null,articleCount:items.length,items:items.slice(0,6),queryIdentifier:r.identifier,rejectedArticles:r.rejectedArticles||0,
+  provider:r.source||'ROIC',rawArticleCount:r.rawArticleCount??null,fallbackAttemptAt:r.fallbackAttemptAt||null,fallbackError:r.fallbackError||null,
   truncated:r.truncated===true,score:null,interpretation:'Provider company association; headline tags require verification. No negative headline does not imply safety.'};
 }

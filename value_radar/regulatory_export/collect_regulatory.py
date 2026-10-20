@@ -78,11 +78,15 @@ def main():
  folder=pathlib.Path(os.getenv('REGULATORY_OUTPUT','value_radar/daten/regulatory'))
  universe=pathlib.Path(os.getenv('REGULATORY_UNIVERSE','value_radar/daten/cf_universum.json'))
  try:
-  data=collect();report=coverage(json.loads(universe.read_text(encoding='utf8')),data)
+  data=collect();universe_data=json.loads(universe.read_text(encoding='utf8'));report=coverage(universe_data,data)
   holding_path=folder/'bhcf-import.json'
   if holding_path.exists():
    from import_bhcf import link_fdic
-   holding_links=link_fdic(json.loads(holding_path.read_text(encoding='utf8')),data)
+   holdings=json.loads(holding_path.read_text(encoding='utf8'))
+   holding_links=link_fdic(holdings,data)
+   from holding_stocks import enrich
+   registry=json.loads(pathlib.Path(__file__).with_name('holding-stock-map.json').read_text(encoding='utf8'))
+   report=enrich(report,universe_data,holdings,registry)
   else:
    holding_links={'schema':1,'state':'not_imported','score':None}
  except Exception as e:

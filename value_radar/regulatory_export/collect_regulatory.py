@@ -79,11 +79,18 @@ def main():
  universe=pathlib.Path(os.getenv('REGULATORY_UNIVERSE','value_radar/daten/cf_universum.json'))
  try:
   data=collect();report=coverage(json.loads(universe.read_text(encoding='utf8')),data)
+  holding_path=folder/'bhcf-import.json'
+  if holding_path.exists():
+   from import_bhcf import link_fdic
+   holding_links=link_fdic(json.loads(holding_path.read_text(encoding='utf8')),data)
+  else:
+   holding_links={'schema':1,'state':'not_imported','score':None}
  except Exception as e:
   save(folder/'status.json',{'attempted_at':dt.datetime.now(UTC).isoformat(),'state':'failed','reason':type(e).__name__,'previous_observations_retained':True})
   raise
  save(folder/('fdic-'+data['reporting_period']+'.json'),data)
  save(folder/'fdic-latest.json',data);save(folder/'coverage.json',report)
+ save(folder/'holding-links.json',holding_links)
  save(folder/'status.json',{'attempted_at':data['retrieved_at'],'state':'success','institution_count':data['institution_count'],'reporting_period':data['reporting_period']})
  print(json.dumps({'institutions':data['institution_count'],'period':data['reporting_period'],**report['summary']}))
 if __name__=='__main__':main()

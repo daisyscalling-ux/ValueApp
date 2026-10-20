@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "reviewed_on": "2026-10-20",
+  "review_expires": "2027-04-18",
+  "entries": [
+    {
+      "symbol": "NYSE:JPM",
+      "rssd_id": "1039502",
+      "holding_name": "JPMORGAN CHASE & CO.",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://jpmorganchaseco.gcs-web.com/ir/shareholder-information/faqs",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "JPMORGAN CHASE & CO."
+      ]
+    },
+    {
+      "symbol": "NYSE:BAC",
+      "rssd_id": "1073757",
+      "holding_name": "BANK OF AMERICA CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://investor.bankofamerica.com/shareholder-information/shareholder-and-contact-info",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "BANK OF AMERICA CORPORATION"
+      ]
+    },
+    {
+      "symbol": "NYSE:C",
+      "rssd_id": "1951350",
+      "holding_name": "CITIGROUP INC.",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://www.citigroup.com/global/investors/stockholder-services",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "CITIGROUP INC."
+      ]
+    },
+    {
+      "symbol": "NYSE:GS",
+      "rssd_id": "2380443",
+      "holding_name": "GOLDMAN SACHS GROUP, INC., THE",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://www.sec.gov/Archives/edgar/data/886982/000088698226000091/gs-20251231.htm",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "GOLDMAN SACHS GROUP, INC. (THE)"
+      ]
+    },
+    {
+      "symbol": "NYSE:WFC",
+      "rssd_id": "1120754",
+      "holding_name": "WELLS FARGO & COMPANY",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://www.sec.gov/Archives/edgar/data/72971/000007297126000133/wfc-20251231_d2.htm",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "WELLS FARGO & COMPANY"
+      ]
+    },
+    {
+      "symbol": "NYSE:SCHW",
+      "rssd_id": "1026632",
+      "holding_name": "CHARLES SCHWAB CORPORATION, THE",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://pressroom.aboutschwab.com/press-releases/press-release/2026/Schwab-Initiates-Secondary-Listing-on-the-Texas-Stock-Exchange/default.aspx",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "CHARLES SCHWAB CORPORATION (THE)"
+      ]
+    },
+    {
+      "symbol": "NYSE:COF",
+      "rssd_id": "2277860",
+      "holding_name": "CAPITAL ONE FINANCIAL CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://investor.capitalone.com/news-releases/news-release-details/capital-one-announces-quarterly-dividend-87",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "CAPITAL ONE FINANCIAL CORPORATION"
+      ]
+    },
+    {
+      "symbol": "NYSE:USB",
+      "rssd_id": "1119794",
+      "holding_name": "U.S. BANCORP",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://www.usbank.com/content/dam/usbank/en/documents/pdfs/about-us-bank/2025-annual-report.pdf",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "U.S. BANCORP"
+      ]
+    },
+    {
+      "symbol": "NYSE:PNC",
+      "rssd_id": "1069778",
+      "holding_name": "PNC FINANCIAL SERVICES GROUP, INC., THE",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://investor.pnc.com/sec-filings/all-sec-filings/content/0000713676-24-000028/descriptionofsecuritiese.htm",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "PNC FINANCIAL SERVICES GROUP, INC. (THE)"
+      ]
+    }
+  ]
+}

@@ -19,5 +19,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const r=runAudit(process.argv[2]||'value_radar/daten');console.log(JSON.stringify(r.summary));
  if(process.env.GITHUB_STEP_SUMMARY){const lines=['## Risiko-Datenabdeckung',`Aktive Notierungen: ${r.summary.uniqueListings}; doppelte Zeilen: ${r.summary.duplicateRows}`,'','| Bereich | Status | Anzahl |','|---|---|---:|'];
  for(const [domain,counts] of Object.entries(r.summary.domains))for(const [state,count] of Object.entries(counts as any))lines.push(`| ${domain} | ${state} | ${count} |`);
- lines.push('','Dies ist eine Datenprüfung, kein kalibrierter Risikoscore. Nachrichten und direkte Wettbewerber sind noch nicht automatisch geprüft.');fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');}
+ lines.push('','Dies ist eine Datenprüfung, kein kalibrierter Risikoscore. Nachrichten sind unbestätigte Prüfhinweise; Branchengruppen sind keine bestätigten direkten Wettbewerber.');fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');}
 }

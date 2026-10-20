@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {industryContexts,newsContext} from './context-risk';
+const now=Date.parse('2026-10-20T12:00:00Z');
+const rows=Array.from({length:7},(_,i)=>({listing_symbol:`NYSE:X${i}`,name:`Issuer ${i}`,security_type:'stock',industry:'Software',currency:'USD',metadata_asof:'2026-10-20T00:00:00Z'}));
+const stocks=Object.fromEntries(rows.map((r,i)=>[r.listing_symbol,{schema:1,format:'risk-summary',symbol:r.listing_symbol,currency:'USD',adjustment:'total_return',retrievedAt:'2026-10-20T01:00:00Z',statistics:{observations:600,first:'2024-01-01',last:'2026-10-19',error:'',es:.03,dd:.5,worst:.2,drawdown:i/10}}]));
+let c=industryContexts({kandidaten:rows},{stocks},now);
+assert.equal(c['NYSE:X0'].peerIssuers,6);assert.equal(c['NYSE:X0'].medianDrawdown,.35);
+const double=[...rows,{...rows[1],listing_symbol:'NYSE:ALT'}];
+c=industryContexts({kandidaten:double},{stocks:{...stocks,'NYSE:ALT':{...stocks['NYSE:X1'],symbol:'NYSE:ALT'}}},now);
+assert.equal(c['NYSE:X0'].peerIssuers,6);
+const bad=rows.map((r,i)=>i<3?{...r,security_type:'preferred'}:r);
+assert.equal(industryContexts({kandidaten:bad},{stocks},now)['NYSE:X6'].state,'missing');
+assert.equal(newsContext('X',{},now).state,'not_assessed');
+const n={schema:1,stocks:{X:{successAt:'2026-10-20T01:00:00Z',items:[]}}};
+assert.equal(newsContext('X',n,now).state,'observed_empty');
+assert.equal(newsContext('X',n,now+2*86400000).state,'missing');
+console.log('Industry peer deduplication, eligibility, median and news freshness checks passed');

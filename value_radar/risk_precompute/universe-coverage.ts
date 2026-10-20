@@ -1,4 +1,5 @@
 import {assessBalance} from './balance-profile';
+import {industryContexts,newsContext} from './context-risk';
 import {historyStatistics} from './src/lib/risk-statistics';
 import {marketProxy} from './worker/risk-benchmark';
 type Row=Record<string,any>;
@@ -18,12 +19,13 @@ export function retryDue(state:Row|undefined,now:number){
  // Invalid or implausibly remote dates must not permanently suppress a listing.
  const t=Date.parse(state?.nextAttemptAt);return !Number.isFinite(t)||t<=now||t>now+8*DAY;
 }
-export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,Row>,now=Date.now(),fundamentalIndex:Row={}){
+export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,Row>,now=Date.now(),fundamentalIndex:Row={},news:Row={}){
  if(!Array.isArray(universe?.kandidaten)||!universe.kandidaten.length)throw Error('Universum fehlt');
  const grouped=new Map<string,Row[]>();let invalidRows=0;
  for(const r of universe.kandidaten){const key=listingKey(r);if(!/^[A-Z0-9._:-]{1,100}$/.test(key)){invalidRows++;continue}grouped.set(key,[...(grouped.get(key)||[]),r]);}
  const industries=new Map<string,Set<string>>();
  for(const [key,rows] of grouped){const r=rows[0];if(r.industry&&recent(r.metadata_asof,now,90))industries.set(r.industry,new Set([...(industries.get(r.industry)||[]),key]));}
+ const sectorContexts=industryContexts(universe,risk,now);
  const stocks:Row[]=[];const jobs:Row[]=[];
  for(const [key,rows] of grouped){
   const r=rows[0],currencies=new Set(rows.map(x=>x.currency).filter(Boolean));
@@ -51,8 +53,8 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
    historical:status(history?'available':'missing',s.error||(!retrieved?'retrieval_missing_or_stale':'historical_loss_statistics')),
    balance,
    market:status(market?'available':proxy?'missing':'unsupported',proxy||'country_proxy_not_mapped',{proxy,interpretation:'Country ETF; may include FX exposure, not an issuer beta or local index return.'}),
-   sector:status(peers>=5?'context_only':'missing','industry_classification_only_not_verified_competitors',{industry:r.industry||null,peerListings:Math.max(0,peers)}),
-   news:status('not_assessed','general_news_feed_is_not_company_risk_coverage')
+   sector:identityOK&&sectorContexts[key]||status(peers>=5?'context_only':'missing','industry_classification_only_not_verified_competitors',{industry:r.industry||null,peerListings:Math.max(0,peers)}),
+   news:identityOK?newsContext(key,news,now):status('not_assessed','listing_identity_unverified')
   };
   stocks.push({symbol:key,name:r.name||key,country:r.country||null,domains,score:null,scoreStatus:'coverage_audit_not_calibrated_score'});
   const add=(kind:string,owner:string,reason:string,severity:number,automatic:boolean)=>{
@@ -66,8 +68,8 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   if(balance.needsFinancialRefresh||!quoteOK)add('fundamentals','fundamentals-daily',balance.needsFinancialRefresh?balance.reason:'quote_missing_or_stale',80,true);
   if(balance.sectorRequirements.length)add('sector_financials','review',balance.sectorRequirements.join(','),70,false);
   if(!market)add('market','daily-risk',proxy?'benchmark_missing':'unsupported_market',70,!!proxy);
-  if(peers<5)add('sector','review','industry_context_missing',30,false);
-  add('news','review','company_news_not_archived_by_this_job',20,false);
+  if(domains.sector.state!=='available')add('sector','review','eligible_industry_history_missing',30,false);
+  if(['not_assessed','missing'].includes(domains.news.state))add('news','daily-risk','company_news_missing_or_stale',20,identityOK);
  }
  jobs.sort((a,b)=>{
   const age=(j:Row)=>!j.lastAttemptAt||now-Date.parse(j.lastAttemptAt)>7*DAY?1:0;

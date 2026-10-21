@@ -34,5 +34,18 @@ class NewsTests(unittest.TestCase):
    result=json.loads((p/'cf_company_news.json').read_text(encoding='utf8'))
    self.assertEqual(len(result['stocks']['RR.L']['items']),1)
    self.assertEqual(result['stocks']['TEST']['googleAttemptAt'],now)
+ def test_changed_identity_discards_old_news_and_forces_refresh(self):
+  from company_news import main
+  now=dt.datetime.now(dt.timezone.utc).isoformat()
+  with tempfile.TemporaryDirectory() as folder:
+   p=Path(folder)
+   (p/'cf_universum.json').write_text(json.dumps({'kandidaten':[{'ticker':'RR.L','name':'New Company plc','currency':'GBP'}]}))
+   (p/'cf_company_news.json').write_text(json.dumps({'schema':1,'stocks':{'RR.L':{'inputFingerprint':'previous-company','successAt':now,'items':[{'title':'OLD COMPANY','publishedAt':now}],'fallbackAttemptAt':now}}}))
+   with patch.dict(os.environ,{'RISK_DATA_DIR':folder,'ROIC_API_KEY':'test'}),patch('google_company_news.collect',return_value={'rows':[],'rawArticleCount':0,'rejectedCandidates':0}),patch('yahoo_company_news.collect',side_effect=ValueError('yahoo_issuer_name_mismatch')) as yahoo:
+    main();yahoo.assert_called_once()
+   result=json.loads((p/'cf_company_news.json').read_text(encoding='utf8'))
+   self.assertEqual(result['stocks']['RR.L']['items'],[])
+   audit=json.loads((p/'cf_news_identity_audit.json').read_text(encoding='utf8'))
+   self.assertEqual(audit['rows'][0]['state'],'rejected')
 if __name__=='__main__':unittest.main()
 

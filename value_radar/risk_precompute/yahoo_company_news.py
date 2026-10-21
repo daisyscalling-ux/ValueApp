@@ -5,6 +5,20 @@ import re
 import subprocess
 import sys
 import unicodedata
+from pathlib import Path
+
+ERROR_CODES={'yahoo_issuer_name_mismatch','yahoo_currency_mismatch',
+ 'yahoo_security_type_mismatch','yahoo_symbol_mismatch','unsupported_yahoo_symbol',
+ 'yahoo_news_schema','yahoo_timeout','yahoo_dependency_missing','yahoo_rate_limited',
+ 'yahoo_provider_failure','yahoo_child_failure'}
+
+def error_code(exc):
+    # Only fixed codes may leave the isolated process, never provider messages.
+    if isinstance(exc,subprocess.TimeoutExpired):return 'yahoo_timeout'
+    if isinstance(exc,ImportError):return 'yahoo_dependency_missing'
+    if type(exc).__name__=='YFRateLimitError':return 'yahoo_rate_limited'
+    if isinstance(exc,ValueError) and str(exc) in ERROR_CODES:return str(exc)
+    return 'yahoo_provider_failure'
 
 def name_key(value):
     value=unicodedata.normalize('NFKD',str(value or '')).casefold()
@@ -16,12 +30,19 @@ def currency(value):
 def verify_profile(row,info):
     expected=name_key(row.get('name_full') or row.get('name'))
     names={name_key(info.get('longName')),name_key(info.get('shortName'))}-{''}
-    if not expected or expected not in names:raise ValueError('yahoo_issuer_name_mismatch')
+    alias=False
+    if expected and expected not in names:
+        # Explicit observed provider-name pairs, bound to listing and ROIC ISIN.
+        # No general suffix stripping or fuzzy matching of unrelated companies.
+        aliases=json.loads(Path(__file__).with_name('yahoo-news-name-aliases.json').read_text(encoding='utf-8-sig'))
+        alias=any(a['symbol']==row.get('listing_symbol') and a['isin']==row.get('isin')
+                  and name_key(a['expected'])==expected and name_key(a['yahooLong']) in names for a in aliases)
+    if not expected or (expected not in names and not alias):raise ValueError('yahoo_issuer_name_mismatch')
     if not row.get('currency') or currency(info.get('currency'))!=currency(row['currency']):raise ValueError('yahoo_currency_mismatch')
     if info.get('quoteType')!='EQUITY':raise ValueError('yahoo_security_type_mismatch')
     symbol=str(row.get('ticker') or '')
     if not symbol or str(info.get('symbol') or '').upper()!=symbol.upper():raise ValueError('yahoo_symbol_mismatch')
-    return {'symbol':symbol,'name':info.get('longName') or info.get('shortName'),'currency':info.get('currency'),'quoteType':'EQUITY'}
+    return {'symbol':symbol,'name':info.get('longName') or info.get('shortName'),'currency':info.get('currency'),'quoteType':'EQUITY','nameMatch':'reviewed_provider_alias' if alias else 'exact'}
 
 def convert_news(items):
     if not isinstance(items,list):raise ValueError('yahoo_news_schema')
@@ -48,8 +69,11 @@ def collect(row,timeout=18):
     # yfinance may hang beyond its own timeouts. Kill the isolated child on expiry.
     result=subprocess.run([sys.executable,__file__,'--child'],input=json.dumps(row),text=True,
                           capture_output=True,timeout=timeout,encoding='utf8')
-    if result.returncode:raise ValueError('yahoo_unavailable_or_identity_rejected')
-    data=json.loads(result.stdout)
+    try:data=json.loads(result.stdout)
+    except (ValueError,TypeError):raise ValueError('yahoo_child_failure') from None
+    if result.returncode:
+        code=data.get('error') if isinstance(data,dict) else None
+        raise ValueError(code if code in ERROR_CODES else 'yahoo_child_failure')
     if not isinstance(data,dict) or not isinstance(data.get('rows'),list):raise ValueError('yahoo_news_schema')
     return data
 
@@ -57,6 +81,8 @@ if __name__=='__main__':
     try:
         row=json.loads(sys.stdin.read())
         print(json.dumps(collect_child(row),ensure_ascii=True))
-    except Exception:
+    except Exception as exc:
         # Do not copy provider output, URLs or credentials into the public archive.
+        print(json.dumps({'error':error_code(exc)}))
         sys.exit(1)
+

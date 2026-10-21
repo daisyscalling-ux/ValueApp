@@ -77,7 +77,7 @@ def main():
   ident=identifier(rows[0]) if len(rows)==1 else None
   if not ident:
    old=archive['stocks'].get(symbol,{})
-   archive['stocks'][symbol]=old if len(rows)==1 and old.get('source') in ['Yahoo Finance','Google News · Suchindex'] else {'identifier':None,'items':[],'successAt':None,'error':'unique_company_identifier_missing'}
+   archive['stocks'][symbol]=old if len(rows)==1 and old and not old.get('identifier') else {'identifier':None,'items':[],'successAt':None,'error':'unique_company_identifier_missing'}
    continue
   old=archive['stocks'].get(symbol,{})
   if old.get('identifier')!=ident:old={};archive['stocks'][symbol]=old

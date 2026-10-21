@@ -8,6 +8,10 @@ on:
     paths:
       - 'value_radar/risk_precompute/**'
       - '.github/workflows/daily-risk.yml'
+      - 'value_radar/listing_reference.py'
+      - 'value_radar/reviewed_listing_reference.json'
+      - 'value_radar/peer_metadata.py'
+      - 'value_radar/export_cf.py'
 
 concurrency:
   group: daily-risk
@@ -101,6 +105,7 @@ jobs:
             value_radar/daten/cf_risk_queue.json
             value_radar/daten/cf_company_news.json
             value_radar/daten/cf_news_identity_audit.json
+            value_radar/daten/cf_news_supply_plan.json
           retention-days: 90
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -110,7 +115,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json; do
+          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

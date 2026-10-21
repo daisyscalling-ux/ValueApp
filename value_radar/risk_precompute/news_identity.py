@@ -47,6 +47,7 @@ def valid_isin(value):
 def class_conflict(row,info):
     name=str(row.get('name_full') or row.get('name') or '')
     expected=re.search(r'\bclass\s+([A-Z0-9]+)\b',name,re.I)
+    if row.get('share_class'):expected=re.match(r'(\w+)',str(row['share_class']))
     if not expected:return False
     for field in ['longName','shortName']:
         actual=str(info.get(field) or '')
@@ -65,6 +66,7 @@ def auto_name_match(row,info):
 
 def identity_fingerprint(row):
     fields=['ticker','listing_symbol','exchange','isin','currency','name_full','name','_newsNameCollision','_newsIdentityBlocked']
+    if row.get('share_class'):fields.append('share_class')
     return hashlib.sha256(json.dumps({k:row.get(k) for k in fields},sort_keys=True).encode()).hexdigest()
 
 def prepare_universe(rows):
@@ -75,7 +77,7 @@ def prepare_universe(rows):
         listings[str(row.get('listing_symbol') or row.get('ticker') or '').upper()].append(row)
     for row in rows:
         ticker=str(row.get('ticker','')).upper();listing=str(row.get('listing_symbol') or row.get('ticker') or '').upper()
-        row['_newsIdentityBlocked']=not ticker or len(tickers[ticker])>1 or len(listings[listing])>1
+        row['_newsIdentityBlocked']=not ticker or len(tickers[ticker])>1 or len(listings[listing])>1 or row.get('listing_reference_status') in ['expired','input_mismatch']
         row['_newsNameCollision']=any(len(names[n])>1 for n in canonical_names(row.get('name_full') or row.get('name')))
     return {'rows':len(rows),'ambiguousListingRows':sum(bool(r['_newsIdentityBlocked']) for r in rows),
             'canonicalCollisionRows':sum(bool(r['_newsNameCollision']) for r in rows),
@@ -93,6 +95,7 @@ def audit_rows(rows,archive):
         result.append({'symbol':symbol,'name':row.get('name_full') or row.get('name'),
           'state':state,'reason':old.get('fallbackError'),'method':evidence.get('nameMatch'),
           'lastAttemptAt':old.get('fallbackAttemptAt'),'ambiguousListing':bool(row.get('_newsIdentityBlocked')),
-          'nameCollision':bool(row.get('_newsNameCollision')),'validIsinChecksum':valid_isin(row.get('isin'))})
+          'nameCollision':bool(row.get('_newsNameCollision')),'validIsinChecksum':valid_isin(row.get('isin')),
+          'listingReference':row.get('listing_reference_status'),'referenceSources':row.get('listing_reference_sources',[])})
     return result
 

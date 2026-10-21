@@ -35,6 +35,7 @@ AUSGABE = Path(os.getenv("EXPORT_PFAD", "daten/cf_universum.json"))
 # Nur die Felder, die der Cloudflare-Scanner + die Einzelanalyse nutzen.
 from peer_metadata import FIELDS as PEER_FIELDS, coverage
 from listing_identity import listing_matches
+from listing_reference import apply_reference
 
 EXPORT_FELDER = (
     "ticker", "name", "composite", "fair_value", "upside", "quantum",
@@ -114,6 +115,10 @@ def main() -> int:
         schlank = {k: row.get(k) for k in EXPORT_FELDER if k in row}
         # Falls score_ticker den Ticker anders benennt, sicherstellen
         schlank["ticker"] = row.get("ticker") or ticker
+        schlank = apply_reference(schlank)
+        if schlank.get('listing_reference_status') in ('expired','input_mismatch'):
+            identity_rejected.append({'ticker':ticker,'rejected_listing':schlank.get('listing_symbol'),'reason':schlank['listing_reference_status']})
+            continue
         ergebnisse.append(schlank)
 
         if (i + 1) % 50 == 0:

@@ -154,6 +154,53 @@
     "expected": "Powszechny Zaklad Ubezpieczen Spolka Akcyjna",
     "yahooLong": "Powszechny Zaklad Ubezpieczen SA",
     "isin": "PLPZU0000011"
+  },
+  {
+    "symbol": "HEL:ELISA",
+    "expected": "Elisa Oyj Class A",
+    "yahooLong": "Elisa Oyj",
+    "isin": "FI0009007884",
+    "source": "https://view.news.eu.nasdaq.com/view?id=bf91fe0e2c589cd1253fcb31ad368f694&lang=en&src=micro",
+    "reviewed_at": "2026-10-21"
+  },
+  {
+    "symbol": "MIL:REC",
+    "expected": "Recordati S.p.A.",
+    "yahooLong": "Recordati Industria Chimica e Farmaceutica S.p.A.",
+    "isin": "IT0003828271",
+    "source": "https://www.borsaitaliana.it/borsa/azioni/dati-completi.html?isin=IT0003828271&lang=it",
+    "reviewed_at": "2026-10-21"
+  },
+  {
+    "symbol": "SIX:UHR",
+    "expected": "Swatch Group Ltd. Bearer",
+    "yahooLong": "The Swatch Group AG",
+    "isin": "CH0012255151",
+    "source": "https://www.swatchgroup.com/en/investors-space",
+    "reviewed_at": "2026-10-21"
+  },
+  {
+    "symbol": "BME:IDR",
+    "expected": "Indra Sistemas, S.A. Class A",
+    "yahooLong": "Indra Sistemas, S.A.",
+    "isin": "ES0118594417",
+    "source": "https://www.indracompany.com/sites/default/files/buy_back_programme_completion_10-11_march.pdf",
+    "reviewed_at": "2026-10-21"
+  },
+  {
+    "symbol": "XETR:P911",
+    "expected": "Porsche AG",
+    "yahooLong": "Dr. Ing. h.c. F. Porsche AG",
+    "isin": "DE000PAG9113",
+    "source": "https://live.deutsche-boerse.com/equity/porsche-ag-vz/news",
+    "reviewed_at": "2026-10-21"
+  },
+  {
+    "symbol": "VIE:VER",
+    "expected": "VERBUND AG Class A",
+    "yahooLong": "VERBUND AG",
+    "isin": "AT0000746409",
+    "source": "https://www.wienerborse.at/aktien-prime-market/verbund-ag-kat-a-AT0000746409/historische-daten/",
+    "reviewed_at": "2026-10-21"
   }
 ]
-

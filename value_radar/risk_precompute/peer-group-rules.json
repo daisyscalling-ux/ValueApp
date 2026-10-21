@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "aliases": {
+    "major banks": "major banks",
+    "banks - diversified": "major banks",
+    "regional banks": "regional banks",
+    "banks - regional": "regional banks",
+    "investment managers": "investment managers",
+    "asset management": "investment managers",
+    "investment banks/brokers": "investment banks/brokers",
+    "capital markets": "investment banks/brokers",
+    "pharmaceuticals: major": "pharmaceuticals: major",
+    "drug manufacturers - general": "pharmaceuticals: major",
+    "aerospace & defense": "aerospace & defense",
+    "chemicals: specialty": "chemicals: specialty",
+    "specialty chemicals": "chemicals: specialty",
+    "industrial machinery": "industrial machinery",
+    "specialty industrial machinery": "industrial machinery",
+    "household/personal care": "household/personal care",
+    "household & personal products": "household/personal care",
+    "trucks/construction/farm machinery": "trucks/construction/farm machinery",
+    "farm & heavy construction machinery": "trucks/construction/farm machinery",
+    "electrical products": "electrical products",
+    "electrical equipment & parts": "electrical products",
+    "engineering & construction": "engineering & construction",
+    "telecommunications equipment": "telecommunications equipment",
+    "communication equipment": "telecommunications equipment",
+    "homebuilding": "homebuilding",
+    "residential construction": "homebuilding",
+    "building products": "building products",
+    "building products & equipment": "building products",
+    "water utilities": "water utilities",
+    "utilities - regulated water": "water utilities",
+    "pulp & paper": "pulp & paper",
+    "paper & paper products": "pulp & paper",
+    "other metals/minerals": "other metals/minerals",
+    "other industrial metals & mining": "other metals/minerals"
+  },
+  "reviewed": [
+    {
+      "isins": [
+        "US5951121038"
+      ],
+      "names": [
+        "microntechnologyinc"
+      ],
+      "group": "memory",
+      "label": "Speicherhalbleiter",
+      "source": "https://www.micron.com/about/company",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "KR7000660001"
+      ],
+      "names": [
+        "skhynixinc"
+      ],
+      "group": "memory",
+      "label": "Speicherhalbleiter",
+      "source": "https://www.skhynix.com/company/UI-FR-CP02/",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "JP3236330001"
+      ],
+      "names": [
+        "kioxiaholdingscorporation"
+      ],
+      "group": "memory",
+      "label": "Speicherhalbleiter",
+      "source": "https://www.kioxia.com/en-jp/about.html",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "NL0010273215"
+      ],
+      "names": [
+        "asmlholdingnv"
+      ],
+      "group": "lithography",
+      "label": "Lithografieausrüstung",
+      "source": "https://www.asml.com/company/about-asml",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US4824801009"
+      ],
+      "names": [
+        "klacorporation"
+      ],
+      "group": "process-control",
+      "label": "Halbleiter-Prozesskontrolle",
+      "source": "https://ir.kla.com/company-information",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "TW0002330008"
+      ],
+      "names": [
+        "taiwansemiconductormanufacturingcoltd"
+      ],
+      "group": "foundry",
+      "label": "Halbleiter-Auftragsfertigung",
+      "source": "https://www.tsmc.com/english/dedicatedFoundry",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US1273871087"
+      ],
+      "names": [
+        "cadencedesignsystemsinc"
+      ],
+      "group": "eda",
+      "label": "Chipdesign-Software und IP",
+      "source": "https://login.cadence.com/content/cadence-www/global/ko_KR/home/explore/what-is-electronic-design-automation.html",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US8716071076"
+      ],
+      "names": [
+        "synopsysinc"
+      ],
+      "group": "eda",
+      "label": "Chipdesign-Software und IP",
+      "source": "https://www.synopsys.com/company.html",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US64110L1061"
+      ],
+      "names": [
+        "netflixinc"
+      ],
+      "group": "video-streaming",
+      "label": "Video-Streaming und Unterhaltung",
+      "source": "https://about.netflix.com/en",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US29444U7000"
+      ],
+      "names": [
+        "equinixinc"
+      ],
+      "group": "data-centers",
+      "label": "Rechenzentren",
+      "source": "https://www.equinix.com/data-centers",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US2538681030"
+      ],
+      "names": [
+        "digitalrealtytrustinc"
+      ],
+      "group": "data-centers",
+      "label": "Rechenzentren",
+      "source": "https://www.digitalrealty.com/about",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    },
+    {
+      "isins": [
+        "US74340W1036"
+      ],
+      "names": [
+        "prologisinc"
+      ],
+      "group": "logistics-property",
+      "label": "Logistikimmobilien",
+      "source": "https://www.prologis.com/logistics-real-estate",
+      "reviewedAt": "2026-10-21",
+      "validUntil": "2027-04-21"
+    }
+  ]
+}

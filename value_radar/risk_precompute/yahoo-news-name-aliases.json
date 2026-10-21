@@ -1,0 +1,93 @@
+[
+  {
+    "symbol": "EURONEXT:AI",
+    "expected": "Air Liquide SA",
+    "yahooLong": "L'Air Liquide S.A.",
+    "isin": "FR0000120073"
+  },
+  {
+    "symbol": "SIX:ZURN",
+    "expected": "Zurich Insurance Group Ltd",
+    "yahooLong": "Zurich Insurance Group AG",
+    "isin": "CH0011075394"
+  },
+  {
+    "symbol": "XETR:MUV2",
+    "expected": "Munchener Ruckversicherungs-Gesellschaft AG",
+    "yahooLong": "Münchener Rückversicherungs-Gesellschaft Aktiengesellschaft in München",
+    "isin": "DE0008430026"
+  },
+  {
+    "symbol": "EURONEXT:GLE",
+    "expected": "Societe Generale SA Class A",
+    "yahooLong": "Société Générale Société anonyme",
+    "isin": "FR0000130809"
+  },
+  {
+    "symbol": "XETR:DB1",
+    "expected": "Deutsche Boerse AG",
+    "yahooLong": "Deutsche Börse AG",
+    "isin": "DE0005810055"
+  },
+  {
+    "symbol": "XETR:BAYN",
+    "expected": "Bayer AG",
+    "yahooLong": "Bayer Aktiengesellschaft",
+    "isin": "DE000BAY0017"
+  },
+  {
+    "symbol": "EURONEXT:EL",
+    "expected": "EssilorLuxottica SA",
+    "yahooLong": "EssilorLuxottica Société anonyme",
+    "isin": "FR0000121667"
+  },
+  {
+    "symbol": "EURONEXT:PRX",
+    "expected": "Prosus N.V. Class N",
+    "yahooLong": "Prosus N.V.",
+    "isin": "NL0013654783"
+  },
+  {
+    "symbol": "XETR:RWE",
+    "expected": "RWE AG",
+    "yahooLong": "RWE Aktiengesellschaft",
+    "isin": "DE0007037129"
+  },
+  {
+    "symbol": "SIX:HOLN",
+    "expected": "Holcim Ltd",
+    "yahooLong": "Holcim AG",
+    "isin": "CH0012214059"
+  },
+  {
+    "symbol": "SIX:SDZ",
+    "expected": "Sandoz Group Ltd",
+    "yahooLong": "Sandoz Group AG",
+    "isin": "CH1243598427"
+  },
+  {
+    "symbol": "EURONEXT:ABN",
+    "expected": "ABN AMRO Bank N.V. Depositary receipts",
+    "yahooLong": "ABN AMRO Bank N.V.",
+    "isin": "NL0011540547"
+  },
+  {
+    "symbol": "GPW:PKO",
+    "expected": "PKO Bank Polski SA",
+    "yahooLong": "Powszechna Kasa Oszczednosci Bank Polski Spólka Akcyjna",
+    "isin": "PLPKO0000016"
+  },
+  {
+    "symbol": "EURONEXT:ML",
+    "expected": "Cie Generale des Etablissements Michelin SA",
+    "yahooLong": "Compagnie Générale des Établissements Michelin Société en commandite par actions",
+    "isin": "FR001400AJ45"
+  },
+  {
+    "symbol": "HEL:KNEBV",
+    "expected": "KONE Oyj Class B",
+    "yahooLong": "KONE Oyj",
+    "isin": "FI0009013403"
+  }
+]
+

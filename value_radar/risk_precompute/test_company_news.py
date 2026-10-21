@@ -1,5 +1,8 @@
 import datetime as dt
 import unittest
+import json,os,tempfile
+from pathlib import Path
+from unittest.mock import patch
 from company_news import normalize,identifier
 NOW=dt.datetime(2026,10,20,12,tzinfo=dt.timezone.utc)
 class NewsTests(unittest.TestCase):
@@ -19,4 +22,16 @@ class NewsTests(unittest.TestCase):
   self.assertIsNone(identifier({'ticker':'C'}))
   self.assertEqual(identifier({'cik':831001}),'0000831001')
   self.assertEqual(identifier({'isin':'US1729674242'}),'US1729674242')
+ def test_cached_google_news_without_roic_id_survives_next_run(self):
+  from company_news import main
+  now=dt.datetime.now(dt.timezone.utc).isoformat()
+  with tempfile.TemporaryDirectory() as folder:
+   p=Path(folder)
+   (p/'cf_universum.json').write_text(json.dumps({'kandidaten':[{'ticker':'RR.L','name':'Rolls-Royce Holdings plc'}]}))
+   (p/'cf_company_news.json').write_text(json.dumps({'schema':1,'stocks':{'RR.L':{'source':'Google News · Suchindex','successAt':now,'items':[{'publishedAt':now,'title':'Rolls-Royce Holdings plc update'}]}}}),encoding='utf8')
+   with patch.dict(os.environ,{'RISK_DATA_DIR':folder,'ROIC_API_KEY':'test'}),patch('google_company_news.collect') as google,patch('yahoo_company_news.collect') as yahoo:
+    main();google.assert_not_called();yahoo.assert_not_called()
+   result=json.loads((p/'cf_company_news.json').read_text(encoding='utf8'))
+   self.assertEqual(len(result['stocks']['RR.L']['items']),1)
 if __name__=='__main__':unittest.main()
+

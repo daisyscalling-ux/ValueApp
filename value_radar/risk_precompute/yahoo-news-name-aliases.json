@@ -88,6 +88,72 @@
     "expected": "KONE Oyj Class B",
     "yahooLong": "KONE Oyj",
     "isin": "FI0009013403"
+  },
+  {
+    "symbol": "GPW:PKN",
+    "expected": "ORLEN Spolka Akcyjna",
+    "yahooLong": "Orlen S.A.",
+    "isin": "PLPKN0000018"
+  },
+  {
+    "symbol": "XETR:BMW",
+    "expected": "Bayerische Motoren Werke AG",
+    "yahooLong": "Bayerische Motoren Werke Aktiengesellschaft",
+    "isin": "DE0005190003"
+  },
+  {
+    "symbol": "XETR:HNR1",
+    "expected": "Hannover Rueck SE",
+    "yahooLong": "Hannover Rück SE",
+    "isin": "DE0008402215"
+  },
+  {
+    "symbol": "MIL:FBK",
+    "expected": "FinecoBank SpA",
+    "yahooLong": "FinecoBank Banca Fineco S.p.A.",
+    "isin": "IT0000072170"
+  },
+  {
+    "symbol": "SIX:LISP",
+    "expected": "Chocoladefabriken Lindt & Spruengli AG",
+    "yahooLong": "Chocoladefabriken Lindt & Sprüngli AG",
+    "isin": "CH0010570759"
+  },
+  {
+    "symbol": "SIX:SCHP",
+    "expected": "Schindler Holding Ltd.",
+    "yahooLong": "Schindler Holding AG",
+    "isin": "CH0024638212"
+  },
+  {
+    "symbol": "HEL:METSO",
+    "expected": "Metso Corporation",
+    "yahooLong": "Metso Oyj",
+    "isin": "FI0009014575"
+  },
+  {
+    "symbol": "LSE:SGE",
+    "expected": "Sage Group plc",
+    "yahooLong": "The Sage Group plc",
+    "isin": "GB00B8C3BL03"
+  },
+  {
+    "symbol": "EURONEXT:URW",
+    "expected": "Unibail-Rodamco-Westfield SE Stapled Secs Cons of 1 Sh Unibail Rodamco + 1 Sh WFD Unib Rod",
+    "yahooLong": "Unibail-Rodamco-Westfield SE",
+    "isin": "FR0013326246"
+  },
+  {
+    "symbol": "EURONEXT:GALP",
+    "expected": "Galp Energia, SGPS S.A. Class B",
+    "yahooLong": "Galp Energia, SGPS, S.A.",
+    "isin": "PTGAL0AM0009"
+  },
+  {
+    "symbol": "GPW:PZU",
+    "expected": "Powszechny Zaklad Ubezpieczen Spolka Akcyjna",
+    "yahooLong": "Powszechny Zaklad Ubezpieczen SA",
+    "isin": "PLPZU0000011"
   }
 ]
 

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 import subprocess
 from yahoo_company_news import verify_profile,convert_news,collect,error_code,alias_revision,corrected_alias_retry
+from news_identity import POLICY_VERSION
 
 class YahooNewsTests(unittest.TestCase):
  def setUp(self):
@@ -35,7 +36,7 @@ class YahooNewsTests(unittest.TestCase):
   row={'name':'Bayerische Motoren Werke AG','listing_symbol':'XETR:BMW','isin':'DE0005190003'}
   old={'fallbackError':'yahoo_issuer_name_mismatch'}
   self.assertTrue(corrected_alias_retry(row,old))
-  self.assertFalse(corrected_alias_retry(row,{**old,'fallbackAliasRevision':alias_revision(row)}))
-  self.assertFalse(corrected_alias_retry({**row,'isin':'wrong'},old))
+  self.assertFalse(corrected_alias_retry(row,{**old,'fallbackAliasRevision':alias_revision(row),'fallbackIdentityPolicy':POLICY_VERSION}))
+  self.assertFalse(corrected_alias_retry({**row,'isin':'wrong'},{**old,'fallbackIdentityPolicy':POLICY_VERSION}))
 if __name__=='__main__':unittest.main()
 

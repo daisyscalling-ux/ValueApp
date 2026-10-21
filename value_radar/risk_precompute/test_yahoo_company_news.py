@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 import subprocess
-from yahoo_company_news import verify_profile,convert_news,collect,error_code
+from yahoo_company_news import verify_profile,convert_news,collect,error_code,alias_revision,corrected_alias_retry
 
 class YahooNewsTests(unittest.TestCase):
  def setUp(self):
@@ -31,5 +31,11 @@ class YahooNewsTests(unittest.TestCase):
   self.assertEqual(verify_profile(row,info)['nameMatch'],'reviewed_provider_alias')
   for changes in [{'isin':'wrong'},{'listing_symbol':'OTHER:AI'},{'currency':'USD'},{'ticker':'AI'}]:
    with self.assertRaises(ValueError):verify_profile({**row,**changes},info)
+ def test_alias_correction_retries_once_not_every_run(self):
+  row={'name':'Bayerische Motoren Werke AG','listing_symbol':'XETR:BMW','isin':'DE0005190003'}
+  old={'fallbackError':'yahoo_issuer_name_mismatch'}
+  self.assertTrue(corrected_alias_retry(row,old))
+  self.assertFalse(corrected_alias_retry(row,{**old,'fallbackAliasRevision':alias_revision(row)}))
+  self.assertFalse(corrected_alias_retry({**row,'isin':'wrong'},old))
 if __name__=='__main__':unittest.main()
 

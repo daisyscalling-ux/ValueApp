@@ -1,6 +1,7 @@
 """Isolated, time-bounded Yahoo news fallback with exact issuer checks."""
 import datetime as dt
 import json
+import hashlib
 import re
 import subprocess
 import sys
@@ -27,6 +28,17 @@ def name_key(value):
 def currency(value):
     return 'GBP' if value in ['GBp','GBX'] else value
 
+def alias_entries():
+    return json.loads(Path(__file__).with_name('yahoo-news-name-aliases.json').read_text(encoding='utf-8-sig'))
+
+def alias_revision(row):
+    entries=[a for a in alias_entries() if a['symbol']==row.get('listing_symbol') and a['isin']==row.get('isin') and name_key(a['expected'])==name_key(row.get('name_full') or row.get('name'))]
+    return hashlib.sha256(json.dumps(entries,sort_keys=True).encode()).hexdigest() if entries else None
+
+def corrected_alias_retry(row,old):
+    revision=alias_revision(row)
+    return bool(revision and old.get('fallbackError') in ['ValueError','yahoo_issuer_name_mismatch'] and old.get('fallbackAliasRevision')!=revision)
+
 def verify_profile(row,info):
     expected=name_key(row.get('name_full') or row.get('name'))
     names={name_key(info.get('longName')),name_key(info.get('shortName'))}-{''}
@@ -34,7 +46,7 @@ def verify_profile(row,info):
     if expected and expected not in names:
         # Explicit observed provider-name pairs, bound to listing and ROIC ISIN.
         # No general suffix stripping or fuzzy matching of unrelated companies.
-        aliases=json.loads(Path(__file__).with_name('yahoo-news-name-aliases.json').read_text(encoding='utf-8-sig'))
+        aliases=alias_entries()
         alias=any(a['symbol']==row.get('listing_symbol') and a['isin']==row.get('isin')
                   and name_key(a['expected'])==expected and name_key(a['yahooLong']) in names for a in aliases)
     if not expected or (expected not in names and not alias):raise ValueError('yahoo_issuer_name_mismatch')

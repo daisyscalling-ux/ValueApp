@@ -27,11 +27,12 @@ class NewsTests(unittest.TestCase):
   now=dt.datetime.now(dt.timezone.utc).isoformat()
   with tempfile.TemporaryDirectory() as folder:
    p=Path(folder)
-   (p/'cf_universum.json').write_text(json.dumps({'kandidaten':[{'ticker':'RR.L','name':'Rolls-Royce Holdings plc'}]}))
-   (p/'cf_company_news.json').write_text(json.dumps({'schema':1,'stocks':{'RR.L':{'source':'Google News · Suchindex','successAt':now,'items':[{'publishedAt':now,'title':'Rolls-Royce Holdings plc update'}]}}}),encoding='utf8')
+   (p/'cf_universum.json').write_text(json.dumps({'kandidaten':[{'ticker':'RR.L','name':'Rolls-Royce Holdings plc'},{'ticker':'TEST','name':'Test Company'}]}))
+   (p/'cf_company_news.json').write_text(json.dumps({'schema':1,'stocks':{'RR.L':{'source':'Google News · Suchindex','successAt':now,'items':[{'publishedAt':now,'title':'Rolls-Royce Holdings plc update'}]},'TEST':{'identifier':None,'items':[],'successAt':None,'fallbackAttemptAt':now,'googleAttemptAt':now,'googleError':'HTTPError'}}}),encoding='utf8')
    with patch.dict(os.environ,{'RISK_DATA_DIR':folder,'ROIC_API_KEY':'test'}),patch('google_company_news.collect') as google,patch('yahoo_company_news.collect') as yahoo:
     main();google.assert_not_called();yahoo.assert_not_called()
    result=json.loads((p/'cf_company_news.json').read_text(encoding='utf8'))
    self.assertEqual(len(result['stocks']['RR.L']['items']),1)
+   self.assertEqual(result['stocks']['TEST']['googleAttemptAt'],now)
 if __name__=='__main__':unittest.main()
 

@@ -227,7 +227,7 @@
       "_newsNameCollision": false,
       "_newsIdentityBlocked": false
     },
-    "expectedResult": "yahoo_issuer_name_mismatch"
+    "expectedResult": "reviewed_provider_alias"
   },
   {
     "symbol": "CPH:RILBA",

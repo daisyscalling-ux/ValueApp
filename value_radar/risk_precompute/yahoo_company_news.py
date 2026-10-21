@@ -7,11 +7,12 @@ import subprocess
 import sys
 import unicodedata
 from pathlib import Path
+from news_identity import POLICY_VERSION,auto_name_match,class_conflict,identity_fingerprint
 
 ERROR_CODES={'yahoo_issuer_name_mismatch','yahoo_currency_mismatch',
  'yahoo_security_type_mismatch','yahoo_symbol_mismatch','unsupported_yahoo_symbol',
  'yahoo_news_schema','yahoo_timeout','yahoo_dependency_missing','yahoo_rate_limited',
- 'yahoo_provider_failure','yahoo_child_failure'}
+ 'yahoo_provider_failure','yahoo_child_failure','yahoo_share_class_conflict','yahoo_ambiguous_listing'}
 
 def error_code(exc):
     # Only fixed codes may leave the isolated process, never provider messages.
@@ -37,9 +38,18 @@ def alias_revision(row):
 
 def corrected_alias_retry(row,old):
     revision=alias_revision(row)
-    return bool(revision and old.get('fallbackError') in ['ValueError','yahoo_issuer_name_mismatch'] and old.get('fallbackAliasRevision')!=revision)
+    error=old.get('fallbackError')
+    policy_changed=old.get('fallbackIdentityPolicy')!=POLICY_VERSION
+    return bool(error in ['ValueError','yahoo_issuer_name_mismatch'] and
+                ((revision and old.get('fallbackAliasRevision')!=revision) or policy_changed))
 
 def verify_profile(row,info):
+    if row.get('_newsIdentityBlocked'):raise ValueError('yahoo_ambiguous_listing')
+    if class_conflict(row,info):raise ValueError('yahoo_share_class_conflict')
+    if not row.get('currency') or currency(info.get('currency'))!=currency(row['currency']):raise ValueError('yahoo_currency_mismatch')
+    if info.get('quoteType')!='EQUITY':raise ValueError('yahoo_security_type_mismatch')
+    symbol=str(row.get('ticker') or '')
+    if not symbol or str(info.get('symbol') or '').upper()!=symbol.upper():raise ValueError('yahoo_symbol_mismatch')
     expected=name_key(row.get('name_full') or row.get('name'))
     names={name_key(info.get('longName')),name_key(info.get('shortName'))}-{''}
     alias=False
@@ -49,12 +59,11 @@ def verify_profile(row,info):
         aliases=alias_entries()
         alias=any(a['symbol']==row.get('listing_symbol') and a['isin']==row.get('isin')
                   and name_key(a['expected'])==expected and name_key(a['yahooLong']) in names for a in aliases)
-    if not expected or (expected not in names and not alias):raise ValueError('yahoo_issuer_name_mismatch')
-    if not row.get('currency') or currency(info.get('currency'))!=currency(row['currency']):raise ValueError('yahoo_currency_mismatch')
-    if info.get('quoteType')!='EQUITY':raise ValueError('yahoo_security_type_mismatch')
-    symbol=str(row.get('ticker') or '')
-    if not symbol or str(info.get('symbol') or '').upper()!=symbol.upper():raise ValueError('yahoo_symbol_mismatch')
-    return {'symbol':symbol,'name':info.get('longName') or info.get('shortName'),'currency':info.get('currency'),'quoteType':'EQUITY','nameMatch':'reviewed_provider_alias' if alias else 'exact'}
+    automatic=expected not in names and not alias and auto_name_match(row,info)
+    if not expected or (expected not in names and not alias and not automatic):raise ValueError('yahoo_issuer_name_mismatch')
+    return {'symbol':symbol,'name':info.get('longName') or info.get('shortName'),'currency':info.get('currency'),'quoteType':'EQUITY',
+            'nameMatch':'reviewed_provider_alias' if alias else 'normalized_legal_name' if automatic else 'exact',
+            'policyVersion':POLICY_VERSION,'inputFingerprint':identity_fingerprint(row)}
 
 def convert_news(items):
     if not isinstance(items,list):raise ValueError('yahoo_news_schema')

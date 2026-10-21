@@ -84,6 +84,8 @@ def main():
   groups.setdefault(ident,[]).append(symbol)
  def last_attempt(pair):
   return min((stamp(archive['stocks'].get(s,{}).get('attemptedAt')) or dt.datetime.min.replace(tzinfo=UTC)) for s in pair[1])
+ from google_company_news import clean_cached
+ removed_non_articles=clean_cached(archive,symbol_rows)
  attempted=0;stop='complete';next_request=0
  for ident,symbols in sorted(groups.items(),key=last_attempt):
   if time.monotonic()>deadline:stop='budget';break
@@ -108,23 +110,27 @@ def main():
   if attempted%20==0:save(path,archive)
   if code in [401,402,403,429]:stop='provider_'+str(code);break
  fallback_attempted=0;fallback_recovered=0
- from yahoo_company_news import collect as yahoo_collect,error_code
+ from yahoo_company_news import collect as yahoo_collect,error_code,alias_revision,corrected_alias_retry
  def needs_fallback(symbol):
   old=archive['stocks'].get(symbol,{})
   success=stamp(old.get('successAt'))
   recent_items=[i for i in old.get('items',[]) if stamp(i.get('publishedAt')) and dt.timedelta(0)<=now-stamp(i['publishedAt'])<=dt.timedelta(days=7)]
   return not recent_items or not success or not dt.timedelta(0)<=now-success<=dt.timedelta(hours=36)
- candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and needs_fallback(s)]
- candidates.sort(key=lambda s:stamp(archive['stocks'].get(s,{}).get('fallbackAttemptAt')) or dt.datetime.min.replace(tzinfo=UTC))
+ def corrected(s):return corrected_alias_retry(symbol_rows[s][0],archive['stocks'].get(s,{}))
+ candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and (needs_fallback(s) or corrected(s))]
+ candidates.sort(key=lambda s:(not corrected(s),stamp(archive['stocks'].get(s,{}).get('fallbackAttemptAt')) or dt.datetime.min.replace(tzinfo=UTC)))
  for symbol in candidates:
   if time.monotonic()+19>deadline or fallback_attempted>=100:break
   old=archive['stocks'].get(symbol,{})
   last=stamp(old.get('fallbackAttemptAt'))
-  if last and dt.timedelta(0)<=now-last<dt.timedelta(hours=20):continue
+  if last and dt.timedelta(0)<=now-last<dt.timedelta(hours=20) and not corrected(symbol):continue
   at=dt.datetime.now(UTC).isoformat();old['fallbackAttemptAt']=at;fallback_attempted+=1
+  old['fallbackAliasRevision']=alias_revision(symbol_rows[symbol][0])
   try:
    result=yahoo_collect(symbol_rows[symbol][0]);data=normalize(result['rows'],dt.datetime.now(UTC))
-   old.update(data,successAt=at,source='Yahoo Finance',identityEvidence=result['evidence'],error=None,fallbackError=None)
+   old.update(identityEvidence=result['evidence'],fallbackError=None)
+   if data['items'] or not old.get('items'):
+    old.update(data,successAt=at,source='Yahoo Finance',error=None)
    fallback_recovered+=bool(data['items'])
   except Exception as e:old['fallbackError']=error_code(e)
   archive['stocks'][symbol]=old
@@ -154,7 +160,7 @@ def main():
  archive['stocks']={s:v for s,v in archive['stocks'].items() if s in symbol_rows}
  archive.update(generatedAt=dt.datetime.now(UTC).isoformat(),report={'attemptedCompanies':attempted,'uniqueIdentifiers':len(groups),'stop':stop,'fallbackAttempted':fallback_attempted,'fallbackRecoveredListings':fallback_recovered},
    limitations=['Latest 30 ROIC/Yahoo articles per query; Google RSS at most 100 candidates; seven-day lookback, not exhaustive.','Google is a search index; publication dates and company mentions are not independently confirmed.','Headline tags are unverified review candidates, not adverse-event findings.','Empty results, unsupported languages and fetch failures do not establish low risk.'])
- archive['report'].update(googleAttempted=google_attempted,googleRecoveredListings=google_recovered)
+ archive['report'].update(googleAttempted=google_attempted,googleRecoveredListings=google_recovered,googleRemovedNonArticles=removed_non_articles)
  save(path,archive);print(json.dumps(archive['report']))
  if stop in ['missing_api_key','provider_401','provider_402','provider_403']:raise SystemExit(1)
 

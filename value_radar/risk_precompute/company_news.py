@@ -129,10 +129,11 @@ def main():
  fallback_attempted=0;fallback_recovered=0
  from yahoo_company_news import collect as yahoo_collect,error_code,alias_revision,corrected_alias_retry
  def needs_fallback(symbol):
+  current=dt.datetime.now(UTC)
   old=archive['stocks'].get(symbol,{})
   success=stamp(old.get('successAt'))
-  recent_items=[i for i in old.get('items',[]) if stamp(i.get('publishedAt')) and dt.timedelta(0)<=now-stamp(i['publishedAt'])<=dt.timedelta(days=7)]
-  return not recent_items or not success or not dt.timedelta(0)<=now-success<=dt.timedelta(hours=36)
+  recent_items=[i for i in old.get('items',[]) if stamp(i.get('publishedAt')) and dt.timedelta(0)<=current-stamp(i['publishedAt'])<=dt.timedelta(days=7)]
+  return not recent_items or not success or not dt.timedelta(0)<=current-success<=dt.timedelta(hours=36)
  google_deadline=deadline-min(120,max(0,(deadline-time.monotonic())/3))
  # RSS is a search index: conservative full-name headline matching, no ticker guesses.
  from google_company_news import collect as google_collect

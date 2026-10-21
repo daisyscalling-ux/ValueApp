@@ -100,6 +100,7 @@ jobs:
             value_radar/daten/cf_risk_coverage.json
             value_radar/daten/cf_risk_queue.json
             value_radar/daten/cf_company_news.json
+            value_radar/daten/cf_news_identity_audit.json
           retention-days: 90
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -109,7 +110,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json; do
+          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi
@@ -121,3 +122,4 @@ jobs:
             sleep 5
           done
           exit 1
+

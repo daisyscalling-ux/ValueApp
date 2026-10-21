@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 import subprocess
-from yahoo_company_news import verify_profile,convert_news,collect
+from yahoo_company_news import verify_profile,convert_news,collect,error_code
 
 class YahooNewsTests(unittest.TestCase):
  def setUp(self):
@@ -20,4 +20,16 @@ class YahooNewsTests(unittest.TestCase):
    with self.assertRaises(subprocess.TimeoutExpired):collect(self.row)
   with patch('yahoo_company_news.subprocess.run',return_value=subprocess.CompletedProcess([],1,'','')):
    with self.assertRaises(ValueError):collect(self.row)
+ def test_error_codes_never_expose_provider_messages(self):
+  self.assertEqual(error_code(ValueError('secret=https://host?apikey=hidden')),'yahoo_provider_failure')
+  for code in ['yahoo_issuer_name_mismatch','yahoo_currency_mismatch','yahoo_rate_limited']:
+   with patch('yahoo_company_news.subprocess.run',return_value=subprocess.CompletedProcess([],1,'{"error":"'+code+'"}','')):
+    with self.assertRaisesRegex(ValueError,code):collect(self.row)
+ def test_alias_requires_listing_isin_and_other_checks(self):
+  row={'ticker':'AI.PA','name':'Air Liquide SA','listing_symbol':'EURONEXT:AI','isin':'FR0000120073','currency':'EUR'}
+  info={'symbol':'AI.PA','longName':"L'Air Liquide S.A.",'currency':'EUR','quoteType':'EQUITY'}
+  self.assertEqual(verify_profile(row,info)['nameMatch'],'reviewed_provider_alias')
+  for changes in [{'isin':'wrong'},{'listing_symbol':'OTHER:AI'},{'currency':'USD'},{'ticker':'AI'}]:
+   with self.assertRaises(ValueError):verify_profile({**row,**changes},info)
 if __name__=='__main__':unittest.main()
+

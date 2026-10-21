@@ -1,6 +1,6 @@
 """Peer metadata from already loaded profiles. No network requests."""
 import datetime as dt
-FIELDS=('industry','sub_industry','isin','cik','lei','exchange','listing_symbol','is_primary','primary_listing','security_type','country','currency','market_cap','metadata_source','metadata_asof','name_full')
+FIELDS=('industry','sub_industry','isin','cik','lei','exchange','listing_symbol','is_primary','primary_listing','security_type','country','currency','market_cap','metadata_source','metadata_asof','name_full','share_class','metadata_identity_issues','listing_reference_status','listing_reference_original','listing_reference_sources','listing_reference_reviewed_at')
 def metadata(profile, listing=None):
  p=profile or {}; l=listing or {}
  def get(*keys):
@@ -8,7 +8,9 @@ def metadata(profile, listing=None):
  primary=l.get('is_primary')
  if primary not in (True,False): primary=None
  return dict(industry=get('industry'),sub_industry=get('sub_industry','subIndustry'),
-  isin=get('isin') or l.get('isin'),cik=get('cik'),lei=get('lei'),
+  isin=l.get('isin') or get('isin'),cik=get('cik'),lei=get('lei'),
+  name_full=l.get('name') or l.get('company_name') or get('name','company_name'),
+  metadata_identity_issues=['profile_listing_isin_conflict'] if l.get('isin') and get('isin') and l['isin']!=get('isin') else [],
   exchange=l.get('exchange') or get('exchange'),listing_symbol=l.get('symbol') or get('symbol'),
   is_primary=primary,primary_listing=l.get('symbol') if primary is True else get('primary_listing','primaryListing'),
   security_type=get('security_type','securityType') or l.get('type'),
@@ -18,3 +20,4 @@ def export_metadata(f):
  return {**{k:f.get(k) for k in FIELDS},'name_full':f.get('name_full') or f.get('name')}
 def coverage(rows):
  return {key:sum(r.get(key) not in (None,'','Unknown') for r in rows) for key in ('industry','sub_industry','isin','cik','primary_listing','market_cap')}
+

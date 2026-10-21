@@ -9,6 +9,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
+from news_identity import POLICY_VERSION,prepare_universe,identity_fingerprint,audit_rows
 
 UTC=dt.timezone.utc
 BASE='https://api.roic.ai/v2/company/news/'
@@ -69,15 +71,22 @@ def main():
  archive=json.loads(path.read_text(encoding='utf8')) if path.exists() else {'schema':1,'stocks':{}}
  if archive.get('schema')!=1:raise ValueError('unsupported_archive')
  key=os.getenv('ROIC_API_KEY','');now=dt.datetime.now(UTC);deadline=time.monotonic()+min(25,max(1,float(os.getenv('NEWS_BUDGET_MIN','20'))))*60
+ identity_audit=prepare_universe(universe['kandidaten'])
  groups={};symbol_rows={}
  for row in universe['kandidaten']:
   symbol=str(row.get('listing_symbol') or row.get('ticker') or '').upper()
   if symbol:symbol_rows.setdefault(symbol,[]).append(row)
  for symbol,rows in symbol_rows.items():
+  if len(rows)==1:
+   fingerprint=identity_fingerprint(rows[0]);old=archive['stocks'].get(symbol,{})
+   if old.get('inputFingerprint') and old['inputFingerprint']!=fingerprint:
+    archive['stocks'][symbol]={'items':[],'successAt':None,'error':'identity_inputs_changed'}
+   archive['stocks'].setdefault(symbol,{})['inputFingerprint']=fingerprint
   ident=identifier(rows[0]) if len(rows)==1 else None
   if not ident:
    old=archive['stocks'].get(symbol,{})
-   archive['stocks'][symbol]=old if len(rows)==1 and old and not old.get('identifier') else {'identifier':None,'items':[],'successAt':None,'error':'unique_company_identifier_missing'}
+   defaults={'identifier':None,'items':[],'successAt':None,'error':'unique_company_identifier_missing'}
+   archive['stocks'][symbol]={**defaults,**old} if len(rows)==1 and old and not old.get('identifier') else defaults
    continue
   old=archive['stocks'].get(symbol,{})
   if old.get('identifier')!=ident:old={};archive['stocks'][symbol]=old
@@ -117,7 +126,7 @@ def main():
   recent_items=[i for i in old.get('items',[]) if stamp(i.get('publishedAt')) and dt.timedelta(0)<=now-stamp(i['publishedAt'])<=dt.timedelta(days=7)]
   return not recent_items or not success or not dt.timedelta(0)<=now-success<=dt.timedelta(hours=36)
  def corrected(s):return corrected_alias_retry(symbol_rows[s][0],archive['stocks'].get(s,{}))
- candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and (needs_fallback(s) or corrected(s))]
+ candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and not symbol_rows[s][0].get('_newsIdentityBlocked') and (needs_fallback(s) or corrected(s))]
  candidates.sort(key=lambda s:(not corrected(s),stamp(archive['stocks'].get(s,{}).get('fallbackAttemptAt')) or dt.datetime.min.replace(tzinfo=UTC)))
  for symbol in candidates:
   if time.monotonic()+19>deadline or fallback_attempted>=100:break
@@ -126,6 +135,7 @@ def main():
   if last and dt.timedelta(0)<=now-last<dt.timedelta(hours=20) and not corrected(symbol):continue
   at=dt.datetime.now(UTC).isoformat();old['fallbackAttemptAt']=at;fallback_attempted+=1
   old['fallbackAliasRevision']=alias_revision(symbol_rows[symbol][0])
+  old['fallbackIdentityPolicy']=POLICY_VERSION
   try:
    result=yahoo_collect(symbol_rows[symbol][0]);data=normalize(result['rows'],dt.datetime.now(UTC))
    old.update(identityEvidence=result['evidence'],fallbackError=None)
@@ -138,7 +148,7 @@ def main():
  # RSS is a search index: conservative full-name headline matching, no ticker guesses.
  from google_company_news import collect as google_collect
  google_attempted=0;google_recovered=0
- candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and needs_fallback(s)]
+ candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and not symbol_rows[s][0].get('_newsIdentityBlocked') and needs_fallback(s)]
  candidates.sort(key=lambda s:stamp(archive['stocks'].get(s,{}).get('googleAttemptAt')) or dt.datetime.min.replace(tzinfo=UTC))
  for symbol in candidates:
   if time.monotonic()+12>deadline or google_attempted>=50:break
@@ -158,9 +168,19 @@ def main():
   archive['stocks'][symbol]=old
   if google_attempted%10==0:save(path,archive)
  archive['stocks']={s:v for s,v in archive['stocks'].items() if s in symbol_rows}
+ for s,rows in symbol_rows.items():
+  if len(rows)==1 and s in archive['stocks']:archive['stocks'][s]['inputFingerprint']=identity_fingerprint(rows[0])
+ identity_audit['yahooErrors']=dict(Counter(v.get('fallbackError') for v in archive['stocks'].values() if v.get('fallbackError')))
+ identity_audit['acceptedNameMethods']=dict(Counter(v['identityEvidence'].get('nameMatch','unknown') for v in archive['stocks'].values() if v.get('identityEvidence')))
  archive.update(generatedAt=dt.datetime.now(UTC).isoformat(),report={'attemptedCompanies':attempted,'uniqueIdentifiers':len(groups),'stop':stop,'fallbackAttempted':fallback_attempted,'fallbackRecoveredListings':fallback_recovered},
    limitations=['Latest 30 ROIC/Yahoo articles per query; Google RSS at most 100 candidates; seven-day lookback, not exhaustive.','Google is a search index; publication dates and company mentions are not independently confirmed.','Headline tags are unverified review candidates, not adverse-event findings.','Empty results, unsupported languages and fetch failures do not establish low risk.'])
  archive['report'].update(googleAttempted=google_attempted,googleRecoveredListings=google_recovered,googleRemovedNonArticles=removed_non_articles)
+ archive['report']['identityAudit']=identity_audit
+ save(folder/'cf_news_identity_audit.json',{'schema':1,'generatedAt':archive['generatedAt'],
+      'summary':identity_audit,'rows':audit_rows(universe['kandidaten'],archive),
+      'limitations':['News-provider name checks only; not independent security-master verification.',
+                     'Name collisions can also be legitimate multiple share classes or listings.',
+                     'Checks of old cached profiles are explicitly marked legacy_check.']})
  save(path,archive);print(json.dumps(archive['report']))
  if stop in ['missing_api_key','provider_401','provider_402','provider_403']:raise SystemExit(1)
 

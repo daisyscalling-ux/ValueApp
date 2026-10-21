@@ -7,6 +7,36 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+FILTER_VERSION=2
+
+def headline_rejection(title,name,publisher=''):
+    if ' '+' '.join(words(name))+' ' not in ' '+' '.join(words(title))+' ':return 'company_name_missing'
+    # Navigation, quote/profile pages and discussions are not dated news stories.
+    patterns=(r'options? chain|stock price|stock forecast|stock quote|bond price|market cap|'
+      r'research\s*&\s*ratings|analyst insights|analyst ratings, estimates|price targets.*recommendations|'
+      r'forum (?:&|and)|discussion|profile (?:&|and) facts|performance\s*&\s*quotes|'
+      r'technical analysis:|support, resistance|regulatory news\. live|news\s*\||'
+      r'analyst predictions|stock grades|common equity to total deposits|market is going to boom|'
+      r'tokenized|cryptocurrency|price today|latest stock news|news and headlines|institutional ownership 20\d\d')
+    if re.search(patterns,title,re.I) or 'tradingview' in publisher.casefold():return 'non_article_page'
+    # Company-only titles, optionally a ticker in parentheses, contain no event.
+    stripped=re.sub(r'\([^)]*\)',' ',title).replace('$','')
+    if words(stripped)==words(name):return 'company_only_title'
+    return None
+
+def clean_cached(archive,symbol_rows):
+    removed=0
+    for symbol,entry in archive.get('stocks',{}).items():
+        rows=symbol_rows.get(symbol,[])
+        if entry.get('source')!='Google News · Suchindex' or len(rows)!=1:continue
+        name=rows[0].get('name_full') or rows[0].get('name') or ''
+        items=entry.get('items',[])
+        kept=[i for i in items if not headline_rejection(i.get('title',''),name,i.get('publisher',''))]
+        removed+=len(items)-len(kept)
+        entry.update(items=kept,googleFilterVersion=FILTER_VERSION)
+        entry['googleRemovedNonArticles']=entry.get('googleRemovedNonArticles',0)+len(items)-len(kept)
+    return removed
+
 def words(value):
     value=unicodedata.normalize('NFKD',str(value or '')).casefold()
     value=''.join(c for c in value if not unicodedata.combining(c))
@@ -33,10 +63,7 @@ def parse_feed(raw,name,now):
         try:date=parsedate_to_datetime(item.findtext('pubDate') or '')
         except (ValueError,TypeError):date=None
         # Full supplied company name, word boundaries; no fuzzy ticker matching.
-        matched=needle in ' '+' '.join(words(headline))+' '
-        landing=re.search(r'stock price.*(?:quote|history)|stock forecast|analyst predictions|stock grades|stock quote|common equity to total deposits|market is going to boom|tokenized|price today|latest stock news|news and headlines',headline,re.I)
-        landing=landing or 'tradingview' in publisher.casefold()
-        if not matched or landing or not date or not date.tzinfo or not dt.timedelta(0)<=now-date<=dt.timedelta(days=7) or parts.scheme!='https' or parts.hostname!='news.google.com' or parts.username or not parts.path.startswith('/rss/articles/'):
+        if headline_rejection(headline,name,publisher) or not date or not date.tzinfo or not dt.timedelta(0)<=now-date<=dt.timedelta(days=7) or parts.scheme!='https' or parts.hostname!='news.google.com' or parts.username or not parts.path.startswith('/rss/articles/'):
             rejected+=1;continue
         rows.append({'title':headline,'article_url':link,'published_date':date.isoformat(),'site':publisher or 'Google News index'})
     return {'rows':rows,'rawArticleCount':len(items),'rejectedCandidates':rejected}

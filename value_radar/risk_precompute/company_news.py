@@ -77,7 +77,7 @@ def main():
   ident=identifier(rows[0]) if len(rows)==1 else None
   if not ident:
    old=archive['stocks'].get(symbol,{})
-   archive['stocks'][symbol]=old if len(rows)==1 and old.get('source')=='Yahoo Finance' else {'identifier':None,'items':[],'successAt':None,'error':'unique_company_identifier_missing'}
+   archive['stocks'][symbol]=old if len(rows)==1 and old.get('source') in ['Yahoo Finance','Google News · Suchindex'] else {'identifier':None,'items':[],'successAt':None,'error':'unique_company_identifier_missing'}
    continue
   old=archive['stocks'].get(symbol,{})
   if old.get('identifier')!=ident:old={};archive['stocks'][symbol]=old
@@ -102,13 +102,13 @@ def main():
    if data is not None:
     archive['stocks'][symbol]['roicResult']={'checkedAt':at,'rawArticleCount':data['rawArticleCount'],'acceptedArticles':len(data['items'])}
     # Do not erase a recent successful alternative with an empty primary response.
-    if data['items'] or old.get('source')!='Yahoo Finance' or not stamp(old.get('successAt')) or now-stamp(old['successAt'])>dt.timedelta(hours=36):
+    if data['items'] or old.get('source') not in ['Yahoo Finance','Google News · Suchindex'] or not stamp(old.get('successAt')) or now-stamp(old['successAt'])>dt.timedelta(hours=36):
      archive['stocks'][symbol].update(data,successAt=at,source='ROIC')
   attempted+=1
   if attempted%20==0:save(path,archive)
   if code in [401,402,403,429]:stop='provider_'+str(code);break
  fallback_attempted=0;fallback_recovered=0
- from yahoo_company_news import collect as yahoo_collect
+ from yahoo_company_news import collect as yahoo_collect,error_code
  def needs_fallback(symbol):
   old=archive['stocks'].get(symbol,{})
   success=stamp(old.get('successAt'))
@@ -126,13 +126,37 @@ def main():
    result=yahoo_collect(symbol_rows[symbol][0]);data=normalize(result['rows'],dt.datetime.now(UTC))
    old.update(data,successAt=at,source='Yahoo Finance',identityEvidence=result['evidence'],error=None,fallbackError=None)
    fallback_recovered+=bool(data['items'])
-  except Exception as e:old['fallbackError']=type(e).__name__
+  except Exception as e:old['fallbackError']=error_code(e)
   archive['stocks'][symbol]=old
   if fallback_attempted%10==0:save(path,archive)
+ # RSS is a search index: conservative full-name headline matching, no ticker guesses.
+ from google_company_news import collect as google_collect
+ google_attempted=0;google_recovered=0
+ candidates=[s for s in symbol_rows if len(symbol_rows[s])==1 and needs_fallback(s)]
+ candidates.sort(key=lambda s:stamp(archive['stocks'].get(s,{}).get('googleAttemptAt')) or dt.datetime.min.replace(tzinfo=UTC))
+ for symbol in candidates:
+  if time.monotonic()+12>deadline or google_attempted>=50:break
+  old=archive['stocks'].get(symbol,{})
+  last=stamp(old.get('googleAttemptAt'))
+  if last and dt.timedelta(0)<=now-last<dt.timedelta(hours=20):continue
+  at=dt.datetime.now(UTC).isoformat();old['googleAttemptAt']=at;google_attempted+=1
+  try:
+   result=google_collect(symbol_rows[symbol][0],dt.datetime.now(UTC));data=normalize(result['rows'],dt.datetime.now(UTC))
+   old['googleResult']={'checkedAt':at,'rawArticleCount':result['rawArticleCount'],'acceptedArticles':len(data['items']),'rejectedCandidates':result['rejectedCandidates']}
+   old['googleError']=None
+   if data['items']:
+    old.update(data,successAt=at,source='Google News · Suchindex',error=None)
+    google_recovered+=1
+  except urllib.error.HTTPError as e:old['googleError']='http_'+str(e.code)
+  except Exception as e:old['googleError']=type(e).__name__
+  archive['stocks'][symbol]=old
+  if google_attempted%10==0:save(path,archive)
  archive['stocks']={s:v for s,v in archive['stocks'].items() if s in symbol_rows}
  archive.update(generatedAt=dt.datetime.now(UTC).isoformat(),report={'attemptedCompanies':attempted,'uniqueIdentifiers':len(groups),'stop':stop,'fallbackAttempted':fallback_attempted,'fallbackRecoveredListings':fallback_recovered},
-   limitations=['Latest 30 articles per query, seven-day lookback; not an exhaustive news archive.','Headline tags are unverified review candidates, not adverse-event findings.','Empty results, unsupported languages and fetch failures do not establish low risk.'])
+   limitations=['Latest 30 ROIC/Yahoo articles per query; Google RSS at most 100 candidates; seven-day lookback, not exhaustive.','Google is a search index; publication dates and company mentions are not independently confirmed.','Headline tags are unverified review candidates, not adverse-event findings.','Empty results, unsupported languages and fetch failures do not establish low risk.'])
+ archive['report'].update(googleAttempted=google_attempted,googleRecoveredListings=google_recovered)
  save(path,archive);print(json.dumps(archive['report']))
  if stop in ['missing_api_key','provider_401','provider_402','provider_403']:raise SystemExit(1)
 
 if __name__=='__main__':main()
+

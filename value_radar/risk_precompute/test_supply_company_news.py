@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
-import tempfile,os
+import tempfile,os,time
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from listing_reference import apply_reference
@@ -52,7 +52,10 @@ class SupplyTests(unittest.TestCase):
    p=Path(folder)
    (p/'cf_universum.json').write_text(json.dumps({'kandidaten':[{'ticker':'TEST','name':'Test Company'}]}))
    article={'title':'Test Company raises outlook','article_url':'https://news.google.com/rss/articles/example','published_date':now,'site':'Publisher'}
-   with patch.dict(os.environ,{'RISK_DATA_DIR':folder,'ROIC_API_KEY':'test'}),patch('google_company_news.collect',return_value={'rows':[article],'rawArticleCount':1,'rejectedCandidates':0}) as google,patch('yahoo_company_news.collect') as yahoo:
+   def delayed_google(row, observed_at):
+    time.sleep(.02)
+    return {'rows':[article],'rawArticleCount':1,'rejectedCandidates':0}
+   with patch.dict(os.environ,{'RISK_DATA_DIR':folder,'ROIC_API_KEY':'test'}),patch('google_company_news.collect',side_effect=delayed_google) as google,patch('yahoo_company_news.collect') as yahoo:
     main();google.assert_called_once();yahoo.assert_not_called()
    result=json.loads((p/'cf_company_news.json').read_text(encoding='utf8'))
    self.assertEqual(result['report']['googleRecoveredListings'],1)

@@ -1,0 +1,6 @@
+[
+ {"listing_symbol":"HEL:ORNBV","ticker":"ORNBV.HE","currency":"EUR","isin":"FI0009014377","issuer_name":"Orion Oyj","share_class":"B","accepted_input_isins":["FI0009014369","FI0009014377"],"accepted_input_names":["Orion Oyj Class A","Orion Oyj Class B","Orion Oyj"],"reviewed_at":"2026-10-21","review_until":"2027-04-21","sources":["https://attachment.news.eu.nasdaq.com/a2b9b44b33b69ce0a09b31146c317ec56"]},
+ {"listing_symbol":"HEL:KESKOB","ticker":"KESKOB.HE","currency":"EUR","isin":"FI0009000202","issuer_name":"Kesko Oyj","share_class":"B","accepted_input_isins":["FI0009007900","FI0009000202"],"accepted_input_names":["Kesko Oyj Class A","Kesko Oyj Class B","Kesko Oyj"],"reviewed_at":"2026-10-21","review_until":"2027-04-21","sources":["https://www.kesko.fi/en/investor/share-information/"]},
+ {"listing_symbol":"HEL:STERV","ticker":"STERV.HE","currency":"EUR","isin":"FI0009005961","issuer_name":"Stora Enso Oyj","share_class":"R","accepted_input_isins":["FI0009005953","FI0009005961"],"accepted_input_names":["Stora Enso Oyj Class A","Stora Enso Oyj Class R","Stora Enso Oyj"],"reviewed_at":"2026-10-21","review_until":"2027-04-21","sources":["https://www.storaenso.com/en/investors/shares-and-shareholders","https://view.news.eu.nasdaq.com/view?id=b296c3dc1f33278cb70402faf127b1eb7&lang=en"]}
+]
+

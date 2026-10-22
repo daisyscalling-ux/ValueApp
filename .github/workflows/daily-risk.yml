@@ -41,6 +41,8 @@ jobs:
           node /tmp/test-universe.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-context.mjs
           node /tmp/test-context.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-sector.ts --bundle --platform=node --format=esm --outfile=/tmp/test-sector.mjs
+          node /tmp/test-sector.mjs
   risk:
     needs: tests
     if: github.event_name != 'pull_request' 
@@ -74,6 +76,11 @@ jobs:
           path: .risk-validation-cache.json
           key: risk-validation-v1-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: risk-validation-v1-
+      - uses: actions/cache/restore@v4
+        with:
+          path: .risk-sector-series.json
+          key: risk-sector-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: risk-sector-v1-
       - name: Exportprogramm bauen
         run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-risk.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-export.mjs
       - name: Historische Berechnung testen
@@ -85,6 +92,7 @@ jobs:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           RISK_BUDGET_MIN: '90'
           RISK_VALIDATION_ENABLED: '1'
+          RISK_SECTOR_ENABLED: '1'
           RISK_REQUESTS_PER_MINUTE: '240'
         run: node /tmp/risk-export.mjs
       - name: Unternehmensnachrichten universumsweit erfassen
@@ -94,12 +102,22 @@ jobs:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           NEWS_BUDGET_MIN: '20'
         run: python value_radar/risk_precompute/company_news.py
-      - name: Abdeckung nach dem Lauf neu pruefen
-        if: always() && !cancelled()
-        run: node /tmp/risk-audit.mjs
       - name: Vergleichsgruppen nach Geschaeftsmodell und Emittent vorbereiten
         if: always() && !cancelled()
         run: python value_radar/risk_precompute/peer_groups.py
+      - name: Zeitgleiche Branchenvergleiche berechnen
+        if: always() && !cancelled()
+        run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-sector.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-sector.mjs
+          node /tmp/risk-sector.mjs
+      - uses: actions/cache/save@v4
+        if: always() && !cancelled() && hashFiles('.risk-sector-series.json') != ''
+        with:
+          path: .risk-sector-series.json
+          key: risk-sector-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Abdeckung nach dem Lauf neu pruefen
+        if: always() && !cancelled()
+        run: node /tmp/risk-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -111,6 +129,7 @@ jobs:
             value_radar/daten/cf_news_identity_audit.json
             value_radar/daten/cf_news_supply_plan.json
             value_radar/daten/cf_peer_groups.json
+            value_radar/daten/cf_sector_context.json
           retention-days: 90
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -120,7 +139,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json; do
+          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi
@@ -132,6 +151,7 @@ jobs:
             sleep 5
           done
           exit 1
+
 
 
 

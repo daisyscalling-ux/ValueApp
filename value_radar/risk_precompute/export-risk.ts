@@ -8,6 +8,7 @@ import {benchmarkHistory,marketProxy,MARKET_COUNTRIES} from './worker/risk-bench
 import {validYahooBenchmark} from './yahoo-benchmark-check';
 import {resolveRiskListing} from './worker/risk-listing';
 import {compactHistory,historyStatistics,RISK_SCHEMA} from './src/lib/risk-statistics';
+import {compactSectorSeries,sectorSeriesFresh} from './sector-comparison';
 const read=(file:string)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return null}};
 export async function exportRisk(options:any={}){
  const env=options.env||process.env,fetcher=options.fetcher||fetch,clock=options.clock||Date.now;
@@ -19,8 +20,12 @@ export async function exportRisk(options:any={}){
  const validationEnabled=env.RISK_VALIDATION_ENABLED==='1',studyPath=env.RISK_VALIDATION_STATE||'.risk-validation-cache.json',studyOutput=env.RISK_VALIDATION_OUTPUT||'value_radar/daten/cf_risk_validation.json';
  const oldStudy=validationEnabled?read(studyPath):null,study:any=oldStudy?.schema===VALIDATION_VERSION?oldStudy:{schema:VALIDATION_VERSION,series:{}};
  const previous=read(output),data:any=previous?.schema===RISK_SCHEMA?previous:{schema:RISK_SCHEMA,stocks:{},benchmarks:{}};
+ const sectorEnabled=env.RISK_SECTOR_ENABLED==='1',sectorPath=env.RISK_SECTOR_STATE||'.risk-sector-series.json';
+ const oldSector=sectorEnabled?read(sectorPath):null,sector:any=oldSector?.schema===1?oldSector:{schema:1,series:{}};
+ sector.series=sector.series||{};
  data.attempts=data.attempts||{};data.retryState=data.retryState||{};data.aliases=data.aliases||{};data.listings=data.listings||{};
  const inputs=[...new Set<string>(universe.kandidaten.map((r:any)=>String(r.listing_symbol||r.ticker||'').trim().toUpperCase()).filter((s:string)=>/^[A-Z0-9._:-]{1,100}$/.test(s)))];
+ if(sectorEnabled){const active=new Set(inputs);for(const s of Object.keys(sector.series))if(!active.has(s))delete sector.series[s]}
  const queue=read(env.RISK_QUEUE_PATH||'value_radar/daten/cf_risk_queue.json');
  const validQueue=queue?.schema===1&&clock()-Date.parse(queue.generatedAt)>=0&&clock()-Date.parse(queue.generatedAt)<7*86400000;
  const priority=new Map<string,number>((validQueue&&Array.isArray(queue.jobs)?queue.jobs:[]).filter((j:any)=>j.kind==='history'&&j.state==='queued').map((j:any,i:number)=>[j.symbol,i]));
@@ -28,7 +33,7 @@ export async function exportRisk(options:any={}){
  const sleep=options.sleep||((ms:number)=>new Promise(r=>setTimeout(r,ms)));
  const started=clock(),deadline=started+budget*60000;const rpm=Number(env.RISK_REQUESTS_PER_MINUTE||240);if(!Number.isFinite(rpm)||rpm<20||rpm>240)throw Error('Ungültiges Aufruflimit.');let last=0,spacing=60000/rpm,blockedUntil=0,requests=0,aborted=false,historyDenied=0;let preferredYears:2|5=5;
  const report:any={attempted:0,updated:0,failed:0,skippedFresh:0,skippedCooldown:0,universe:inputs.length,errors:[],failureReasons:{},rateLimitEvents:0,retries:0,benchmarkFallbacks:0,benchmarkWarnings:[],validation:{enabled:validationEnabled,eligible:0,excluded:0,metadataMissing:0},budgetReached:false};
- const save=()=>{data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output);if(validationEnabled){fs.mkdirSync(path.dirname(studyPath),{recursive:true});fs.writeFileSync(studyPath+'.tmp',JSON.stringify(study));fs.renameSync(studyPath+'.tmp',studyPath);const allowed=new Set(inputs),active=Object.fromEntries(Object.entries(study.series).filter(([,v]:any)=>allowed.has(v.inputSymbol)&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<7*86400000));const audit:any=validationReport(active,clock());audit.universeSize=inputs.length;audit.refresh={...report.validation};fs.mkdirSync(path.dirname(studyOutput),{recursive:true});fs.writeFileSync(studyOutput+'.tmp',JSON.stringify(audit));fs.renameSync(studyOutput+'.tmp',studyOutput)}};
+ const save=()=>{if(sectorEnabled){sector.generatedAt=new Date(clock()).toISOString();fs.mkdirSync(path.dirname(sectorPath),{recursive:true});fs.writeFileSync(sectorPath+'.tmp',JSON.stringify(sector));fs.renameSync(sectorPath+'.tmp',sectorPath)}data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output);if(validationEnabled){fs.mkdirSync(path.dirname(studyPath),{recursive:true});fs.writeFileSync(studyPath+'.tmp',JSON.stringify(study));fs.renameSync(studyPath+'.tmp',studyPath);const allowed=new Set(inputs),active=Object.fromEntries(Object.entries(study.series).filter(([,v]:any)=>allowed.has(v.inputSymbol)&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<7*86400000));const audit:any=validationReport(active,clock());audit.universeSize=inputs.length;audit.refresh={...report.validation};fs.mkdirSync(path.dirname(studyOutput),{recursive:true});fs.writeFileSync(studyOutput+'.tmp',JSON.stringify(audit));fs.renameSync(studyOutput+'.tmp',studyOutput)}};
  const paced:typeof fetch=async(url,opts)=>{
   if(clock()>deadline)throw Error('Zeitbudget erreicht.');
   const wait=Math.max(0,spacing-(clock()-last));if(wait)await sleep(wait);
@@ -53,7 +58,7 @@ export async function exportRisk(options:any={}){
  for(const inputSymbol of inputs){
   if(clock()>deadline||blockedUntil>=deadline||aborted){report.budgetReached=clock()>deadline||blockedUntil>=deadline;break}
   processed++;if(!retryDue(data.retryState[inputSymbol],clock())){report.skippedCooldown++;continue}data.attempts[inputSymbol]=new Date(clock()).toISOString();
-  if(!validationEnabled&&fresh(data.stocks[inputSymbol])){report.skippedFresh++;continue}
+  if(!validationEnabled&&fresh(data.stocks[inputSymbol])&&(!sectorEnabled||sectorSeriesFresh(sector.series[inputSymbol],clock()))){report.skippedFresh++;continue}
   report.attempted++;
   try{const cached=data.listings[inputSymbol];let listing:any=cached&&clock()-Date.parse(cached.at)>=0&&clock()-Date.parse(cached.at)<7*86400000?cached.value:null;
    if(!inputSymbol.includes(':')&&!listing)listing=await retry(()=>resolveRiskListing(inputSymbol,env.ROIC_API_KEY,paced));
@@ -62,8 +67,8 @@ export async function exportRisk(options:any={}){
    if(listing){if(cached?.value!==listing)data.listings[inputSymbol]={at:new Date(clock()).toISOString(),value:listing};data.aliases[inputSymbol]=symbol;}
    const eligible=validationEnabled&&listing?.is_primary===true&&listing.type==='stock'&&Array.isArray(listing.type_specifications)&&listing.type_specifications.includes('common')&&!listing.type_specifications.includes('preferred');
    if(validationEnabled){if(eligible)report.validation.eligible++;else{report.validation.excluded++;if(listing)delete study.series[symbol]}}
-   if(fresh(data.stocks[symbol])&&(!eligible||study.series[symbol]?.version===VALIDATION_VERSION&&fresh(study.series[symbol]))){if(eligible&&study.series[symbol])study.series[symbol].inputSymbol=inputSymbol;report.skippedFresh++;continue}
-   const h=await retry(()=>riskHistory(symbol,env.ROIC_API_KEY,paced,clock(),preferredYears));preferredYears=h.requestedYears;historyDenied=0;data.stocks[symbol]=accept(h);delete data.retryState[inputSymbol];report.updated++;if(eligible)study.series[symbol]={version:VALIDATION_VERSION,schema:RISK_SCHEMA,inputSymbol,retrievedAt:h.retrievedAt,observations:validateHistory(h,clock())};
+   if(fresh(data.stocks[symbol])&&(!sectorEnabled||sectorSeriesFresh(sector.series[symbol],clock()))&&(!eligible||study.series[symbol]?.version===VALIDATION_VERSION&&fresh(study.series[symbol]))){if(eligible&&study.series[symbol])study.series[symbol].inputSymbol=inputSymbol;report.skippedFresh++;continue}
+   const h=await retry(()=>riskHistory(symbol,env.ROIC_API_KEY,paced,clock(),preferredYears));preferredYears=h.requestedYears;historyDenied=0;data.stocks[symbol]=accept(h);if(sectorEnabled){try{sector.series[symbol]=compactSectorSeries(h,clock())}catch{delete sector.series[symbol];report.sectorSeriesRejected=(report.sectorSeriesRejected||0)+1}}delete data.retryState[inputSymbol];report.updated++;if(eligible)study.series[symbol]={version:VALIDATION_VERSION,schema:RISK_SCHEMA,inputSymbol,retrievedAt:h.retrievedAt,observations:validateHistory(h,clock())};
   }catch(e){failure(inputSymbol,e)}
   if(processed%25===0){save();console.log('Risiko: '+processed+'/'+inputs.length+' geprüft; '+report.updated+' aktualisiert; '+report.failed+' fehlgeschlagen.')}
  }
@@ -72,3 +77,4 @@ export async function exportRisk(options:any={}){
  return {ok:!aborted&&(report.updated>0||report.skippedFresh>0||report.skippedCooldown>0),report:data.report};
 }
 if(process.env.RISK_EXPORT_LIBRARY!=='1'&&process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){exportRisk().then(r=>{if(!r.ok)process.exitCode=1}).catch(()=>{console.error('Risikoexport abgebrochen: Eingabe, Konfiguration oder Dateizugriff prüfen.');process.exitCode=1})}
+

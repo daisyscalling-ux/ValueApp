@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from listing_reference import apply_reference
 from news_identity import valid_isin
+from yahoo_sector import identity as supplemental_identity, recent
 
 HERE = Path(__file__).resolve().parent
 UTC = dt.timezone.utc
@@ -60,7 +61,7 @@ def classify(row, rules, now):
             'level':'industry_context','source':row.get('metadata_source'),
             'reason':'broad_industry_requires_business_model_review'}
 
-def build(universe, now=None, rules=None):
+def build(universe, now=None, rules=None, supplemental=None):
     now = now or dt.datetime.now(UTC)
     rules = rules or json.loads((HERE/'peer-group-rules.json').read_text(encoding='utf8'))
     rows = [apply_reference(dict(r), now.date()) for r in universe.get('kandidaten', [])]
@@ -106,9 +107,27 @@ def build(universe, now=None, rules=None):
                      str(r.get('security_type')).lower() in {'dr','adr'},symbol(r)))
         ids = sorted(symbol(r) for r in members)
         classifications = [classify(r,rules,now) for r in members]
+        # Propagate a verified provider classification only within an already
+        # identified issuer, never by a similar company name or broad sector.
+        provider=[]
+        for r in members:
+            p=(supplemental or {}).get('profiles',{}).get(symbol(r),{})
+            if (p.get('source')=='Yahoo Finance' and p.get('inputIdentity')==supplemental_identity(original[symbol(r)])
+                and recent(p.get('retrievedAt'),now,30) and p.get('sectorKey') and p.get('industryKey')
+                and p.get('evidence',{}).get('symbol')==r.get('ticker')):
+                provider.append(p)
+        provider_conflict=len({(p['sectorKey'],p['industryKey']) for p in provider})>1
+        if provider and not provider_conflict and all(c.get('level')=='industry_context' for c in classifications):
+            p=sorted(provider,key=lambda v:v['retrievedAt'],reverse=True)[0]
+            classification={'state':'classified','group':'yahoo:'+p['sectorKey']+':'+p['industryKey'],
+                'label':p.get('industryLabel') or p['industryKey'],'level':'provider_subindustry',
+                'source':p['sourceUrl'],'observedAt':p['retrievedAt'],
+                'reason':'identity_checked_provider_industry_not_independently_verified'}
+            classifications=[classification for _ in members]
         ciks = {str(r['cik']).lstrip('0') for r in members if r.get('cik')}
         leis = {r['lei'] for r in members if r.get('lei')}
         reasons=[]
+        if provider_conflict: reasons.append('conflicting_provider_industries')
         if len(ciks)>1 or len(leis)>1: reasons.append('conflicting_issuer_identifiers')
         if any(c['state']!='classified' for c in classifications): reasons.append('classification_review')
         if len({c.get('group') for c in classifications}) != 1: reasons.append('conflicting_business_classifications')
@@ -149,7 +168,9 @@ def build(universe, now=None, rules=None):
 
 def main():
     folder=Path(os.environ.get('RISK_DATA_DIR',str(HERE.parent/'daten')))
-    result=build(json.loads((folder/'cf_universum.json').read_text(encoding='utf8')))
+    supplemental_path=folder/'cf_peer_metadata.json'
+    supplemental=json.loads(supplemental_path.read_text(encoding='utf8')) if supplemental_path.exists() else None
+    result=build(json.loads((folder/'cf_universum.json').read_text(encoding='utf8')),supplemental=supplemental)
     output=folder/'cf_peer_groups.json';temp=output.with_suffix('.tmp')
     temp.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8');temp.replace(output)
     print(json.dumps(result['summary']))

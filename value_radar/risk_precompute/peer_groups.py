@@ -64,6 +64,7 @@ def build(universe, now=None, rules=None):
     now = now or dt.datetime.now(UTC)
     rules = rules or json.loads((HERE/'peer-group-rules.json').read_text(encoding='utf8'))
     rows = [apply_reference(dict(r), now.date()) for r in universe.get('kandidaten', [])]
+    original = {symbol(r):r for r in universe.get('kandidaten', [])}
     counts = Counter(symbol(r) for r in rows)
     eligible, excluded = [], []
     for r in rows:
@@ -126,6 +127,7 @@ def build(universe, now=None, rules=None):
         peers=sorted((p for p in groups[item['classification']['group']] if p['id']!=item['id']),key=lambda p:p['representative'])
         for listing in item['listings']:
             listing_groups[listing]={'issuerId':item['id'],'group':item['classification']['group'],
+              'inputIdentity':{k:original[listing].get(k) for k in ['isin','currency','industry','sub_industry','name_full','security_type']},
               'level':item['classification']['level'],'peerIssuerCount':len(peers),
               'peerSymbols':[p['representative'] for p in peers],
               'state':'ready' if len(peers)>=5 else 'small_group',
@@ -152,4 +154,3 @@ def main():
     temp.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8');temp.replace(output)
     print(json.dumps(result['summary']))
 if __name__=='__main__':main()
-

@@ -81,14 +81,32 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
    if(!valid.length){const reason=sameCurrency.length?'history_or_identity_unavailable':'different_currency';excludedPeers[reason]=(excludedPeers[reason]||0)+1;continue}
    chosen.push({symbol:valid[0],id:issuer.id,history:all[valid[0]],country:sources.get(valid[0])?.country||null});
   }
-  const detail={...base,peerIssuers:chosen.length,eligibleGroupIssuers:issuerIds.size,excludedPeers,
+  let detail={...base,peerIssuers:chosen.length,eligibleGroupIssuers:issuerIds.size,excludedPeers,
     peerSymbols:chosen.map(p=>p.symbol).sort(),peerCountries:[...new Set(chosen.map(p=>p.country).filter(Boolean))].sort()};
   if(chosen.length<5){stocks[symbol]=excluded('fewer_than_five_same_currency_issuers',detail);continue}
-  const series=[all[symbol],...chosen.map(p=>p.history)],maps=series.map(h=>new Map<string,number>(h.points));
-  const dates=[...maps[0].keys()].filter(d=>maps.every(m=>m.has(d))).sort(),end=dates.at(-1);
-  if(!end||!fresh(end,now,7)){stocks[symbol]=excluded('no_fresh_common_trading_date',detail);continue}
+  // Select by calendar coverage only. One sparse venue must not invalidate every
+  // other issuer. No return, volatility or valuation enters this selection.
+  const own=new Map<string,number>(all[symbol].points),ownDates=[...own.keys()].sort();
+  const pool=chosen.map(p=>({...p,map:new Map<string,number>(p.history.points)}));
+  const end=[...ownDates].reverse().find(d=>fresh(d,now,7)&&pool.filter(p=>p.map.has(d)).length>=5);
+  if(!end){stocks[symbol]=excluded('no_fresh_common_trading_date',detail);continue}
+  let dates=ownDates.filter(d=>d<=end);
+  if(!metrics(own,dates,end)){stocks[symbol]=excluded('target_calendar_insufficient',detail);continue}
+  const ranked=pool.map(p=>({...p,overlap:dates.filter(d=>p.map.has(d)).length}))
+    .sort((a,b)=>b.overlap-a.overlap||a.symbol.localeCompare(b.symbol));
+  const accepted:typeof pool=[];
+  for(const p of ranked){
+   const common=dates.filter(d=>p.map.has(d));
+   if(!p.map.has(end)||!metrics(own,common,end)){
+    excludedPeers.incompatible_calendar=(excludedPeers.incompatible_calendar||0)+1;continue;
+   }
+   accepted.push(p);dates=common;
+  }
+  detail={...detail,peerIssuers:accepted.length,peerSymbols:accepted.map(p=>p.symbol).sort(),
+    peerCountries:[...new Set(accepted.map(p=>p.country).filter(Boolean))].sort()};
+  if(accepted.length<5){stocks[symbol]=excluded('insufficient_common_history',detail);continue}
+  const series=[all[symbol],...accepted.map(p=>p.history)],maps=[own,...accepted.map(p=>p.map)];
   const stats=maps.map(m=>metrics(m,dates,end));
-  if(stats.some(s=>s===null)){stocks[symbol]=excluded('insufficient_common_history',detail);continue}
   const target=stats[0]!,peers=stats.slice(1) as NonNullable<ReturnType<typeof metrics>>[];
   const comparisons:Row={};
   for(const label of ['oneMonth','threeMonths','sixMonths']){
@@ -101,7 +119,9 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
   const drawdown=measure('drawdown');
   stocks[symbol]={method:'aligned-cohort-v1',state:'available',reason:'same_currency_common_dates',...detail,inputIdentity:identity(r),
    groupLabel:candidates.find(i=>i.id===membership.issuerId)?.classification?.label||membership.group,
-   observationDate:end,window:{from:target.from,to:end,commonObservations:target.observations,weeklyObservations:target.weeklyObservations},
+   classificationSource:candidates.find(i=>i.id===membership.issuerId)?.classification?.source||null,
+   classificationObservedAt:candidates.find(i=>i.id===membership.issuerId)?.classification?.observedAt||null,
+   calendarSelection:'coverage-first-v1',observationDate:end,window:{from:target.from,to:end,commonObservations:target.observations,weeklyObservations:target.weeklyObservations},
    returns:comparisons,volatility:measure('volatility'),maxDrawdown:measure('maxDrawdown'),currentDrawdown:drawdown,
    drawdown:drawdown.value,medianDrawdown:drawdown.peerMedian,differencePercentagePoints:drawdown.differencePercentagePoints,
    sourceDates:{oldestRetrieval:series.map(h=>h.retrievedAt).sort()[0],groupGeneratedAt:groups.generatedAt},score:null,

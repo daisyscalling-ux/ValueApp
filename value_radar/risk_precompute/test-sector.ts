@@ -98,4 +98,19 @@ await exportRisk({env,fetcher,clock:()=>now,sleep:async()=>{}});
 check('migration fetches missing raw series despite fresh old summary',()=>{assert.equal(calls,1);const cache=JSON.parse(fs.readFileSync(sectorPath,'utf8'));assert.ok(cache.series['NYSE:T0'].points.length>=200);assert.ok(cache.series['NYSE:T0'].points.length<=400)});
 await exportRisk({env,fetcher,clock:()=>now,sleep:async()=>{}});
 check('fresh series cache avoids repeated provider calls',()=>assert.equal(calls,1));
+check('a sparse peer cannot invalidate five complete peers',()=>{
+ const f=fixture();f.cache.series['NYSE:T6'].points=f.cache.series['NYSE:T6'].points.filter((_:any,i:number)=>i%3!==0);
+ const r=calculate(f).stocks['NYSE:T0'];assert.equal(r.state,'available');assert.equal(r.peerIssuers,5);
+ assert.equal(r.excludedPeers.incompatible_calendar,1);assert.ok(!r.peerSymbols.includes('NYSE:T6'));
+});
+check('calendar selection independent of prices and input ordering',()=>{
+ const f=fixture();f.cache.series['NYSE:T6'].points=f.cache.series['NYSE:T6'].points.filter((_:any,i:number)=>i%3!==0);
+ const before=calculate(f).stocks['NYSE:T0'];f.groups.issuers.reverse();f.universe.kandidaten.reverse();
+ for(const h of Object.values(f.cache.series) as any[])h.points=h.points.map(([d,v]:any)=>[d,1/v]);
+ const after=calculate(f).stocks['NYSE:T0'];assert.deepEqual(after.peerSymbols,before.peerSymbols);assert.deepEqual(after.window,before.window);
+});
+check('calendar exclusion never lowers the minimum five peers',()=>{
+ const f=fixture();for(const s of ['NYSE:T5','NYSE:T6'])f.cache.series[s].points=f.cache.series[s].points.filter((_:any,i:number)=>i%3!==0);
+ const r=calculate(f).stocks['NYSE:T0'];assert.equal(r.state,'missing');assert.equal(r.peerIssuers,4);
+});
 console.log(passed+' sector comparison checks passed');

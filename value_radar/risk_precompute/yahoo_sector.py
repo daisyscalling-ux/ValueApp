@@ -23,7 +23,9 @@ VENUES={'NASDAQ':{'NMS','NGM','NCM'},'NYSE':{'NYQ'},'AMEX':{'ASE'},'NYSEAMERICAN
  'TSE':{'JPX','TYO'},'TYO':{'JPX','TYO'},'JPX':{'JPX','TYO'},'HKEX':{'HKG'},
  'EPA':{'PAR'},'AMS':{'AMS'},'EURONEXT':{'PAR','AMS','BRU','LIS','ISE'},'MIL':{'MIL'},
  'SIX':{'EBS','SWX'},'STO':{'STO'},'BME':{'MCE'},'OSL':{'OSL'},'HEL':{'HEL'},
- 'CPH':{'CPH'},'TSX':{'TOR'},'ASX':{'ASX'},'VIE':{'VIE'}}
+ 'CPH':{'CPH'},'TSX':{'TOR'},'ASX':{'ASX'},'VIE':{'VIE'},
+ # Yahoo profile.exchange and chart.exchangeName, verified 2026-10-24.
+ 'GPW':{'WSE'},'ATHEX':{'ATH'}}
 
 def identity(row): return {k:row.get(k) for k in FIELDS}
 def recent(value,now,days):

@@ -1,4 +1,5 @@
 """Exact ticker/venue identity. Search ranking is never identity evidence."""
+import re
 SUFFIXES={
  'DE':('XETR',),'F':('FRA',),'L':('LSE',),'IL':('LSE',),
  'PA':('EPA','EURONEXT'),'AS':('AMS','EURONEXT'),'BR':('EBR','EURONEXT'),
@@ -15,7 +16,13 @@ def listing_matches(ticker,listing):
  if q in ('BRK.A','BRK.B'):q=q.replace('.','-')
  if '.' in q:
   wanted,suffix=q.rsplit('.',1)
-  return ex in SUFFIXES.get(suffix,()) and base==wanted
+  if ex not in SUFFIXES.get(suffix,()):return False
+  # Market-specific notation only: preserve every share-class character.
+  if ex in ('STO','CPH','HEL'):
+   def class_key(v):return re.sub(r'[._ -]([A-Z])$',r'-\1',v)
+   return class_key(base)==class_key(wanted)
+  if ex=='LSE':return base.rstrip('.')==wanted.rstrip('.')
+  return base==wanted
  return ex in ('NASDAQ','NYSE','NYSEAMERICAN','AMEX','OTC') and base.replace('.','-')==q
 def select_listing(ticker,hits):
  eligible=[r for r in hits if listing_matches(ticker,r.get('symbol'))]
@@ -24,4 +31,5 @@ def select_listing(ticker,hits):
  best=eligible[0]
  if any(r.get('symbol')==best.get('symbol') and r.get('isin') and best.get('isin') and r['isin']!=best['isin'] for r in eligible):return None
  return best
+
 

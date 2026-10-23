@@ -1,7 +1,7 @@
 import copy
 import datetime as dt
 import unittest
-from yahoo_sector import profile, normalize_prices, run, identity
+from yahoo_sector import profile, normalize_prices, run, identity, merge_recovered_series
 from peer_groups import build
 
 NOW=dt.datetime(2026,10,22,12,tzinfo=dt.timezone.utc)
@@ -16,6 +16,17 @@ PRICES=[((NOW-dt.timedelta(days=i)).date().isoformat(),100+i/100) for i in range
 RULES={'aliases':{},'reviewed':[]}
 
 class YahooSectorTests(unittest.TestCase):
+ def test_recovery_keeps_observation_date_and_rejects_stale_changed_or_bad_series(self):
+  h=normalize_prices(ROW,META,PRICES,NOW);h['inputIdentity']=identity(ROW)
+  u={'kandidaten':[ROW]}
+  def merge(v):return merge_recovered_series(u,{}, {'schema':1,'series':{'NASDAQ:MSFT':v}},NOW)['series']
+  self.assertEqual(merge(h)['NASDAQ:MSFT'],h)
+  for change in [{'retrievedAt':(NOW-dt.timedelta(days=2)).isoformat()},{'inputIdentity':{}},{'currency':'EUR'},{'points':PRICES[-10:]},{'points':PRICES+[(PRICES[-1][0],-5)]}]:
+   self.assertEqual(merge({**h,**change}),{})
+  newer={**h,'retrievedAt':(NOW+dt.timedelta(minutes=5)).isoformat()}
+  cache={'schema':1,'series':{'NASDAQ:MSFT':newer}}
+  out=merge_recovered_series(u,cache,{'schema':1,'series':{'NASDAQ:MSFT':h}},NOW+dt.timedelta(minutes=10))
+  self.assertEqual(out['series']['NASDAQ:MSFT'],newer)
  def test_profile_exact_venue_and_identity(self):
   p=profile(ROW,INFO,now=NOW);self.assertEqual(p['industryKey'],'software-infrastructure')
   for change in [{'exchange':'NYQ'},{'currency':'EUR'},{'longName':'Other Company'},{'symbol':'OTHER'},{'quoteType':'ETF'}]:
@@ -95,4 +106,5 @@ class YahooSectorTests(unittest.TestCase):
   run({'kandidaten':[ROW]},a,{},NOW,lambda *_:self.fail('profile unnecessarily fetched'),metadata_only=True)
 
 if __name__=='__main__':unittest.main()
+
 

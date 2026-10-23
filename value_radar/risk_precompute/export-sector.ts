@@ -5,11 +5,14 @@ import {buildSectorComparisons,seriesCheck} from './sector-comparison';
 const read=(p:string)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return null}};
 export function exportSector(folder='value_radar/daten',cachePath='.risk-sector-series.json',now=Date.now()){
  const universe=read(path.join(folder,'cf_universum.json'));if(!Array.isArray(universe?.kandidaten)||!universe.kandidaten.length)throw Error('Universum fehlt');
- const cache=read(cachePath),result=buildSectorComparisons(universe,read(path.join(folder,'cf_peer_groups.json')),cache,now);
+ const groups=read(path.join(folder,'cf_peer_groups.json'));
+ const cache=read(cachePath),result=buildSectorComparisons(universe,groups,cache,now);
  const out=path.join(folder,'cf_sector_context.json');fs.writeFileSync(out+'.tmp',JSON.stringify(result));fs.renameSync(out+'.tmp',out);
  const metadata=read(path.join(folder,'cf_peer_metadata.json'));
  const rows=Object.entries(result.stocks).map(([symbol,value]:any)=>({symbol,state:value.state,reason:value.reason,
   group:value.group||null,quality:value.quality||null,peerIssuers:value.peerIssuers??null,
+  membershipOnly: {reason:groups?.listings?.[symbol]?.groupSizeReason||null,
+   sameCurrencyPeerIssuers:groups?.listings?.[symbol]?.sameCurrencyPeerIssuerCount??null},
   historyIssue:seriesCheck(cache?.series?.[symbol],now),
   calendarDiagnostic:value.calendarDiagnostic||null,
   nextAction:value.state==='available'?'observe':value.reason==='fewer_than_five_same_currency_issuers'?'group_membership_or_currency_review':
@@ -21,3 +24,4 @@ export function exportSector(folder='value_radar/daten',cachePath='.risk-sector-
  console.log(JSON.stringify(result.summary));return result;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)exportSector(process.argv[2]||'value_radar/daten',process.env.RISK_SECTOR_STATE||'.risk-sector-series.json');
+

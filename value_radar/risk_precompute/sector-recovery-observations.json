@@ -1,0 +1,853 @@
+{
+  "observedAt": "2026-10-23T13:22:07.463854+00:00",
+  "source": "Yahoo Finance via yfinance 0.2.66; listing-specific get_info and adjusted history",
+  "rows": [
+    {
+      "symbol": "SIX:HBAN",
+      "ticker": "HBAN.SW",
+      "expectedName": "Helvetia Baloise Holding AG",
+      "expectedIsin": "CH0466642201",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "HBAN.SW",
+        "longName": "Helvetia Baloise Holding AG",
+        "shortName": "HELVETIA BALOISE HOLDING N",
+        "currency": "CHF",
+        "quoteType": "EQUITY",
+        "exchange": "EBS",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 500,
+        "first": "2024-10-23",
+        "last": "2026-10-23",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "LSE:BEZ",
+      "ticker": "BEZ.L",
+      "expectedName": "Beazley Plc",
+      "expectedIsin": "GB00BYQ0JC66",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "BEZ.L",
+        "longName": "Beazley PLC",
+        "shortName": "BEAZLEY PLC ORD 5P",
+        "currency": "GBp",
+        "quoteType": "EQUITY",
+        "exchange": "LSE",
+        "firstTradeDateEpochUtc": 1784271600
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 55,
+        "first": "2026-07-17",
+        "last": "2026-10-02",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "EURONEXT:MICC",
+      "ticker": "MICC.AS",
+      "expectedName": "Magnum Ice Cream Co. N.V.",
+      "expectedIsin": "NL0015002MS2",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "MICC.AS",
+        "longName": "The Magnum Ice Cream Company N.V.",
+        "shortName": "THE MAGNUM ICE CREAM COMPANY N.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "AMS",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 224,
+        "first": "2025-12-08",
+        "last": "2026-10-23",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "LSE:SDR",
+      "ticker": "SDR.L",
+      "expectedName": "Schroders PLC",
+      "expectedIsin": "GB00BP9LHF23",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "SDR.L",
+        "longName": "Schroders PLC",
+        "shortName": "SCHRODERS PLC ORD 20P",
+        "currency": "GBp",
+        "quoteType": "EQUITY",
+        "exchange": "LSE",
+        "firstTradeDateEpochUtc": 1784271600
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 55,
+        "first": "2026-07-17",
+        "last": "2026-10-02",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "CPH:ALSYDB",
+      "ticker": "ALSYDB.CO",
+      "expectedName": "AL Sydbank A/S",
+      "expectedIsin": "DK0010311471",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "ALSYDB.CO",
+        "longName": "AL Sydbank A/S",
+        "shortName": "AL Sydbank A/S",
+        "currency": "DKK",
+        "quoteType": "EQUITY",
+        "exchange": "CPH",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 498,
+        "first": "2024-10-23",
+        "last": "2026-10-23",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "EURONEXT:CSG",
+      "ticker": "CSG.AS",
+      "expectedName": "CSG N.V.",
+      "expectedIsin": "NL0015073TS8",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "CSG.AS",
+        "longName": "CSG N.V.",
+        "shortName": "CSG N.V.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "AMS",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 193,
+        "first": "2026-01-23",
+        "last": "2026-10-23",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "NASDAQ:SPCX",
+      "ticker": "SPCX",
+      "expectedName": "Space Exploration Technologies Corp",
+      "expectedIsin": "US84615Q1031",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "SPCX",
+        "longName": "Space Exploration Technologies Corp.",
+        "shortName": "Space Exploration Technologies ",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "NMS",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 92,
+        "first": "2026-06-12",
+        "last": "2026-10-22",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "NASDAQ:SKHY",
+      "ticker": "SKHY",
+      "expectedName": "SK hynix Inc.",
+      "expectedIsin": "KR7000660001",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "SKHY",
+        "longName": "SK hynix Inc.",
+        "shortName": "SK hynix Inc.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "NMS",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 74,
+        "first": "2026-07-10",
+        "last": "2026-10-22",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "OTC:IDCBF",
+      "ticker": "IDCBF",
+      "expectedName": "Industrial and Commercial Bank of China Limited Class A",
+      "expectedIsin": "CNE000001P37",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "IDCBF",
+        "longName": "Industrial and Commercial Bank of China Limited",
+        "shortName": "Industrial and Commercial Bank ",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:NVSEF",
+      "ticker": "NVSEF",
+      "expectedName": "Novartis AG",
+      "expectedIsin": "CH0012005267",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "NVSEF",
+        "longName": "Novartis AG",
+        "shortName": "Novartis AG",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:ACGBF",
+      "ticker": "ACGBF",
+      "expectedName": "Agricultural Bank of China Limited Class A",
+      "expectedIsin": "CNE100000RJ0",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "ACGBF",
+        "longName": "Agricultural Bank of China Limited",
+        "shortName": "AGRICULTURAL BANK OF CHINA",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:CGXYY",
+      "ticker": "CGXYY",
+      "expectedName": "China Galaxy Securities Co., Ltd. Class A",
+      "expectedIsin": "CNE100002FG7",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "CGXYY",
+        "longName": "China Galaxy Securities Co., Ltd.",
+        "shortName": "China Galaxy Securities Co Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:BACHF",
+      "ticker": "BACHF",
+      "expectedName": "Bank of China Limited Class A",
+      "expectedIsin": "CNE000001N05",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "BACHF",
+        "longName": "Bank of China Limited",
+        "shortName": "Bank of China, Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:RTNTF",
+      "ticker": "RTNTF",
+      "expectedName": "Rio Tinto Group",
+      "expectedIsin": "AU000000RIO1",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "RTNTF",
+        "longName": "Rio Tinto Group",
+        "shortName": "Rio Tinto Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:CIHHF",
+      "ticker": "CIHHF",
+      "expectedName": "China Merchants Bank Co., Ltd. Class A",
+      "expectedIsin": "CNE000001B33",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "CIHHF",
+        "longName": "China Merchants Bank Co., Ltd.",
+        "shortName": "China Merchants Bank Co., Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:BBVXF",
+      "ticker": "BBVXF",
+      "expectedName": "Banco Bilbao Vizcaya Argentaria, S.A.",
+      "expectedIsin": "ES0113211835",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "BBVXF",
+        "longName": "Banco Bilbao Vizcaya Argentaria, S.A.",
+        "shortName": "Banco Bilbao Vizcaya Argentaria",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:BPAQF",
+      "ticker": "BPAQF",
+      "expectedName": "BP PLC",
+      "expectedIsin": "GB0007980591",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "BPAQF",
+        "longName": "BP p.l.c.",
+        "shortName": "BP Plc",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:CUAEF",
+      "ticker": "CUAEF",
+      "expectedName": "China Shenhua Energy Co. Ltd. Class A",
+      "expectedIsin": "CNE100000767",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "CUAEF",
+        "longName": "China Shenhua Energy Company Limited",
+        "shortName": "China Shenhua Energy Co., Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:IVSXF",
+      "ticker": "IVSXF",
+      "expectedName": "Investor AB Class A",
+      "expectedIsin": "SE0015811955",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "IVSXF",
+        "longName": "Investor AB (publ)",
+        "shortName": "Investors AB",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:ZHILF",
+      "ticker": "ZHILF",
+      "expectedName": "Zhongji Innolight Co., Ltd. Class A",
+      "expectedIsin": "CNE100001CY9",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "ZHILF",
+        "longName": "Zhongji Innolight Co., Ltd.",
+        "shortName": null,
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:IITSF",
+      "ticker": "IITSF",
+      "expectedName": "Intesa Sanpaolo S.p.A.",
+      "expectedIsin": "IT0000072618",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "IITSF",
+        "longName": "Intesa Sanpaolo S.p.A.",
+        "shortName": "Intesa Sanpaolo S.p.A.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "OID",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_ambiguous_listing"
+    },
+    {
+      "symbol": "OTC:PIAIF",
+      "ticker": "PIAIF",
+      "expectedName": "Ping An Insurance (Group) Company of China, Ltd. Class A",
+      "expectedIsin": "CNE000001R84",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "PIAIF",
+        "longName": "Ping An Insurance (Group) Company of China, Ltd.",
+        "shortName": "Ping An Insurance (Group) Compa",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:SNYNF",
+      "ticker": "SNYNF",
+      "expectedName": "Sanofi SA",
+      "expectedIsin": "FR0000120578",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "SNYNF",
+        "longName": "Sanofi",
+        "shortName": "Sanofi",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:GLAXF",
+      "ticker": "GLAXF",
+      "expectedName": "GSK plc",
+      "expectedIsin": "GB00BN7SWP63",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "GLAXF",
+        "longName": "GSK plc",
+        "shortName": "GSK plc",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:GPMXY",
+      "ticker": "GPMXY",
+      "expectedName": "Grupo Mexico S.A.B. de C.V. Class B",
+      "expectedIsin": "MXP370841019",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "GPMXY",
+        "longName": "Grupo México, S.A.B. de C.V.",
+        "shortName": "Grupo Mexico S.A.B. de C.V.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:BKFCF",
+      "ticker": "BKFCF",
+      "expectedName": "Bank of Communications Co., Ltd. Class A",
+      "expectedIsin": "CNE1000000S2",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "BKFCF",
+        "longName": "Bank of Communications Co., Ltd.",
+        "shortName": "Bank of Communications Co. Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:ATLPF",
+      "ticker": "ATLPF",
+      "expectedName": "Atlas Copco AB Class A",
+      "expectedIsin": "SE0017486889",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "ATLPF",
+        "longName": "Atlas Copco AB (publ)",
+        "shortName": "ATLAS COPCO AB",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:PSTVY",
+      "ticker": "PSTVY",
+      "expectedName": "Postal Savings Bank of China Co., Ltd. Class A",
+      "expectedIsin": "CNE100003PZ4",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "PSTVY",
+        "longName": "Postal Savings Bank of China Co., Ltd.",
+        "shortName": "Postal Svgs Bk of China Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:MGCLY",
+      "ticker": "MGCLY",
+      "expectedName": "Midea Group Co. Ltd. Class A",
+      "expectedIsin": "CNE100001QQ5",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "MGCLY",
+        "longName": "Midea Group Co., Ltd.",
+        "shortName": "Midea Group Co Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:BCMXY",
+      "ticker": "BCMXY",
+      "expectedName": "Bank of Communications Co., Ltd. Class A",
+      "expectedIsin": "CNE1000000S2",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "BCMXY",
+        "longName": "Bank of Communications Co., Ltd.",
+        "shortName": "Bank of Communications Co. Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:SNHIY",
+      "ticker": "SNHIY",
+      "expectedName": "Sany Heavy Industry Co., Ltd. Class A",
+      "expectedIsin": "CNE000001F70",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "SNHIY",
+        "longName": "Sany Heavy Industry Co.,Ltd",
+        "shortName": null,
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:ATLFF",
+      "ticker": "ATLFF",
+      "expectedName": "Atlas Copco AB Class A",
+      "expectedIsin": "SE0017486889",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "ATLFF",
+        "longName": "Atlas Copco AB (publ)",
+        "shortName": "ATLAS COPCO AB",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:WBKCY",
+      "ticker": "WBKCY",
+      "expectedName": "Westpac Banking Corporation",
+      "expectedIsin": "AU000000WBC1",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "WBKCY",
+        "longName": "Westpac Banking Corporation",
+        "shortName": "Westpac Banking Corp. Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 117,
+        "first": "2026-05-07",
+        "last": "2026-10-22",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "OTC:WEBNF",
+      "ticker": "WEBNF",
+      "expectedName": "Westpac Banking Corporation",
+      "expectedIsin": "AU000000WBC1",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "WEBNF",
+        "longName": "Westpac Banking Corporation",
+        "shortName": "Westpac Banking Corp. Ltd.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "accepted"
+      }
+    },
+    {
+      "symbol": "OTC:PROSF",
+      "ticker": "PROSF",
+      "expectedName": "Prosus N.V. Class N",
+      "expectedIsin": "NL0013654783",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "PROSF",
+        "longName": "Prosus N.V.",
+        "shortName": "Prosus NV",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:WUXIF",
+      "ticker": "WUXIF",
+      "expectedName": "WuXi AppTec Co., Ltd. Class A",
+      "expectedIsin": "CNE1000031K4",
+      "identityIssues": [
+        "profile_listing_isin_conflict"
+      ],
+      "provider": {
+        "symbol": "WUXIF",
+        "longName": "WuXi AppTec Co., Ltd.",
+        "shortName": "WUXI APPTEC CO LTD",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:AMXOF",
+      "ticker": "AMXOF",
+      "expectedName": "America Movil SAB de CV Class B",
+      "expectedIsin": "MX01AM050019",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "AMXOF",
+        "longName": "América Móvil, S.A.B. de C.V.",
+        "shortName": "AMERICA MOVIL SAB DE CV",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_issuer_name_mismatch"
+    },
+    {
+      "symbol": "OTC:JPSTF",
+      "ticker": "JPSTF",
+      "expectedName": "Japan Post Bank Co., Ltd.",
+      "expectedIsin": "JP3946750001",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "JPSTF",
+        "longName": "JAPAN POST BANK Co., Ltd.",
+        "shortName": "JAPAN POST BANK CO LTD",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "PNK",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 501,
+        "first": "2024-10-23",
+        "last": "2026-10-22",
+        "validation": "invalid_adjusted_prices"
+      }
+    },
+    {
+      "symbol": "NYSE:ET",
+      "ticker": "ET",
+      "expectedName": "Energy Transfer LP",
+      "expectedIsin": "US29273V1008",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "ET",
+        "longName": "Energy Transfer LP",
+        "shortName": "Energy Transfer LP",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "TEX",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "yahoo_ambiguous_listing"
+    },
+    {
+      "symbol": "NASDAQ:HONA",
+      "ticker": "HONA",
+      "expectedName": "Honeywell Aerospace Inc.",
+      "expectedIsin": "US43849R1059",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "HONA",
+        "longName": "Honeywell Aerospace Inc.",
+        "shortName": "Honeywell Aerospace Inc.",
+        "currency": "USD",
+        "quoteType": "EQUITY",
+        "exchange": "NMS",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 91,
+        "first": "2026-06-15",
+        "last": "2026-10-22",
+        "validation": "insufficient_history"
+      }
+    },
+    {
+      "symbol": "XETR:1COV",
+      "ticker": "1COV.DE",
+      "expectedName": "Covestro AG",
+      "expectedIsin": "DE0006062144",
+      "identityIssues": [],
+      "provider": {
+        "symbol": "1COV.DE",
+        "longName": "Covestro AG",
+        "shortName": "Covestro AG                   I",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "GER",
+        "firstTradeDateEpochUtc": null
+      },
+      "identity": "accepted",
+      "history": {
+        "observations": 5,
+        "first": "2026-10-19",
+        "last": "2026-10-23",
+        "validation": "insufficient_history"
+      }
+    }
+  ]
+}

@@ -72,5 +72,15 @@ class PeerGroupsTests(unittest.TestCase):
         rules=json.loads((Path(__file__).parent/'peer-group-rules.json').read_text(encoding='utf8'))
         for rule in rules['reviewed']:
             self.assertTrue(rule['source'].startswith('https://'));self.assertTrue(rule['names'])
+    def test_group_size_distinguishes_business_and_currency_limits(self):
+        isins=['US5949181045','US0378331005','US1729674242','US67066G1040','US0231351067','US02079K3059']
+        rows=[row('NYSE:X'+str(i),'Company '+str(i),isin) for i,isin in enumerate(isins)]
+        r=self.run_rows(rows)['listings']['NYSE:X0']
+        self.assertEqual(r['sameCurrencyPeerIssuerCount'],5)
+        self.assertEqual(r['groupSizeReason'],'enough_issuers_before_history_check')
+        rows[-1]['currency']='EUR'
+        self.assertEqual(self.run_rows(rows)['listings']['NYSE:X0']['groupSizeReason'],'small_currency_cohort')
+        self.assertEqual(self.run_rows(rows[:3])['listings']['NYSE:X0']['groupSizeReason'],'small_business_group')
 if __name__=='__main__':unittest.main()
+
 

@@ -142,10 +142,15 @@ def build(universe, now=None, rules=None, supplemental=None):
     groups=defaultdict(list)
     for item in issuers: groups[item['classification']['group']].append(item)
     listing_groups={}
+    def currency_unit(value):return 'GBP' if value in ('GBp','GBX') else value
     for item in issuers:
         peers=sorted((p for p in groups[item['classification']['group']] if p['id']!=item['id']),key=lambda p:p['representative'])
         for listing in item['listings']:
+            unit=currency_unit(original[listing].get('currency'))
+            same_currency=sum(bool(unit) and unit in {currency_unit(c) for c in p['currencies']} for p in peers)
             listing_groups[listing]={'issuerId':item['id'],'group':item['classification']['group'],
+              'sameCurrencyPeerIssuerCount':same_currency,
+              'groupSizeReason':'small_business_group' if len(peers)<5 else 'small_currency_cohort' if same_currency<5 else 'enough_issuers_before_history_check',
               'inputIdentity':{k:original[listing].get(k) for k in ['isin','currency','industry','sub_industry','name_full','security_type']},
               'level':item['classification']['level'],'peerIssuerCount':len(peers),
               'peerSymbols':[p['representative'] for p in peers],
@@ -157,6 +162,7 @@ def build(universe, now=None, rules=None, supplemental=None):
              'excludedListings':len(excluded),'reviewListings':sum(len(r['listings']) for r in review),
              'groups':len(groups),'levels':dict(Counter(i['classification']['level'] for i in issuers)),
              'withFivePeers':sum(r['peerIssuerCount']>=5 for r in listing_groups.values())}
+    summary['groupSizeReasons']=dict(Counter(r['groupSizeReason'] for r in listing_groups.values()))
     return {'schema':1,'method':'issuer-business-groups-v1','generatedAt':now.isoformat(),
             'inputSha256':hashlib.sha256(json.dumps(universe,sort_keys=True).encode()).hexdigest(),
             'summary':summary,'listings':dict(sorted(listing_groups.items())),
@@ -175,3 +181,4 @@ def main():
     temp.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8');temp.replace(output)
     print(json.dumps(result['summary']))
 if __name__=='__main__':main()
+

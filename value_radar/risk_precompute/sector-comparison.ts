@@ -49,7 +49,7 @@ export function metrics(points:Map<string,number>,dates:string[],end:string,symb
  for(const d of common){const v=points.get(d)!;peak=Math.max(peak,v);maxDrawdown=Math.max(maxDrawdown,1-v/peak)}
  return {returns,volatility,maxDrawdown,drawdown:1-points.get(end)!/peak,from:start,to:end,observations:common.length,weeklyObservations:weekly.length,holidayAdjustments:calendar.adjustments};
 }
-export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Date.now()):Row{
+export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Date.now(),minimumPeers:5|10=5):Row{
  const stocks:Record<string,Row>={},excluded= (reason:string,extra:Row={})=>({method:'aligned-cohort-v1',state:'missing',reason,score:null,...extra});
  const rows=Array.isArray(universe?.kandidaten)?universe.kandidaten:[],counts=new Map<string,number>();for(const r of rows)counts.set(key(r),(counts.get(key(r))||0)+1);
  const sources=new Map<string,Row>(rows.map((r:Row)=>[key(r),r])),all=cache?.schema===1?cache.series||{}:{};
@@ -68,7 +68,7 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
   if(!groupOK){stocks[symbol]=excluded('group_snapshot_missing_or_stale');continue}
   if(!membership){stocks[symbol]=excluded('issuer_or_business_group_unconfirmed');continue}
   const base={group:membership.group,groupLevel:membership.level,currency:currencyUnit(r.currency),
-   directCompetitorsVerified:false,quality:membership.level==='reviewed_business_model'?'reviewed_business_model':membership.level==='provider_subindustry'?'provider_subindustry':'provisional_industry',
+   directCompetitorsVerified:false,minimumPeers,quality:membership.level==='reviewed_business_model'?'reviewed_business_model':membership.level==='provider_subindustry'?'provider_subindustry':'provisional_industry',
    classificationConfidence:membership.level==='reviewed_business_model'?'medium':'low'};
   const error=eligible(symbol);if(error){stocks[symbol]=excluded(error,base);continue}
   const candidates=members.get(membership.group)||[],chosen:Row[]=[],excludedPeers:Record<string,number>={},issuerIds=new Set<string>();
@@ -84,12 +84,12 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
   }
   let detail={...base,peerIssuers:chosen.length,eligibleGroupIssuers:issuerIds.size,excludedPeers,
     peerSymbols:chosen.map(p=>p.symbol).sort(),peerCountries:[...new Set(chosen.map(p=>p.country).filter(Boolean))].sort()};
-  if(chosen.length<5){stocks[symbol]=excluded('fewer_than_five_same_currency_issuers',detail);continue}
+  if(chosen.length<minimumPeers){stocks[symbol]=excluded('fewer_than_five_same_currency_issuers',detail);continue}
   // Select by calendar coverage only. One sparse venue must not invalidate every
   // other issuer. No return, volatility or valuation enters this selection.
   const own=new Map<string,number>(all[symbol].points),ownDates=[...own.keys()].sort();
   const pool=chosen.map(p=>({...p,map:new Map<string,number>(p.history.points)}));
-  const end=[...ownDates].reverse().find(d=>fresh(d,now,7)&&pool.filter(p=>p.map.has(d)).length>=5);
+  const end=[...ownDates].reverse().find(d=>fresh(d,now,7)&&pool.filter(p=>p.map.has(d)).length>=minimumPeers);
   if(!end){stocks[symbol]=excluded('no_fresh_common_trading_date',detail);continue}
   let dates=ownDates.filter(d=>d<=end);
   if(!metrics(own,dates,end,[symbol])){
@@ -108,7 +108,7 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
   }
   detail={...detail,peerIssuers:accepted.length,peerSymbols:accepted.map(p=>p.symbol).sort(),
     peerCountries:[...new Set(accepted.map(p=>p.country).filter(Boolean))].sort()};
-  if(accepted.length<5){stocks[symbol]=excluded('insufficient_common_history',detail);continue}
+  if(accepted.length<minimumPeers){stocks[symbol]=excluded('insufficient_common_history',detail);continue}
   const series=[all[symbol],...accepted.map(p=>p.history)],maps=[own,...accepted.map(p=>p.map)];
   const stats=maps.map(m=>metrics(m,dates,end,[symbol,...accepted.map(p=>p.symbol)]));
   const target=stats[0]!,peers=stats.slice(1) as NonNullable<ReturnType<typeof metrics>>[];
@@ -143,5 +143,10 @@ export function selectSectorComparison(report:Row,symbol:string,row:Row,now=Date
  if(report?.schema!==SECTOR_VERSION||report.method!=='aligned-cohort-v1'||!fresh(report.generatedAt,now,1.5))return null;
  const r=report.stocks?.[symbol];if(!r||r.method!=='aligned-cohort-v1')return null;
  if(r.state==='available'&&(!fresh(r.observationDate,now,7)||currencyUnit(row.currency)!==r.currency||!matches(row,r.inputIdentity)))return null;
+ const context=r.broaderContext;
+ if(context&&(!fresh(context.observationDate,now,7)||currencyUnit(row.currency)!==context.currency||!matches(row,context.inputIdentity)||context.quality!=='broad_sector_context'||context.peerIssuers<10)){
+  const {broaderContext,...strict}=r;return strict;
+ }
  return r;
 }
+

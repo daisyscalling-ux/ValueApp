@@ -47,6 +47,8 @@ jobs:
           node /tmp/test-context.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-sector.ts --bundle --platform=node --format=esm --outfile=/tmp/test-sector.mjs
           node /tmp/test-sector.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-broad-sector.ts --bundle --platform=node --format=esm --outfile=/tmp/test-broad-sector.mjs
+          node /tmp/test-broad-sector.mjs
   risk:
     needs: tests
     if: github.event_name != 'pull_request' 
@@ -175,6 +177,7 @@ jobs:
             sleep 5
           done
           exit 1
+
 
 
 

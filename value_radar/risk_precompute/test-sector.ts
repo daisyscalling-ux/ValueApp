@@ -7,6 +7,7 @@ import {auditUniverse} from './universe-coverage';
 process.env.RISK_EXPORT_LIBRARY='1';
 const {exportRisk}=await import('./export-risk');
 import {buildSectorComparisons,compactSectorSeries,seriesCheck,selectSectorComparison,currencyUnit} from './sector-comparison';
+import {weeklyCalendar,verifiedClosureGap} from './trading-calendar';
 const DAY=86400000,now=Date.parse('2026-10-21T12:00:00Z');
 const dates=Array.from({length:560},(_,i)=>new Date(now-(560-i)*DAY).toISOString().slice(0,10)).filter(d=>![0,6].includes(new Date(d).getUTCDay()));
 const rows=Array.from({length:7},(_,i)=>({listing_symbol:`NYSE:T${i}`,name_full:`Company ${i}`,industry:'Major banks',isin:`TEST${i}`,currency:'USD',security_type:'stock',sub_industry:null}));
@@ -114,3 +115,39 @@ check('calendar exclusion never lowers the minimum five peers',()=>{
  const r=calculate(f).stocks['NYSE:T0'];assert.equal(r.state,'missing');assert.equal(r.peerIssuers,4);
 });
 console.log(passed+' sector comparison checks passed');
+check('JPX Golden Week and September closure are evidenced, not generic tolerance',()=>{
+ for(const [previous,wanted] of [['2026-05-01','2026-05-06'],['2026-09-18','2026-09-23']]){
+  assert.ok(verifiedClosureGap(previous,Date.parse(wanted),['TSE:A','JPX:B']));
+  assert.ok(!verifiedClosureGap(previous,Date.parse(wanted),['OTC:A']));
+  assert.ok(!verifiedClosureGap(previous,Date.parse(wanted),['TSE:A','NYSE:B']));
+ }
+ assert.ok(!verifiedClosureGap('2026-09-17',Date.parse('2026-09-23'),['TSE:A']));
+ assert.ok(!verifiedClosureGap('2028-05-01',Date.parse('2028-05-06'),['TSE:A']));
+});
+check('53 distinct observations retained with verified holiday shifts',()=>{
+ const ds=dates.filter(d=>!['2026-05-04','2026-05-05','2026-05-06','2026-09-21','2026-09-22','2026-09-23'].includes(d));
+ const cal=weeklyCalendar(ds,'2026-10-14',['TSE:A']);assert.equal(cal.error,null);
+ assert.equal(cal.dates.length,53);assert.equal(new Set(cal.dates).size,53);assert.equal(cal.adjustments.length,2);
+ assert.equal(weeklyCalendar(ds,'2026-10-14',['OTC:A']).error,'unverified_weekly_gap');
+});
+check('missing trading day before holidays remains a real gap',()=>{
+ const ds=dates.filter(d=>d<'2026-09-18'||d>'2026-09-23');
+ assert.equal(weeklyCalendar(ds,'2026-10-14',['TSE:A']).error,'unverified_weekly_gap');
+});
+check('normal calendars unchanged and new year closure verified',()=>{
+ assert.deepEqual(weeklyCalendar(dates,'2026-10-14',['TSE:A']).dates,weeklyCalendar(dates,'2026-10-14',[]).dates);
+ assert.ok(verifiedClosureGap('2025-12-30',Date.parse('2026-01-04'),['TSE:A']));
+});
+console.log(passed+' total sector/calendar checks passed');
+check('complete JPX cohort uses same holiday-adjusted dates for all peers',()=>{
+ const f=fixture();for(let i=0;i<7;i++){
+  const old=`NYSE:T${i}`,s=`TSE:T${i}`,r=f.universe.kandidaten[i];r.listing_symbol=s;
+  f.groups.listings[s]=f.groups.listings[old];delete f.groups.listings[old];
+  f.groups.issuers[i].representative=s;f.groups.issuers[i].listings=[s];
+  const h=f.cache.series[old];h.symbol=s;h.points=h.points.filter(([d]:any)=>!['2026-05-04','2026-05-05','2026-05-06','2026-09-21','2026-09-22','2026-09-23'].includes(d));
+  h.points.push(['2026-10-21',h.points.at(-1)[1]]);f.cache.series[s]=h;delete f.cache.series[old];
+ }
+ const r=buildSectorComparisons(f.universe,f.groups,f.cache,now+DAY).stocks['TSE:T0'];
+ assert.equal(r.state,'available');assert.equal(r.peerIssuers,6);assert.equal(r.holidayCalendar.adjustments.length,2);assert.equal(r.window.weeklyObservations,53);
+});
+console.log(passed+' final sector/calendar checks passed');

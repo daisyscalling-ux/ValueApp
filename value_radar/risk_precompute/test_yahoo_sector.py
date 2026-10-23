@@ -16,6 +16,20 @@ PRICES=[((NOW-dt.timedelta(days=i)).date().isoformat(),100+i/100) for i in range
 RULES={'aliases':{},'reviewed':[]}
 
 class YahooSectorTests(unittest.TestCase):
+ def test_new_venue_mapping_retries_old_venue_failure_only_once(self):
+  row={**ROW,'ticker':'PKO.WA','listing_symbol':'GPW:PKO','exchange':'GPW',
+       'isin':'PLPKO0000016','currency':'PLN','name_full':'PKO Bank Polski SA'}
+  def archive(error):return {'schema':1,'profiles':{},'attempts':{'GPW:PKO':
+     {'at':NOW.isoformat(),'inputIdentity':identity(row),'error':error}}}
+  calls=[]
+  def fail(req,timeout):
+   calls.append(req);raise ValueError('yahoo_ambiguous_listing')
+  a,c=run({'kandidaten':[row]},archive('yahoo_ambiguous_listing'),{},NOW,fail)
+  self.assertEqual(len(calls),1)
+  self.assertEqual(a['attempts']['GPW:PKO']['venueCodes'],['WSE'])
+  run({'kandidaten':[row]},a,c,NOW,lambda *_:self.fail('second mapping retry'))
+  for error in ('yahoo_issuer_name_mismatch','yahoo_rate_limited','yahoo_timeout'):
+   run({'kandidaten':[row]},archive(error),{},NOW,lambda *_:self.fail('unrelated cooldown bypassed'))
  def test_polish_and_greek_profiles_and_prices_require_exact_listing(self):
   cases=[('PKO.WA','GPW:PKO','PLPKO0000016','PLN','PKO Bank Polski SA','WSE'),
          ('ETE.AT','ATHEX:ETE','GRS003003035','EUR','National Bank of Greece S.A.','ATH')]

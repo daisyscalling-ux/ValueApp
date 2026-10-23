@@ -103,6 +103,31 @@ def save(path,value):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
     tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(json.dumps(value,ensure_ascii=False,allow_nan=False),encoding='utf8');tmp.replace(path)
 
+def merge_recovered_series(universe,cache,recovered,now=None):
+    """Import recent identity-checked recovery observations without refreshing dates."""
+    now=now or dt.datetime.now(UTC)
+    cache=cache if cache.get('schema')==1 else {'schema':1,'series':{}}
+    cache.setdefault('series',{})
+    if recovered.get('schema')!=1:return cache
+    for row in universe.get('kandidaten',[]):
+        s=row.get('listing_symbol');h=recovered.get('series',{}).get(s,{})
+        if (not s or h.get('inputIdentity')!=identity(row) or h.get('symbol')!=s
+            or h.get('currency')!=row.get('currency') or h.get('adjustment')!='total_return'
+            or not recent(h.get('retrievedAt'),now,1.5)):continue
+        old=cache['series'].get(s,{})
+        try:
+            if old.get('inputIdentity')==identity(row) and dt.datetime.fromisoformat(str(old.get('retrievedAt')).replace('Z','+00:00'))>=dt.datetime.fromisoformat(h['retrievedAt'].replace('Z','+00:00')):continue
+        except (ValueError,TypeError):pass
+        try:
+            venue=s.split(':')[0]
+            # Revalidate dates and price values; venue/issuer evidence was collected
+            # independently and is tied to the exact original input fingerprint.
+            normalize_prices(row,{'symbol':row['ticker'],'instrumentType':'EQUITY','currency':row['currency'],
+                'exchangeName':next(iter(VENUES.get(venue,set())))},h['points'],now)
+        except (ValueError,TypeError,KeyError,StopIteration):continue
+        cache['series'][s]=h
+    return cache
+
 def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,checkpoint=None,calendar_retry=None,metadata_only=False):
     now=now or dt.datetime.now(UTC);started=time.monotonic()
     originals=universe.get('kandidaten',[])
@@ -164,7 +189,9 @@ def main():
     if not 1<=budget<=1800:raise ValueError('Invalid budget')
     previous=load(folder/'cf_sector_context.json',{})
     retry={s for s,r in previous.get('stocks',{}).items() if r.get('reason')=='target_calendar_insufficient'} if recent(previous.get('generatedAt'),dt.datetime.now(UTC),1.5) else set()
-    archive,cache=run(load(folder/'cf_universum.json',{}),load(ap,{}),load(cp,{}),budget=budget,
+    universe=load(folder/'cf_universum.json',{})
+    cache=merge_recovered_series(universe,load(cp,{}),load(folder/'cf_sector_recovered_series.json',{}))
+    archive,cache=run(universe,load(ap,{}),cache,budget=budget,
         checkpoint=lambda a,c:(save(ap,a),None if os.getenv('SECTOR_METADATA_ONLY')=='1' else save(cp,c)),calendar_retry=retry,
         metadata_only=os.getenv('SECTOR_METADATA_ONLY')=='1')
     save(ap,archive)
@@ -176,4 +203,5 @@ if __name__=='__main__':
         try:print(json.dumps(collect_child(json.loads(sys.stdin.read())),allow_nan=False))
         except Exception as exc:print(json.dumps({'error':safe_error(exc)}));sys.exit(1)
     else:main()
+
 

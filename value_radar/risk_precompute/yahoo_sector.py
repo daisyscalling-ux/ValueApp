@@ -103,7 +103,7 @@ def save(path,value):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
     tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(json.dumps(value,ensure_ascii=False,allow_nan=False),encoding='utf8');tmp.replace(path)
 
-def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,checkpoint=None,calendar_retry=None):
+def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,checkpoint=None,calendar_retry=None,metadata_only=False):
     now=now or dt.datetime.now(UTC);started=time.monotonic()
     originals=universe.get('kandidaten',[])
     if not isinstance(originals,list) or not originals:raise ValueError('Universe missing or empty')
@@ -126,6 +126,7 @@ def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,ch
         need_history=not (h.get('symbol')==s and recent(h.get('retrievedAt'),now,1.5) and h.get('points') and recent(h['points'][-1][0]+'T00:00:00+00:00',now,7)
                          and (h.get('inputIdentity') is None or h.get('inputIdentity')==identity(original)))
         if s in (calendar_retry or set()):need_history=True
+        if metadata_only:need_history=False
         need_profile=not(old.get('inputIdentity')==identity(original) and recent(old.get('retrievedAt'),now,30) and old.get('industryKey'))
         if not need_history and not need_profile:report['freshSkipped']+=1;continue
         if attempt.get('inputIdentity')==identity(original) and recent(attempt.get('at'),now,1):report['cooldownSkipped']+=1;continue
@@ -164,11 +165,15 @@ def main():
     previous=load(folder/'cf_sector_context.json',{})
     retry={s for s,r in previous.get('stocks',{}).items() if r.get('reason')=='target_calendar_insufficient'} if recent(previous.get('generatedAt'),dt.datetime.now(UTC),1.5) else set()
     archive,cache=run(load(folder/'cf_universum.json',{}),load(ap,{}),load(cp,{}),budget=budget,
-        checkpoint=lambda a,c:(save(ap,a),save(cp,c)),calendar_retry=retry)
-    save(ap,archive);save(cp,cache);print(json.dumps(archive['report']))
+        checkpoint=lambda a,c:(save(ap,a),None if os.getenv('SECTOR_METADATA_ONLY')=='1' else save(cp,c)),calendar_retry=retry,
+        metadata_only=os.getenv('SECTOR_METADATA_ONLY')=='1')
+    save(ap,archive)
+    if os.getenv('SECTOR_METADATA_ONLY')!='1':save(cp,cache)
+    print(json.dumps(archive['report']))
 
 if __name__=='__main__':
     if '--child' in sys.argv:
         try:print(json.dumps(collect_child(json.loads(sys.stdin.read())),allow_nan=False))
         except Exception as exc:print(json.dumps({'error':safe_error(exc)}));sys.exit(1)
     else:main()
+

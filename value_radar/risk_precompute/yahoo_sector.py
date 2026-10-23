@@ -156,7 +156,12 @@ def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,ch
         if metadata_only:need_history=False
         need_profile=not(old.get('inputIdentity')==identity(original) and recent(old.get('retrievedAt'),now,30) and old.get('industryKey'))
         if not need_history and not need_profile:report['freshSkipped']+=1;continue
-        if attempt.get('inputIdentity')==identity(original) and recent(attempt.get('at'),now,1):report['cooldownSkipped']+=1;continue
+        venue=s.split(':')[0]
+        # Retry the previously unsupported exchanges once after this mapping fix.
+        # Other failures and unchanged mappings retain the normal daily cooldown.
+        mapping_retry=(venue in {'GPW','ATHEX'} and attempt.get('error')=='yahoo_ambiguous_listing'
+                       and attempt.get('venueCodes')!=sorted(VENUES[venue]))
+        if not mapping_retry and attempt.get('inputIdentity')==identity(original) and recent(attempt.get('at'),now,1):report['cooldownSkipped']+=1;continue
         requests.append((attempt.get('at',''),not need_history,s,{'row':row,'original':original,'history':need_history}))
     # Oldest attempts first prevents repeated failures from starving new listings.
     requests.sort(key=lambda x:x[:3])
@@ -164,7 +169,8 @@ def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,ch
         remaining=budget-(time.monotonic()-started)
         if remaining<2:break
         report['attempted']+=1
-        attempt={'at':now.isoformat(),'inputIdentity':identity(request['original'])}
+        attempt={'at':now.isoformat(),'inputIdentity':identity(request['original']),
+                 'venueCodes':sorted(VENUES.get(s.split(':')[0],set()))}
         try:
             data=fetcher(request,min(25,remaining))
             p=data['profile']

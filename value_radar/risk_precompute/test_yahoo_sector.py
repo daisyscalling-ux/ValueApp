@@ -80,5 +80,12 @@ class YahooSectorTests(unittest.TestCase):
    checkpoint=lambda a,c:saved.append(copy.deepcopy(a)))
   self.assertEqual(saved[0]['report']['attempted'],1)
   self.assertEqual(saved[0]['attempts'],a['attempts'])
+ def test_fresh_but_calendar_defective_history_gets_fallback(self):
+  existing=normalize_prices(ROW,META,PRICES,NOW)
+  saved={'schema':1,'profiles':{'NASDAQ:MSFT':profile(ROW,INFO,now=NOW)},'attempts':{}}
+  calls=[]
+  def fetch(req,t):calls.append(req);return {'profile':profile(req['row'],INFO,req['original'],NOW),'series':existing}
+  run({'kandidaten':[ROW]},saved,{'schema':1,'series':{'NASDAQ:MSFT':existing}},NOW,fetch,calendar_retry={'NASDAQ:MSFT'})
+  self.assertTrue(calls[0]['history'])
 
 if __name__=='__main__':unittest.main()

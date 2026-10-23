@@ -1,0 +1,688 @@
+{
+  "checkedAt": "2026-10-23T22:30:38.202027+00:00",
+  "profiles": {
+    "accepted": 26
+  },
+  "histories": {
+    "accepted": 25,
+    "history_gap": 1
+  },
+  "rows": [
+    {
+      "symbol": "GPW:PKO",
+      "ticker": "PKO.WA",
+      "retrievedAt": "2026-10-23T22:28:13.876474+00:00",
+      "provider": {
+        "symbol": "PKO.WA",
+        "longName": "Powszechna Kasa Oszczednosci Bank Polski Spólka Akcyjna",
+        "shortName": "PKO C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "PKO.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/PKO.WA/"
+    },
+    {
+      "symbol": "GPW:PKN",
+      "ticker": "PKN.WA",
+      "retrievedAt": "2026-10-23T22:28:17.843758+00:00",
+      "provider": {
+        "symbol": "PKN.WA",
+        "longName": "Orlen S.A.",
+        "shortName": "PKN C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "energy",
+        "industryKey": "oil-gas-integrated"
+      },
+      "chart": {
+        "symbol": "PKN.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/PKN.WA/"
+    },
+    {
+      "symbol": "ATHEX:ETE",
+      "ticker": "ETE.AT",
+      "retrievedAt": "2026-10-23T22:28:19.851855+00:00",
+      "provider": {
+        "symbol": "ETE.AT",
+        "longName": "National Bank of Greece S.A.",
+        "shortName": "NATIONAL BANK OF GREECE S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "ETE.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/ETE.AT/"
+    },
+    {
+      "symbol": "GPW:PEO",
+      "ticker": "PEO.WA",
+      "retrievedAt": "2026-10-23T22:28:21.653518+00:00",
+      "provider": {
+        "symbol": "PEO.WA",
+        "longName": "Bank Polska Kasa Opieki S.A.",
+        "shortName": "PEO C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "PEO.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/PEO.WA/"
+    },
+    {
+      "symbol": "ATHEX:EUROB",
+      "ticker": "EUROB.AT",
+      "retrievedAt": "2026-10-23T22:28:23.313810+00:00",
+      "provider": {
+        "symbol": "EUROB.AT",
+        "longName": "Eurobank S.A.",
+        "shortName": "EUROBANK S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "EUROB.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "history_gap",
+      "sourceUrl": "https://finance.yahoo.com/quote/EUROB.AT/"
+    },
+    {
+      "symbol": "GPW:ALE",
+      "ticker": "ALE.WA",
+      "retrievedAt": "2026-10-23T22:28:25.329265+00:00",
+      "provider": {
+        "symbol": "ALE.WA",
+        "longName": "Allegro.eu S.A.",
+        "shortName": "ALLEGRO.EU SA",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "consumer-cyclical",
+        "industryKey": "internet-retail"
+      },
+      "chart": {
+        "symbol": "ALE.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/ALE.WA/"
+    },
+    {
+      "symbol": "ATHEX:TPEIR",
+      "ticker": "TPEIR.AT",
+      "retrievedAt": "2026-10-23T22:28:27.200145+00:00",
+      "provider": {
+        "symbol": "TPEIR.AT",
+        "longName": "Piraeus Bank S.A.",
+        "shortName": "PIRAEUS BANK S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "TPEIR.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/TPEIR.AT/"
+    },
+    {
+      "symbol": "GPW:KGH",
+      "ticker": "KGH.WA",
+      "retrievedAt": "2026-10-23T22:28:28.955200+00:00",
+      "provider": {
+        "symbol": "KGH.WA",
+        "longName": "KGHM Polska Miedz S.A.",
+        "shortName": "KGH C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "basic-materials",
+        "industryKey": "copper"
+      },
+      "chart": {
+        "symbol": "KGH.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/KGH.WA/"
+    },
+    {
+      "symbol": "GPW:PZU",
+      "ticker": "PZU.WA",
+      "retrievedAt": "2026-10-23T22:30:14.257906+00:00",
+      "provider": {
+        "symbol": "PZU.WA",
+        "longName": "Powszechny Zaklad Ubezpieczen SA",
+        "shortName": "PZU C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "financial-services",
+        "industryKey": "insurance-property-casualty"
+      },
+      "chart": {
+        "symbol": "PZU.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/PZU.WA/"
+    },
+    {
+      "symbol": "GPW:EBP",
+      "ticker": "EBP.WA",
+      "retrievedAt": "2026-10-23T22:28:59.045493+00:00",
+      "provider": {
+        "symbol": "EBP.WA",
+        "longName": "Erste Bank Polska S.A.",
+        "shortName": "EBP C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "EBP.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/EBP.WA/"
+    },
+    {
+      "symbol": "ATHEX:ALPHA",
+      "ticker": "ALPHA.AT",
+      "retrievedAt": "2026-10-23T22:29:00.696713+00:00",
+      "provider": {
+        "symbol": "ALPHA.AT",
+        "longName": "Alpha Bank S.A.",
+        "shortName": "ALPHA BANK S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-diversified"
+      },
+      "chart": {
+        "symbol": "ALPHA.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 327,
+      "sourceUrl": "https://finance.yahoo.com/quote/ALPHA.AT/"
+    },
+    {
+      "symbol": "GPW:LPP",
+      "ticker": "LPP.WA",
+      "retrievedAt": "2026-10-23T22:29:02.333145+00:00",
+      "provider": {
+        "symbol": "LPP.WA",
+        "longName": "LPP SA",
+        "shortName": "LPP C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "consumer-cyclical",
+        "industryKey": "apparel-manufacturing"
+      },
+      "chart": {
+        "symbol": "LPP.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/LPP.WA/"
+    },
+    {
+      "symbol": "ATHEX:PPC",
+      "ticker": "PPC.AT",
+      "retrievedAt": "2026-10-23T22:29:04.147669+00:00",
+      "provider": {
+        "symbol": "PPC.AT",
+        "longName": "Public Power Corporation S.A.",
+        "shortName": "P.P.C. S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "utilities",
+        "industryKey": "utilities-renewable"
+      },
+      "chart": {
+        "symbol": "PPC.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/PPC.AT/"
+    },
+    {
+      "symbol": "ATHEX:MTLN",
+      "ticker": "MTLN.AT",
+      "retrievedAt": "2026-10-23T22:29:05.854825+00:00",
+      "provider": {
+        "symbol": "MTLN.AT",
+        "longName": "Metlen Energy & Metals PLC",
+        "shortName": "METLEN ENERGY & METALS PLC",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "utilities",
+        "industryKey": "utilities-diversified"
+      },
+      "chart": {
+        "symbol": "MTLN.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 304,
+      "sourceUrl": "https://finance.yahoo.com/quote/MTLN.AT/"
+    },
+    {
+      "symbol": "GPW:MBK",
+      "ticker": "MBK.WA",
+      "retrievedAt": "2026-10-23T22:29:07.449887+00:00",
+      "provider": {
+        "symbol": "MBK.WA",
+        "longName": "mBank S.A.",
+        "shortName": "MBK C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "MBK.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/MBK.WA/"
+    },
+    {
+      "symbol": "GPW:BFT",
+      "ticker": "BFT.WA",
+      "retrievedAt": "2026-10-23T22:29:09.196002+00:00",
+      "provider": {
+        "symbol": "BFT.WA",
+        "longName": "Benefit Systems S.A.",
+        "shortName": "BFT C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "consumer-cyclical",
+        "industryKey": "leisure"
+      },
+      "chart": {
+        "symbol": "BFT.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/BFT.WA/"
+    },
+    {
+      "symbol": "ATHEX:MOH",
+      "ticker": "MOH.AT",
+      "retrievedAt": "2026-10-23T22:29:10.872132+00:00",
+      "provider": {
+        "symbol": "MOH.AT",
+        "longName": "Motor Oil (Hellas) Corinth Refineries S.A.",
+        "shortName": "MOTOR OIL S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "energy",
+        "industryKey": "oil-gas-refining-marketing"
+      },
+      "chart": {
+        "symbol": "MOH.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/MOH.AT/"
+    },
+    {
+      "symbol": "GPW:CDR",
+      "ticker": "CDR.WA",
+      "retrievedAt": "2026-10-23T22:29:12.745420+00:00",
+      "provider": {
+        "symbol": "CDR.WA",
+        "longName": "CD Projekt Red S.A.",
+        "shortName": "CDR C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "communication-services",
+        "industryKey": "electronic-gaming-multimedia"
+      },
+      "chart": {
+        "symbol": "CDR.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/CDR.WA/"
+    },
+    {
+      "symbol": "ATHEX:GEKTERNA",
+      "ticker": "GEKTERNA.AT",
+      "retrievedAt": "2026-10-23T22:29:14.386778+00:00",
+      "provider": {
+        "symbol": "GEKTERNA.AT",
+        "longName": "Gek Terna S.A.",
+        "shortName": "GEK TERNA S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "industrials",
+        "industryKey": "engineering-construction"
+      },
+      "chart": {
+        "symbol": "GEKTERNA.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/GEKTERNA.AT/"
+    },
+    {
+      "symbol": "GPW:DNP",
+      "ticker": "DNP.WA",
+      "retrievedAt": "2026-10-23T22:29:16.224442+00:00",
+      "provider": {
+        "symbol": "DNP.WA",
+        "longName": "Dino Polska S.A.",
+        "shortName": "DNP C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "consumer-defensive",
+        "industryKey": "grocery-stores"
+      },
+      "chart": {
+        "symbol": "DNP.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/DNP.WA/"
+    },
+    {
+      "symbol": "GPW:MIL",
+      "ticker": "MIL.WA",
+      "retrievedAt": "2026-10-23T22:29:17.895819+00:00",
+      "provider": {
+        "symbol": "MIL.WA",
+        "longName": "Bank Millennium S.A.",
+        "shortName": "MIL C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "financial-services",
+        "industryKey": "banks-regional"
+      },
+      "chart": {
+        "symbol": "MIL.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/MIL.WA/"
+    },
+    {
+      "symbol": "GPW:KTY",
+      "ticker": "KTY.WA",
+      "retrievedAt": "2026-10-23T22:29:19.567498+00:00",
+      "provider": {
+        "symbol": "KTY.WA",
+        "longName": "Grupa Kety S.A.",
+        "shortName": "KTY C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "basic-materials",
+        "industryKey": "aluminum"
+      },
+      "chart": {
+        "symbol": "KTY.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/KTY.WA/"
+    },
+    {
+      "symbol": "ATHEX:BELA",
+      "ticker": "BELA.AT",
+      "retrievedAt": "2026-10-23T22:29:21.271268+00:00",
+      "provider": {
+        "symbol": "BELA.AT",
+        "longName": "Jumbo S.A.",
+        "shortName": "JUMBO S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "consumer-cyclical",
+        "industryKey": "specialty-retail"
+      },
+      "chart": {
+        "symbol": "BELA.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/BELA.AT/"
+    },
+    {
+      "symbol": "GPW:ZAB",
+      "ticker": "ZAB.WA",
+      "retrievedAt": "2026-10-23T22:29:22.936596+00:00",
+      "provider": {
+        "symbol": "ZAB.WA",
+        "longName": "Zabka Group S.A.",
+        "shortName": "ZAB C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "consumer-defensive",
+        "industryKey": "grocery-stores"
+      },
+      "chart": {
+        "symbol": "ZAB.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/ZAB.WA/"
+    },
+    {
+      "symbol": "ATHEX:HTO",
+      "ticker": "HTO.AT",
+      "retrievedAt": "2026-10-23T22:29:24.757474+00:00",
+      "provider": {
+        "symbol": "HTO.AT",
+        "longName": "Hellenic Telecommunications Organization S.A.",
+        "shortName": "OTE S.A.",
+        "currency": "EUR",
+        "quoteType": "EQUITY",
+        "exchange": "ATH",
+        "sectorKey": "communication-services",
+        "industryKey": "telecom-services"
+      },
+      "chart": {
+        "symbol": "HTO.AT",
+        "currency": "EUR",
+        "instrumentType": "EQUITY",
+        "exchangeName": "ATH"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/HTO.AT/"
+    },
+    {
+      "symbol": "GPW:ACP",
+      "ticker": "ACP.WA",
+      "retrievedAt": "2026-10-23T22:29:26.686390+00:00",
+      "provider": {
+        "symbol": "ACP.WA",
+        "longName": "Asseco Poland S.A.",
+        "shortName": "ACP C.XWAR PLN",
+        "currency": "PLN",
+        "quoteType": "EQUITY",
+        "exchange": "WSE",
+        "sectorKey": "technology",
+        "industryKey": "software-application"
+      },
+      "chart": {
+        "symbol": "ACP.WA",
+        "currency": "PLN",
+        "instrumentType": "EQUITY",
+        "exchangeName": "WSE"
+      },
+      "error": null,
+      "profile": "accepted",
+      "history": "accepted",
+      "observations": 400,
+      "sourceUrl": "https://finance.yahoo.com/quote/ACP.WA/"
+    }
+  ],
+  "note": "Observed public Yahoo profile and chart metadata. 26 profiles and 25 histories accepted; Eurobank history gap retained. This audit does not imply 26 eligible peer comparisons. Daily job refetches observations; no synthetic prices or classification overrides."
+}

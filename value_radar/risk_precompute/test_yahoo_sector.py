@@ -87,5 +87,12 @@ class YahooSectorTests(unittest.TestCase):
   def fetch(req,t):calls.append(req);return {'profile':profile(req['row'],INFO,req['original'],NOW),'series':existing}
   run({'kandidaten':[ROW]},saved,{'schema':1,'series':{'NASDAQ:MSFT':existing}},NOW,fetch,calendar_retry={'NASDAQ:MSFT'})
   self.assertTrue(calls[0]['history'])
+ def test_metadata_only_never_requests_history(self):
+  calls=[]
+  def fetch(req,t):calls.append(req);return {'profile':profile(req['row'],INFO,req['original'],NOW)}
+  a,c=run({'kandidaten':[ROW]}, {}, {},NOW,fetch,metadata_only=True,calendar_retry={'NASDAQ:MSFT'})
+  self.assertFalse(calls[0]['history']);self.assertFalse(c['series'])
+  run({'kandidaten':[ROW]},a,{},NOW,lambda *_:self.fail('profile unnecessarily fetched'),metadata_only=True)
 
 if __name__=='__main__':unittest.main()
+

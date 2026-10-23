@@ -106,7 +106,8 @@ def main():
  def search(q):
   time.sleep(max(0,0.5-(time.monotonic()-last[0])));last[0]=time.monotonic()
   url='https://api.roic.ai/v3.0.0/tickers/search?'+urllib.parse.urlencode({'query':q,'apikey':key})
-  with urllib.request.urlopen(url,timeout=10) as response:data=json.load(response)
+  request=urllib.request.Request(url,headers={'User-Agent':'value-radar','Accept':'application/json'})
+  with urllib.request.urlopen(request,timeout=10) as response:data=json.load(response)
   if isinstance(data,list):return data
   if isinstance(data,dict):
    for k in ('data','results','tickers'):

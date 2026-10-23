@@ -1,3 +1,4 @@
+import {weeklyCalendar,JPX_CALENDAR_SOURCE} from './trading-calendar';
 /** Descriptive, point-in-time cohort comparison. Never a probability or calibrated score. */
 type Row=Record<string,any>;
 export const SECTOR_VERSION=1;
@@ -33,7 +34,7 @@ const identity=(r:Row)=>Object.fromEntries(['isin','currency','industry','sub_in
 const matches=(a:Row,b:Row)=>Object.keys(identity(a)).every(k=>(a[k]??null)===(b?.[k]??null));
 const iso=(n:number)=>new Date(n).toISOString().slice(0,10);
 function anchor(dates:string[],wanted:number,tolerance=7){return [...dates].reverse().find(d=>Date.parse(d)<=wanted&&wanted-Date.parse(d)<=tolerance*DAY)}
-function metrics(points:Map<string,number>,dates:string[],end:string){
+export function metrics(points:Map<string,number>,dates:string[],end:string,symbols:string[]=[]){
  const finish=Date.parse(end),start=anchor(dates,finish-365*DAY);
  if(!start)return null;
  const common=dates.filter(d=>d>=start&&d<=end);if(common.length<200)return null;
@@ -41,12 +42,12 @@ function metrics(points:Map<string,number>,dates:string[],end:string){
  const returns:Row={};for(const [label,days] of [['oneMonth',30],['threeMonths',90],['sixMonths',180]] as const){
   const a=anchor(common,finish-days*DAY);if(!a)return null;returns[label]={value:points.get(end)!/points.get(a)!-1,from:a,to:end};
  }
- const weekly:string[]=[];for(let i=52;i>=0;i--){const d=anchor(common,finish-i*7*DAY,4);if(!d||weekly.includes(d))return null;weekly.push(d)}
+ const calendar=weeklyCalendar(common,end,symbols);if(calendar.error)return null;const weekly=calendar.dates;
  const log=weekly.slice(1).map((d,i)=>Math.log(points.get(d)!/points.get(weekly[i])!)),mean=log.reduce((a,b)=>a+b,0)/log.length;
  const volatility=Math.sqrt(log.reduce((a,b)=>a+(b-mean)**2,0)/(log.length-1))*Math.sqrt(52);
  let peak=points.get(start)!,maxDrawdown=0;
  for(const d of common){const v=points.get(d)!;peak=Math.max(peak,v);maxDrawdown=Math.max(maxDrawdown,1-v/peak)}
- return {returns,volatility,maxDrawdown,drawdown:1-points.get(end)!/peak,from:start,to:end,observations:common.length,weeklyObservations:weekly.length};
+ return {returns,volatility,maxDrawdown,drawdown:1-points.get(end)!/peak,from:start,to:end,observations:common.length,weeklyObservations:weekly.length,holidayAdjustments:calendar.adjustments};
 }
 export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Date.now()):Row{
  const stocks:Record<string,Row>={},excluded= (reason:string,extra:Row={})=>({method:'aligned-cohort-v1',state:'missing',reason,score:null,...extra});
@@ -91,13 +92,16 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
   const end=[...ownDates].reverse().find(d=>fresh(d,now,7)&&pool.filter(p=>p.map.has(d)).length>=5);
   if(!end){stocks[symbol]=excluded('no_fresh_common_trading_date',detail);continue}
   let dates=ownDates.filter(d=>d<=end);
-  if(!metrics(own,dates,end)){stocks[symbol]=excluded('target_calendar_insufficient',detail);continue}
+  if(!metrics(own,dates,end,[symbol])){
+   const diagnostic=weeklyCalendar(dates,end,[symbol]);
+   stocks[symbol]=excluded('target_calendar_insufficient',{...detail,calendarDiagnostic:{reason:diagnostic.error||'annual_window_incomplete',anchor:diagnostic.anchor,previous:diagnostic.previous}});continue;
+  }
   const ranked=pool.map(p=>({...p,overlap:dates.filter(d=>p.map.has(d)).length}))
     .sort((a,b)=>b.overlap-a.overlap||a.symbol.localeCompare(b.symbol));
   const accepted:typeof pool=[];
   for(const p of ranked){
    const common=dates.filter(d=>p.map.has(d));
-   if(!p.map.has(end)||!metrics(own,common,end)){
+   if(!p.map.has(end)||!metrics(own,common,end,[symbol,...accepted.map(a=>a.symbol),p.symbol])){
     excludedPeers.incompatible_calendar=(excludedPeers.incompatible_calendar||0)+1;continue;
    }
    accepted.push(p);dates=common;
@@ -106,7 +110,7 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
     peerCountries:[...new Set(accepted.map(p=>p.country).filter(Boolean))].sort()};
   if(accepted.length<5){stocks[symbol]=excluded('insufficient_common_history',detail);continue}
   const series=[all[symbol],...accepted.map(p=>p.history)],maps=[own,...accepted.map(p=>p.map)];
-  const stats=maps.map(m=>metrics(m,dates,end));
+  const stats=maps.map(m=>metrics(m,dates,end,[symbol,...accepted.map(p=>p.symbol)]));
   const target=stats[0]!,peers=stats.slice(1) as NonNullable<ReturnType<typeof metrics>>[];
   const comparisons:Row={};
   for(const label of ['oneMonth','threeMonths','sixMonths']){
@@ -122,6 +126,7 @@ export function buildSectorComparisons(universe:Row,groups:Row,cache:Row,now=Dat
    classificationSource:candidates.find(i=>i.id===membership.issuerId)?.classification?.source||null,
    classificationObservedAt:candidates.find(i=>i.id===membership.issuerId)?.classification?.observedAt||null,
    calendarSelection:'coverage-first-v1',observationDate:end,window:{from:target.from,to:end,commonObservations:target.observations,weeklyObservations:target.weeklyObservations},
+   holidayCalendar:target.holidayAdjustments.length?{source:JPX_CALENDAR_SOURCE,adjustments:target.holidayAdjustments}:null,
    returns:comparisons,volatility:measure('volatility'),maxDrawdown:measure('maxDrawdown'),currentDrawdown:drawdown,
    drawdown:drawdown.value,medianDrawdown:drawdown.peerMedian,differencePercentagePoints:drawdown.differencePercentagePoints,
    sourceDates:{oldestRetrieval:series.map(h=>h.retrievedAt).sort()[0],groupGeneratedAt:groups.generatedAt},score:null,

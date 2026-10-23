@@ -12,6 +12,8 @@ on:
       - 'value_radar/reviewed_listing_reference.json'
       - 'value_radar/peer_metadata.py'
       - 'value_radar/export_cf.py'
+      - 'value_radar/listing_identity.py'
+      - 'value_radar/fundamental_export/listing_identity.py'
 
 concurrency:
   group: daily-risk
@@ -34,6 +36,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_recover_listing_metadata.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_*company_news.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_peer_groups.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_yahoo_sector.py'
@@ -59,6 +62,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Fehlende Notierungsdaten getrennt von Finanzdaten ergaenzen
+        timeout-minutes: 10
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+        run: python value_radar/risk_precompute/recover_listing_metadata.py
       - name: Universumsweite Datenpruefung und Warteschlange vorbereiten
         run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/audit-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-audit.mjs
@@ -145,6 +153,7 @@ jobs:
             value_radar/daten/cf_sector_context.json
             value_radar/daten/cf_peer_metadata.json
             value_radar/daten/cf_sector_supply_plan.json
+            value_radar/daten/cf_listing_recovery.json
           retention-days: 90
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -154,7 +163,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          for file in cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi
@@ -166,6 +175,7 @@ jobs:
             sleep 5
           done
           exit 1
+
 
 
 

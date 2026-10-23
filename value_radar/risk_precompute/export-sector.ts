@@ -11,6 +11,7 @@ export function exportSector(folder='value_radar/daten',cachePath='.risk-sector-
  const rows=Object.entries(result.stocks).map(([symbol,value]:any)=>({symbol,state:value.state,reason:value.reason,
   group:value.group||null,quality:value.quality||null,peerIssuers:value.peerIssuers??null,
   historyIssue:seriesCheck(cache?.series?.[symbol],now),
+  calendarDiagnostic:value.calendarDiagnostic||null,
   nextAction:value.state==='available'?'observe':value.reason==='fewer_than_five_same_currency_issuers'?'group_membership_or_currency_review':
    ['insufficient_common_history','target_calendar_insufficient','no_fresh_common_trading_date'].includes(value.reason)?'calendar_review':
    value.reason==='issuer_or_business_group_unconfirmed'?'identity_review':'history_refresh',

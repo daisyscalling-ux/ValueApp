@@ -16,6 +16,26 @@ PRICES=[((NOW-dt.timedelta(days=i)).date().isoformat(),100+i/100) for i in range
 RULES={'aliases':{},'reviewed':[]}
 
 class YahooSectorTests(unittest.TestCase):
+ def test_polish_and_greek_profiles_and_prices_require_exact_listing(self):
+  cases=[('PKO.WA','GPW:PKO','PLPKO0000016','PLN','PKO Bank Polski SA','WSE'),
+         ('ETE.AT','ATHEX:ETE','GRS003003035','EUR','National Bank of Greece S.A.','ATH')]
+  for ticker,listing,isin,ccy,name,venue in cases:
+   with self.subTest(listing=listing):
+    row={**ROW,'ticker':ticker,'listing_symbol':listing,'exchange':listing.split(':')[0],
+         'isin':isin,'currency':ccy,'name_full':name}
+    info={**INFO,'symbol':ticker,'currency':ccy,'longName':name,'exchange':venue}
+    meta={**META,'symbol':ticker,'currency':ccy,'exchangeName':venue}
+    self.assertEqual(profile(row,info,now=NOW)['inputIdentity'],identity(row))
+    self.assertEqual(normalize_prices(row,meta,PRICES,NOW)['symbol'],listing)
+    for change in [{'exchange':'NYQ'},{'exchange':'ATH' if venue=='WSE' else 'WSE'},
+                   {'symbol':'OTHER'},{'currency':'USD'},{'quoteType':'ETF'},{'longName':'Unrelated Corporation'}]:
+     with self.assertRaises(ValueError):profile(row,{**info,**change},now=NOW)
+    for change in [{'exchangeName':'NYQ'},{'exchangeName':'ATH' if venue=='WSE' else 'WSE'},
+                   {'symbol':'OTHER'},{'currency':'USD'},{'instrumentType':'ETF'}]:
+     with self.assertRaises(ValueError):normalize_prices(row,{**meta,**change},PRICES,NOW)
+    with self.assertRaises(ValueError):profile({**row,'isin':'invalid'},info,now=NOW)
+    with self.assertRaises(ValueError):profile({**row,'ticker':ticker.split('.')[0]+'.DE'},info,now=NOW)
+    with self.assertRaises(ValueError):normalize_prices(row,meta,PRICES[-20:],NOW)
  def test_recovery_keeps_observation_date_and_rejects_stale_changed_or_bad_series(self):
   h=normalize_prices(ROW,META,PRICES,NOW);h['inputIdentity']=identity(ROW)
   u={'kandidaten':[ROW]}

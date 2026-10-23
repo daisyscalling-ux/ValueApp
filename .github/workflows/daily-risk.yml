@@ -103,6 +103,12 @@ jobs:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           NEWS_BUDGET_MIN: '20'
         run: python value_radar/risk_precompute/company_news.py
+      - name: Aktuelle Kalenderluecken vor dem Ersatzabruf pruefen
+        if: always() && !cancelled()
+        run: |
+          python value_radar/risk_precompute/peer_groups.py
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-sector.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-sector.mjs
+          node /tmp/risk-sector.mjs
       - name: Fehlende Kursreihen und feinere Branchenangaben ergaenzen
         if: always() && !cancelled()
         timeout-minutes: 23

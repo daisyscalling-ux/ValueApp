@@ -1,0 +1,1244 @@
+{
+  "generatedAt": "2026-10-24T14:04:57.587Z",
+  "scope": "133 previously incomplete main-market listings; replay of current Yahoo annual tables, not a production export or SEC-enriched collection",
+  "counts": {
+    "available": 41,
+    "context_only": 2,
+    "partial": 71,
+    "missing": 19
+  },
+  "limitations": [
+    "Replay includes newly available provider fields; not all improvements are caused by the code patch.",
+    "Production SEC enrichment and later provider responses may differ.",
+    "No zero-debt assumptions or fabricated capex."
+  ],
+  "reportedLabelExamples": [
+    {
+      "symbol": "BME:TEF",
+      "period": "2025-12-31",
+      "currency": "EUR",
+      "providerField": "Cash Flowsfromusedin Operating Activities Direct",
+      "value": 9722000000.0
+    },
+    {
+      "symbol": "LSE:BLND",
+      "period": "2026-03-31",
+      "currency": "GBP",
+      "providerField": "Cash Flowsfromusedin Operating Activities Direct",
+      "value": 309000000.0
+    },
+    {
+      "symbol": "EURONEXT:EDPR",
+      "period": "2025-12-31",
+      "currency": "EUR",
+      "providerField": "Cash Flowsfromusedin Operating Activities Direct",
+      "value": 1039931000.0
+    },
+    {
+      "symbol": "EURONEXT:SOF",
+      "period": "2025-12-31",
+      "currency": "EUR",
+      "providerField": "Cash Flowsfromusedin Operating Activities Direct",
+      "value": -740910000.0
+    }
+  ],
+  "rows": [
+    {
+      "symbol": "NASDAQ:ASML",
+      "retrievedAt": "2026-10-24T13:59:17.639008+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ASML/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:RR.",
+      "retrievedAt": "2026-10-24T14:03:41.742767+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/RR.L/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:NG.",
+      "retrievedAt": "2026-10-24T14:03:43.729122+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/NG.L/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "XETR:MUV2",
+      "retrievedAt": "2026-10-24T13:59:22.507094+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/MUV2.DE/financials/",
+      "before": "partial",
+      "after": "context_only",
+      "reason": "sector_specific_assessment_pending",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:EOAN",
+      "retrievedAt": "2026-10-24T13:59:24.189382+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/EOAN.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "SIX:ALC",
+      "retrievedAt": "2026-10-24T13:59:25.998712+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ALC.SW/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_cash",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:AV.",
+      "retrievedAt": "2026-10-24T14:03:45.478183+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/AV.L/financials/",
+      "before": "missing",
+      "after": "context_only",
+      "reason": "sector_specific_assessment_pending",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "EURONEXT:VIE",
+      "retrievedAt": "2026-10-24T13:59:29.554215+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/VIE.PA/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:SHL",
+      "retrievedAt": "2026-10-24T13:59:31.342663+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SHL.DE/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "BME:TEF",
+      "retrievedAt": "2026-10-24T13:59:33.003941+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/TEF.MC/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "SIX:KNIN",
+      "retrievedAt": "2026-10-24T13:59:34.719371+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/KNIN.SW/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "MIL:TRN",
+      "retrievedAt": "2026-10-24T13:59:36.454019+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/TRN.MI/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "XETR:VNA",
+      "retrievedAt": "2026-10-24T13:59:38.085336+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/VNA.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:UU.",
+      "retrievedAt": "2026-10-24T14:03:47.331515+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/UU.L/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "LSE:SN.",
+      "retrievedAt": "2026-10-24T14:03:49.105303+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SN.L/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:SMIN",
+      "retrievedAt": "2026-10-24T13:59:42.364288+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SMIN.L/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "LSE:SVT",
+      "retrievedAt": "2026-10-24T13:59:44.212566+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SVT.L/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "SIX:BEAN",
+      "retrievedAt": "2026-10-24T13:59:45.823225+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BEAN.SW/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:KBX",
+      "retrievedAt": "2026-10-24T13:59:47.555229+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/KBX.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "EURONEXT:EXO",
+      "retrievedAt": "2026-10-24T13:59:49.195491+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/EXO.AS/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_equity,missing_net_income",
+      "period": null
+    },
+    {
+      "symbol": "LSE:BTRW",
+      "retrievedAt": "2026-10-24T13:59:51.092880+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BTRW.L/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "EURONEXT:ABVX",
+      "retrievedAt": "2026-10-24T13:59:53.091832+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ABVX.PA/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "EURONEXT:ALO",
+      "retrievedAt": "2026-10-24T13:59:54.650494+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ALO.PA/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "LSE:IGG",
+      "retrievedAt": "2026-10-24T13:59:56.179401+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/IGG.L/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_equity,missing_net_income",
+      "period": null
+    },
+    {
+      "symbol": "XETR:P911",
+      "retrievedAt": "2026-10-24T13:59:57.950045+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/P911.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:PSN",
+      "retrievedAt": "2026-10-24T13:59:59.616062+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/PSN.L/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:BLND",
+      "retrievedAt": "2026-10-24T14:00:01.448063+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BLND.L/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "EURONEXT:SW",
+      "retrievedAt": "2026-10-24T14:00:03.279663+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SW.PA/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "EURONEXT:DIE",
+      "retrievedAt": "2026-10-24T14:00:05.168306+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/DIE.BR/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "EURONEXT:EDPR",
+      "retrievedAt": "2026-10-24T14:00:06.859534+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/EDPR.LS/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:PAH3",
+      "retrievedAt": "2026-10-24T14:00:08.721613+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/PAH3.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:BKG",
+      "retrievedAt": "2026-10-24T14:00:10.437570+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BKG.L/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-04-30"
+    },
+    {
+      "symbol": "LSE:TW.",
+      "retrievedAt": "2026-10-24T14:03:50.867670+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/TW.L/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "EURONEXT:SOF",
+      "retrievedAt": "2026-10-24T14:00:14.203910+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SOF.BR/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "EURONEXT:TUB",
+      "retrievedAt": "2026-10-24T14:00:16.056228+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/TUB.BR/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_equity,missing_net_income",
+      "period": null
+    },
+    {
+      "symbol": "LSE:BWY",
+      "retrievedAt": "2026-10-24T14:00:17.735916+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BWY.L/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "SIX:SFZN",
+      "retrievedAt": "2026-10-24T14:00:19.411542+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SFZN.SW/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "SIX:HUBN",
+      "retrievedAt": "2026-10-24T14:00:21.143256+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/HUBN.SW/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:FPE3",
+      "retrievedAt": "2026-10-24T14:00:22.717504+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/FPE3.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:PHP",
+      "retrievedAt": "2026-10-24T14:00:24.455267+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/PHP.L/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:KGX",
+      "retrievedAt": "2026-10-24T14:00:26.237450+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/KGX.DE/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "LSE:SCT",
+      "retrievedAt": "2026-10-24T14:00:28.889004+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SCT.L/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "LSE:QQ.",
+      "retrievedAt": "2026-10-24T14:03:52.775439+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/QQ.L/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "LSE:SHC",
+      "retrievedAt": "2026-10-24T14:00:31.969028+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SHC.L/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "XETR:TEG",
+      "retrievedAt": "2026-10-24T14:00:34.027382+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/TEG.DE/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:4151",
+      "retrievedAt": "2026-10-24T14:00:35.897506+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4151.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:4506",
+      "retrievedAt": "2026-10-24T14:00:37.732730+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4506.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:4519",
+      "retrievedAt": "2026-10-24T14:00:39.701687+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4519.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:6526",
+      "retrievedAt": "2026-10-24T14:00:41.815981+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6526.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6752",
+      "retrievedAt": "2026-10-24T14:00:43.715313+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6752.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6861",
+      "retrievedAt": "2026-10-24T14:00:45.368735+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6861.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6920",
+      "retrievedAt": "2026-10-24T14:00:47.314320+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6920.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-06-30"
+    },
+    {
+      "symbol": "TSE:6954",
+      "retrievedAt": "2026-10-24T14:00:49.008400+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6954.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6976",
+      "retrievedAt": "2026-10-24T14:00:50.821842+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6976.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:7752",
+      "retrievedAt": "2026-10-24T14:00:52.472421+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7752.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:8035",
+      "retrievedAt": "2026-10-24T14:00:54.291596+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/8035.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6146",
+      "retrievedAt": "2026-10-24T14:00:56.102606+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6146.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:7731",
+      "retrievedAt": "2026-10-24T14:00:57.905919+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7731.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9434",
+      "retrievedAt": "2026-10-24T14:00:59.826016+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9434.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:2503",
+      "retrievedAt": "2026-10-24T14:01:01.614114+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/2503.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:2802",
+      "retrievedAt": "2026-10-24T14:01:03.480091+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/2802.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:7453",
+      "retrievedAt": "2026-10-24T14:01:05.442290+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7453.T/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "TSE:8267",
+      "retrievedAt": "2026-10-24T14:01:07.312783+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/8267.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-02-28"
+    },
+    {
+      "symbol": "TSE:9983",
+      "retrievedAt": "2026-10-24T14:01:09.170433+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9983.T/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "TSE:2413",
+      "retrievedAt": "2026-10-24T14:01:10.912251+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/2413.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:2432",
+      "retrievedAt": "2026-10-24T14:01:12.748964+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/2432.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:3659",
+      "retrievedAt": "2026-10-24T14:01:14.439116+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/3659.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:3697",
+      "retrievedAt": "2026-10-24T14:01:16.044918+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/3697.T/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "TSE:4324",
+      "retrievedAt": "2026-10-24T14:01:18.035321+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4324.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:4689",
+      "retrievedAt": "2026-10-24T14:01:20.103904+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4689.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:4704",
+      "retrievedAt": "2026-10-24T14:01:21.865305+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4704.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:6098",
+      "retrievedAt": "2026-10-24T14:01:23.655291+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6098.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6532",
+      "retrievedAt": "2026-10-24T14:01:25.573947+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6532.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-02-28"
+    },
+    {
+      "symbol": "TSE:7974",
+      "retrievedAt": "2026-10-24T14:01:27.361338+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7974.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:1605",
+      "retrievedAt": "2026-10-24T14:01:29.204349+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/1605.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:3401",
+      "retrievedAt": "2026-10-24T14:01:30.942503+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/3401.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:4042",
+      "retrievedAt": "2026-10-24T14:01:32.640939+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4042.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:4183",
+      "retrievedAt": "2026-10-24T14:01:34.509515+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4183.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:4452",
+      "retrievedAt": "2026-10-24T14:01:36.300422+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/4452.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:6988",
+      "retrievedAt": "2026-10-24T14:01:37.994897+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6988.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:5214",
+      "retrievedAt": "2026-10-24T14:01:39.778132+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/5214.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:5233",
+      "retrievedAt": "2026-10-24T14:01:41.570874+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/5233.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:5411",
+      "retrievedAt": "2026-10-24T14:01:43.481778+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/5411.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:6471",
+      "retrievedAt": "2026-10-24T14:01:45.379685+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/6471.T/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "missing_total_debt,missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:7011",
+      "retrievedAt": "2026-10-24T14:01:47.441340+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7011.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:7013",
+      "retrievedAt": "2026-10-24T14:01:49.146246+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7013.T/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:7012",
+      "retrievedAt": "2026-10-24T14:01:50.920476+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/7012.T/financials/",
+      "before": "missing",
+      "after": "missing",
+      "reason": "missing_total_debt,missing_operating_cashflow,missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:3289",
+      "retrievedAt": "2026-10-24T14:01:52.885016+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/3289.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:8804",
+      "retrievedAt": "2026-10-24T14:01:54.962435+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/8804.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:9005",
+      "retrievedAt": "2026-10-24T14:01:56.779264+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9005.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9009",
+      "retrievedAt": "2026-10-24T14:01:58.617332+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9009.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9021",
+      "retrievedAt": "2026-10-24T14:02:00.430758+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9021.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9147",
+      "retrievedAt": "2026-10-24T14:02:02.326232+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9147.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_operating_cashflow,missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "TSE:9104",
+      "retrievedAt": "2026-10-24T14:02:04.152765+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9104.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9201",
+      "retrievedAt": "2026-10-24T14:02:05.993236+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9201.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9501",
+      "retrievedAt": "2026-10-24T14:02:08.034812+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9501.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9502",
+      "retrievedAt": "2026-10-24T14:02:10.094974+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9502.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "TSE:9503",
+      "retrievedAt": "2026-10-24T14:02:12.354989+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/9503.T/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2026-03-31"
+    },
+    {
+      "symbol": "NASDAQ:WMT",
+      "retrievedAt": "2026-10-24T14:02:14.175034+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/WMT/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-01-31"
+    },
+    {
+      "symbol": "NASDAQ:COST",
+      "retrievedAt": "2026-10-24T14:02:16.120491+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/COST/financials/",
+      "before": "partial",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "NYSE:HD",
+      "retrievedAt": "2026-10-24T14:02:18.416272+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/HD/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-01-31"
+    },
+    {
+      "symbol": "NASDAQ:SHOP",
+      "retrievedAt": "2026-10-24T14:02:20.265156+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SHOP/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:ANET",
+      "retrievedAt": "2026-10-24T14:02:22.150210+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ANET/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:ADI",
+      "retrievedAt": "2026-10-24T14:02:24.199401+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ADI/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-10-31"
+    },
+    {
+      "symbol": "NYSE:APH",
+      "retrievedAt": "2026-10-24T14:02:26.351874+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/APH/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:COP",
+      "retrievedAt": "2026-10-24T14:02:28.131782+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/COP/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:SNDK",
+      "retrievedAt": "2026-10-24T14:02:29.975961+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/SNDK/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-06-30"
+    },
+    {
+      "symbol": "NYSE:DE",
+      "retrievedAt": "2026-10-24T14:02:31.721496+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/DE/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-10-31"
+    },
+    {
+      "symbol": "NASDAQ:ISRG",
+      "retrievedAt": "2026-10-24T14:02:33.844059+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ISRG/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:ACN",
+      "retrievedAt": "2026-10-24T14:02:35.736163+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ACN/financials/",
+      "before": "partial",
+      "after": "missing",
+      "reason": "annual_missing_or_stale,annual_source_or_field_period_inconsistent,annual_currency_missing,missing_total_assets,missing_total_debt,missing_cash,missing_operating_cashflow,missing_capex",
+      "period": null
+    },
+    {
+      "symbol": "NASDAQ:STX",
+      "retrievedAt": "2026-10-24T14:02:37.445242+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/STX/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-06-30"
+    },
+    {
+      "symbol": "NASDAQ:WDC",
+      "retrievedAt": "2026-10-24T14:02:39.244999+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/WDC/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-06-30"
+    },
+    {
+      "symbol": "NYSE:MO",
+      "retrievedAt": "2026-10-24T14:02:41.045977+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/MO/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:PLD",
+      "retrievedAt": "2026-10-24T14:02:42.978279+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/PLD/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:ABNB",
+      "retrievedAt": "2026-10-24T14:02:44.885338+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/ABNB/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:MELI",
+      "retrievedAt": "2026-10-24T14:02:46.881297+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/MELI/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:MNST",
+      "retrievedAt": "2026-10-24T14:02:48.603116+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/MNST/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_total_debt",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:CEG",
+      "retrievedAt": "2026-10-24T14:02:50.392096+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/CEG/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:BX",
+      "retrievedAt": "2026-10-24T14:02:52.050822+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BX/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:WMB",
+      "retrievedAt": "2026-10-24T14:02:54.039280+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/WMB/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:EOG",
+      "retrievedAt": "2026-10-24T14:02:55.964023+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/EOG/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:CI",
+      "retrievedAt": "2026-10-24T14:02:57.889236+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/CI/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:MRNA",
+      "retrievedAt": "2026-10-24T14:02:59.694281+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/MRNA/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:KMI",
+      "retrievedAt": "2026-10-24T14:03:01.553438+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/KMI/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:BAM",
+      "retrievedAt": "2026-10-24T14:03:03.462182+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/BAM/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:HON",
+      "retrievedAt": "2026-10-24T14:03:05.328123+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/HON/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:APO",
+      "retrievedAt": "2026-10-24T14:03:07.226305+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/APO/financials/",
+      "before": "partial",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:GM",
+      "retrievedAt": "2026-10-24T14:03:09.394112+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/GM/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:TRGP",
+      "retrievedAt": "2026-10-24T14:03:11.221670+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/TRGP/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NYSE:DLR",
+      "retrievedAt": "2026-10-24T14:03:13.030207+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/DLR/financials/",
+      "before": "missing",
+      "after": "partial",
+      "reason": "missing_capex",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:FANG",
+      "retrievedAt": "2026-10-24T14:03:14.950414+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/FANG/financials/",
+      "before": "missing",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:MPWR",
+      "retrievedAt": "2026-10-24T14:03:16.879794+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/MPWR/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2025-12-31"
+    },
+    {
+      "symbol": "NASDAQ:PAYX",
+      "retrievedAt": "2026-10-24T14:03:18.692795+00:00",
+      "sourceUrl": "https://finance.yahoo.com/quote/PAYX/financials/",
+      "before": "partial",
+      "after": "available",
+      "reason": "annual_book_ratios",
+      "period": "2026-05-31"
+    }
+  ]
+}

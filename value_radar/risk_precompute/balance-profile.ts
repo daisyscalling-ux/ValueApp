@@ -45,8 +45,29 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
  const state=complete?(applicable?'available':'context_only'):Object.values(metrics).some((m:any)=>m.state==='available')?'partial':'missing';
  return {state,reason:reasons.join(',')||(applicable?'annual_book_ratios':'sector_specific_assessment_pending'),profile,
   period:a?.end||null,currency:a?.currency||null,publicationDateConfirmed:!!a?.published_at&&recent(a.published_at,now,700),
+  source:a?.source||null,sourceUrl:a?.source_url||null,
   capexNormalization:capex!==fields.capex?'yahoo_cash_outflow_to_positive_spend':'unchanged',
   ratios:applicable&&complete?{netDebtAssets:metrics.netDebtAssets.value,fcfAssets:metrics.fcfAssets.value}:null,metrics,
   sectorRequirements:needed,needsFinancialRefresh:!complete,
   interpretation:financial?'Book equity and income over ending assets are context only, not regulatory capital, solvency or a calibrated risk score.':profile==='unclassified'?'Industry classification must be verified before selecting ratios.':'Book ratios, no calibrated risk probability.'};
+}
+
+export function assessBalanceSnapshot(row:Row,snapshot:Row|undefined,identityOK:boolean,now:number){
+ const primary=assessBalance(row,snapshot?.annual,snapshot?.annual_retrieved_at||snapshot?.retrieved_at,identityOK,now);
+ const candidate=snapshot?.risk_annual;
+ if(!identityOK||!candidate||candidate.symbol!==snapshot?.symbol||candidate.purpose!=='standalone_balance_risk_context'
+    ||candidate.source!=='Yahoo annual statements')return primary;
+ const previous=snapshot?.annual;
+ // Independent whole statements only: do not transfer fields, dates or EPS.
+ // A month-end-rounded provider date can differ by a few days from a 52/53-week
+ // SEC year. Retain that source's own date and explicitly record both dates.
+ if(previous&&(previous.currency!==candidate.currency||!Number.isFinite(Date.parse(previous.end))
+    ||Math.abs(Date.parse(previous.end)-Date.parse(candidate.end))>7*DAY))return primary;
+ const alternative=assessBalance(row,candidate,snapshot?.retrieved_at,identityOK,now);
+ const strength=(x:ReturnType<typeof assessBalance>)=>['available','context_only'].includes(x.state)?100:
+   Object.values(x.metrics).filter((m:any)=>m.state==='available').length;
+ if(strength(alternative)<=strength(primary))return primary;
+ return {...alternative,sourceSelection:'provider_native_whole_statement',
+   valuationPeriod:previous?.end||null,valuationSource:previous?.source||null,
+   interpretation:alternative.interpretation+' Separate provider-native statement; valuation source unchanged. No cross-source field merge.'};
 }

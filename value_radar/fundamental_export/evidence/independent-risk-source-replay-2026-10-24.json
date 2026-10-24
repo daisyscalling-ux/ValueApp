@@ -1,0 +1,263 @@
+{
+  "checkedAt": "2026-10-24T15:11:15.720Z",
+  "scope": "Replay of dated Yahoo tables from previous audit against current production snapshots; not new live collection",
+  "improved": 32,
+  "rows": [
+    {
+      "symbol": "NASDAQ:ASML",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "XETR:MUV2",
+      "before": "partial",
+      "after": "context_only",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "sector_specific_assessment_pending"
+    },
+    {
+      "symbol": "SIX:KNIN",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "EURONEXT:DIE",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "XETR:TEG",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "TSE:7013",
+      "before": "partial",
+      "after": "available",
+      "period": "2026-03-31",
+      "valuationPeriod": "2026-03-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:WMT",
+      "before": "partial",
+      "after": "available",
+      "period": "2026-01-31",
+      "valuationPeriod": "2026-01-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:HD",
+      "before": "missing",
+      "after": "available",
+      "period": "2026-01-31",
+      "valuationPeriod": "2026-02-01",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:SHOP",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:ADI",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-10-31",
+      "valuationPeriod": "2025-11-01",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:APH",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:COP",
+      "before": "missing",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:SNDK",
+      "before": "partial",
+      "after": "available",
+      "period": "2026-06-30",
+      "valuationPeriod": "2026-07-03",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:DE",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-10-31",
+      "valuationPeriod": "2025-11-02",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:STX",
+      "before": "partial",
+      "after": "available",
+      "period": "2026-06-30",
+      "valuationPeriod": "2026-07-03",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:WDC",
+      "before": "partial",
+      "after": "available",
+      "period": "2026-06-30",
+      "valuationPeriod": "2026-07-03",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:MO",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:MELI",
+      "before": "missing",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:CEG",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:BX",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:WMB",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:EOG",
+      "before": "missing",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:CI",
+      "before": "missing",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:MRNA",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:KMI",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:HON",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:GM",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:TRGP",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NYSE:DLR",
+      "before": "missing",
+      "after": "partial",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "missing_capex"
+    },
+    {
+      "symbol": "NASDAQ:FANG",
+      "before": "missing",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:MPWR",
+      "before": "partial",
+      "after": "available",
+      "period": "2025-12-31",
+      "valuationPeriod": "2025-12-31",
+      "reason": "annual_book_ratios"
+    },
+    {
+      "symbol": "NASDAQ:PAYX",
+      "before": "partial",
+      "after": "available",
+      "period": "2026-05-31",
+      "valuationPeriod": "2026-05-31",
+      "reason": "annual_book_ratios"
+    }
+  ]
+}

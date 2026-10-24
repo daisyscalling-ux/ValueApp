@@ -14,6 +14,18 @@ const summary=(symbol='NASDAQ:TEST')=>({schema:1,format:'risk-summary',symbol,cu
 const fund=()=>({symbol:row.listing_symbol,retrieved_at:new Date(now).toISOString(),annual:{end:'2026-06-30',period_type:'annual',currency:'USD',source:'Yahoo annual statements',fields:{total_assets:100,total_debt:0,cash:20,operating_cashflow:10,capex:-3}},market:{quote_at:'2026-10-16',currency:'USD',fields:{price:10}}});
 const risk=()=>({stocks:{[row.listing_symbol]:summary()},benchmarks:{SPY:summary('AMEX:SPY')}});
 const audit=(rows:any[]=[row],f:any=fund(),r:any=risk())=>auditUniverse({kandidaten:rows},r,{[row.listing_symbol]:f},now);
+
+test('main-market queue priority retains smaller markets and weekly rotation',()=>{
+ const rows=['GPW:PKO','LSE:AZN','NASDAQ:TEST','TSE:7203','XETR:SAP'].map(symbol=>({...row,listing_symbol:symbol}));
+ const a=audit(rows,null,{}),jobs=a.jobs.filter(j=>j.kind==='history');
+ assert.deepEqual(jobs.map(j=>j.marketTier),[0,0,0,1,2]);
+ assert.equal(new Set(jobs.map(j=>j.symbol)).size,5);
+ assert.equal(a.summary.markets.primary.listings,3);
+ assert.equal(a.summary.markets.rotation.domains.historical.missing,1);
+ const b=audit(rows,null,{attempts:{'GPW:PKO':'2026-10-10T00:00:00Z'}});
+ assert.equal(b.jobs.filter(j=>j.kind==='history')[0].symbol,'GPW:PKO');
+ assert(a.stocks.every(s=>s.score===null));
+});
 test('deduplicate exact listing only',()=>assert.equal(audit([row,row,{...row,listing_symbol:'XETR:TEST'}]).summary.uniqueListings,2));
 test('missing history is not low risk',()=>{const a=audit([row],fund(),{});assert.equal(a.stocks[0].score,null);assert.equal(a.stocks[0].domains.historical.state,'missing')});
 

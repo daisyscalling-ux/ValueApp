@@ -3,6 +3,7 @@ import {industryContexts,newsContext} from './context-risk';
 import {selectSectorComparison} from './sector-comparison';
 import {historyStatistics} from './src/lib/risk-statistics';
 import {marketProxy} from './worker/risk-benchmark';
+import {marketTier,rotationDue} from './market-priority';
 type Row=Record<string,any>;
 const DAY=86400000;
 const number=(v:any)=>typeof v==='number'&&Number.isFinite(v);
@@ -27,7 +28,7 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
  const industries=new Map<string,Set<string>>();
  for(const [key,rows] of grouped){const r=rows[0];if(r.industry&&recent(r.metadata_asof,now,90))industries.set(r.industry,new Set([...(industries.get(r.industry)||[]),key]));}
  const sectorContexts=sectorReport===undefined?industryContexts(universe,risk,now):{};
- const stocks:Row[]=[];const jobs:Row[]=[];
+ const stocks:Row[]=[];const jobs:Row[]=[];const markets:Row={};
  for(const [key,rows] of grouped){
   const r=rows[0],currencies=new Set(rows.map(x=>x.currency).filter(Boolean));
   const conflict=currencies.size>1;
@@ -60,9 +61,12 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
    news:identityOK?newsContext(key,news,now):status('not_assessed','listing_identity_unverified')
   };
   stocks.push({symbol:key,name:r.name||key,country:r.country||null,domains,score:null,scoreStatus:'coverage_audit_not_calibrated_score'});
+  const tier=marketTier(key),marketGroup=tier===0?'primary':tier===1?'europe':'rotation';
+  const bucket=markets[marketGroup]??={listings:0,domains:{}};bucket.listings++;
+  for(const [domain,d] of Object.entries(domains) as any){bucket.domains[domain]??={};bucket.domains[domain][d.state]=(bucket.domains[domain][d.state]||0)+1;}
   const add=(kind:string,owner:string,reason:string,severity:number,automatic:boolean)=>{
    const prior=kind==='history'?risk.retryState?.[key]:kind==='fundamentals'?{nextAttemptAt:fundamentalIndex.failures?.[key]?.next_attempt_at}:null;
-   jobs.push({id:kind+':'+key,symbol:key,kind,owner,reason,severity,
+   jobs.push({id:kind+':'+key,symbol:key,kind,owner,reason,severity,marketTier:marketTier(key),
     state:!identityOK&&(!!canonical||conflict)?'identity_review':!automatic?'review_required':retryDue(prior,now)?'queued':'cooldown',
     lastAttemptAt:kind==='history'?risk.attempts?.[key]||null:fundamentalIndex.attempts?.[key]||f?.retrieved_at||null,nextAttemptAt:prior?.nextAttemptAt||null});
   };
@@ -76,12 +80,11 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   if(['not_assessed','missing'].includes(domains.news.state))add('news','daily-risk','company_news_missing_or_stale',20,identityOK);
  }
  jobs.sort((a,b)=>{
-  const age=(j:Row)=>!j.lastAttemptAt||now-Date.parse(j.lastAttemptAt)>7*DAY?1:0;
-  return age(b)-age(a)||b.severity-a.severity||(Date.parse(a.lastAttemptAt)||0)-(Date.parse(b.lastAttemptAt)||0)||a.id.localeCompare(b.id);
+  return Number(rotationDue(b.lastAttemptAt,now))-Number(rotationDue(a.lastAttemptAt,now))||a.marketTier-b.marketTier||b.severity-a.severity||(Date.parse(a.lastAttemptAt)||0)-(Date.parse(b.lastAttemptAt)||0)||a.id.localeCompare(b.id);
  });
  const domains:Row={};for(const r of stocks)for(const [key,d] of Object.entries(r.domains) as any){domains[key]??={};domains[key][d.state]=(domains[key][d.state]||0)+1;}
  return {schema:1,generatedAt:new Date(now).toISOString(),universeAsOf:universe.stand||null,
-  summary:{inputRows:universe.kandidaten.length,uniqueListings:stocks.length,duplicateRows:universe.kandidaten.length-invalidRows-stocks.length,invalidRows,domains,
+  summary:{inputRows:universe.kandidaten.length,uniqueListings:stocks.length,duplicateRows:universe.kandidaten.length-invalidRows-stocks.length,invalidRows,domains,markets,
    queue:jobs.reduce((a:Row,j:Row)=>(a[j.state]=(a[j.state]||0)+1,a),{})},stocks,jobs,
   limitations:['Data coverage is not a risk probability or a new score.','Current annual data is not a historical point-in-time backtest.',
    'Listing duplicates are removed; ADRs and ordinary shares remain separate listings.','Available annual ratios do not reconcile all leases, capital claims or issuer-specific definitions.']};

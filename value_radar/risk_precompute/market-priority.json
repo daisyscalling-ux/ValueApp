@@ -1,0 +1,6 @@
+{
+  "version": "main-markets-v1",
+  "rotationDays": 7,
+  "primary": ["NASDAQ", "NYSE", "AMEX", "NYSEAMERICAN", "XETR", "FRA", "TSE", "TYO", "JPX"],
+  "europe": ["LSE", "SIX", "EURONEXT", "EPA", "AMS", "MIL", "BME"]
+}

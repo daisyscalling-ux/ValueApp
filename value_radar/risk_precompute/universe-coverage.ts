@@ -1,4 +1,4 @@
-import {assessBalance} from './balance-profile';
+import {assessBalanceSnapshot} from './balance-profile';
 import {industryContexts,newsContext} from './context-risk';
 import {selectSectorComparison} from './sector-comparison';
 import {historyStatistics} from './src/lib/risk-statistics';
@@ -43,7 +43,7 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   // The collector stores the requested exact listing (e.g. RR.L), while
   // history resolution stores its verified exchange symbol (LSE:RR.).
   const f=identityOK&&[key,canonical].includes(input?.symbol)?input:null;
-  const balance=assessBalance(r,f?.annual,f?.annual_retrieved_at||f?.retrieved_at,identityOK,now);
+  const balance=assessBalanceSnapshot(r,f,identityOK,now);
   const quote=f?.market,quoteOK=recent(quote?.quote_at,now,7)&&number(quote?.fields?.price)&&quote.fields.price>0&&currency(quote.currency)===currency(r.currency);
   const proxy=marketProxy(String(r.country||'')),benchmark=proxy?risk.benchmarks?.[proxy]:null;
   const market=benchmark&&recent(benchmark.retrievedAt,now,1.5)&&historyStatistics(benchmark,now).drawdown!==null;

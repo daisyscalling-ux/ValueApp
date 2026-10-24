@@ -16,7 +16,32 @@ def save(path,data):
 def preserve_annual(data,old):
  if old and old.get('annual') and (not data.get('annual') or old['annual']['end']>data['annual']['end']):
   data['annual']=old['annual'];data['annual_retrieved_at']=old.get('annual_retrieved_at',old['retrieved_at']);data['issues'].append('Retained prior annual block; refresh did not provide newer statements')
- else: data['annual_retrieved_at']=data['retrieved_at']
+ else:
+  data['annual_retrieved_at']=data['retrieved_at']
+  # A partial response must not erase recently verified fields for the same
+  # fiscal period. Matching anchors are still mandatory; ages are not reset.
+  if old and old.get('annual') and data.get('annual'):
+   observed=old.get('annual_retrieved_at',old.get('retrieved_at'))
+   try:
+    age=dt.datetime.fromisoformat(data['retrieved_at'].replace('Z','+00:00'))-dt.datetime.fromisoformat(observed.replace('Z','+00:00'))
+    if dt.timedelta(0)<=age<=dt.timedelta(days=7):
+     secondary=json.loads(json.dumps(old['annual']))
+     for key in secondary.get('fields',{}):
+      secondary.setdefault('field_sources',{}).setdefault(key,{})['retrieved_at']=old['annual'].get('field_sources',{}).get(key,{}).get('retrieved_at',observed)
+     # Reject expired retained fields independently of the enclosing response.
+     for key,source in secondary.get('field_sources',{}).items():
+      try:
+       field_age=dt.datetime.fromisoformat(data['retrieved_at'].replace('Z','+00:00'))-dt.datetime.fromisoformat(source['retrieved_at'].replace('Z','+00:00'))
+       if (not dt.timedelta(0)<=field_age<=dt.timedelta(days=7)
+           or source.get('end',secondary['end'])!=secondary['end']
+           or source.get('currency',secondary['currency'])!=secondary['currency']):secondary['fields'].pop(key,None)
+      except (ValueError,TypeError,KeyError):secondary['fields'].pop(key,None)
+     data['annual']=enrich_matching_annual(data['annual'],secondary)
+     diagnostics=data.get('annual_diagnostics')
+     if diagnostics and diagnostics.get('selected_annual_end')==data['annual']['end']:
+      diagnostics['missing_fields']=[k for k in ('eps_trailing','total_debt','cash','operating_cashflow','capex') if number(data['annual']['fields'].get(k)) is None]
+      diagnostics['state']='partial' if diagnostics['missing_fields'] else 'available'
+   except (ValueError,TypeError,AttributeError):pass
  return data
 def yahoo_symbol(row):
  symbol=row.get('listing_symbol') or row.get('ticker','')
@@ -29,7 +54,15 @@ def yahoo_symbol(row):
   if original.rsplit('.',1)[0]==t and original.endswith(('.PA','.AS','.BR','.LS','.IR')): return original
   raise ValueError('ambiguous Euronext venue; original exchange suffix required')
  if ex not in suffix: raise ValueError('unsupported exchange mapping')
+ # London commonly publishes RR., NG., etc.; Yahoo uses RR.L, not RR..L.
+ if ex=='LSE':t=t.rstrip('.')
  return t.replace('.','-') if ex in ('NASDAQ','NYSE','AMEX','OTC') else t+suffix[ex]
+
+def corrected_london_retry(row,failure):
+ symbol=str(row.get('listing_symbol') or row.get('ticker') or '')
+ return bool(symbol.startswith('LSE:') and symbol.endswith('.') and failure
+             and failure.get('reason') in ('mapping','provider_or_identity')
+             and failure.get('mapped_symbol')!=yahoo_symbol(row))
 FIELDS={'revenue':'Total Revenue','net_income':'Net Income','eps_trailing':'Diluted EPS','gross_profit':'Gross Profit','ebit':'Operating Income','ebitda':'EBITDA','weighted_shares':'Diluted Average Shares','operating_cashflow':'Operating Cash Flow','capex':'Capital Expenditure','total_debt':'Total Debt','cash':'Cash And Cash Equivalents','total_assets':'Total Assets','equity':'Stockholders Equity','total_liabilities':'Total Liabilities Net Minority Interest','interest_expense':'Interest Expense','net_interest_income':'Net Interest Income'}
 def yahoo_annual(frames,info,now=None):
  now=now or dt.datetime.now(UTC).date()
@@ -46,6 +79,17 @@ def yahoo_annual(frames,info,now=None):
   fields={k:number((balance if k in ('total_debt','cash','total_assets','equity','total_liabilities') else cashflow if k in ('operating_cashflow','capex') else inc[date]).get(v)) for k,v in FIELDS.items()}
   source_url='https://finance.yahoo.com/quote/'+info['symbol']+'/financials/'
   field_sources={}
+  def reported_alias(key,table,name):
+   if fields[key] is not None:return
+   value=number(table.get(name))
+   if value is None:return
+   # Both fields are provider-reported totals, not inferred from FCF or net
+   # investing cash flow. Preserve the exact provider label as provenance.
+   if key=='capex' and value>0:return
+   fields[key]=value
+   field_sources[key]={'source':'Yahoo annual statements','source_url':source_url,'end':str(end),'currency':info.get('financialCurrency'),'derivation':'reported_alternative_label','provider_field':name}
+  reported_alias('operating_cashflow',cashflow,'Cash Flowsfromusedin Operating Activities Direct')
+  reported_alias('capex',cashflow,'Capital Expenditure Reported')
   def component_sum(key,table,names,negative=False):
    if fields[key] is not None: return
    values=[number(table.get(name)) for name in names]
@@ -227,7 +271,7 @@ def main():
  for row in rows:
   if time.monotonic()+50>deadline: break
   symbol=row.get('listing_symbol') or row['ticker']; filename=re.sub('[^A-Za-z0-9._-]','_',symbol)+'.json'; dest=out/filename; temp=out/(filename+'.pending')
-  if not args.symbols and not due(index['failures'].get(symbol),time.time()):
+  if not args.symbols and not corrected_london_retry(row,index['failures'].get(symbol)) and not due(index['failures'].get(symbol),time.time()):
    skipped_cooldown+=1;continue
   out.mkdir(parents=True,exist_ok=True)
   try:
@@ -242,6 +286,8 @@ def main():
    failed+=1
    reason='timeout' if isinstance(exc,subprocess.TimeoutExpired) else 'mapping' if isinstance(exc,ValueError) and str(exc)!='collector failed' else 'provider_or_identity'
    index['failures'][symbol]=queue_failed(index['failures'].get(symbol),reason,stamp(),time.time())
+   try:index['failures'][symbol]['mapped_symbol']=yahoo_symbol(row)
+   except ValueError:pass
   finally:
    temp.unlink(missing_ok=True);index['attempts'][symbol]=stamp();index['generated_at']=stamp();index['last_run']={'success':success,'failed':failed};save(index_path,index)
  report={'generated_at':stamp(),'requested_unique':len(rows),'covered':0,'missing':[],'without_annual':[],'annual_currency_mismatch':[],'missing_analyst':[],'missing_debt':[],'missing_eps':[],'minor_unit_difference':[],'annual_gap_reasons':{}}

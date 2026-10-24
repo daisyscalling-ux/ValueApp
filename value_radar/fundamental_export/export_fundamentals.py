@@ -60,9 +60,11 @@ def yahoo_symbol(row):
 
 def corrected_london_retry(row,failure):
  symbol=str(row.get('listing_symbol') or row.get('ticker') or '')
+ try:mapped=yahoo_symbol(row)
+ except ValueError:return False
  return bool(symbol.startswith('LSE:') and symbol.endswith('.') and failure
              and failure.get('reason') in ('mapping','provider_or_identity')
-             and failure.get('mapped_symbol')!=yahoo_symbol(row))
+             and failure.get('mapped_symbol')!=mapped)
 FIELDS={'revenue':'Total Revenue','net_income':'Net Income','eps_trailing':'Diluted EPS','gross_profit':'Gross Profit','ebit':'Operating Income','ebitda':'EBITDA','weighted_shares':'Diluted Average Shares','operating_cashflow':'Operating Cash Flow','capex':'Capital Expenditure','total_debt':'Total Debt','cash':'Cash And Cash Equivalents','total_assets':'Total Assets','equity':'Stockholders Equity','total_liabilities':'Total Liabilities Net Minority Interest','interest_expense':'Interest Expense','net_interest_income':'Net Interest Income'}
 def yahoo_annual(frames,info,now=None):
  now=now or dt.datetime.now(UTC).date()

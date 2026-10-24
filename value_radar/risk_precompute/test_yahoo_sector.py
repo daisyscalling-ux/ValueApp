@@ -1,6 +1,8 @@
 import copy
 import datetime as dt
 import unittest
+import json
+from pathlib import Path
 from yahoo_sector import profile, normalize_prices, run, identity, merge_recovered_series
 from peer_groups import build
 
@@ -16,6 +18,29 @@ PRICES=[((NOW-dt.timedelta(days=i)).date().isoformat(),100+i/100) for i in range
 RULES={'aliases':{},'reviewed':[]}
 
 class YahooSectorTests(unittest.TestCase):
+ def test_reviewed_main_market_aliases_still_require_exact_identity(self):
+  evidence=json.loads(Path(__file__).with_name('evidence').joinpath('main-markets-2026-10-24.json').read_text(encoding='utf8'))
+  self.assertEqual(len(evidence),11)
+  for e in evidence:
+   with self.subTest(symbol=e['symbol']):
+    row={**ROW,'ticker':e['ticker'],'listing_symbol':e['symbol'],'exchange':e['symbol'].split(':')[0],
+         'isin':e['isin'],'currency':e['currency'],'name_full':e['expected']}
+    info=e['provider']
+    self.assertEqual(profile(row,info,now=NOW)['evidence']['nameMatch'],'reviewed_provider_alias')
+    for change in [{'isin':'US5949181045'},{'name_full':'Unrelated Company'},{'currency':'ZZZ'},{'ticker':'WRONG'}]:
+     with self.assertRaises(ValueError):profile({**row,**change},info,now=NOW)
+    for change in [{'exchange':'UNKNOWN'},{'quoteType':'ETF'},{'longName':'Other Company','shortName':'Other Company'}]:
+     with self.assertRaises(ValueError):profile(row,{**info,**change},now=NOW)
+ def test_sector_alias_retry_is_once_and_only_for_name_mismatch(self):
+  row={**ROW,'ticker':'BKNG','listing_symbol':'NASDAQ:BKNG','isin':'US09857L1089','name_full':'Booking Holdings Inc. Common Stock'}
+  a={'schema':1,'profiles':{},'attempts':{'NASDAQ:BKNG':{'at':NOW.isoformat(),'inputIdentity':identity(row),'error':'yahoo_issuer_name_mismatch'}}}
+  calls=[]
+  def fail(*args):calls.append(1);raise ValueError('yahoo_issuer_name_mismatch')
+  a,c=run({'kandidaten':[row]},a,{},NOW,fail)
+  self.assertEqual(len(calls),1);self.assertTrue(a['attempts']['NASDAQ:BKNG']['aliasRevision'])
+  run({'kandidaten':[row]},a,c,NOW,lambda *_:self.fail('duplicate alias retry'))
+  a['attempts']['NASDAQ:BKNG'].update(error='yahoo_rate_limited',aliasRevision=None)
+  run({'kandidaten':[row]},a,c,NOW,lambda *_:self.fail('rate-limit bypass'))
  def test_new_venue_mapping_retries_old_venue_failure_only_once(self):
   row={**ROW,'ticker':'PKO.WA','listing_symbol':'GPW:PKO','exchange':'GPW',
        'isin':'PLPKO0000016','currency':'PLN','name_full':'PKO Bank Polski SA'}

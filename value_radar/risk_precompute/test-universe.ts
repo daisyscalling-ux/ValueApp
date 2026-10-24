@@ -29,6 +29,37 @@ test('main-market queue priority retains smaller markets and weekly rotation',()
 test('deduplicate exact listing only',()=>assert.equal(audit([row,row,{...row,listing_symbol:'XETR:TEST'}]).summary.uniqueListings,2));
 test('missing history is not low risk',()=>{const a=audit([row],fund(),{});assert.equal(a.stocks[0].score,null);assert.equal(a.stocks[0].domains.historical.state,'missing')});
 
+test('independent annual risk source recovers balance without changing valuation',()=>{
+ const f:any=fund();f.annual.source='SEC companyfacts / US-GAAP';f.annual.fields.total_debt=null;f.annual.fields.eps_trailing=4;
+ f.risk_annual={...fund().annual,symbol:row.listing_symbol,purpose:'standalone_balance_risk_context',fields:{...fund().annual.fields,eps_trailing:2}};
+ const before=JSON.stringify(f),balance=audit([row],f).stocks[0].domains.balance;
+ assert.equal(balance.state,'available');assert.equal(balance.sourceSelection,'provider_native_whole_statement');
+ assert.equal(balance.source,'Yahoo annual statements');assert.equal(balance.valuationSource,'SEC companyfacts / US-GAAP');
+ assert.equal(JSON.stringify(f),before);
+});
+test('native fallback rejects different issuer, currency, period, stale and mixed fields',()=>{
+ const f:any=fund();f.annual.fields.total_debt=null;
+ const native={...fund().annual,symbol:row.listing_symbol,purpose:'standalone_balance_risk_context'};
+ for(const change of [{symbol:'NASDAQ:OTHER'},{currency:'EUR'},{end:'2025-06-30'},{end:'2027-06-30'},
+  {source:'Unknown'},{purpose:'valuation'},{field_sources:{cash:{end:'2025-06-30'}}}]){
+  f.risk_annual={...native,...change};assert.notEqual(audit([row],f).stocks[0].domains.balance.state,'available');
+ }
+ f.risk_annual=native;f.retrieved_at='2026-10-01T00:00:00Z';assert.notEqual(audit([row],f).stocks[0].domains.balance.state,'available');
+});
+test('native statement preserves rounded fiscal end and never makes a hybrid',()=>{
+ const f:any=fund();f.annual.end='2026-07-03';f.annual.fields.capex=null;
+ f.risk_annual={...fund().annual,symbol:row.listing_symbol,purpose:'standalone_balance_risk_context',fields:{...fund().annual.fields,total_debt:null}};
+ assert.notEqual(audit([row],f).stocks[0].domains.balance.state,'available');
+ f.risk_annual.fields.total_debt=0;
+ const b=audit([row],f).stocks[0].domains.balance;assert.equal(b.period,'2026-06-30');assert.equal(b.valuationPeriod,'2026-07-03');
+});
+test('complete existing statements and legacy snapshots retain their source',()=>{
+ const f:any=fund();f.annual.source='SEC companyfacts / US-GAAP';f.annual.fields.capex=3;
+ f.risk_annual={...fund().annual,symbol:row.listing_symbol,purpose:'standalone_balance_risk_context'};
+ assert.equal(audit([row],f).stocks[0].domains.balance.source,'SEC companyfacts / US-GAAP');
+ delete f.risk_annual;assert.equal(audit([row],f).stocks[0].domains.balance.state,'available');
+});
+
 test('retained financial fields keep their own retrieval age',()=>{
  const f:any=fund();f.annual.field_sources={total_debt:{end:f.annual.end,currency:'USD',retrieved_at:'2026-10-01T00:00:00Z'}};
  const a=audit([row],f).stocks[0].domains.balance;

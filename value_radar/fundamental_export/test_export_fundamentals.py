@@ -1,7 +1,42 @@
 import unittest,datetime as dt
-from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows,annual_diagnostics
+from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows,annual_diagnostics,corrected_london_retry
 NOW=dt.date(2026,10,15)
 class Tests(unittest.TestCase):
+ def test_london_correction_retries_only_changed_mapping_once(self):
+  row={'listing_symbol':'LSE:RR.'};failure={'reason':'provider_or_identity'}
+  self.assertTrue(corrected_london_retry(row,failure))
+  self.assertFalse(corrected_london_retry(row,{**failure,'mapped_symbol':'RR.L'}))
+  self.assertFalse(corrected_london_retry(row,{'reason':'timeout'}))
+  self.assertFalse(corrected_london_retry({'listing_symbol':'NASDAQ:MSFT'},failure))
+ def test_london_terminal_dot_is_not_doubled_and_classes_remain(self):
+  for listing,expected in [('LSE:RR.','RR.L'),('LSE:NG.','NG.L'),('LSE:AV.','AV.L'),('LSE:TW.','TW.L'),('NYSE:BRK.B','BRK-B')]:
+   self.assertEqual(yahoo_symbol({'listing_symbol':listing}),expected)
+ def test_reported_cashflow_and_capex_labels_keep_provenance(self):
+  date='2026-06-30';frames={'income':{date:{'Total Revenue':100}},'cashflow':{date:{'Cash Flowsfromusedin Operating Activities Direct':-10,'Capital Expenditure Reported':-4}}}
+  a=yahoo_annual(frames,{'symbol':'TEST','financialCurrency':'USD'},NOW)
+  self.assertEqual(a['fields']['operating_cashflow'],-10);self.assertEqual(a['fields']['capex'],-4)
+  self.assertEqual(a['field_sources']['capex']['provider_field'],'Capital Expenditure Reported')
+  self.assertEqual(a['field_sources']['operating_cashflow']['end'],date)
+  frames['cashflow'][date].update({'Operating Cash Flow':20,'Capital Expenditure':-8})
+  a=yahoo_annual(frames,{'symbol':'TEST'},NOW)
+  self.assertEqual(a['fields']['operating_cashflow'],20);self.assertEqual(a['fields']['capex'],-8)
+ def test_reported_aliases_never_mix_years_or_infer_missing_totals(self):
+  date='2026-06-30'
+  frames={'income':{date:{'Total Revenue':100}},'cashflow':{date:{'Free Cash Flow':10,'Net PPE Purchase And Sale':-4,'Cash Flow From Continuing Operating Activities':20,'Capital Expenditure Reported':3},'2025-06-30':{'Cash Flowsfromusedin Operating Activities Direct':30,'Capital Expenditure Reported':-5}}}
+  a=yahoo_annual(frames,{'symbol':'TEST'},NOW)
+  self.assertIsNone(a['fields']['operating_cashflow']);self.assertIsNone(a['fields']['capex'])
+ def test_same_period_partial_refresh_retains_verified_fields_without_redating(self):
+  import copy
+  old={'retrieved_at':'2026-10-10T00:00:00+00:00','annual':{'end':'2026-06-30','period_type':'annual','currency':'USD','source':'Yahoo annual statements','fields':{'revenue':100,'net_income':10,'total_debt':25}}}
+  new={'retrieved_at':'2026-10-15T00:00:00+00:00','issues':[],'annual':{**old['annual'],'fields':{'revenue':100,'net_income':10,'total_debt':None}}}
+  result=preserve_annual(copy.deepcopy(new),old)
+  self.assertEqual(result['annual']['fields']['total_debt'],25)
+  self.assertEqual(result['annual']['field_sources']['total_debt']['retrieved_at'],old['retrieved_at'])
+  for change in [{'currency':'EUR'},{'end':'2026-07-31'},{'fields':{'revenue':100,'net_income':12}}]:
+   altered=copy.deepcopy(new);altered['annual'].update(change)
+   self.assertIsNone(preserve_annual(altered,old)['annual']['fields'].get('total_debt'))
+  later=copy.deepcopy(new);later['retrieved_at']='2026-10-18T00:00:00+00:00'
+  self.assertIsNone(preserve_annual(later,result)['annual']['fields']['total_debt'])
  def test_supplemental_balance_and_interest_fields_are_reported_not_inferred(self):
   date='2026-06-30'
   frames={'income':{date:{'Total Revenue':100,'Interest Expense':3,'Net Interest Income':7,'Total Liabilities Net Minority Interest':999}},'balance':{date:{'Total Liabilities Net Minority Interest':80,'Interest Expense':999}}}

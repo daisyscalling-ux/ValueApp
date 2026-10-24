@@ -1,7 +1,16 @@
 import unittest,datetime as dt
+from export_fundamentals import native_risk_annual
 from export_fundamentals import yahoo_annual,sec_annual,yahoo_symbol,preserve_annual,enrich_matching_annual,select_registered_rows,annual_diagnostics,corrected_london_retry
 NOW=dt.date(2026,10,15)
 class Tests(unittest.TestCase):
+ def test_native_risk_statement_is_independent_of_valuation_changes(self):
+  annual={'end':'2026-06-30','source':'Yahoo annual statements','fields':{'total_debt':50,'eps_trailing':2},'field_sources':{'total_debt':{'end':'2026-06-30'}}}
+  risk=native_risk_annual(annual,'NASDAQ:TEST')
+  annual['fields']['eps_trailing']=4;annual['field_sources']['total_debt']['end']='2025-06-30'
+  self.assertEqual(risk['fields']['eps_trailing'],2)
+  self.assertEqual(risk['field_sources']['total_debt']['end'],'2026-06-30')
+  self.assertEqual(risk['symbol'],'NASDAQ:TEST');self.assertEqual(risk['purpose'],'standalone_balance_risk_context')
+  self.assertIsNone(native_risk_annual(None,'NASDAQ:TEST'))
  def test_london_correction_retries_only_changed_mapping_once(self):
   row={'listing_symbol':'LSE:RR.'};failure={'reason':'provider_or_identity'}
   self.assertTrue(corrected_london_retry(row,failure))

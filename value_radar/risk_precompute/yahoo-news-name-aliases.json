@@ -202,5 +202,71 @@
     "isin": "AT0000746409",
     "source": "https://www.wienerborse.at/aktien-prime-market/verbund-ag-kat-a-AT0000746409/historische-daten/",
     "reviewed_at": "2026-10-21"
+  },
+  {
+    "symbol": "EURONEXT:MC",
+    "isin": "FR0000121014",
+    "expected": "LVMH Moet Hennessy Louis Vuitton SE",
+    "yahooLong": "LVMH Moët Hennessy - Louis Vuitton, Société Européenne"
+  },
+  {
+    "symbol": "EURONEXT:RMS",
+    "isin": "FR0000052292",
+    "expected": "Hermes International SCA",
+    "yahooLong": "Hermès International Société en commandite par actions"
+  },
+  {
+    "symbol": "EURONEXT:KPN",
+    "isin": "NL0000009082",
+    "expected": "Royal KPN NV",
+    "yahooLong": "Koninklijke KPN N.V."
+  },
+  {
+    "symbol": "EURONEXT:VPK",
+    "isin": "NL0009432491",
+    "expected": "Royal Vopak NV",
+    "yahooLong": "Koninklijke Vopak N.V."
+  },
+  {
+    "symbol": "XETR:SDF",
+    "isin": "DE000KSAG888",
+    "expected": "K+S AG",
+    "yahooLong": "K+S Aktiengesellschaft"
+  },
+  {
+    "symbol": "TSE:6963",
+    "isin": "JP3982800009",
+    "expected": "ROHM Company Limited",
+    "yahooLong": "ROHM Co., Ltd."
+  },
+  {
+    "symbol": "NASDAQ:BKNG",
+    "isin": "US09857L1089",
+    "expected": "Booking Holdings Inc. Common Stock",
+    "yahooLong": "Booking Holdings Inc."
+  },
+  {
+    "symbol": "NYSE:DUK",
+    "isin": "US26441C2044",
+    "expected": "Duke Energy Corporation (Holding Company)",
+    "yahooLong": "Duke Energy Corporation"
+  },
+  {
+    "symbol": "NYSE:PNC",
+    "isin": "US6934751057",
+    "expected": "PNC Financial Services Group, Inc. (The)",
+    "yahooLong": "The PNC Financial Services Group, Inc."
+  },
+  {
+    "symbol": "NYSE:AMT",
+    "isin": "US03027X1000",
+    "expected": "American Tower Corporation (REIT)",
+    "yahooLong": "American Tower Corporation"
+  },
+  {
+    "symbol": "NYSE:APO",
+    "isin": "US03769M1062",
+    "expected": "Apollo Global Management, Inc. (New)",
+    "yahooLong": "Apollo Global Management, Inc."
   }
 ]

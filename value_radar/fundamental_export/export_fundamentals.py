@@ -172,6 +172,12 @@ def annual_diagnostics(annual,frames,info,now=None):
   if not reasons:reasons.append('no_eligible_annual_block')
  return {'state':('partial' if missing else 'available') if annual else 'provider_table_empty' if not latest else 'statement_outdated_or_incomplete','latest_income_table_end':latest[:10] if latest else None,'selected_annual_end':annual.get('end') if annual else None,'missing_fields':missing,'reason_codes':reasons}
 
+def native_risk_annual(annual,symbol):
+ if not annual:return None
+ block=json.loads(json.dumps(annual))
+ block.update(symbol=symbol,purpose='standalone_balance_risk_context')
+ return block
+
 def collect(row):
  import yfinance as yf
  ys=yahoo_symbol(row); t=yf.Ticker(ys); info=t.get_info()
@@ -180,6 +186,9 @@ def collect(row):
  for key,attr in [('income','income_stmt'),('balance','balance_sheet'),('cashflow','cashflow')]:
   frame=getattr(t,attr); frames[key]=json.loads(frame.to_json(date_format='iso'))
  annual=yahoo_annual(frames,info); errors=[]
+ # Keep the provider-native annual block for balance-risk ratios. SEC may
+ # subsequently replace the valuation block; never merge these risk sources.
+ risk_annual=native_risk_annual(annual,row.get('listing_symbol') or row['ticker'])
  cik=str(row.get('cik') or '').strip(); ua=os.getenv('SEC_USER_AGENT','')
  if cik.isdigit() and ua and ys.find('.')<0:
   try:
@@ -211,7 +220,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

@@ -29,6 +29,14 @@ test('main-market queue priority retains smaller markets and weekly rotation',()
 test('deduplicate exact listing only',()=>assert.equal(audit([row,row,{...row,listing_symbol:'XETR:TEST'}]).summary.uniqueListings,2));
 test('missing history is not low risk',()=>{const a=audit([row],fund(),{});assert.equal(a.stocks[0].score,null);assert.equal(a.stocks[0].domains.historical.state,'missing')});
 
+test('retained financial fields keep their own retrieval age',()=>{
+ const f:any=fund();f.annual.field_sources={total_debt:{end:f.annual.end,currency:'USD',retrieved_at:'2026-10-01T00:00:00Z'}};
+ const a=audit([row],f).stocks[0].domains.balance;
+ assert.notEqual(a.state,'available');assert.equal(a.metrics.netDebtAssets.value,null);
+ f.annual.field_sources.total_debt.retrieved_at='2026-10-17T00:00:00Z';
+ assert.equal(audit([row],f).stocks[0].domains.balance.state,'available');
+});
+
 test('verified history aliases retain exact-request fundamental snapshots',()=>{
  const r:any=risk();r.aliases={'TEST.US':row.listing_symbol};
  const f={...fund(),symbol:'TEST.US'};

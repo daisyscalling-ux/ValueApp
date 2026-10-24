@@ -9,7 +9,7 @@ export function runAudit(folder='value_radar/daten',now=Date.now()){
   if(typeof file!=='string'||!file.endsWith('.json')||path.basename(file)!==file||/[\\/]/.test(file))continue;
   const f=read(path.join(folder,'fundamentals',file));if(f)funds[symbol]=f;
  }
- const result=auditUniverse(read(path.join(folder,'cf_universum.json')),read(path.join(folder,'cf_risk.json'))||{},funds,now,index||{},read(path.join(folder,'cf_company_news.json'))||{},read(path.join(folder,'cf_sector_context.json')));
+ const result=auditUniverse(read(path.join(folder,'cf_universum.json')),read(path.join(folder,'cf_risk.json'))||{},funds,now,index||{},read(path.join(folder,'cf_company_news.json'))||{},read(path.join(folder,'cf_sector_context.json')),read(path.join(folder,'cf_roic_risk_annual.json')));
  const save=(name:string,value:any)=>{const p=path.join(folder,name);fs.writeFileSync(p+'.tmp',JSON.stringify(value));fs.renameSync(p+'.tmp',p)};
  const {jobs,...coverage}=result;
  save('cf_risk_coverage.json',coverage);save('cf_risk_queue.json',{schema:1,generatedAt:result.generatedAt,jobs});

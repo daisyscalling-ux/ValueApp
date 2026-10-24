@@ -40,6 +40,7 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_*company_news.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_peer_groups.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_yahoo_sector.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_market_priority.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs

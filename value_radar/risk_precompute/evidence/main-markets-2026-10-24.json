@@ -1,0 +1,343 @@
+[
+  {
+    "symbol": "EURONEXT:MC",
+    "isin": "FR0000121014",
+    "expected": "LVMH Moet Hennessy Louis Vuitton SE",
+    "yahooLong": "LVMH Moët Hennessy - Louis Vuitton, Société Européenne",
+    "ticker": "MC.PA",
+    "currency": "EUR",
+    "provider": {
+      "symbol": "MC.PA",
+      "longName": "LVMH Moët Hennessy - Louis Vuitton, Société Européenne",
+      "shortName": "LVMH",
+      "currency": "EUR",
+      "quoteType": "EQUITY",
+      "exchange": "PAR",
+      "sectorKey": "consumer-cyclical",
+      "industryKey": "luxury-goods"
+    },
+    "chart": {
+      "symbol": "MC.PA",
+      "currency": "EUR",
+      "instrumentType": "EQUITY",
+      "exchangeName": "PAR"
+    },
+    "retrievedAt": "2026-10-24T12:54:04.023991+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/MC.PA/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "EURONEXT:RMS",
+    "isin": "FR0000052292",
+    "expected": "Hermes International SCA",
+    "yahooLong": "Hermès International Société en commandite par actions",
+    "ticker": "RMS.PA",
+    "currency": "EUR",
+    "provider": {
+      "symbol": "RMS.PA",
+      "longName": "Hermès International Société en commandite par actions",
+      "shortName": "HERMES INTL",
+      "currency": "EUR",
+      "quoteType": "EQUITY",
+      "exchange": "PAR",
+      "sectorKey": "consumer-cyclical",
+      "industryKey": "luxury-goods"
+    },
+    "chart": {
+      "symbol": "RMS.PA",
+      "currency": "EUR",
+      "instrumentType": "EQUITY",
+      "exchangeName": "PAR"
+    },
+    "retrievedAt": "2026-10-24T12:54:08.007147+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/RMS.PA/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "EURONEXT:KPN",
+    "isin": "NL0000009082",
+    "expected": "Royal KPN NV",
+    "yahooLong": "Koninklijke KPN N.V.",
+    "ticker": "KPN.AS",
+    "currency": "EUR",
+    "provider": {
+      "symbol": "KPN.AS",
+      "longName": "Koninklijke KPN N.V.",
+      "shortName": "KPN KON",
+      "currency": "EUR",
+      "quoteType": "EQUITY",
+      "exchange": "AMS",
+      "sectorKey": "communication-services",
+      "industryKey": "telecom-services"
+    },
+    "chart": {
+      "symbol": "KPN.AS",
+      "currency": "EUR",
+      "instrumentType": "EQUITY",
+      "exchangeName": "AMS"
+    },
+    "retrievedAt": "2026-10-24T12:54:09.570595+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/KPN.AS/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "EURONEXT:VPK",
+    "isin": "NL0009432491",
+    "expected": "Royal Vopak NV",
+    "yahooLong": "Koninklijke Vopak N.V.",
+    "ticker": "VPK.AS",
+    "currency": "EUR",
+    "provider": {
+      "symbol": "VPK.AS",
+      "longName": "Koninklijke Vopak N.V.",
+      "shortName": "VOPAK",
+      "currency": "EUR",
+      "quoteType": "EQUITY",
+      "exchange": "AMS",
+      "sectorKey": "energy",
+      "industryKey": "oil-gas-midstream"
+    },
+    "chart": {
+      "symbol": "VPK.AS",
+      "currency": "EUR",
+      "instrumentType": "EQUITY",
+      "exchangeName": "AMS"
+    },
+    "retrievedAt": "2026-10-24T12:54:11.141398+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/VPK.AS/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "XETR:SDF",
+    "isin": "DE000KSAG888",
+    "expected": "K+S AG",
+    "yahooLong": "K+S Aktiengesellschaft",
+    "ticker": "SDF.DE",
+    "currency": "EUR",
+    "provider": {
+      "symbol": "SDF.DE",
+      "longName": "K+S Aktiengesellschaft",
+      "shortName": "K+S Aktiengesellschaft        N",
+      "currency": "EUR",
+      "quoteType": "EQUITY",
+      "exchange": "GER",
+      "sectorKey": "basic-materials",
+      "industryKey": "agricultural-inputs"
+    },
+    "chart": {
+      "symbol": "SDF.DE",
+      "currency": "EUR",
+      "instrumentType": "EQUITY",
+      "exchangeName": "GER"
+    },
+    "retrievedAt": "2026-10-24T12:54:12.656225+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/SDF.DE/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "TSE:6963",
+    "isin": "JP3982800009",
+    "expected": "ROHM Company Limited",
+    "yahooLong": "ROHM Co., Ltd.",
+    "ticker": "6963.T",
+    "currency": "JPY",
+    "provider": {
+      "symbol": "6963.T",
+      "longName": "ROHM Co., Ltd.",
+      "shortName": "ROHM CO LTD",
+      "currency": "JPY",
+      "quoteType": "EQUITY",
+      "exchange": "JPX",
+      "sectorKey": "technology",
+      "industryKey": "semiconductors"
+    },
+    "chart": {
+      "symbol": "6963.T",
+      "currency": "JPY",
+      "instrumentType": "EQUITY",
+      "exchangeName": "JPX"
+    },
+    "retrievedAt": "2026-10-24T12:54:14.101851+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/6963.T/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "NASDAQ:BKNG",
+    "isin": "US09857L1089",
+    "expected": "Booking Holdings Inc. Common Stock",
+    "yahooLong": "Booking Holdings Inc.",
+    "ticker": "BKNG",
+    "currency": "USD",
+    "provider": {
+      "symbol": "BKNG",
+      "longName": "Booking Holdings Inc.",
+      "shortName": "Booking Holdings Inc. Common St",
+      "currency": "USD",
+      "quoteType": "EQUITY",
+      "exchange": "NMS",
+      "sectorKey": "consumer-cyclical",
+      "industryKey": "travel-services"
+    },
+    "chart": {
+      "symbol": "BKNG",
+      "currency": "USD",
+      "instrumentType": "EQUITY",
+      "exchangeName": "NMS"
+    },
+    "retrievedAt": "2026-10-24T12:54:15.734484+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/BKNG/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "NYSE:DUK",
+    "isin": "US26441C2044",
+    "expected": "Duke Energy Corporation (Holding Company)",
+    "yahooLong": "Duke Energy Corporation",
+    "ticker": "DUK",
+    "currency": "USD",
+    "provider": {
+      "symbol": "DUK",
+      "longName": "Duke Energy Corporation",
+      "shortName": "Duke Energy Corporation (Holdin",
+      "currency": "USD",
+      "quoteType": "EQUITY",
+      "exchange": "NYQ",
+      "sectorKey": "utilities",
+      "industryKey": "utilities-regulated-electric"
+    },
+    "chart": {
+      "symbol": "DUK",
+      "currency": "USD",
+      "instrumentType": "EQUITY",
+      "exchangeName": "NYQ"
+    },
+    "retrievedAt": "2026-10-24T12:54:17.248182+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/DUK/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "NYSE:PNC",
+    "isin": "US6934751057",
+    "expected": "PNC Financial Services Group, Inc. (The)",
+    "yahooLong": "The PNC Financial Services Group, Inc.",
+    "ticker": "PNC",
+    "currency": "USD",
+    "provider": {
+      "symbol": "PNC",
+      "longName": "The PNC Financial Services Group, Inc.",
+      "shortName": "PNC Financial Services Group, I",
+      "currency": "USD",
+      "quoteType": "EQUITY",
+      "exchange": "NYQ",
+      "sectorKey": "financial-services",
+      "industryKey": "banks-regional"
+    },
+    "chart": {
+      "symbol": "PNC",
+      "currency": "USD",
+      "instrumentType": "EQUITY",
+      "exchangeName": "NYQ"
+    },
+    "retrievedAt": "2026-10-24T12:54:18.739400+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/PNC/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "NYSE:AMT",
+    "isin": "US03027X1000",
+    "expected": "American Tower Corporation (REIT)",
+    "yahooLong": "American Tower Corporation",
+    "ticker": "AMT",
+    "currency": "USD",
+    "provider": {
+      "symbol": "AMT",
+      "longName": "American Tower Corporation",
+      "shortName": "American Tower Corporation (REI",
+      "currency": "USD",
+      "quoteType": "EQUITY",
+      "exchange": "NYQ",
+      "sectorKey": "real-estate",
+      "industryKey": "reit-specialty"
+    },
+    "chart": {
+      "symbol": "AMT",
+      "currency": "USD",
+      "instrumentType": "EQUITY",
+      "exchangeName": "NYQ"
+    },
+    "retrievedAt": "2026-10-24T12:54:20.336757+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/AMT/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  },
+  {
+    "symbol": "NYSE:APO",
+    "isin": "US03769M1062",
+    "expected": "Apollo Global Management, Inc. (New)",
+    "yahooLong": "Apollo Global Management, Inc.",
+    "ticker": "APO",
+    "currency": "USD",
+    "provider": {
+      "symbol": "APO",
+      "longName": "Apollo Global Management, Inc.",
+      "shortName": "Apollo Global Management, Inc. ",
+      "currency": "USD",
+      "quoteType": "EQUITY",
+      "exchange": "NYQ",
+      "sectorKey": "financial-services",
+      "industryKey": "asset-management"
+    },
+    "chart": {
+      "symbol": "APO",
+      "currency": "USD",
+      "instrumentType": "EQUITY",
+      "exchangeName": "NYQ"
+    },
+    "retrievedAt": "2026-10-24T12:54:21.928962+00:00",
+    "sourceUrl": "https://finance.yahoo.com/quote/APO/profile/",
+    "scope": "Exact observed provider alias only; no instrument, share class or identity rewrite.",
+    "validation": {
+      "profile": "accepted",
+      "history": "accepted"
+    }
+  }
+]

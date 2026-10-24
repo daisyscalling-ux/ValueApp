@@ -52,22 +52,31 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
   interpretation:financial?'Book equity and income over ending assets are context only, not regulatory capital, solvency or a calibrated risk score.':profile==='unclassified'?'Industry classification must be verified before selecting ratios.':'Book ratios, no calibrated risk probability.'};
 }
 
-export function assessBalanceSnapshot(row:Row,snapshot:Row|undefined,identityOK:boolean,now:number){
- const primary=assessBalance(row,snapshot?.annual,snapshot?.annual_retrieved_at||snapshot?.retrieved_at,identityOK,now);
- const candidate=snapshot?.risk_annual;
- if(!identityOK||!candidate||candidate.symbol!==snapshot?.symbol||candidate.purpose!=='standalone_balance_risk_context'
-    ||candidate.source!=='Yahoo annual statements')return primary;
+export function assessBalanceSnapshot(row:Row,snapshot:Row|undefined,identityOK:boolean,now:number,roic?:Row){
+ let best=assessBalance(row,snapshot?.annual,snapshot?.annual_retrieved_at||snapshot?.retrieved_at,identityOK,now);
+ if(!identityOK)return best;
  const previous=snapshot?.annual;
- // Independent whole statements only: do not transfer fields, dates or EPS.
- // A month-end-rounded provider date can differ by a few days from a 52/53-week
- // SEC year. Retain that source's own date and explicitly record both dates.
- if(previous&&(previous.currency!==candidate.currency||!Number.isFinite(Date.parse(previous.end))
-    ||Math.abs(Date.parse(previous.end)-Date.parse(candidate.end))>7*DAY))return primary;
- const alternative=assessBalance(row,candidate,snapshot?.retrieved_at,identityOK,now);
  const strength=(x:ReturnType<typeof assessBalance>)=>['available','context_only'].includes(x.state)?100:
    Object.values(x.metrics).filter((m:any)=>m.state==='available').length;
- if(strength(alternative)<=strength(primary))return primary;
- return {...alternative,sourceSelection:'provider_native_whole_statement',
-   valuationPeriod:previous?.end||null,valuationSource:previous?.source||null,
-   interpretation:alternative.interpretation+' Separate provider-native statement; valuation source unchanged. No cross-source field merge.'};
+ const candidates=[
+  {annual:snapshot?.risk_annual,at:snapshot?.retrieved_at,symbol:snapshot?.symbol,source:'Yahoo annual statements',selection:'provider_native_whole_statement'},
+  {annual:roic?.annual,at:roic?.retrievedAt,symbol:row.listing_symbol,source:'ROIC v3 annual statements',selection:'roic_native_whole_statement'}
+ ];
+ for(const entry of candidates){
+  const candidate=entry.annual;
+  if(!candidate||candidate.symbol!==entry.symbol||candidate.purpose!=='standalone_balance_risk_context'||candidate.source!==entry.source)continue;
+  // Independent whole statements only: never transfer fields, dates or EPS.
+  // Retain the existing same-period safeguard (52/53-week rounding <=7 days).
+  if(previous&&(previous.currency!==candidate.currency||!Number.isFinite(Date.parse(previous.end))
+     ||Math.abs(Date.parse(previous.end)-Date.parse(candidate.end))>7*DAY))continue;
+  if(entry.source==='ROIC v3 annual statements'&&Object.entries(candidate.fields||{}).some(([k,v])=>finite(v)&&
+     (candidate.field_sources?.[k]?.source!==entry.source||candidate.field_sources[k].end!==candidate.end||candidate.field_sources[k].currency!==candidate.currency)))continue;
+  const alternative=assessBalance(row,candidate,entry.at,identityOK,now);
+  if(strength(alternative)<=strength(best))continue;
+  best={...alternative,sourceSelection:entry.selection,
+    valuationPeriod:previous?.end||null,valuationSource:previous?.source||null,
+    interpretation:alternative.interpretation+' Separate provider-native statement; valuation source unchanged. No cross-source field merge.'+
+      (entry.source==='ROIC v3 annual statements'?' Provider-defined debt maturities; lease scope not separately reconciled.':'')} as typeof best;
+ }
+ return best;
 }

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-10-24T12:33:28.535578+00:00",
+  "generatedAt": "2026-10-24T13:04:31.529932+00:00",
   "inputSha256": "87f2aa3c7663b0e4627dd0b873ee7af21cf3011d1e7dc3d9ff9e43af5331f437",
   "summary": {
     "inputListings": 1330,
@@ -10,17 +10,17 @@
     "collapsedAdditionalListings": 192,
     "excludedListings": 22,
     "reviewListings": 0,
-    "groups": 181,
+    "groups": 177,
     "levels": {
       "reviewed_business_model": 12,
-      "provider_subindustry": 1012,
-      "industry_context": 92
+      "provider_subindustry": 1023,
+      "industry_context": 81
     },
-    "withFivePeers": 1006,
+    "withFivePeers": 1017,
     "groupSizeReasons": {
-      "small_business_group": 302,
-      "enough_issuers_before_history_check": 472,
-      "small_currency_cohort": 534
+      "small_business_group": 291,
+      "enough_issuers_before_history_check": 480,
+      "small_currency_cohort": 537
     }
   },
   "listings": {
@@ -106,7 +106,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:EUROB",
         "ATHEX:TPEIR",
@@ -143,6 +143,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -189,7 +190,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:TPEIR",
@@ -226,6 +227,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -304,7 +306,7 @@
     "ATHEX:HTO": {
       "issuerId": "issuer:119c71f18a5107257d70",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GRS260333000",
@@ -315,9 +317,10 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -443,7 +446,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -480,6 +483,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -683,7 +687,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -720,6 +724,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -766,7 +771,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -803,6 +808,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -876,7 +882,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:RED",
         "EURONEXT:ELI",
@@ -885,6 +891,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -1152,7 +1159,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "EURONEXT:ELI",
@@ -1161,6 +1168,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -1293,7 +1301,7 @@
     "BME:TEF": {
       "issuerId": "issuer:0b7808744b723b287498",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "ES0178430E18",
@@ -1304,9 +1312,10 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -1369,7 +1378,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -1406,6 +1415,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -1494,7 +1504,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -1531,6 +1541,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -1766,7 +1777,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -1803,6 +1814,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -1924,10 +1936,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 2,
+      "peerIssuerCount": 1,
       "peerSymbols": [
-        "XETR:1COV",
-        "XETR:SDF"
+        "XETR:1COV"
       ],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
@@ -1975,9 +1986,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "OTC:CHDRF",
@@ -2029,7 +2042,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -2066,6 +2079,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -2264,7 +2278,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -2301,6 +2315,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -2541,7 +2556,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -2578,6 +2593,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -2954,7 +2970,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:AMUN",
         "EURONEXT:CVC",
@@ -2973,6 +2989,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -3079,7 +3096,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:CVC",
@@ -3098,6 +3115,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -3334,7 +3352,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -3371,6 +3389,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -3477,7 +3496,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -3514,6 +3533,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -3560,9 +3580,8 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -3807,7 +3826,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -3826,6 +3845,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -4147,7 +4167,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -4156,6 +4176,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -4340,7 +4361,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -4359,6 +4380,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -4517,7 +4539,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -4536,6 +4558,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -4655,7 +4678,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -4692,6 +4715,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -5011,7 +5035,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -5048,6 +5072,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -5109,7 +5134,7 @@
     "EURONEXT:KER": {
       "issuerId": "issuer:ba220dcbf1b0725f0300",
       "group": "yahoo:consumer-cyclical:luxury-goods",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 3,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000121485",
@@ -5120,9 +5145,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "OTC:CHDRF",
@@ -5135,9 +5162,9 @@
     },
     "EURONEXT:KPN": {
       "issuerId": "issuer:9092b09aaa203218ce89",
-      "group": "industry:major telecommunications",
-      "sameCurrencyPeerIssuerCount": 0,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:communication-services:telecom-services",
+      "sameCurrencyPeerIssuerCount": 7,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "NL0000009082",
         "currency": "EUR",
@@ -5146,13 +5173,33 @@
         "name_full": "Royal KPN NV",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 21,
       "peerSymbols": [
-        "STO:TEL2_B"
+        "ATHEX:HTO",
+        "BME:TEF",
+        "EURONEXT:ORA",
+        "HEL:ELISA",
+        "LSE:AAF",
+        "LSE:ZEG",
+        "MIL:TIT",
+        "NASDAQ:CMCSA",
+        "NASDAQ:TMUS",
+        "NASDAQ:VOD",
+        "NYSE:T",
+        "NYSE:VZ",
+        "OSL:TEL",
+        "SIX:SCMN",
+        "STO:TELIA",
+        "TSE:9432",
+        "TSE:9433",
+        "TSE:9434",
+        "TSE:9984",
+        "XETR:DTE",
+        "XETR:FNTN"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "EURONEXT:KRX": {
@@ -5274,9 +5321,9 @@
     },
     "EURONEXT:MC": {
       "issuerId": "issuer:1523a3ed1490e8563ddc",
-      "group": "industry:apparel/footwear",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:consumer-cyclical:luxury-goods",
+      "sameCurrencyPeerIssuerCount": 3,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000121014",
         "currency": "EUR",
@@ -5285,13 +5332,20 @@
         "name_full": "LVMH Moet Hennessy Louis Vuitton SE",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 8,
       "peerSymbols": [
-        "EURONEXT:RMS"
+        "CPH:PNDORA",
+        "EURONEXT:KER",
+        "EURONEXT:RMS",
+        "LSE:BRBY",
+        "MIL:BC",
+        "OTC:CHDRF",
+        "SIX:CFR",
+        "SIX:UHR"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "EURONEXT:MICC": {
@@ -5475,7 +5529,7 @@
     "EURONEXT:ORA": {
       "issuerId": "issuer:3ca6791da3c72f9c57ab",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "FR0000133308",
@@ -5486,10 +5540,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "HEL:ELISA",
         "LSE:AAF",
         "LSE:ZEG",
@@ -5651,9 +5706,9 @@
     },
     "EURONEXT:RMS": {
       "issuerId": "issuer:1f94167cfaabb9479a57",
-      "group": "industry:apparel/footwear",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:consumer-cyclical:luxury-goods",
+      "sameCurrencyPeerIssuerCount": 3,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000052292",
         "currency": "EUR",
@@ -5662,13 +5717,20 @@
         "name_full": "Hermes International SCA",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 8,
       "peerSymbols": [
-        "EURONEXT:MC"
+        "CPH:PNDORA",
+        "EURONEXT:KER",
+        "EURONEXT:MC",
+        "LSE:BRBY",
+        "MIL:BC",
+        "OTC:CHDRF",
+        "SIX:CFR",
+        "SIX:UHR"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "EURONEXT:RNO": {
@@ -5712,7 +5774,7 @@
     "EURONEXT:RUI": {
       "issuerId": "issuer:63c924afe6112324af0d",
       "group": "industry:wholesale distributors",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 0,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "FR0013269123",
@@ -5723,9 +5785,8 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 3,
+      "peerIssuerCount": 2,
       "peerSymbols": [
-        "EURONEXT:VPK",
         "STO:ADDT_B",
         "STO:BEIJ_B"
       ],
@@ -5954,7 +6015,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -5973,6 +6034,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -6385,9 +6447,9 @@
     },
     "EURONEXT:VPK": {
       "issuerId": "issuer:73f74dd41cfdce26eb98",
-      "group": "industry:wholesale distributors",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:energy:oil-gas-midstream",
+      "sameCurrencyPeerIssuerCount": 0,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "NL0009432491",
         "currency": "EUR",
@@ -6396,15 +6458,19 @@
         "name_full": "Royal Vopak NV",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 3,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 7,
       "peerSymbols": [
-        "EURONEXT:RUI",
-        "STO:ADDT_B",
-        "STO:BEIJ_B"
+        "NYSE:ENB",
+        "NYSE:EPD",
+        "NYSE:KMI",
+        "NYSE:TRGP",
+        "NYSE:TRP",
+        "NYSE:WMB",
+        "OSL:FRO"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "EURONEXT:WDP": {
@@ -6631,7 +6697,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -6668,6 +6734,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -6782,7 +6849,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -6819,6 +6886,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -6865,7 +6933,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -6902,6 +6970,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -6948,7 +7017,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -6985,6 +7054,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -7063,7 +7133,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -7100,6 +7170,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -7219,7 +7290,7 @@
     "HEL:ELISA": {
       "issuerId": "issuer:50a82f024e3277640b51",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "FI0009007884",
@@ -7230,10 +7301,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "LSE:AAF",
         "LSE:ZEG",
@@ -7833,10 +7905,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:ZEG",
@@ -7874,7 +7947,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -7893,6 +7966,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -8275,7 +8349,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -8312,6 +8386,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -8431,7 +8506,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -8450,6 +8525,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -8478,10 +8554,12 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "MIL:BC",
         "OTC:CHDRF",
         "SIX:CFR",
@@ -8920,7 +8998,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -8939,6 +9017,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -9332,7 +9411,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -9351,6 +9430,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -9437,7 +9517,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -9456,6 +9536,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -9787,7 +9868,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -9806,6 +9887,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -9834,7 +9916,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -9871,6 +9953,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -10018,7 +10101,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -10037,6 +10120,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -10163,7 +10247,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -10172,6 +10256,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -10397,7 +10482,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -10416,6 +10501,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -10646,7 +10732,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -10665,6 +10751,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -10873,7 +10960,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -10892,6 +10979,7 @@
         "LSE:ROSE",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -11279,7 +11367,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -11298,6 +11386,7 @@
         "LSE:ROSE",
         "LSE:SDR",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -11349,7 +11438,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -11386,6 +11475,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -11690,10 +11780,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -11762,7 +11853,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -11781,6 +11872,7 @@
         "LSE:ROSE",
         "LSE:SDR",
         "LSE:STJ",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -11809,7 +11901,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -11846,6 +11938,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -11881,7 +11974,7 @@
     "MIL:BC": {
       "issuerId": "issuer:4a578ae3357039c6f5ef",
       "group": "yahoo:consumer-cyclical:luxury-goods",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 3,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "IT0004764699",
@@ -11892,10 +11985,12 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "OTC:CHDRF",
         "SIX:CFR",
@@ -11919,7 +12014,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -11956,6 +12051,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -12002,7 +12098,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -12039,6 +12135,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -12085,7 +12182,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -12122,6 +12219,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -12168,7 +12266,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -12205,6 +12303,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -12384,7 +12483,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -12421,6 +12520,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -12625,7 +12725,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -12662,6 +12762,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -13116,7 +13217,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:TPRO",
         "NASDAQ:ADI",
@@ -13135,6 +13236,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -13173,7 +13275,7 @@
     "MIL:TIT": {
       "issuerId": "issuer:be869cadb0b5d216415e",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "IT0005712671",
@@ -13184,10 +13286,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -13225,7 +13328,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "NASDAQ:ADI",
@@ -13244,6 +13347,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -13264,7 +13368,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -13273,6 +13377,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -13295,7 +13400,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -13332,6 +13437,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -13450,7 +13556,7 @@
     "NASDAQ:ABNB": {
       "issuerId": "issuer:bae2b9447cd81d3ccb13",
       "group": "yahoo:consumer-cyclical:travel-services",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 2,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "US0090661010",
@@ -13461,8 +13567,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 2,
+      "peerIssuerCount": 3,
       "peerSymbols": [
+        "NASDAQ:BKNG",
         "NYSE:RCL",
         "XETR:TUI1"
       ],
@@ -13524,7 +13631,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -13543,6 +13650,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -13632,7 +13740,7 @@
     "NASDAQ:AEP": {
       "issuerId": "issuer:1c652908231e43b4834c",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US0255371017",
@@ -13643,7 +13751,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -13652,6 +13760,7 @@
         "MIL:TRN",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -13674,7 +13783,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -13693,6 +13802,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -13777,7 +13887,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -13796,6 +13906,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -13914,7 +14025,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -13933,6 +14044,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -13973,7 +14085,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -13992,6 +14104,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -14045,8 +14158,8 @@
     },
     "NASDAQ:BKNG": {
       "issuerId": "issuer:314186a362677a586ddc",
-      "group": "industry:other consumer services",
-      "sameCurrencyPeerIssuerCount": 0,
+      "group": "yahoo:consumer-cyclical:travel-services",
+      "sameCurrencyPeerIssuerCount": 2,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "US09857L1089",
@@ -14056,11 +14169,15 @@
         "name_full": "Booking Holdings Inc. Common Stock",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
+      "level": "provider_subindustry",
+      "peerIssuerCount": 3,
+      "peerSymbols": [
+        "NASDAQ:ABNB",
+        "NYSE:RCL",
+        "XETR:TUI1"
+      ],
       "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "NASDAQ:BKR": {
@@ -14176,10 +14293,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -14573,7 +14691,7 @@
     "NASDAQ:EXC": {
       "issuerId": "issuer:d20ec123c390b3b91071",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US30161N1019",
@@ -14584,7 +14702,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -14593,6 +14711,7 @@
         "MIL:TRN",
         "NASDAQ:AEP",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -15024,7 +15143,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -15043,6 +15162,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -15305,7 +15425,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -15324,6 +15444,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -15456,7 +15577,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -15475,6 +15596,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -15526,7 +15648,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -15545,6 +15667,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -15735,7 +15858,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -15754,6 +15877,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -15774,7 +15898,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -15793,6 +15917,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -16087,7 +16212,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -16106,6 +16231,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -16549,10 +16675,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -16687,7 +16814,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -16706,6 +16833,7 @@
         "NYSE:ASX",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -16726,10 +16854,11 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -16879,7 +17008,7 @@
     "NASDAQ:XEL": {
       "issuerId": "issuer:8e1de68c7213e4ce74d2",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US98389B1008",
@@ -16890,7 +17019,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -16899,6 +17028,7 @@
         "MIL:TRN",
         "NASDAQ:AEP",
         "NASDAQ:EXC",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -17093,7 +17223,7 @@
     },
     "NYSE:AMT": {
       "issuerId": "issuer:42cc40e3c667ad53d708",
-      "group": "industry:real estate investment trusts",
+      "group": "yahoo:real-estate:reit-specialty",
       "sameCurrencyPeerIssuerCount": 0,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
@@ -17104,11 +17234,11 @@
         "name_full": "American Tower Corporation (REIT)",
         "security_type": "stock"
       },
-      "level": "industry_context",
+      "level": "provider_subindustry",
       "peerIssuerCount": 0,
       "peerSymbols": [],
       "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "NYSE:AMX": {
@@ -17262,9 +17392,9 @@
     },
     "NYSE:APO": {
       "issuerId": "issuer:863cd42b7d6bfdfbc1cf",
-      "group": "industry:investment managers",
-      "sameCurrencyPeerIssuerCount": 0,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:financial-services:asset-management",
+      "sameCurrencyPeerIssuerCount": 5,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US03769M1062",
         "currency": "USD",
@@ -17273,11 +17403,39 @@
         "name_full": "Apollo Global Management, Inc. (New)",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "level": "provider_subindustry",
+      "peerIssuerCount": 27,
+      "peerSymbols": [
+        "EURONEXT:ALLFG",
+        "EURONEXT:AMUN",
+        "EURONEXT:CVC",
+        "EURONEXT:EXO",
+        "EURONEXT:GBLB",
+        "EURONEXT:SOF",
+        "LSE:ABDN",
+        "LSE:BPT",
+        "LSE:EMG",
+        "LSE:ICG",
+        "LSE:III",
+        "LSE:LGEN",
+        "LSE:MNG",
+        "LSE:QLT",
+        "LSE:ROSE",
+        "LSE:SDR",
+        "LSE:STJ",
+        "MIL:AZM",
+        "NYSE:BAM",
+        "NYSE:BLK",
+        "NYSE:BN",
+        "NYSE:BX",
+        "NYSE:KKR",
+        "SIX:BAER",
+        "SIX:PGHN",
+        "SIX:VZN",
+        "STO:EQT"
+      ],
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "NYSE:ASX": {
@@ -17294,7 +17452,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -17313,6 +17471,7 @@
         "NASDAQ:TXN",
         "OSL:NOD",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -17514,8 +17673,8 @@
     "NYSE:BAM": {
       "issuerId": "issuer:4ffc6a693213f0208b8c",
       "group": "yahoo:financial-services:asset-management",
-      "sameCurrencyPeerIssuerCount": 4,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 5,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CA1130041058",
         "currency": "USD",
@@ -17525,7 +17684,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -17545,6 +17704,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BLK",
         "NYSE:BN",
         "NYSE:BX",
@@ -17680,8 +17840,8 @@
     "NYSE:BLK": {
       "issuerId": "issuer:f9fc62b44157082e8a9c",
       "group": "yahoo:financial-services:asset-management",
-      "sameCurrencyPeerIssuerCount": 4,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 5,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US09290D1019",
         "currency": "USD",
@@ -17691,7 +17851,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -17711,6 +17871,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BN",
         "NYSE:BX",
@@ -17813,8 +17974,8 @@
     "NYSE:BN": {
       "issuerId": "issuer:26a5074f7148b85b7d50",
       "group": "yahoo:financial-services:asset-management",
-      "sameCurrencyPeerIssuerCount": 4,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 5,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CA11271J1075",
         "currency": "USD",
@@ -17824,7 +17985,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -17844,6 +18005,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BX",
@@ -18141,8 +18303,8 @@
     "NYSE:BX": {
       "issuerId": "issuer:54c4863d8c3ffd78d2ee",
       "group": "yahoo:financial-services:asset-management",
-      "sameCurrencyPeerIssuerCount": 4,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 5,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US09260D1072",
         "currency": "USD",
@@ -18152,7 +18314,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -18172,6 +18334,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -18864,9 +19027,9 @@
     },
     "NYSE:DUK": {
       "issuerId": "issuer:445c6a3b8461c397ab73",
-      "group": "industry:electric utilities",
-      "sameCurrencyPeerIssuerCount": 0,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:utilities:utilities-regulated-electric",
+      "sameCurrencyPeerIssuerCount": 6,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US26441C2044",
         "currency": "USD",
@@ -18875,11 +19038,23 @@
         "name_full": "Duke Energy Corporation (Holding Company)",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "level": "provider_subindustry",
+      "peerIssuerCount": 11,
+      "peerSymbols": [
+        "BME:ELE",
+        "BME:RED",
+        "EURONEXT:ELI",
+        "LSE:NG.",
+        "MIL:TRN",
+        "NASDAQ:AEP",
+        "NASDAQ:EXC",
+        "NASDAQ:XEL",
+        "NYSE:NEE",
+        "NYSE:SO",
+        "TSE:9503"
+      ],
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "NYSE:E": {
@@ -19061,8 +19236,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:EPD",
         "NYSE:KMI",
         "NYSE:TRGP",
@@ -19116,8 +19292,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:KMI",
         "NYSE:TRGP",
@@ -19670,7 +19847,7 @@
     "NYSE:HDB": {
       "issuerId": "issuer:0301ee9fdfbf3efa0224",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "INE040A01034",
@@ -19681,7 +19858,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -19718,6 +19895,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -19927,7 +20105,7 @@
     "NYSE:IBN": {
       "issuerId": "issuer:82ae1c4aefa9f78ddf6c",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "INE090A01021",
@@ -19938,7 +20116,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -19975,6 +20153,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -20084,7 +20263,7 @@
     "NYSE:ITUB": {
       "issuerId": "issuer:3536c1a96284ecfbba3e",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "BRITUBACNOR4",
@@ -20095,7 +20274,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -20132,6 +20311,7 @@
         "NYSE:IBN",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -20346,8 +20526,8 @@
     "NYSE:KKR": {
       "issuerId": "issuer:ee7e38d7fecdce6f8365",
       "group": "yahoo:financial-services:asset-management",
-      "sameCurrencyPeerIssuerCount": 4,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 5,
+      "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US48251W1045",
         "currency": "USD",
@@ -20357,7 +20537,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -20377,6 +20557,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -20404,8 +20585,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:TRGP",
@@ -20555,7 +20737,7 @@
     "NYSE:LYG": {
       "issuerId": "issuer:85f7d8b802c771aa7537",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GB0008706128",
@@ -20566,7 +20748,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -20603,6 +20785,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -20799,7 +20982,7 @@
     "NYSE:MFG": {
       "issuerId": "issuer:35976bcf85379acf204b",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "JP3885780001",
@@ -20810,7 +20993,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -20848,6 +21031,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -21147,7 +21331,7 @@
     "NYSE:NEE": {
       "issuerId": "issuer:fd574b4b657e9712633c",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US65339F1012",
@@ -21158,7 +21342,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -21168,6 +21352,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:SO",
         "TSE:9503"
       ],
@@ -21233,7 +21418,7 @@
     "NYSE:NGG": {
       "issuerId": "issuer:fa16b92d5d79f7fcc597",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GB00BDR05C01",
@@ -21244,7 +21429,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -21253,6 +21438,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -21382,7 +21568,7 @@
     "NYSE:NU": {
       "issuerId": "issuer:23ef27c41d6400375539",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "KYG6683N1034",
@@ -21393,7 +21579,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -21430,6 +21616,7 @@
         "NYSE:IBN",
         "NYSE:ITUB",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -21529,7 +21716,7 @@
     "NYSE:NWG": {
       "issuerId": "issuer:a51e7264f7781afb693c",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GB00BM8PJY71",
@@ -21540,7 +21727,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -21577,6 +21764,7 @@
         "NYSE:IBN",
         "NYSE:ITUB",
         "NYSE:NU",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -21925,8 +22113,8 @@
     },
     "NYSE:PNC": {
       "issuerId": "issuer:c4ad4fe3d4b08cdd1f89",
-      "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "group": "yahoo:financial-services:banks-regional",
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US6934751057",
@@ -21936,22 +22124,75 @@
         "name_full": "PNC Financial Services Group, Inc. (The)",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 10,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 63,
       "peerSymbols": [
-        "EURONEXT:BNP",
-        "OTC:ACGBF",
-        "OTC:BACHF",
-        "OTC:BKFCF",
-        "OTC:CICHF",
-        "OTC:CIHHF",
-        "OTC:IDCBF",
-        "STO:SEB_A",
-        "STO:SHB_A",
-        "STO:SWED_A"
+        "ATHEX:ETE",
+        "ATHEX:EUROB",
+        "ATHEX:TPEIR",
+        "BME:BKT",
+        "BME:CABK",
+        "CPH:ALSYDB",
+        "CPH:DANSKE",
+        "CPH:JYSK",
+        "CPH:RILBA",
+        "EURONEXT:A5G",
+        "EURONEXT:ACA",
+        "EURONEXT:BCP",
+        "EURONEXT:BIRG",
+        "EURONEXT:GLE",
+        "EURONEXT:KBC",
+        "GPW:EBP",
+        "GPW:MBK",
+        "GPW:MIL",
+        "GPW:PEO",
+        "GPW:PKO",
+        "LSE:BGEO",
+        "LSE:LLOY",
+        "LSE:TBCG",
+        "MIL:BAMI",
+        "MIL:BGN",
+        "MIL:BMED",
+        "MIL:BMPS",
+        "MIL:BPE",
+        "MIL:FBK",
+        "MIL:ISP",
+        "MIL:UCG",
+        "NYSE:HDB",
+        "NYSE:IBN",
+        "NYSE:ITUB",
+        "NYSE:NU",
+        "NYSE:NWG",
+        "NYSE:USB",
+        "OSL:DNB",
+        "OSL:SB1NO",
+        "OSL:SBNOR",
+        "OTC:BHKLY",
+        "OTC:DBSDF",
+        "OTC:JPSTF",
+        "OTC:OVCHF",
+        "OTC:SBKFF",
+        "SIX:BCVN",
+        "SIX:CMBN",
+        "SIX:VATN",
+        "STO:AZA",
+        "TSE:5831",
+        "TSE:6178",
+        "TSE:7186",
+        "TSE:8304",
+        "TSE:8308",
+        "TSE:8309",
+        "TSE:8331",
+        "TSE:8354",
+        "TSE:8411",
+        "VIE:BG",
+        "VIE:EBS",
+        "VIE:RBI",
+        "XETR:CBK",
+        "XETR:DBK"
       ],
       "state": "ready",
-      "reason": "broad_industry_requires_business_model_review",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "NYSE:PSX": {
@@ -22066,7 +22307,7 @@
     "NYSE:RCL": {
       "issuerId": "issuer:ba7159948340afe6c74b",
       "group": "yahoo:consumer-cyclical:travel-services",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 2,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "LR0008862868",
@@ -22077,9 +22318,10 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 2,
+      "peerIssuerCount": 3,
       "peerSymbols": [
         "NASDAQ:ABNB",
+        "NASDAQ:BKNG",
         "XETR:TUI1"
       ],
       "state": "small_group",
@@ -22599,7 +22841,7 @@
     "NYSE:SO": {
       "issuerId": "issuer:07d8615ae6ebb20f8c15",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US8425871071",
@@ -22610,7 +22852,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -22620,6 +22862,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "TSE:9503"
       ],
@@ -22811,10 +23054,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -23045,8 +23289,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:KMI",
@@ -23072,8 +23317,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:KMI",
@@ -23421,7 +23667,7 @@
     "NYSE:USB": {
       "issuerId": "issuer:c144ed31af472a911c28",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US9029733048",
@@ -23432,7 +23678,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -23470,6 +23716,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "OSL:DNB",
         "OSL:SB1NO",
         "OSL:SBNOR",
@@ -23602,10 +23849,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -23737,8 +23985,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:KMI",
@@ -23875,7 +24124,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -23913,6 +24162,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:SB1NO",
         "OSL:SBNOR",
@@ -23958,8 +24208,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:KMI",
@@ -24106,7 +24357,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -24125,6 +24376,7 @@
         "NASDAQ:TXN",
         "NYSE:ASX",
         "TSE:6723",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -24202,7 +24454,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -24240,6 +24492,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SBNOR",
@@ -24285,7 +24538,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -24323,6 +24576,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -24420,10 +24674,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -24573,8 +24828,10 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
+      "peerIssuerCount": 1,
+      "peerSymbols": [
+        "XETR:SDF"
+      ],
       "state": "small_group",
       "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
@@ -24696,7 +24953,7 @@
     "OTC:ACGBF": {
       "issuerId": "issuer:27ba15b503be75fae57e",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE100000RJ0",
@@ -24707,10 +24964,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:BACHF",
         "OTC:BKFCF",
         "OTC:CICHF",
@@ -24727,7 +24983,7 @@
     "OTC:ACGBY": {
       "issuerId": "issuer:27ba15b503be75fae57e",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE100000RJ0",
@@ -24738,10 +24994,9 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:BACHF",
         "OTC:BKFCF",
         "OTC:CICHF",
@@ -25351,7 +25606,7 @@
     "OTC:BACHF": {
       "issuerId": "issuer:c18658c65bad66451c2b",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE000001N05",
@@ -25362,10 +25617,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BKFCF",
         "OTC:CICHF",
@@ -25382,7 +25636,7 @@
     "OTC:BACHY": {
       "issuerId": "issuer:c18658c65bad66451c2b",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE000001N05",
@@ -25393,10 +25647,9 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BKFCF",
         "OTC:CICHF",
@@ -25641,7 +25894,7 @@
     "OTC:BCMXY": {
       "issuerId": "issuer:3336c1d5e9fcd112c6b5",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE1000000S2",
@@ -25652,10 +25905,9 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:CICHF",
@@ -25672,7 +25924,7 @@
     "OTC:BHKLY": {
       "issuerId": "issuer:1e999da39f4e717ae23c",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "HK2388011192",
@@ -25683,7 +25935,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -25721,6 +25973,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -25782,7 +26035,7 @@
     "OTC:BKFCF": {
       "issuerId": "issuer:3336c1d5e9fcd112c6b5",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE1000000S2",
@@ -25793,10 +26046,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:CICHF",
@@ -25813,7 +26065,7 @@
     "OTC:BNPQF": {
       "issuerId": "issuer:ed39533956b3b0ab1c37",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "FR0000131104",
@@ -25824,9 +26076,8 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -25844,7 +26095,7 @@
     "OTC:BNPQY": {
       "issuerId": "issuer:ed39533956b3b0ab1c37",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "FR0000131104",
@@ -25855,9 +26106,8 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -26003,7 +26253,7 @@
     "OTC:CAIXY": {
       "issuerId": "issuer:8c1c15ecf79891f67a3d",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "ES0140609019",
@@ -26014,7 +26264,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -26051,6 +26301,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -26132,7 +26383,7 @@
     "OTC:CFRHF": {
       "issuerId": "issuer:e532b4ed8e72644bc24b",
       "group": "yahoo:consumer-cyclical:luxury-goods",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 3,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "CH0210483332",
@@ -26143,10 +26394,12 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "OTC:CHDRF",
@@ -26159,7 +26412,7 @@
     "OTC:CFRUY": {
       "issuerId": "issuer:e532b4ed8e72644bc24b",
       "group": "yahoo:consumer-cyclical:luxury-goods",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 3,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "CH0210483332",
@@ -26170,10 +26423,12 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "OTC:CHDRF",
@@ -26209,7 +26464,7 @@
     "OTC:CHDRF": {
       "issuerId": "issuer:f89497037470f24a7eec",
       "group": "yahoo:consumer-cyclical:luxury-goods",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 3,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000130403",
@@ -26220,10 +26475,12 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "SIX:CFR",
@@ -26236,7 +26493,7 @@
     "OTC:CHDRY": {
       "issuerId": "issuer:f89497037470f24a7eec",
       "group": "yahoo:consumer-cyclical:luxury-goods",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 3,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000130403",
@@ -26247,10 +26504,12 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "SIX:CFR",
@@ -26343,7 +26602,7 @@
     "OTC:CICHF": {
       "issuerId": "issuer:5eedce235158961b28f5",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE100000742",
@@ -26354,10 +26613,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -26374,7 +26632,7 @@
     "OTC:CICHY": {
       "issuerId": "issuer:5eedce235158961b28f5",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE100000742",
@@ -26385,10 +26643,9 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -26405,7 +26662,7 @@
     "OTC:CIHHF": {
       "issuerId": "issuer:f4fabb9b914fd85bff4c",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE000001B33",
@@ -26416,10 +26673,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -26436,7 +26692,7 @@
     "OTC:CIHKY": {
       "issuerId": "issuer:f4fabb9b914fd85bff4c",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE000001B33",
@@ -26447,10 +26703,9 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -26489,7 +26744,7 @@
     "OTC:CIXPF": {
       "issuerId": "issuer:8c1c15ecf79891f67a3d",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "ES0140609019",
@@ -26500,7 +26755,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -26537,6 +26792,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -26764,7 +27020,7 @@
     "OTC:DBSDF": {
       "issuerId": "issuer:5cafc7a2c3ab6e19c880",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "SG1L01001701",
@@ -26775,7 +27031,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -26813,6 +27069,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -26847,7 +27104,7 @@
     "OTC:DBSDY": {
       "issuerId": "issuer:5cafc7a2c3ab6e19c880",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "SG1L01001701",
@@ -26858,7 +27115,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -26896,6 +27153,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -26995,10 +27253,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -27036,10 +27295,11 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -27167,8 +27427,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:EPD",
         "NYSE:KMI",
         "NYSE:TRGP",
@@ -27624,9 +27885,9 @@
     },
     "OTC:HESAF": {
       "issuerId": "issuer:1f94167cfaabb9479a57",
-      "group": "industry:apparel/footwear",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:consumer-cyclical:luxury-goods",
+      "sameCurrencyPeerIssuerCount": 3,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000052292",
         "currency": "USD",
@@ -27635,20 +27896,27 @@
         "name_full": "Hermes International SCA",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 8,
       "peerSymbols": [
-        "EURONEXT:MC"
+        "CPH:PNDORA",
+        "EURONEXT:KER",
+        "EURONEXT:MC",
+        "LSE:BRBY",
+        "MIL:BC",
+        "OTC:CHDRF",
+        "SIX:CFR",
+        "SIX:UHR"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "OTC:HESAY": {
       "issuerId": "issuer:1f94167cfaabb9479a57",
-      "group": "industry:apparel/footwear",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:consumer-cyclical:luxury-goods",
+      "sameCurrencyPeerIssuerCount": 3,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000052292",
         "currency": "USD",
@@ -27657,13 +27925,20 @@
         "name_full": "Hermes International SCA",
         "security_type": "dr"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 8,
       "peerSymbols": [
-        "EURONEXT:MC"
+        "CPH:PNDORA",
+        "EURONEXT:KER",
+        "EURONEXT:MC",
+        "LSE:BRBY",
+        "MIL:BC",
+        "OTC:CHDRF",
+        "SIX:CFR",
+        "SIX:UHR"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "OTC:HNHPF": {
@@ -27851,7 +28126,7 @@
     "OTC:IDCBF": {
       "issuerId": "issuer:ffa54518e697a00605e9",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE000001P37",
@@ -27862,10 +28137,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -27882,7 +28156,7 @@
     "OTC:IDCBY": {
       "issuerId": "issuer:ffa54518e697a00605e9",
       "group": "industry:major banks",
-      "sameCurrencyPeerIssuerCount": 7,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "CNE000001P37",
@@ -27893,10 +28167,9 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -27974,7 +28247,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -27993,7 +28266,8 @@
         "NASDAQ:TXN",
         "NYSE:ASX",
         "OSL:NOD",
-        "TSE:6723"
+        "TSE:6723",
+        "TSE:6963"
       ],
       "state": "ready",
       "reason": "identity_checked_provider_industry_not_independently_verified",
@@ -28013,7 +28287,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -28032,7 +28306,8 @@
         "NASDAQ:TXN",
         "NYSE:ASX",
         "OSL:NOD",
-        "TSE:6723"
+        "TSE:6723",
+        "TSE:6963"
       ],
       "state": "ready",
       "reason": "identity_checked_provider_industry_not_independently_verified",
@@ -28041,7 +28316,7 @@
     "OTC:IITSF": {
       "issuerId": "issuer:83f66ab907ff1a550960",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "IT0000072618",
@@ -28052,7 +28327,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -28089,6 +28364,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -28170,7 +28446,7 @@
     "OTC:ISNPY": {
       "issuerId": "issuer:83f66ab907ff1a550960",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "US46115H1077",
@@ -28181,7 +28457,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -28218,6 +28494,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -28443,7 +28720,7 @@
     "OTC:JPPTY": {
       "issuerId": "issuer:2a5fa834f2db92e3ed7d",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "JP3946750001",
@@ -28454,7 +28731,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -28492,6 +28769,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -28526,7 +28804,7 @@
     "OTC:JPSTF": {
       "issuerId": "issuer:2a5fa834f2db92e3ed7d",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "JP3946750001",
@@ -28537,7 +28815,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -28575,6 +28853,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -28620,10 +28899,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -28661,10 +28941,11 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -28714,7 +28995,7 @@
     "OTC:LLDTF": {
       "issuerId": "issuer:85f7d8b802c771aa7537",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GB0008706128",
@@ -28725,7 +29006,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -28762,6 +29043,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -28854,9 +29136,9 @@
     },
     "OTC:LVMHF": {
       "issuerId": "issuer:1523a3ed1490e8563ddc",
-      "group": "industry:apparel/footwear",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:consumer-cyclical:luxury-goods",
+      "sameCurrencyPeerIssuerCount": 3,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000121014",
         "currency": "USD",
@@ -28865,20 +29147,27 @@
         "name_full": "LVMH Moet Hennessy Louis Vuitton SE",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 8,
       "peerSymbols": [
-        "EURONEXT:RMS"
+        "CPH:PNDORA",
+        "EURONEXT:KER",
+        "EURONEXT:RMS",
+        "LSE:BRBY",
+        "MIL:BC",
+        "OTC:CHDRF",
+        "SIX:CFR",
+        "SIX:UHR"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "OTC:LVMUY": {
       "issuerId": "issuer:1523a3ed1490e8563ddc",
-      "group": "industry:apparel/footwear",
-      "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:consumer-cyclical:luxury-goods",
+      "sameCurrencyPeerIssuerCount": 3,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "FR0000121014",
         "currency": "USD",
@@ -28887,13 +29176,20 @@
         "name_full": "LVMH Moet Hennessy Louis Vuitton SE",
         "security_type": "dr"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 8,
       "peerSymbols": [
-        "EURONEXT:RMS"
+        "CPH:PNDORA",
+        "EURONEXT:KER",
+        "EURONEXT:RMS",
+        "LSE:BRBY",
+        "MIL:BC",
+        "OTC:CHDRF",
+        "SIX:CFR",
+        "SIX:UHR"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "OTC:MBFJF": {
@@ -29546,7 +29842,7 @@
     "OTC:MZHOF": {
       "issuerId": "issuer:35976bcf85379acf204b",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "JP3885780001",
@@ -29557,7 +29853,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -29595,6 +29891,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -29771,7 +30068,7 @@
     "OTC:NGGTF": {
       "issuerId": "issuer:fa16b92d5d79f7fcc597",
       "group": "yahoo:utilities:utilities-regulated-electric",
-      "sameCurrencyPeerIssuerCount": 5,
+      "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GB00BDR05C01",
@@ -29782,7 +30079,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -29791,6 +30088,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO",
         "TSE:9503"
@@ -29837,10 +30135,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -29948,10 +30247,11 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -30018,7 +30318,7 @@
     "OTC:OVCHF": {
       "issuerId": "issuer:970babf506af50af6c7f",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "SG1S04926220",
@@ -30029,7 +30329,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -30067,6 +30367,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -30101,7 +30402,7 @@
     "OTC:OVCHY": {
       "issuerId": "issuer:970babf506af50af6c7f",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "SG1S04926220",
@@ -30112,7 +30413,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -30150,6 +30451,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -30336,7 +30638,7 @@
     "OTC:RBSPF": {
       "issuerId": "issuer:a51e7264f7781afb693c",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "GB00BM8PJY71",
@@ -30347,7 +30649,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -30384,6 +30686,7 @@
         "NYSE:IBN",
         "NYSE:ITUB",
         "NYSE:NU",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -31068,7 +31371,7 @@
     "OTC:SBKFF": {
       "issuerId": "issuer:dc2aac1950aad0faf988",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "INE062A01020",
@@ -31079,7 +31382,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -31117,6 +31420,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -31162,10 +31466,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -31203,10 +31508,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -31244,10 +31550,11 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -31757,10 +32064,11 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -31830,8 +32138,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:KMI",
@@ -31950,8 +32259,9 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 7,
       "peerSymbols": [
+        "EURONEXT:VPK",
         "NYSE:ENB",
         "NYSE:EPD",
         "NYSE:KMI",
@@ -32004,7 +32314,7 @@
     "OTC:UNCFF": {
       "issuerId": "issuer:095e0446cfd7dd3f8753",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "IT0005239360",
@@ -32015,7 +32325,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -32052,6 +32362,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -32087,7 +32398,7 @@
     "OTC:UNCRY": {
       "issuerId": "issuer:095e0446cfd7dd3f8753",
       "group": "yahoo:financial-services:banks-regional",
-      "sameCurrencyPeerIssuerCount": 15,
+      "sameCurrencyPeerIssuerCount": 16,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "IT0005239360",
@@ -32098,7 +32409,7 @@
         "security_type": "dr"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -32135,6 +32446,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -32540,10 +32852,8 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 1,
-      "peerSymbols": [
-        "TSE:6963"
-      ],
+      "peerIssuerCount": 0,
+      "peerSymbols": [],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
       "directCompetitorsVerified": false
@@ -32832,7 +33142,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -32852,6 +33162,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -32902,7 +33213,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -32940,6 +33251,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -33041,10 +33353,12 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "OTC:CHDRF",
@@ -33068,7 +33382,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -33106,6 +33420,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -33774,7 +34089,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -33794,6 +34109,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -33913,10 +34229,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -34487,10 +34804,12 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 6,
+      "peerIssuerCount": 8,
       "peerSymbols": [
         "CPH:PNDORA",
         "EURONEXT:KER",
+        "EURONEXT:MC",
+        "EURONEXT:RMS",
         "LSE:BRBY",
         "MIL:BC",
         "OTC:CHDRF",
@@ -34579,7 +34898,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -34617,6 +34936,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -34662,7 +34982,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -34682,6 +35002,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -34780,10 +35101,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 3,
+      "peerIssuerCount": 2,
       "peerSymbols": [
         "EURONEXT:RUI",
-        "EURONEXT:VPK",
         "STO:BEIJ_B"
       ],
       "state": "small_group",
@@ -34941,7 +35261,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -34979,6 +35299,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -35046,10 +35367,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 3,
+      "peerIssuerCount": 2,
       "peerSymbols": [
         "EURONEXT:RUI",
-        "EURONEXT:VPK",
         "STO:ADDT_B"
       ],
       "state": "small_group",
@@ -35116,7 +35436,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 26,
+      "peerIssuerCount": 27,
       "peerSymbols": [
         "EURONEXT:ALLFG",
         "EURONEXT:AMUN",
@@ -35136,6 +35456,7 @@
         "LSE:SDR",
         "LSE:STJ",
         "MIL:AZM",
+        "NYSE:APO",
         "NYSE:BAM",
         "NYSE:BLK",
         "NYSE:BN",
@@ -35759,10 +36080,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -35832,10 +36152,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -35984,10 +36303,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 9,
       "peerSymbols": [
         "EURONEXT:BNP",
-        "NYSE:PNC",
         "OTC:ACGBF",
         "OTC:BACHF",
         "OTC:BKFCF",
@@ -36015,10 +36333,8 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 1,
-      "peerSymbols": [
-        "EURONEXT:KPN"
-      ],
+      "peerIssuerCount": 0,
+      "peerSymbols": [],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
       "directCompetitorsVerified": false
@@ -36037,10 +36353,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -39233,7 +39550,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -39271,6 +39588,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -39509,7 +39827,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -39547,6 +39865,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -40305,7 +40624,7 @@
     "TSE:6723": {
       "issuerId": "issuer:298454c4a5435bd70ece",
       "group": "yahoo:technology:semiconductors",
-      "sameCurrencyPeerIssuerCount": 0,
+      "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "JP3164720009",
@@ -40316,7 +40635,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -40335,6 +40654,7 @@
         "NASDAQ:TXN",
         "NYSE:ASX",
         "OSL:NOD",
+        "TSE:6963",
         "XETR:IFX"
       ],
       "state": "ready",
@@ -40757,9 +41077,9 @@
     },
     "TSE:6963": {
       "issuerId": "issuer:619819328d3ba191ef82",
-      "group": "industry:semiconductors",
-      "sameCurrencyPeerIssuerCount": 0,
-      "groupSizeReason": "small_business_group",
+      "group": "yahoo:technology:semiconductors",
+      "sameCurrencyPeerIssuerCount": 1,
+      "groupSizeReason": "small_currency_cohort",
       "inputIdentity": {
         "isin": "JP3982800009",
         "currency": "JPY",
@@ -40768,13 +41088,31 @@
         "name_full": "ROHM Company Limited",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 1,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 19,
       "peerSymbols": [
-        "OTC:ZHILF"
+        "MIL:STMMI",
+        "MIL:TPRO",
+        "NASDAQ:ADI",
+        "NASDAQ:ALAB",
+        "NASDAQ:AMD",
+        "NASDAQ:ARM",
+        "NASDAQ:AVGO",
+        "NASDAQ:INTC",
+        "NASDAQ:MCHP",
+        "NASDAQ:MPWR",
+        "NASDAQ:MRVL",
+        "NASDAQ:NVDA",
+        "NASDAQ:NXPI",
+        "NASDAQ:QCOM",
+        "NASDAQ:TXN",
+        "NYSE:ASX",
+        "OSL:NOD",
+        "TSE:6723",
+        "XETR:IFX"
       ],
-      "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "state": "ready",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "TSE:6971": {
@@ -41137,7 +41475,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -41175,6 +41513,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -42356,7 +42695,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -42394,6 +42733,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -42485,7 +42825,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -42523,6 +42863,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -42568,7 +42909,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -42606,6 +42947,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -42697,7 +43039,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -42735,6 +43077,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -42780,7 +43123,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -42818,6 +43161,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -42863,7 +43207,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -42901,6 +43245,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -43758,10 +44103,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -43799,10 +44145,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -43840,10 +44187,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -43940,7 +44288,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 10,
+      "peerIssuerCount": 11,
       "peerSymbols": [
         "BME:ELE",
         "BME:RED",
@@ -43950,6 +44298,7 @@
         "NASDAQ:AEP",
         "NASDAQ:EXC",
         "NASDAQ:XEL",
+        "NYSE:DUK",
         "NYSE:NEE",
         "NYSE:SO"
       ],
@@ -44144,10 +44493,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -44282,7 +44632,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -44320,6 +44670,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -44365,7 +44716,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -44403,6 +44754,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -44480,7 +44832,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -44518,6 +44870,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -44607,7 +44960,7 @@
     "XETR:1COV": {
       "issuerId": "issuer:1a377b6246c52985db27",
       "group": "industry:chemicals: specialty",
-      "sameCurrencyPeerIssuerCount": 1,
+      "sameCurrencyPeerIssuerCount": 0,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "DE0006062144",
@@ -44618,10 +44971,9 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 2,
+      "peerIssuerCount": 1,
       "peerSymbols": [
-        "CPH:NSIS_B",
-        "XETR:SDF"
+        "CPH:NSIS_B"
       ],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
@@ -45012,7 +45364,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -45050,6 +45402,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -45154,7 +45507,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 62,
+      "peerIssuerCount": 63,
       "peerSymbols": [
         "ATHEX:ETE",
         "ATHEX:EUROB",
@@ -45192,6 +45545,7 @@
         "NYSE:ITUB",
         "NYSE:NU",
         "NYSE:NWG",
+        "NYSE:PNC",
         "NYSE:USB",
         "OSL:DNB",
         "OSL:SB1NO",
@@ -45286,7 +45640,7 @@
     "XETR:DTE": {
       "issuerId": "issuer:18159eba32c91e6c81bd",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "DE0005557508",
@@ -45297,10 +45651,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -45547,7 +45902,7 @@
     "XETR:FNTN": {
       "issuerId": "issuer:557246396228abaad921",
       "group": "yahoo:communication-services:telecom-services",
-      "sameCurrencyPeerIssuerCount": 6,
+      "sameCurrencyPeerIssuerCount": 7,
       "groupSizeReason": "enough_issuers_before_history_check",
       "inputIdentity": {
         "isin": "DE000A0Z2ZZ5",
@@ -45558,10 +45913,11 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 20,
+      "peerIssuerCount": 21,
       "peerSymbols": [
         "ATHEX:HTO",
         "BME:TEF",
+        "EURONEXT:KPN",
         "EURONEXT:ORA",
         "HEL:ELISA",
         "LSE:AAF",
@@ -46002,7 +46358,7 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 18,
+      "peerIssuerCount": 19,
       "peerSymbols": [
         "MIL:STMMI",
         "MIL:TPRO",
@@ -46021,7 +46377,8 @@
         "NASDAQ:TXN",
         "NYSE:ASX",
         "OSL:NOD",
-        "TSE:6723"
+        "TSE:6723",
+        "TSE:6963"
       ],
       "state": "ready",
       "reason": "identity_checked_provider_industry_not_independently_verified",
@@ -46631,8 +46988,8 @@
     },
     "XETR:SDF": {
       "issuerId": "issuer:1ad35af7ef4c2c0ea7e1",
-      "group": "industry:chemicals: specialty",
-      "sameCurrencyPeerIssuerCount": 1,
+      "group": "yahoo:basic-materials:agricultural-inputs",
+      "sameCurrencyPeerIssuerCount": 0,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "DE000KSAG888",
@@ -46642,14 +46999,13 @@
         "name_full": "K+S AG",
         "security_type": "stock"
       },
-      "level": "industry_context",
-      "peerIssuerCount": 2,
+      "level": "provider_subindustry",
+      "peerIssuerCount": 1,
       "peerSymbols": [
-        "CPH:NSIS_B",
-        "XETR:1COV"
+        "OSL:YAR"
       ],
       "state": "small_group",
-      "reason": "broad_industry_requires_business_model_review",
+      "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
     "XETR:SHL": {
@@ -46942,9 +47298,10 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 2,
+      "peerIssuerCount": 3,
       "peerSymbols": [
         "NASDAQ:ABNB",
+        "NASDAQ:BKNG",
         "NYSE:RCL"
       ],
       "state": "small_group",
@@ -49216,11 +49573,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:apparel/footwear",
-        "label": "apparel/footwear",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:consumer-cyclical:luxury-goods",
+        "label": "Luxury Goods",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/MC.PA/profile/",
+        "observedAt": "2026-10-24T13:04:28.410952+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "EUR",
@@ -50029,11 +50387,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:chemicals: specialty",
-        "label": "chemicals: specialty",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:basic-materials:agricultural-inputs",
+        "label": "Agricultural Inputs",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/SDF.DE/profile/",
+        "observedAt": "2026-10-24T13:04:26.016859+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "EUR"
@@ -50584,11 +50943,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:apparel/footwear",
-        "label": "apparel/footwear",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:consumer-cyclical:luxury-goods",
+        "label": "Luxury Goods",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/RMS.PA/profile/",
+        "observedAt": "2026-10-24T13:04:29.462533+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "EUR",
@@ -52626,11 +52986,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:other consumer services",
-        "label": "other consumer services",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:consumer-cyclical:travel-services",
+        "label": "Travel Services",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/BKNG/profile/",
+        "observedAt": "2026-10-24T13:04:19.907052+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "USD"
@@ -54277,11 +54638,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:real estate investment trusts",
-        "label": "real estate investment trusts",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:real-estate:reit-specialty",
+        "label": "REIT - Specialty",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/AMT/profile/",
+        "observedAt": "2026-10-24T13:04:20.972014+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "USD"
@@ -54541,11 +54903,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:electric utilities",
-        "label": "electric utilities",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:utilities:utilities-regulated-electric",
+        "label": "Utilities - Regulated Electric",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/DUK/profile/",
+        "observedAt": "2026-10-24T13:04:23.030542+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "USD"
@@ -57784,11 +58147,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:semiconductors",
-        "label": "semiconductors",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:technology:semiconductors",
+        "label": "Semiconductors",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/6963.T/profile/",
+        "observedAt": "2026-10-24T13:04:25.011075+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "JPY"
@@ -60410,11 +60774,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:wholesale distributors",
-        "label": "wholesale distributors",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:energy:oil-gas-midstream",
+        "label": "Oil & Gas Midstream",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/VPK.AS/profile/",
+        "observedAt": "2026-10-24T13:04:30.421755+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "EUR"
@@ -62618,11 +62983,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:investment managers",
-        "label": "investment managers",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:financial-services:asset-management",
+        "label": "Asset Management",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/APO/profile/",
+        "observedAt": "2026-10-24T13:04:21.971285+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "USD"
@@ -64252,11 +64618,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:major telecommunications",
-        "label": "major telecommunications",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:communication-services:telecom-services",
+        "label": "Telecom Services",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/KPN.AS/profile/",
+        "observedAt": "2026-10-24T13:04:27.464789+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "EUR"
@@ -69659,11 +70026,12 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "industry:major banks",
-        "label": "major banks",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
+        "group": "yahoo:financial-services:banks-regional",
+        "label": "Banks - Regional",
+        "level": "provider_subindustry",
+        "source": "https://finance.yahoo.com/quote/PNC/profile/",
+        "observedAt": "2026-10-24T13:04:24.034204+00:00",
+        "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
         "USD"

@@ -147,3 +147,37 @@ time+=3*3600000;mode='success';
 await exportRisk({env,fetcher,clock:()=>time,sleep:async(ms:number)=>{time+=ms}});
 test('successful resumed job clears failure and stores listing',()=>{const d=JSON.parse(fs.readFileSync(output,'utf8'));assert(!d.retryState[row.listing_symbol]);assert(d.stocks[row.listing_symbol]);assert.equal(d.aliases[row.listing_symbol],row.listing_symbol)});
 console.log(`${checks} universe and queue checks passed. Temporary fixture: ${folder}`);
+
+// ROIC fallback is an independent dated statement; never a valuation patch.
+const roicRow={...row,isin:'US5949181045'};
+const roicArchive=()=>{
+ const annual:any={...fund().annual,fields:{...fund().annual.fields,capex:3},symbol:row.listing_symbol,purpose:'standalone_balance_risk_context',source:'ROIC v3 annual statements'};
+ annual.field_sources=Object.fromEntries(Object.keys(annual.fields).map(k=>[k,{source:annual.source,end:annual.end,currency:annual.currency}]));
+ return {schema:1,stocks:{[row.listing_symbol]:{inputIdentity:{listing_symbol:row.listing_symbol,ticker:row.ticker,isin:roicRow.isin,currency:'USD',security_type:null,share_class:null},retrievedAt:new Date(now).toISOString(),annual}}};
+};
+const roicAudit=(archive:any,f:any=null,rows:any[]=[roicRow])=>auditUniverse({kandidaten:rows},risk(),f?{[row.listing_symbol]:f}:{},now,{}, {},undefined,archive).stocks[0].domains.balance;
+test('ROIC whole statement can serve missing primary without changing valuation',()=>{
+ const f:any=fund();f.annual.fields.total_debt=null;const before=JSON.stringify(f);
+ const result=roicAudit(roicArchive(),f);
+ assert.equal(result.state,'available');assert.equal(result.sourceSelection,'roic_native_whole_statement');
+ assert.equal(result.ratios.fcfAssets,.07);assert.equal(JSON.stringify(f),before);
+ assert.equal(roicAudit(roicArchive()).state,'available');
+});
+test('complete original remains selected and separate partials are not merged',()=>{
+ assert.equal(roicAudit(roicArchive(),fund()).source,'Yahoo annual statements');
+ const f:any=fund();f.annual.fields.total_debt=null;
+ const archive=roicArchive();archive.stocks[row.listing_symbol].annual.fields.capex=null;
+ assert.notEqual(roicAudit(archive,f).state,'available');
+});
+test('ROIC rejects stale retrieval, wrong identity, period, currency and missing provenance',()=>{
+ const f:any=fund();f.annual.fields.total_debt=null;
+ const mutations=[(a:any)=>a.schema=2,(a:any)=>a.stocks[row.listing_symbol].inputIdentity.isin='US0378331005',
+  (a:any)=>a.stocks[row.listing_symbol].retrievedAt='2026-10-01',
+  (a:any)=>a.stocks[row.listing_symbol].annual.symbol='NASDAQ:OTHER',
+  (a:any)=>a.stocks[row.listing_symbol].annual.end='2025-06-30',
+  (a:any)=>a.stocks[row.listing_symbol].annual.currency='EUR',
+  (a:any)=>delete a.stocks[row.listing_symbol].annual.field_sources.total_debt];
+ for(const change of mutations){const a=roicArchive();change(a);assert.notEqual(roicAudit(a,f).state,'available');}
+ assert.notEqual(roicAudit(roicArchive(),f,[roicRow,{...roicRow,isin:'US0378331005'}]).state,'available');
+});
+console.log(`${checks} checks including ROIC fallback passed`);

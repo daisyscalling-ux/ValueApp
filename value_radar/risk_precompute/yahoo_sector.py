@@ -9,8 +9,9 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from yahoo_company_news import verify_profile, error_code, currency
+from yahoo_company_news import verify_profile, error_code, currency, alias_revision
 from news_identity import prepare_universe, valid_isin
+from market_priority import fetch_priority
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from listing_reference import apply_reference
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'fundamental_export'))
@@ -161,16 +162,20 @@ def run(universe,archive,cache,now=None,fetcher=collect,budget=1200,limit=400,ch
         # Other failures and unchanged mappings retain the normal daily cooldown.
         mapping_retry=(venue in {'GPW','ATHEX'} and attempt.get('error')=='yahoo_ambiguous_listing'
                        and attempt.get('venueCodes')!=sorted(VENUES[venue]))
-        if not mapping_retry and attempt.get('inputIdentity')==identity(original) and recent(attempt.get('at'),now,1):report['cooldownSkipped']+=1;continue
+        revision=alias_revision(row)
+        alias_retry=(attempt.get('error')=='yahoo_issuer_name_mismatch' and revision
+                     and attempt.get('aliasRevision')!=revision)
+        if not (mapping_retry or alias_retry) and attempt.get('inputIdentity')==identity(original) and recent(attempt.get('at'),now,1):report['cooldownSkipped']+=1;continue
         requests.append((attempt.get('at',''),not need_history,s,{'row':row,'original':original,'history':need_history}))
-    # Oldest attempts first prevents repeated failures from starving new listings.
-    requests.sort(key=lambda x:x[:3])
+    # Main markets first; attempts older than a week receive a rotation turn.
+    requests.sort(key=lambda x:fetch_priority(x[2],x[0],now))
     for _,_,s,request in requests[:limit]:
         remaining=budget-(time.monotonic()-started)
         if remaining<2:break
         report['attempted']+=1
         attempt={'at':now.isoformat(),'inputIdentity':identity(request['original']),
-                 'venueCodes':sorted(VENUES.get(s.split(':')[0],set()))}
+                 'venueCodes':sorted(VENUES.get(s.split(':')[0],set())),
+                 'aliasRevision':alias_revision(request['row'])}
         try:
             data=fetcher(request,min(25,remaining))
             p=data['profile']

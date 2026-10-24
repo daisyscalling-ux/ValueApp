@@ -13,7 +13,7 @@ export function balanceProfile(row:Row,now:number){
 export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK:boolean,now:number){
  const profile=balanceProfile(row,now),financial=['bank','insurer','specialist_financial'].includes(profile);
  const fields=a?.fields||{},required=financial?['total_assets','equity','net_income']:['total_assets','total_debt','cash','operating_cashflow','capex'];
- const consistent=!!a?.source&&required.every(k=>{const s=a?.field_sources?.[k];return !s||(!s.end||s.end===a?.end)&&(!s.currency||s.currency===a?.currency)&&(!s.published_at||recent(s.published_at,now,700))});
+ const consistent=!!a?.source&&required.every(k=>{const s=a?.field_sources?.[k];return !s||(!s.end||s.end===a?.end)&&(!s.currency||s.currency===a?.currency)&&(!s.published_at||recent(s.published_at,now,700))&&(!s.retrieved_at||recent(s.retrieved_at,now,7))});
  const fresh=consistent&&a?.period_type==='annual'&&recent(a?.end,now,550)&&recent(retrievedAt,now,7)&&(!a?.published_at||recent(a.published_at,now,700));
  const capex=finite(fields.capex)&&fields.capex<0&&(a?.field_sources?.capex?.source||a?.source)==='Yahoo annual statements'?-fields.capex:fields.capex;
  const reasons:string[]=[];

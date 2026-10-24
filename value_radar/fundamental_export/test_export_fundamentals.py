@@ -8,6 +8,7 @@ class Tests(unittest.TestCase):
   self.assertFalse(corrected_london_retry(row,{**failure,'mapped_symbol':'RR.L'}))
   self.assertFalse(corrected_london_retry(row,{'reason':'timeout'}))
   self.assertFalse(corrected_london_retry({'listing_symbol':'NASDAQ:MSFT'},failure))
+  self.assertFalse(corrected_london_retry({'listing_symbol':'LSE:INVALID/.'},failure))
  def test_london_terminal_dot_is_not_doubled_and_classes_remain(self):
   for listing,expected in [('LSE:RR.','RR.L'),('LSE:NG.','NG.L'),('LSE:AV.','AV.L'),('LSE:TW.','TW.L'),('NYSE:BRK.B','BRK-B')]:
    self.assertEqual(yahoo_symbol({'listing_symbol':listing}),expected)

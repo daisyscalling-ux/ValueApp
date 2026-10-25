@@ -72,8 +72,8 @@ def make_plan(universe,coverage,roic,edinet,now=None):
   if unresolved or d['due']:
    items.append({'symbol':s,'marketTier':market_tier(s),'balanceState':b.get('state','missing'),'expectedPeriod':b.get('period'),
     'coverageReason':b.get('reason'),'roic':{**d,'observedPeriod':annual.get('end'),'retrievedAt':record.get('retrievedAt'),'missingFields':missing,'periodMismatch':period_mismatch,'lastError':attempt.get('error')},
-    'edinet':{'applicable':s.startswith(('TSE:','TYO:','JPX:')),'period':e.get('annual',{}).get('end'),'state':e.get('annual',{}).get('state'),'lastError':ea.get('error')},
-    'nextSource':'EDINET' if s.startswith(('TSE:','TYO:','JPX:')) and unresolved else 'ROIC' if d['due'] else 'original_filing_review' if unresolved and market_tier(s)<=1 else 'scheduled_refresh'})
+    'edinet':{'applicable':s.startswith(('TSE:','TYO:','JPX:')),'period':e.get('annual',{}).get('end'),'state':e.get('annual',{}).get('state'),'lastError':ea.get('error'),'missingFields':e.get('annual',{}).get('missing_fields',[]),'parserVersion':e.get('annual',{}).get('parserVersion'),'revisionChain':e.get('filing',{}).get('revisionChain',[]),'reconciliation':b.get('edinetReconciliation'),'debtScope':e.get('annual',{}).get('debtScope')},
+    'nextSource':'reconcile_sources' if b.get('edinetReconciliation',{}).get('state')=='not_aligned' else 'EDINET' if s.startswith(('TSE:','TYO:','JPX:')) and unresolved else 'ROIC' if d['due'] else 'original_filing_review' if unresolved and market_tier(s)<=1 else 'scheduled_refresh'})
    counts[d['reason']]+=1
  items.sort(key=lambda x:(not x['roic']['due'],x['marketTier'],x['roic'].get('nextAttemptAt') or '',x['symbol']))
  return {'schema':1,'generatedAt':now.isoformat(),'coverageAsOf':coverage.get('generatedAt'),'coverageFresh':recent(coverage.get('generatedAt'),now,2),'summary':{'trackedListings':len(seen),'unresolvedListingRows':unresolved_rows,'dueRoic':sum(x['roic']['due'] for x in items),'openMainMarketBalances':sum(x['marketTier']<=1 and x['balanceState'] in ('partial','missing') for x in items),'reasons':dict(counts)},'stocks':items}

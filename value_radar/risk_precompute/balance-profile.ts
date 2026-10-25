@@ -46,6 +46,7 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
  return {state,reason:reasons.join(',')||(applicable?'annual_book_ratios':'sector_specific_assessment_pending'),profile,
   period:a?.end||null,currency:a?.currency||null,publicationDateConfirmed:!!a?.published_at&&recent(a.published_at,now,700),
   source:a?.source||null,sourceUrl:a?.source_url||null,
+  anchors:validBase?{totalAssets:fields.total_assets,cash:fields.cash??null}:null,
   capexNormalization:capex!==fields.capex?'yahoo_cash_outflow_to_positive_spend':'unchanged',
   ratios:applicable&&complete?{netDebtAssets:metrics.netDebtAssets.value,fcfAssets:metrics.fcfAssets.value}:null,metrics,
   sectorRequirements:needed,needsFinancialRefresh:!complete,

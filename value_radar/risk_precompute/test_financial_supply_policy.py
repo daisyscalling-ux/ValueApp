@@ -41,4 +41,9 @@ class Tests(unittest.TestCase):
  def test_duplicate_identity_conflict_never_due(self):
   p=make_plan({'kandidaten':[ROW,{**ROW,'isin':'US0378331005'}]}, {'generatedAt':NOW.isoformat()}, {},{},NOW)
   self.assertEqual(p['stocks'][0]['roic']['reason'],'conflicting_listing_identity');self.assertFalse(p['stocks'][0]['roic']['due'])
+ def test_source_conflicts_are_routed_for_reconciliation(self):
+  b={**B,'edinetReconciliation':{'state':'not_aligned','reasons':['cash_mismatch']}}
+  p=make_plan({'kandidaten':[ROW]},{'generatedAt':NOW.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':b}}]}, {},{},NOW)
+  self.assertEqual(p['stocks'][0]['nextSource'],'reconcile_sources')
+  self.assertEqual(p['stocks'][0]['edinet']['reconciliation']['reasons'],['cash_mismatch'])
 if __name__=='__main__':unittest.main()

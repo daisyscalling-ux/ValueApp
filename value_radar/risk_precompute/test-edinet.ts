@@ -17,8 +17,8 @@ test('date currency or anchor mismatch never creates mixed ratios',()=>{
 });
 test('stale future withdrawn wrong-issuer and incomplete observations rejected',()=>{
  const mutations=[(r:any)=>r.retrievedAt='2026-10-01',(r:any)=>r.retrievedAt='2027-01-01',
-  (r:any)=>r.inputIdentity.isin='other',(r:any)=>r.filing.withdrawalStatus='1',(r:any)=>r.annual.fields.capex=null,
-  (r:any)=>r.annual.end='2027-01-01',(r:any)=>r.annual.field_sources.capex.currency='USD',
+  (r:any)=>r.inputIdentity.isin='other',(r:any)=>r.filing.withdrawalStatus='1',
+  (r:any)=>r.annual.end='2027-01-01',
   (r:any)=>r.filing.secCode='99990',(r:any)=>r.annual.docID='S100WRNG'];
  for(const mutate of mutations){const a=archive();mutate(a.stocks[row.listing_symbol]);assert.deepEqual(withEdinetCashflow(base(),row,a,true,now),base());}
 });
@@ -31,5 +31,31 @@ test('existing cashflow and bank observations are never replaced',()=>{
 test('unavailable debt stays unavailable despite complete cashflow',()=>{
  const b:any=base();b.reason='missing_total_debt,missing_capex';b.metrics.netDebtAssets={state:'missing',value:null};
  const result=withEdinetCashflow(b,row,archive(),true,now);assert.equal(result.state,'partial');assert.equal(result.reason,'missing_total_debt');
+});
+test('partial filing retains OCF context without inventing capex',()=>{
+ const a:any=archive(),r=a.stocks[row.listing_symbol];r.annual.state='partial';r.annual.fields.capex=null;
+ const result=withEdinetCashflow(base(),row,a,true,now);
+ assert.equal(result.edinetObservations.operatingCashflowAssets.value,.1);
+ assert.equal(result.edinetObservations.fcfAssets,undefined);assert.equal(result.state,'partial');
+});
+test('wrong capex provenance cannot fill FCF but preserves independent OCF',()=>{
+ const a=archive();a.stocks[row.listing_symbol].annual.field_sources.capex.currency='USD';
+ const result=withEdinetCashflow(base(),row,a,true,now);
+ assert.equal(result.edinetObservations.fcfAssets,undefined);assert.equal(result.state,'partial');
+});
+test('reported interest-bearing debt fills only aligned missing ratio',()=>{
+ const a:any=archive(),r=a.stocks[row.listing_symbol];
+ r.annual.fields.interest_bearing_debt=30000000;r.annual.debtScope='reported interest-bearing liabilities';
+ r.annual.field_sources.interest_bearing_debt={...r.annual.field_sources.cash};
+ const b:any=base();b.metrics.netDebtAssets={state:'missing',value:null};b.reason='missing_total_debt,missing_capex';
+ const result=withEdinetCashflow(b,row,a,true,now);assert.equal(result.state,'available');assert.equal(result.ratios.netDebtAssets,.1);
+ assert.equal(result.metricSources.netDebtAssets.debtScope,r.annual.debtScope);
+ b.anchors.cash=1;const mismatch=withEdinetCashflow(b,row,a,true,now);
+ assert.equal(mismatch.metrics.netDebtAssets.state,'missing');assert.deepEqual(mismatch.edinetReconciliation.reasons,['cash_mismatch']);
+});
+test('disagreement is recorded without replacing a valid existing ratio',()=>{
+ const b=base();b.metrics.fcfAssets={state:'available',value:.02};
+ const result=withEdinetCashflow(b,row,archive(),true,now);
+ assert.equal(result.metrics.fcfAssets.value,.02);assert.equal(result.edinetReconciliation.metricDifferences.fcfAssets.edinet,.06);
 });
 console.log(count+' EDINET integration checks passed');

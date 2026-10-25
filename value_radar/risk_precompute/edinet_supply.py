@@ -8,7 +8,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from edinet_cashflow import parse_zip
+from edinet_cashflow import parse_zip,PARSER_VERSION
 from news_identity import valid_isin
 from roic_risk_annual import identity
 from yahoo_sector import load,save,recent
@@ -36,18 +36,45 @@ def eligible(doc,code,now):
   and published(doc) is not None and published(doc)<=now and published(doc).date()>=end)
 
 def select_doc(docs,code,now):
- matching=[d for d in docs if eligible({**d,'xbrlFlag':'1'},code,now)]
- if not matching:return None
- # A security code must not silently switch to another filer.
- if len({d['edinetCode'] for d in matching})!=1:raise ValueError('ambiguous_filer')
- matching.sort(key=lambda d:(d['periodEnd'],d['submitDateTime']),reverse=True)
- best=matching[0]
- if any(d['periodEnd']==best['periodEnd'] and d['submitDateTime']==best['submitDateTime'] and d['docID']!=best['docID'] for d in matching[1:]):raise ValueError('ambiguous_revision')
+ # Select the newest fiscal year's original first. Corrections inherit ONLY
+ # missing metadata from a verified parent chain, never financial values.
+ roots=[d for d in docs if d.get('docTypeCode')=='120' and eligible(d,code,now)]
+ if not roots:return None
+ if len({d['edinetCode'] for d in roots})!=1:raise ValueError('ambiguous_filer')
+ roots.sort(key=lambda d:(d['periodEnd'],d['submitDateTime']),reverse=True)
+ root=roots[0]
+ if any(d['periodEnd']==root['periodEnd'] and d['submitDateTime']==root['submitDateTime'] and d['docID']!=root['docID'] for d in roots[1:]):raise ValueError('ambiguous_revision')
+ nodes={root['docID']:{**root,'revisionChain':[root['docID']],'revisionIndexDates':[root['indexDate']],'periodOriginDocID':root['docID']}}
+ seen={}
  for d in docs:
-  # Some corrections omit period metadata; parentDocID still invalidates the
-  # original. Never silently fall back to the original if it cannot be parsed.
-  if d.get('docTypeCode')=='130' and d.get('parentDocID')==best['docID'] and published(d) and published(best)<published(d)<=now and d.get('withdrawalStatus')=='0':
-   raise ValueError('unavailable_correction')
+  if d.get('docTypeCode')!='130':continue
+  key=d.get('docID')
+  if key in seen:
+   keys=('parentDocID','edinetCode','secCode','periodStart','periodEnd','xbrlFlag','submitDateTime','withdrawalStatus','disclosureStatus','docInfoEditStatus')
+   if any(seen[key].get(k)!=d.get(k) for k in keys):
+    if d.get('secCode')==code or seen[key].get('secCode')==code:raise ValueError('ambiguous_revision')
+  seen[key]=d
+ for _ in range(16):
+  progress=False
+  for key,d in seen.items():
+   if key in nodes or d.get('parentDocID') not in nodes:continue
+   parent=nodes[d['parentDocID']]
+   if d.get('withdrawalStatus')!='0':continue
+   if d.get('edinetCode')!=parent['edinetCode'] or d.get('secCode') not in (None,'',code):raise ValueError('ambiguous_filer')
+   if not published(d) or not published(parent) or not published(parent)<=published(d)<=now:raise ValueError('ambiguous_revision')
+   resolved={**d,'secCode':code,'periodStart':d.get('periodStart') or parent['periodStart'],'periodEnd':d.get('periodEnd') or parent['periodEnd']}
+   if resolved['periodStart']!=root['periodStart'] or resolved['periodEnd']!=root['periodEnd']:raise ValueError('ambiguous_revision')
+   if not eligible({**resolved,'xbrlFlag':'1'},code,now):raise ValueError('unavailable_correction')
+   nodes[key]={**resolved,'revisionChain':parent['revisionChain']+[key],
+    'revisionIndexDates':list(dict.fromkeys(parent['revisionIndexDates']+[d['indexDate']])),
+    'periodOriginDocID':root['docID'],'periodMetadataInherited':not d.get('periodStart') or not d.get('periodEnd')}
+   progress=True
+  if not progress:break
+ # A newer same-year correction with an unresolved parent is a review case.
+ for key,d in seen.items():
+  if key not in nodes and d.get('secCode')==code and d.get('periodEnd') in (None,'',root['periodEnd']) and published(d) and published(d)>published(root) and d.get('withdrawalStatus')=='0':raise ValueError('unavailable_correction')
+ choices=sorted(nodes.values(),key=lambda d:d['submitDateTime'],reverse=True);best=choices[0]
+ if len(choices)>1 and choices[1]['submitDateTime']==best['submitDateTime']:raise ValueError('ambiguous_revision')
  if best.get('xbrlFlag')!='1':raise ValueError('unavailable_correction')
  return best
 
@@ -106,8 +133,8 @@ def run(universe,coverage,state,get_day,get_zip,now=None,budget=1680,checkpoint=
  for s in sorted(targets,key=lambda s:state['attempts'].get(s,{}).get('at','')):
   if time.monotonic()-started>=budget:report['downloadBudgetReached']=True;break
   row=rows[s];old=state['attempts'].get(s,{})
-  if recent(old.get('at'),now,.9):continue
-  attempt={'at':now.isoformat(),'inputIdentity':identity(row)}
+  if old.get('parserVersion')==PARSER_VERSION and recent(old.get('at'),now,.9):continue
+  attempt={'at':now.isoformat(),'inputIdentity':identity(row),'parserVersion':PARSER_VERSION}
   try:
    docs=[d for v in state['days'].values() for d in v['documents']]
    doc=select_doc(docs,sec_code(row),now)
@@ -117,14 +144,15 @@ def run(universe,coverage,state,get_day,get_zip,now=None,budget=1680,checkpoint=
     if any(d.get('docID')==previous.get('docID') and not eligible(d,sec_code(row),now) for d in docs) or report['indexWindowComplete']:state['stocks'].pop(s,None)
     attempt['error']='annual_filing_not_found';state['attempts'][s]=attempt;persist();continue
    # Recheck the original filing day for withdrawals/corrections before reuse.
-   day=doc['indexDate']
-   if not recent(state['days'][day]['checkedAt'],now,.9):day_fetch(day)
+   for day in doc.get('revisionIndexDates',[doc['indexDate']]):
+    if not recent(state['days'][day]['checkedAt'],now,.9):day_fetch(day)
    docs=[d for v in state['days'].values() for d in v['documents']]
    checked=select_doc(docs,sec_code(row),now)
    if not checked or checked['docID']!=doc['docID']:
     state['stocks'].pop(s,None);attempt['error']='filing_changed_retry_required';state['attempts'][s]=attempt;persist();continue
    if state['stocks'].get(s,{}).get('filing',{}).get('docID') not in (None,doc['docID']):
     state['stocks'].pop(s,None);persist()
+   doc=checked
    # Only a newly downloaded file can renew the observation timestamp.
    annual=parse_zip(get_zip(doc['docID']),doc,now)
    annual.update(symbol=s,purpose='standalone_cashflow_risk_context',published_at=published(doc).isoformat(),
@@ -133,7 +161,7 @@ def run(universe,coverage,state,get_day,get_zip,now=None,budget=1680,checkpoint=
    report['downloaded']+=1;report['completeCashflows' if annual['state']=='available' else 'partialCashflows']+=1
   except Exception as e:
    attempt['error']=safe_error(e)
-   if attempt['error'] in ('unavailable_correction','ambiguous_filer','ambiguous_revision'):state['stocks'].pop(s,None)
+   if attempt['error'] in ('unavailable_correction','ambiguous_filer','ambiguous_revision','unsafe_xml','issuer_unconfirmed','consolidation_unconfirmed','invalid_annual_period','duplicate_context','duplicate_unit','ambiguous_or_unsupported_taxonomy','ambiguous_public_instance'):state['stocks'].pop(s,None)
    if error(e):state['attempts'][s]=attempt;persist();return state
   state['attempts'][s]=attempt;persist()
  persist();return state

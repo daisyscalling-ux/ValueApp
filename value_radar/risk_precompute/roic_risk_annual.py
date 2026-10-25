@@ -11,6 +11,7 @@ import urllib.parse
 import urllib.request
 from collections import Counter
 from news_identity import valid_isin
+from financial_supply_policy import decision
 from market_priority import fetch_priority,market_tier
 from yahoo_sector import load,save,recent
 
@@ -88,7 +89,9 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
  # Without a recent audit, do not guess which stocks need this fallback.
  if not recent(coverage.get('generatedAt'),now,2):
   state['report']={'stopped':'coverage_missing_or_stale'};return state
- targets={r['symbol'] for r in coverage.get('stocks',[]) if r.get('domains',{}).get('balance',{}).get('state') in ('partial','missing')}
+ balances={r['symbol']:r.get('domains',{}).get('balance',{}) for r in coverage.get('stocks',[])}
+ targets={s for s,b in balances.items() if b.get('state') in ('partial','missing')}
+ targets.update(s for s in active if s not in balances)
  # Refresh already used records too, or successful recovery would expire.
  targets.update(s for s,v in state['stocks'].items() if not recent(v.get('retrievedAt'),now,1))
  rows=[active[s] for s in targets if s in active]
@@ -97,9 +100,14 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
   s=row['listing_symbol'];old=state['attempts'].get(s,{})
   if market_tier(s)>1:counts['deferred_other_market']+=1;continue
   if not valid_isin(row.get('isin')) or row.get('listing_reference_status') in ('expired','input_mismatch') or not re.fullmatch('[A-Z0-9._-]+:[A-Z0-9._-]+',s):counts['identity_blocked']+=1;continue
-  if recent(old.get('at'),now,1):counts['cooldown']+=1;continue
+  balance=balances.get(s,{})
+  # Legacy archives may contain successful records before the audit selected
+  # their source. Do not discard their first refresh during migration.
+  if old.get('coverageSignature') is None and s in state['stocks'] and not balance:balance={'state':'missing'}
+  policy=decision(row,balance,state['stocks'].get(s,{}),old,now)
+  if not policy['due']:counts['cooldown']+=1;continue
   if time.monotonic()-start>=budget:counts['budget_reached']+=1;break
-  record={'at':now.isoformat(),'inputIdentity':identity(row)};counts['attempted']+=1
+  record={'at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
   try:
    payloads={}
    for kind,endpoint in [('balance','balance-sheet'),('cashflow','cash-flow'),('income','income-statement')]:
@@ -108,7 +116,10 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
     payloads[kind]=fetch(s,endpoint,min(12,remaining))
    annual=normalize(row,payloads,now)
    state['stocks'][s]={'inputIdentity':identity(row),'retrievedAt':now.isoformat(),'annual':annual};counts['updated']+=1
-  except Exception as e:record['error']=safe_error(e);counts[record['error']]+=1
+   counts['empty_statements' if all(v is None for v in annual['fields'].values()) else 'partial_statements' if any(v is None for v in annual['fields'].values()) else 'complete_statements']+=1
+  except Exception as e:
+   record['error']=safe_error(e);counts[record['error']]+=1
+   record['consecutiveFailures']=min(7,old.get('consecutiveFailures',0)+1)
   state['attempts'][s]=record;state['generatedAt']=now.isoformat();state['report']=dict(counts)
   if checkpoint:checkpoint(state)
   if record.get('error') in ('http_401','http_402','http_403','http_429','budget_exhausted'):break

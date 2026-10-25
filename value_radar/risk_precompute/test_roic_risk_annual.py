@@ -53,7 +53,7 @@ class Tests(unittest.TestCase):
   s=run({'kandidaten':[ROW]},coverage(),s,lambda *a:self.fail('cooldown'),NOW)
   self.assertEqual(s['report']['cooldown'],1)
  def test_refresh_success_even_if_coverage_complete(self):
-  s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW);later=NOW+dt.timedelta(days=2)
+  s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW);later=NOW+dt.timedelta(days=8)
   s=run({'kandidaten':[ROW]},{'generatedAt':later.isoformat(),'stocks':[]},s,fetch,later)
   self.assertEqual(s['report']['updated'],1)
  def test_identity_change_purges_previous_and_duplicate_conflicts_block(self):
@@ -72,7 +72,7 @@ class Tests(unittest.TestCase):
   s=run({'kandidaten':[ROW]},coverage(NOW-dt.timedelta(days=3)),{},lambda *a:self.fail('stale'),NOW)
   self.assertEqual(s['report']['stopped'],'coverage_missing_or_stale')
  def test_failure_preserves_old_date_and_redacts(self):
-  s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW);later=NOW+dt.timedelta(days=2)
+  s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW);later=NOW+dt.timedelta(days=8)
   def fail(*a):raise TimeoutError('secret-token-must-not-appear')
   s=run({'kandidaten':[ROW]},coverage(later),s,fail,later)
   self.assertEqual(s['stocks'][ROW['listing_symbol']]['retrievedAt'],NOW.isoformat())

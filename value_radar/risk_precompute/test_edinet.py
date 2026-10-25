@@ -59,7 +59,7 @@ class Supply(unittest.TestCase):
   self.assertEqual(sec_code(ROW),'79740');self.assertIsNone(sec_code({**ROW,'isin':'invalid'}))
   for field,value in [('secCode','99990'),('withdrawalStatus','1'),('disclosureStatus','1'),('docTypeCode','140'),('xbrlFlag','0'),('submitDateTime','2027-01-01 10:00')]:self.assertFalse(eligible({**DOC,field:value},'79740',NOW))
  def test_newest_revision_and_ambiguous_filer(self):
-  correction={**DOC,'docTypeCode':'130','docID':'S100TWO1','submitDateTime':'2026-07-01 10:00'}
+  correction={**DOC,'docTypeCode':'130','parentDocID':DOC['docID'],'docID':'S100TWO1','submitDateTime':'2026-07-01 10:00'}
   self.assertEqual(select_doc([DOC,correction],'79740',NOW)['docID'],'S100TWO1')
   with self.assertRaisesRegex(ValueError,'ambiguous_filer'):select_doc([DOC,{**correction,'edinetCode':'E00002'}],'79740',NOW)
  def test_run_uses_cached_index_and_checkpoints(self):
@@ -84,7 +84,7 @@ class Supply(unittest.TestCase):
 
 class AdditionalSupplyTests(unittest.TestCase):
  def test_unavailable_correction_blocks_older_original(self):
-  correction={**DOC,'docTypeCode':'130','docID':'S100TWO1','submitDateTime':'2026-07-01 10:00','xbrlFlag':'0'}
+  correction={**DOC,'docTypeCode':'130','parentDocID':DOC['docID'],'docID':'S100TWO1','submitDateTime':'2026-07-01 10:00','xbrlFlag':'0'}
   with self.assertRaisesRegex(ValueError,'unavailable_correction'):select_doc([DOC,correction],'79740',NOW)
  def test_withdrawal_removes_archived_value(self):
   state=index();state['stocks'][ROW['listing_symbol']]={'inputIdentity':identity(ROW),'filing':DOC,'retrievedAt':'2026-10-20T00:00:00Z'}
@@ -103,5 +103,70 @@ class AdditionalSupplyTests(unittest.TestCase):
  def test_duplicate_context_and_units_rejected(self):
   for bad in ['<xbrli:context id="I"/>','<xbrli:unit id="JPY"/>']:
    with self.assertRaises(ValueError):parse_xml(xml().replace('</xbrli:xbrl>',bad+'</xbrli:xbrl>').encode(),DOC,NOW)
+
+
+
+class ExtendedStatements(unittest.TestCase):
+ def extra(self,tag,value,context='D',decimals=None):
+  attr=(' decimals="'+str(decimals)+'"') if decimals is not None else ''
+  return xml().replace('</xbrli:xbrl>','<j:'+tag+' contextRef="'+context+'" unitRef="JPY"'+attr+'>'+str(value)+'</j:'+tag+'></xbrli:xbrl>')
+ def test_reported_aggregate_closes_missing_component(self):
+  raw=self.extra('PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS',-4000000).replace('-1000000','')
+  a=parse_xml(raw.encode(),DOC,NOW);self.assertEqual(a['fields']['capex'],4000000);self.assertEqual(a['field_sources']['capex']['derivation'],'reported_gross_ppe_and_intangibles_total')
+ def test_aggregate_not_double_counted(self):
+  a=parse_xml(self.extra('PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS',-4000000).encode(),DOC,NOW)
+  self.assertEqual(a['fields']['capex'],4000000)
+ def test_aggregate_conflict_or_positive_is_not_repaired_with_components(self):
+  for value in [4000000,-2000000,0]:
+   a=parse_xml(self.extra('PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS',value).encode(),DOC,NOW);self.assertIsNone(a['fields']['capex'])
+ def test_rounding_tolerance_uses_declared_precision_only(self):
+  raw=self.extra('PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS',-3999999,decimals=0)
+  self.assertEqual(parse_xml(raw.encode(),DOC,NOW)['fields']['capex'],3999999)
+  raw=self.extra('PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS',-3900000,decimals=0)
+  self.assertIsNone(parse_xml(raw.encode(),DOC,NOW)['fields']['capex'])
+ def test_reported_interest_bearing_total_and_explicit_zero(self):
+  for value in [0,50000000]:
+   a=parse_xml(self.extra('InterestBearingLiabilitiesLiabilitiesIFRS',value,'I').encode(),DOC,NOW)
+   self.assertEqual(a['fields']['interest_bearing_debt'],value)
+ def test_missing_debt_is_never_inferred_from_liabilities_or_one_maturity(self):
+  for tag in ['InterestBearingLiabilitiesCLIFRS','LiabilitiesIFRS','BondsAndBorrowingsLiabilitiesIFRS']:
+   a=parse_xml(self.extra(tag,0,'I').encode(),DOC,NOW);self.assertIsNone(a['fields']['interest_bearing_debt'])
+ def test_both_interest_bearing_maturities_and_conflicting_total(self):
+  raw=self.extra('InterestBearingLiabilitiesCLIFRS',100,'I').replace('</xbrli:xbrl>','<j:InterestBearingLiabilitiesNCLIFRS contextRef="I" unitRef="JPY">200</j:InterestBearingLiabilitiesNCLIFRS></xbrli:xbrl>')
+  self.assertEqual(parse_xml(raw.encode(),DOC,NOW)['fields']['interest_bearing_debt'],300)
+  raw=raw.replace('</xbrli:xbrl>','<j:InterestBearingLiabilitiesLiabilitiesIFRS contextRef="I" unitRef="JPY">500</j:InterestBearingLiabilitiesLiabilitiesIFRS></xbrli:xbrl>')
+  self.assertIsNone(parse_xml(raw.encode(),DOC,NOW)['fields']['interest_bearing_debt'])
+ def test_diagnostics_are_bounded_and_issuer_extensions_never_fill_values(self):
+  raw=xml().replace('jpigp/2025-11-01/jpigp_cor','custom/2025-11-01/custom_cor')
+  with self.assertRaises(ValueError):parse_xml(raw.encode(),DOC,NOW)
+  a=parse_xml(xml().encode(),DOC,NOW);self.assertIn('fileSha256',a);self.assertIn('parserVersion',a);self.assertTrue(a['diagnostics']['monetaryCandidates'])
+ def test_utf16_entities_are_rejected(self):
+  for encoding in ['utf-16','utf-16-le','utf-16-be']:
+   with self.assertRaises(ValueError):parse_xml(('<!DOCTYPE foo>'+xml()).encode(encoding),DOC,NOW)
+
+class CorrectionChains(unittest.TestCase):
+ def correction(self,**changes):return {**DOC,'docID':'S100REV1','parentDocID':DOC['docID'],'docTypeCode':'130','periodStart':None,'periodEnd':None,'submitDateTime':'2026-07-01 10:00','indexDate':'2026-07-01',**changes}
+ def test_missing_metadata_inherited_only_from_verified_parent(self):
+  d=select_doc([DOC,self.correction()],'79740',NOW)
+  self.assertEqual(d['docID'],'S100REV1');self.assertEqual(d['periodEnd'],DOC['periodEnd']);self.assertEqual(d['revisionChain'],[DOC['docID'],'S100REV1'])
+  self.assertTrue(d['periodMetadataInherited'])
+ def test_nested_correction_keeps_chain_and_newest_publication(self):
+  c1=self.correction();c2=self.correction(docID='S100REV2',parentDocID='S100REV1',submitDateTime='2026-08-01 10:00',indexDate='2026-08-01')
+  d=select_doc([DOC,c2,c1],'79740',NOW);self.assertEqual(d['revisionChain'],[DOC['docID'],'S100REV1','S100REV2'])
+ def test_wrong_filer_or_period_blocks_correction(self):
+  for change in [{'edinetCode':'E00002'},{'secCode':'99990'},{'periodEnd':'2025-03-31'}]:
+   with self.assertRaises(ValueError):select_doc([DOC,self.correction(**change)],'79740',NOW)
+ def test_unknown_parent_with_missing_period_blocks_older_original(self):
+  with self.assertRaisesRegex(ValueError,'unavailable_correction'):select_doc([DOC,self.correction(parentDocID='S100LOST')],'79740',NOW)
+ def test_withdrawn_correction_does_not_override_valid_original(self):
+  d=select_doc([DOC,self.correction(withdrawalStatus='1')],'79740',NOW);self.assertEqual(d['docID'],DOC['docID'])
+ def test_corrected_financial_values_not_inherited(self):
+  d=select_doc([DOC,self.correction()],'79740',NOW)
+  a=parse_xml(xml().replace('-1000000','').encode(),d,NOW)
+  self.assertIsNone(a['fields']['capex']);self.assertEqual(a['field_sources']['cash']['docID'],'S100REV1')
+ def test_same_document_parse_rejection_invalidates_old_success(self):
+  state=index();state['stocks'][ROW['listing_symbol']]={'inputIdentity':identity(ROW),'filing':DOC,'retrievedAt':'2026-10-20T00:00:00Z'}
+  out=run({'kandidaten':[ROW]},coverage(),state,lambda d:self.fail('cache'),lambda d:zipped('<!DOCTYPE x><x/>'),NOW)
+  self.assertFalse(out['stocks']);self.assertEqual(out['attempts'][ROW['listing_symbol']]['error'],'unsafe_xml')
 
 if __name__=='__main__':unittest.main()

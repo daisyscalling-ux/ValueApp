@@ -143,10 +143,10 @@ export function selectSectorComparison(report:Row,symbol:string,row:Row,now=Date
  if(report?.schema!==SECTOR_VERSION||report.method!=='aligned-cohort-v1'||!fresh(report.generatedAt,now,1.5))return null;
  const r=report.stocks?.[symbol];if(!r||r.method!=='aligned-cohort-v1')return null;
  if(r.state==='available'&&(!fresh(r.observationDate,now,7)||currencyUnit(row.currency)!==r.currency||!matches(row,r.inputIdentity)))return null;
- const context=r.broaderContext;
- if(context&&(!fresh(context.observationDate,now,7)||currencyUnit(row.currency)!==context.currency||!matches(row,context.inputIdentity)||context.quality!=='broad_sector_context'||context.peerIssuers<10)){
-  const {broaderContext,...strict}=r;return strict;
+ let selected={...r};
+ for(const [field,quality,minimum] of [['broaderContext','broad_sector_context',10],['industryContext','provider_industry_context',5]] as const){
+  const context=selected[field];
+  if(context&&(context.state!=='available'||context.method!=='aligned-cohort-v1'||!num(context.peerIssuers)||!fresh(context.observationDate,now,7)||currencyUnit(row.currency)!==context.currency||!matches(row,context.inputIdentity)||context.quality!==quality||context.peerIssuers<minimum))delete selected[field];
  }
- return r;
+ return selected;
 }
-

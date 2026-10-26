@@ -114,7 +114,7 @@ test('bank context rejects stale or mixed period equity',()=>{
  const f:any=fund();f.annual.fields.equity=10;f.annual.fields.net_income=2;
  f.annual.field_sources={equity:{end:'2025-06-30'}};
  const b=audit([{...row,industry:'Major banks'}],f).stocks[0].domains.balance;
- assert.equal(b.state,'missing');assert.equal(b.metrics.bookEquityAssets.value,null);
+ assert.equal(b.state,'partial');assert.equal(b.metrics.bookEquityAssets.value,null);assert.equal(b.metrics.netIncomeEndingAssets.value,.02);
 });
 test('future annual date blocks ratios',()=>{const f=fund();f.annual.end='2027-06-30';assert.equal(audit([row],f).stocks[0].domains.balance.ratios,null)});
 test('mixed financial periods blocked',()=>{const f:any=fund();f.annual.field_sources={total_debt:{end:'2025-06-30'}};assert.equal(audit([row],f).stocks[0].domains.balance.ratios,null)});

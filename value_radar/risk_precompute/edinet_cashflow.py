@@ -10,14 +10,15 @@ import zipfile
 X='http://www.xbrl.org/2003/instance'
 D='http://xbrl.org/2006/xbrldi'
 SOURCE='EDINET annual XBRL'
-PARSER_VERSION='edinet-risk-v2'
+PARSER_VERSION='edinet-risk-v3'
 # Verified against FSA 2026 taxonomy (1c_Taxonomy.zip, 2025-11-01)
 # and sample instances (ESE140116.zip).
 TAGS={
  'jppfs':{'total_assets':['Assets'],'cash':['CashAndCashEquivalents'],
   'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],
   'ppe':['PurchaseOfPropertyPlantAndEquipmentInvCF'],'intangibles':['PurchaseOfIntangibleAssetsInvCF'],
-  'gross_capex':['PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF']},
+  'gross_capex':['PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF'],
+  'noncurrent_asset_purchase_outflow':['PurchaseOfNoncurrentAssetsInvCF']},
  'jpigp':{'total_assets':['AssetsIFRS'],'cash':['CashAndCashEquivalentsIFRS'],
   'operating_cashflow':['NetCashProvidedByUsedInOperatingActivitiesIFRS'],
   'ppe':['PurchaseOfPropertyPlantAndEquipmentInvCFIFRS'],'intangibles':['PurchaseOfIntangibleAssetsInvCFIFRS'],
@@ -107,7 +108,7 @@ def parse_xml(raw,doc,now):
   def derived(key,value,keys,method):
    fields[key]=value
    if value is not None:sources[key]={'source':SOURCE,'end':str(end),'currency':'JPY','docID':doc['docID'],
-    'start':str(start) if key=='capex' else None,'derivation':method,'components':{k:{'value':fields[k],**sources[k]} for k in keys}}
+    'start':str(start) if key in ('capex','noncurrent_asset_purchases') else None,'derivation':method,'components':{k:{'value':fields[k],**sources[k]} for k in keys}}
   capex=None;parts=[];method='gross_ppe_plus_intangibles'
   if 'gross_capex' in fields:
    if fields['gross_capex']<=0:capex=-fields['gross_capex'];parts=['gross_capex'];method='reported_gross_ppe_and_intangibles_total'
@@ -128,6 +129,8 @@ def parse_xml(raw,doc,now):
    debt=fields['current_interest_bearing_debt']+fields['noncurrent_interest_bearing_debt'];parts=['current_interest_bearing_debt','noncurrent_interest_bearing_debt'];method='both_reported_interest_bearing_maturities'
   if any(k in conflicts for k in ('reported_interest_bearing_debt','current_interest_bearing_debt','noncurrent_interest_bearing_debt')) or (debt is not None and not math.isfinite(debt)):debt=None
   derived('interest_bearing_debt',debt,parts,method)
+  broad=fields.get('noncurrent_asset_purchase_outflow')
+  derived('noncurrent_asset_purchases',-broad if broad is not None and broad<=0 else None,['noncurrent_asset_purchase_outflow'] if broad is not None and broad<=0 else [],'reported_noncurrent_asset_purchases_not_capex')
   missing=[k for k in ('total_assets','cash','operating_cashflow','capex') if fields.get(k) is None]
   invalid=fields.get('total_assets',1)<=0 or fields.get('cash',0)<0
   complete=not missing and not conflicts and not invalid

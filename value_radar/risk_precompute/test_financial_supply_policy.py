@@ -46,4 +46,14 @@ class Tests(unittest.TestCase):
   p=make_plan({'kandidaten':[ROW]},{'generatedAt':NOW.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':b}}]}, {},{},NOW)
   self.assertEqual(p['stocks'][0]['nextSource'],'reconcile_sources')
   self.assertEqual(p['stocks'][0]['edinet']['reconciliation']['reasons'],['cash_mismatch'])
+ def test_preventive_fallback_does_not_wait_for_missing_state(self):
+  b={**B,'state':'available','source':'Yahoo annual statements','refreshDue':True}
+  self.assertTrue(decision(ROW,b,{}, {},NOW)['due'])
+  self.assertEqual(decision(ROW,b,{}, {},NOW)['reason'],'preventive_fallback_refresh')
+  self.assertFalse(decision(ROW,b,{},attempt(.2),NOW)['due'])
+  self.assertTrue(decision(ROW,b,{},attempt(1),NOW)['due'])
+ def test_preventive_identity_block_and_market_deferral_remain(self):
+  b={**B,'state':'available','refreshDue':True}
+  self.assertFalse(decision({**ROW,'isin':'bad'},b,{}, {},NOW)['due'])
+  self.assertFalse(decision({**ROW,'listing_symbol':'GPW:A'},b,{}, {},NOW)['due'])
 if __name__=='__main__':unittest.main()

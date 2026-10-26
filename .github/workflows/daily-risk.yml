@@ -45,11 +45,14 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_edinet.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_supply_policy.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_coverage_delta.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_workplan.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-edinet.ts --bundle --platform=node --format=esm --outfile=/tmp/test-edinet.mjs
           node /tmp/test-edinet.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-balance-fields.ts --bundle --platform=node --format=esm --outfile=/tmp/test-balance-fields.mjs
+          node /tmp/test-balance-fields.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-context.mjs
           node /tmp/test-context.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-sector.ts --bundle --platform=node --format=esm --outfile=/tmp/test-sector.mjs
@@ -166,6 +169,7 @@ jobs:
           node /tmp/risk-audit.mjs
           python value_radar/risk_precompute/financial_supply_policy.py
           python value_radar/risk_precompute/coverage_delta.py
+          python value_radar/risk_precompute/risk_workplan.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -185,6 +189,7 @@ jobs:
             value_radar/daten/cf_edinet_cashflow.json
             value_radar/daten/cf_financial_supply_plan.json
             value_radar/daten/cf_risk_coverage_changes.json
+            value_radar/daten/cf_risk_workplan.json
           retention-days: 90
       - name: Ergebnisse und Teilfortschritt veröffentlichen
         if: ${{ always() && !cancelled() }}
@@ -194,7 +199,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          for file in cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

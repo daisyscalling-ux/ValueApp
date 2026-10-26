@@ -14,6 +14,27 @@ def payloads():
 def coverage(now=NOW):return {'generatedAt':now.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':{'state':'partial'}}}]}
 def fetch(symbol,endpoint,timeout):return payloads()[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
 class Tests(unittest.TestCase):
+ def test_empty_new_year_selects_actually_returned_older_period(self):
+  p=payloads();p['balance']['data'].insert(0,{'symbol':ROW['listing_symbol'],'period_type':'annual','period_end_date':'2026-09-30','currency':'USD','fx_applied':False})
+  a=normalize(ROW,p,NOW);self.assertEqual(a['end'],'2026-06-30');self.assertEqual(a['fields']['total_assets'],100);self.assertEqual(a['skippedEmptyPeriods'],['2026-09-30'])
+ def test_empty_only_response_retains_old_record_without_redating(self):
+  first=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW)
+  before=copy.deepcopy(first['stocks'][ROW['listing_symbol']])
+  later=NOW+dt.timedelta(days=8)
+  def empty(symbol,endpoint,timeout):return {'data':[{'symbol':symbol,'period_type':'annual','period_end_date':'2026-09-30','currency':'USD','fx_applied':False}]}
+  r=run({'kandidaten':[ROW]},coverage(later),first,empty,later)
+  self.assertEqual(r['stocks'][ROW['listing_symbol']],before);self.assertEqual(r['attempts'][ROW['listing_symbol']]['error'],'empty_statement_values')
+ def test_real_partial_new_period_not_hidden_by_old_complete_statement(self):
+  p=payloads();p['balance']['data'].insert(0,{'symbol':ROW['listing_symbol'],'period_type':'annual','period_end_date':'2026-09-30','currency':'USD','fx_applied':False,'bs_tot_asset':120})
+  a=normalize(ROW,p,NOW);self.assertEqual(a['end'],'2026-09-30');self.assertIsNone(a['fields']['capex']);self.assertEqual(a['fields']['total_assets'],120)
+
+ def test_preventive_target_is_downloaded_and_daily_cooldown_applies(self):
+  c=coverage();c['stocks'][0]['domains']['balance'].update(state='available',source='Yahoo annual statements',refreshDue=True)
+  state=run({'kandidaten':[ROW]},c,{},fetch,NOW)
+  self.assertEqual(state['report']['updated'],1)
+  second=run({'kandidaten':[ROW]},c,state,lambda *a:self.fail('cooldown'),NOW)
+  self.assertEqual(second['report'].get('updated',0),0)
+
  def test_values_and_provenance(self):
   a=normalize(ROW,payloads(),NOW)
   self.assertEqual(a['fields'],{'total_assets':100,'cash':20,'equity':40,'net_income':8,'operating_cashflow':10,'total_debt':30,'capex':3})

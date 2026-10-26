@@ -58,4 +58,13 @@ test('disagreement is recorded without replacing a valid existing ratio',()=>{
  const result=withEdinetCashflow(b,row,archive(),true,now);
  assert.equal(result.metrics.fcfAssets.value,.02);assert.equal(result.edinetReconciliation.metricDifferences.fcfAssets.edinet,.06);
 });
+test('broader investment spending is separate context and never fills FCF',()=>{
+ const a:any=archive(),r=a.stocks[row.listing_symbol];r.annual.state='partial';r.annual.fields.capex=null;
+ r.annual.fields.noncurrent_asset_purchases=6000000;r.annual.field_sources.noncurrent_asset_purchases={...r.annual.field_sources.capex};
+ const b=withEdinetCashflow(base(),row,a,true,now);
+ assert.equal(b.edinetObservations.cashflowAfterNoncurrentPurchasesAssets.value,.04);assert.equal(b.edinetObservations.fcfAssets,undefined);
+ assert.equal(b.state,'partial');assert.match(b.edinetObservations.cashflowAfterNoncurrentPurchasesAssets.scope,/Not FCF/);
+ r.annual.field_sources.noncurrent_asset_purchases.currency='USD';
+ assert.equal(withEdinetCashflow(base(),row,a,true,now).edinetObservations.cashflowAfterNoncurrentPurchasesAssets,undefined);
+});
 console.log(count+' EDINET integration checks passed');

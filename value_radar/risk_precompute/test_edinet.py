@@ -169,4 +169,15 @@ class CorrectionChains(unittest.TestCase):
   out=run({'kandidaten':[ROW]},coverage(),state,lambda d:self.fail('cache'),lambda d:zipped('<!DOCTYPE x><x/>'),NOW)
   self.assertFalse(out['stocks']);self.assertEqual(out['attempts'][ROW['listing_symbol']]['error'],'unsafe_xml')
 
+class BroadInvestmentContext(unittest.TestCase):
+ def test_jgaap_broad_purchases_never_fill_capex(self):
+  raw=xml().replace('jpigp/2025-11-01/jpigp_cor','jppfs/2025-11-01/jppfs_cor').replace('IFRS','')
+  raw=raw.replace('-1000000','').replace('</xbrli:xbrl>','<j:PurchaseOfNoncurrentAssetsInvCF contextRef="D" unitRef="JPY">-5000000</j:PurchaseOfNoncurrentAssetsInvCF></xbrli:xbrl>')
+  result=parse_xml(raw.encode(),DOC,NOW)
+  self.assertIsNone(result['fields']['capex']);self.assertEqual(result['fields']['noncurrent_asset_purchases'],5000000)
+  self.assertEqual(result['field_sources']['noncurrent_asset_purchases']['start'],DOC['periodStart']);self.assertEqual(result['state'],'partial')
+ def test_issuer_specific_similar_tag_not_promoted(self):
+  raw=xml().replace('</xbrli:xbrl>','<j:PurchaseOfNonCurrentAssetsInvCFIFRS contextRef="D" unitRef="JPY">-5000000</j:PurchaseOfNonCurrentAssetsInvCFIFRS></xbrli:xbrl>')
+  self.assertIsNone(parse_xml(raw.encode(),DOC,NOW)['fields']['noncurrent_asset_purchases'])
+
 if __name__=='__main__':unittest.main()

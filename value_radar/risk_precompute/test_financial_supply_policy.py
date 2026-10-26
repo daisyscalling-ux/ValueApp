@@ -56,4 +56,20 @@ class Tests(unittest.TestCase):
   b={**B,'state':'available','refreshDue':True}
   self.assertFalse(decision({**ROW,'isin':'bad'},b,{}, {},NOW)['due'])
   self.assertFalse(decision({**ROW,'listing_symbol':'GPW:A'},b,{}, {},NOW)['due'])
+ def test_empty_archive_gets_one_migration_retry_without_repeated_bypass(self):
+  rec={'inputIdentity':identity(),'annual':{'fields':{'total_assets':None,'cash':None}}}
+  a=attempt(.1)
+  self.assertEqual(decision(ROW,B,rec,a,NOW)['reason'],'repair_empty_legacy_archive')
+  a['normalizationVersion']='nonempty-annual-v1';a['error']='empty_statement_values'
+  self.assertFalse(decision(ROW,B,rec,a,NOW)['due'])
+ def test_explicit_zero_record_does_not_trigger_empty_migration(self):
+  rec={'inputIdentity':identity(),'annual':{'fields':{'total_assets':None,'total_debt':0}}}
+  self.assertNotEqual(decision(ROW,B,rec,attempt(.1),NOW)['reason'],'repair_empty_legacy_archive')
+ def test_original_source_plan_distinguishes_debt_review_from_auto_fetch(self):
+  b={**B,'source':'EDINET annual XBRL','sourceSelection':'edinet_standalone_original_filing','reason':'missing_total_debt','metrics':{'fcfAssets':{'state':'available','value':.1}},'edinetReconciliation':{'state':'not_comparable'}}
+  p=make_plan({'kandidaten':[ROW]},{'generatedAt':NOW.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':b}}]}, {},{},NOW)
+  item=p['stocks'][0]
+  self.assertEqual(item['nextSource'],'original_debt_scope_review')
+  self.assertEqual(item['automaticNextSource'],'ROIC')
+  self.assertEqual(item['availableMetrics'],['fcfAssets'])
 if __name__=='__main__':unittest.main()

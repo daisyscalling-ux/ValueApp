@@ -21,6 +21,8 @@ export function withEdinetCashflow(base:Row,row:Row,archive:Row|undefined|null,i
  if(verified(['operating_cashflow'])&&finite(f.operating_cashflow/f.total_assets))observations.operatingCashflowAssets=context(f.operating_cashflow/f.total_assets);
  if(verified(['operating_cashflow','capex'])&&f.capex>=0&&finite((f.operating_cashflow-f.capex)/f.total_assets))observations.fcfAssets=context((f.operating_cashflow-f.capex)/f.total_assets);
  if(verified(['interest_bearing_debt'])&&f.interest_bearing_debt>=0&&a.debtScope&&finite((f.interest_bearing_debt-f.cash)/f.total_assets))observations.netDebtAssets=context((f.interest_bearing_debt-f.cash)/f.total_assets,{debtScope:a.debtScope});
+ if(verified(['operating_cashflow','noncurrent_asset_purchases'])&&f.noncurrent_asset_purchases>=0&&finite((f.operating_cashflow-f.noncurrent_asset_purchases)/f.total_assets))
+  observations.cashflowAfterNoncurrentPurchasesAssets=context((f.operating_cashflow-f.noncurrent_asset_purchases)/f.total_assets,{scope:'Operating cashflow minus reported noncurrent asset purchases; broader scope than PPE and intangibles. Not FCF, not a valuation input.',label:'Cashflow nach gemeldeten Kaeufen langfristiger Vermoegenswerte / Bilanzsumme'});
  if(!Object.keys(observations).length)return base;
  const period=base.period===a.end,currency=base.currency==='JPY',assets=match(base.anchors?.totalAssets,f.total_assets),cash=match(base.anchors?.cash,f.cash);
  const aligned=period&&currency&&assets&&cash;

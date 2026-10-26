@@ -115,7 +115,7 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
   policy=decision(row,balance,state['stocks'].get(s,{}),old,now)
   if not policy['due']:counts['cooldown']+=1;continue
   if time.monotonic()-start>=budget:counts['budget_reached']+=1;break
-  record={'at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
+  record={'normalizationVersion':'nonempty-annual-v1','at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
   try:
    payloads={}
    for kind,endpoint in [('balance','balance-sheet'),('cashflow','cash-flow'),('income','income-statement')]:

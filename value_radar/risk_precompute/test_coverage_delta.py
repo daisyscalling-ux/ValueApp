@@ -22,4 +22,9 @@ class Delta(unittest.TestCase):
  def test_missing_baseline(self):self.assertEqual(compare({},self.new,NOW)['state'],'not_comparable')
  def test_unchanged(self):
   self.new['stocks']=self.old['stocks'];self.assertEqual(compare(self.old,self.new,NOW)['changes'],[])
+ def test_profile_change_is_not_counted_as_data_loss(self):
+  self.old['stocks'][0]['domains']['balance']['profile']='corporate'
+  self.new['stocks'][0]['domains']['balance'].update(profile='specialist_financial',state='context_only')
+  r=compare(self.old,self.new,NOW);self.assertEqual(r['summary']['transitions']['framework_changed'],1)
+  self.assertNotIn('lost_available',r['summary']['transitions'])
 if __name__=='__main__':unittest.main()

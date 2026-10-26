@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {buildSectorComparisons,seriesCheck} from './sector-comparison';
+import {addFxPeerContext} from './fx-peer-context';
 import {addIndustryContext} from './industry-context';
 import {addBroadSectorContext} from './broad-sector-context';
 const read=(p:string)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return null}};
@@ -11,16 +12,18 @@ export function exportSector(folder='value_radar/daten',cachePath='.risk-sector-
  const metadata=read(path.join(folder,'cf_peer_metadata.json'));
  const cache=read(cachePath),result=addBroadSectorContext(buildSectorComparisons(universe,groups,cache,now),universe,groups,metadata,cache,now);
  addIndustryContext(result,universe,groups,cache,now);
+ addFxPeerContext(result,universe,groups,cache,read(path.join(folder,'cf_ecb_fx.json')),now);
  const out=path.join(folder,'cf_sector_context.json');fs.writeFileSync(out+'.tmp',JSON.stringify(result));fs.renameSync(out+'.tmp',out);
  const rows=Object.entries(result.stocks).map(([symbol,value]:any)=>({symbol,state:value.state,reason:value.reason,
   group:value.group||null,quality:value.quality||null,peerIssuers:value.peerIssuers??null,
+  currencyAdjustedContext:value.currencyAdjustedContext?{state:'available',peerIssuers:value.currencyAdjustedContext.peerIssuers,group:value.currencyAdjustedContext.group,currency:'EUR'}:value.currencyAdjustedContextStatus||null,
   industryContext:value.industryContext?{state:'available',peerIssuers:value.industryContext.peerIssuers,group:value.industryContext.group}:value.industryContextStatus||null,
   broaderContext:value.broaderContext?{state:'available',peerIssuers:value.broaderContext.peerIssuers,group:value.broaderContext.group}:value.broaderContextStatus||null,
   membershipOnly: {reason:groups?.listings?.[symbol]?.groupSizeReason||null,
    sameCurrencyPeerIssuers:groups?.listings?.[symbol]?.sameCurrencyPeerIssuerCount??null},
   historyIssue:seriesCheck(cache?.series?.[symbol],now),
   calendarDiagnostic:value.calendarDiagnostic||null,
-  nextAction:value.state==='available'?'observe':value.reason==='fewer_than_five_same_currency_issuers'?'group_membership_or_currency_review':
+  nextAction:value.state==='available'?'observe':value.currencyAdjustedContext?.state==='available'?'eur_context_available_strict_peers_remain_open':value.reason==='fewer_than_five_same_currency_issuers'?'group_membership_or_currency_review':
    ['insufficient_common_history','target_calendar_insufficient','no_fresh_common_trading_date'].includes(value.reason)?'calendar_review':
    value.reason==='issuer_or_business_group_unconfirmed'?'identity_review':'history_refresh',
   lastSupplementAttempt:metadata?.attempts?.[symbol]?.at||null,supplementError:metadata?.attempts?.[symbol]?.error||null}));

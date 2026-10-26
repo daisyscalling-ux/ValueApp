@@ -24,7 +24,7 @@ def build(coverage,now=None):
   group['symbols'].add(symbol);open_symbols.add(symbol)
  for row in rows:
   domains=row.get('domains',{});sector=domains.get('sector',{});
-  levels=[key for key in ['industryContext','broaderContext'] if sector.get(key,{}).get('state')=='available']
+  levels=[key for key in ['industryContext','broaderContext','currencyAdjustedContext'] if sector.get(key,{}).get('state')=='available']
   if sector.get('state')=='available':levels.append('strict')
   for level in levels:peer_context[level]+=1
   peer_context['any_context' if levels else 'no_context']+=1

@@ -2,7 +2,7 @@
 import argparse, datetime as dt, json, math, os, pathlib, re, subprocess, sys, time, urllib.request
 from listing_identity import listing_matches,SUFFIXES
 from reference_data import fetch_ecb,fetch_sec_listings
-from queue_policy import order_rows, due, failed as queue_failed
+from queue_policy import order_rows, due, failed as queue_failed, annual_supply_status
 UTC=dt.timezone.utc
 def stamp(): return dt.datetime.now(UTC).isoformat()
 def number(x):
@@ -262,6 +262,7 @@ def main():
  out=pathlib.Path(args.out); rows=json.loads(pathlib.Path(args.universe).read_text(encoding='utf-8'))['kandidaten']
  index_path=out/'index.json'; index=json.loads(index_path.read_text(encoding='utf-8')) if index_path.exists() else {'schema':1,'listings':{},'attempts':{}}
  index.setdefault('failures',{})
+ index.setdefault('annualSupply',{})
  rows=select_registered_rows(rows,index,args.symbols)
  save(index_path,index) # Persist enrollment before network requests or budget expiry.
  rows=order_rows(rows,index,out.parent/'cf_risk_queue.json',time.time())
@@ -292,6 +293,7 @@ def main():
    data=json.loads(temp.read_text(encoding='utf-8')); old=json.loads(dest.read_text(encoding='utf-8')) if dest.exists() else None
    # Never overwrite a newer retained annual block with an older/missing one.
    data=preserve_annual(data,old)
+   index['annualSupply'][symbol]={**annual_supply_status(data,time.time()),'checkedAt':stamp()}
    save(dest,data);index['listings'][symbol]=filename;index['failures'].pop(symbol,None);success+=1
   except Exception as exc:
    failed+=1

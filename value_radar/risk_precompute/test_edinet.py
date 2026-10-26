@@ -180,4 +180,9 @@ class BroadInvestmentContext(unittest.TestCase):
   raw=xml().replace('</xbrli:xbrl>','<j:PurchaseOfNonCurrentAssetsInvCFIFRS contextRef="D" unitRef="JPY">-5000000</j:PurchaseOfNonCurrentAssetsInvCFIFRS></xbrli:xbrl>')
   self.assertIsNone(parse_xml(raw.encode(),DOC,NOW)['fields']['noncurrent_asset_purchases'])
 
+class PreventiveSupply(unittest.TestCase):
+ def test_available_japanese_statement_can_be_collected_before_expiry(self):
+  c=coverage();c['stocks'][0]['domains']['balance'].update(state='available',refreshDue=True)
+  out=run({'kandidaten':[ROW]},c,index(),lambda d:self.fail('cached'),lambda d:zipped(),NOW)
+  self.assertEqual(out['report']['downloaded'],1)
 if __name__=='__main__':unittest.main()

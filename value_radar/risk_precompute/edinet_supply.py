@@ -113,7 +113,7 @@ def run(universe,coverage,state,get_day,get_zip,now=None,budget=1680,checkpoint=
   records=[{**d,'indexDate':date} for d in data['results'] if d.get('docTypeCode') in ('120','130') and (d.get('secCode') or d.get('parentDocID'))]
   state['days'][date]={'checkedAt':now.isoformat(),'documents':records};report['indexDaysFetched']+=1;persist()
  if not recent(coverage.get('generatedAt'),now,2):report['stopped']='coverage_missing_or_stale';persist();return state
- targets={s['symbol'] for s in coverage.get('stocks',[]) if s.get('domains',{}).get('balance',{}).get('state') in ('partial','missing')}
+ targets={s['symbol'] for s in coverage.get('stocks',[]) if s.get('domains',{}).get('balance',{}).get('state') in ('partial','missing') or s.get('domains',{}).get('balance',{}).get('refreshDue') is True}
  targets.update(state['stocks']);targets &= rows.keys();report['targetListings']=len(targets)
  if not targets:report['stopped']='no_targets';persist();return state
  for date in list(state['days']):

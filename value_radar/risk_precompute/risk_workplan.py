@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 from market_priority import market_tier
+from risk_progress import progress,markdown
 from yahoo_sector import load,save,recent
 
 def build(coverage,now=None):
@@ -32,12 +33,13 @@ def build(coverage,now=None):
    for reason in sorted(set(str(b.get('reason') or 'balance_unavailable').split(','))):add(row,'financial_fields',reason,'fundamentals-daily / annual source review')
   for reason in sorted(set(b.get('sectorRequirements',[]))):add(row,'sector_framework',reason,'sector-specific original disclosures')
   rec=b.get('edinetReconciliation') or {}
-  for reason in rec.get('reasons',[]):add(row,'source_reconciliation',reason,'compare statement definitions and source periods')
+  if rec.get('state')=='not_aligned':
+   for reason in rec.get('reasons',[]):add(row,'source_reconciliation',reason,'compare statement definitions and source periods')
   for name,m in (b.get('supplementalMetrics') or {}).items():
    if m.get('state')=='available':supplemental[name]+=1
   for name,m in (b.get('edinetObservations') or {}).items():
    if m.get('state')=='available':supplemental['EDINET:'+name]+=1
-  for domain,owner in [('identity','listing resolution'),('historical','daily-risk history'),('sector','peer classification and aligned history')]:
+  for domain,owner in [('identity','listing resolution'),('quote','fundamentals-daily quote refresh'),('price','daily-risk price context'),('historical','daily-risk history'),('market','market proxy coverage'),('sector','peer classification and aligned history')]:
    d=domains.get(domain,{})
    if d.get('state')!='available':add(row,domain,d.get('reason') or 'not_assessed',owner)
  for key,g in sorted(groups.items()):result['batches'].append({**g,'symbols':sorted(g['symbols']),'listings':len(g['symbols'])})
@@ -45,6 +47,7 @@ def build(coverage,now=None):
   'mainMarketBatches':sum(x['marketTier']<=1 for x in result['batches']),
   'profiles':dict(profiles),'peerContextCoverage':dict(peer_context),'supplementalObservations':dict(supplemental),
   'byKind':dict(Counter(g['kind'] for g in result['batches']))})
+ result['progress']=progress(rows,result['batches'])
  return result
 
 def main():
@@ -55,6 +58,7 @@ def main():
   with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf8') as f:
    f.write('\n## Naechste Arbeitsbloecke fuer das Universum\n\n')
    if result['state']!='ready':f.write('Nicht auswertbar: '+result['reason']+'\n');return
+   f.write(markdown(result['progress']))
    f.write('Gruppen koennen dieselben Unternehmen enthalten. Vollstaendige Buchkennzahlen ersetzen keine Branchenpruefung.\n\n| Markt | Aufgabe | Ursache | Notierungen |\n|---|---|---|---:|\n')
    main=[g for g in result['batches'] if g['marketTier']<=1]
    for g in sorted(main,key=lambda x:(x['marketTier'],-x['listings'],x['kind'],x['reason']))[:25]:

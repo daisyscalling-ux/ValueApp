@@ -63,13 +63,21 @@ def normalize(row,payloads,now=None):
  else:parts={'cf_cap_expenditures':capex}
  fields['capex']=-capex if capex is not None and capex<=0 else None
  if fields['capex'] is not None:sources['capex']={'source':'ROIC v3 annual statements','source_url':urls['cashflow'],'end':end,'currency':currency,'derivation':'negative_cash_outflow_to_positive_spend','components':parts}
+ # Providers may expose next fiscal-year headers before populating any
+ # financial values. Never overwrite useful archived observations with these.
+ if all(v is None for v in fields.values()):
+  remaining=[r for r in payloads['balance']['data'] if not isinstance(r,dict) or r.get('period_end_date')!=end]
+  if not any(date<end for date in tables['balance']):raise ValueError('empty_statement_values')
+  older=normalize(row,{**payloads,'balance':{**payloads['balance'],'data':remaining}},now)
+  older['skippedEmptyPeriods']=[end]+older.get('skippedEmptyPeriods',[])
+  return older
  return {'symbol':symbol,'purpose':'standalone_balance_risk_context','period_type':'annual','end':end,'currency':currency,
   'source':'ROIC v3 annual statements','source_url':urls['balance'],'published_at':None,'fields':fields,'field_sources':sources,
   'limitations':['Consolidated standardized annual fields, not historical point-in-time data.','Debt is the provider-defined sum of reported short and long maturities; lease scope is not separately reconciled.']}
 
 def safe_error(exc):
  if isinstance(exc,urllib.error.HTTPError):return 'http_'+str(exc.code)
- allowed={'invalid_schema','conflicting_statement_period','eligible_balance_missing','budget_exhausted','response_too_large'}
+ allowed={'invalid_schema','conflicting_statement_period','eligible_balance_missing','budget_exhausted','response_too_large','empty_statement_values'}
  return str(exc) if isinstance(exc,ValueError) and str(exc) in allowed else 'provider_unavailable'
 
 def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
@@ -90,7 +98,7 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
  if not recent(coverage.get('generatedAt'),now,2):
   state['report']={'stopped':'coverage_missing_or_stale'};return state
  balances={r['symbol']:r.get('domains',{}).get('balance',{}) for r in coverage.get('stocks',[])}
- targets={s for s,b in balances.items() if b.get('state') in ('partial','missing')}
+ targets={s for s,b in balances.items() if b.get('state') in ('partial','missing') or b.get('refreshDue') is True}
  targets.update(s for s in active if s not in balances)
  # Refresh already used records too, or successful recovery would expire.
  targets.update(s for s,v in state['stocks'].items() if not recent(v.get('retrievedAt'),now,1))
@@ -116,6 +124,7 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
     payloads[kind]=fetch(s,endpoint,min(12,remaining))
    annual=normalize(row,payloads,now)
    state['stocks'][s]={'inputIdentity':identity(row),'retrievedAt':now.isoformat(),'annual':annual};counts['updated']+=1
+   counts['skipped_empty_periods']+=len(annual.get('skippedEmptyPeriods',[]))
    counts['empty_statements' if all(v is None for v in annual['fields'].values()) else 'partial_statements' if any(v is None for v in annual['fields'].values()) else 'complete_statements']+=1
   except Exception as e:
    record['error']=safe_error(e);counts[record['error']]+=1

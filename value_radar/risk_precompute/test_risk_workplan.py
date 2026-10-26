@@ -22,4 +22,8 @@ class Workplan(unittest.TestCase):
  def test_multiple_reasons_not_double_counted_as_companies(self):
   a=row();a['domains']['balance']['reason']='missing_capex,missing_total_debt,missing_capex';r=build(coverage([a]),NOW)
   self.assertEqual(r['summary']['listingsWithOpenWork'],1);self.assertEqual(len(r['batches']),2)
+ def test_broad_and_industry_context_do_not_upgrade_strict_peer_count(self):
+  a=row(state='available');a['domains']['sector']={'state':'missing','reason':'few_peers','industryContext':{'state':'available'},'broaderContext':{'state':'available'}}
+  r=build(coverage([a]),NOW);counts=r['summary']['peerContextCoverage']
+  self.assertEqual(counts['any_context'],1);self.assertNotIn('strict',counts);self.assertTrue(any(g['kind']=='sector' for g in r['batches']))
 if __name__=='__main__':unittest.main()

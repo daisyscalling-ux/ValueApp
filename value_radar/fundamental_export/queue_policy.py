@@ -5,7 +5,8 @@ from pathlib import Path
 
 def timestamp(value):
     try:
-        return dt.datetime.fromisoformat(value.replace('Z','+00:00')).timestamp()
+        parsed=dt.datetime.fromisoformat(value.replace('Z','+00:00'))
+        return (parsed if parsed.tzinfo else parsed.replace(tzinfo=dt.timezone.utc)).timestamp()
     except (TypeError, ValueError, AttributeError):
         return 0
 
@@ -32,3 +33,18 @@ def failed(previous, reason, stamp, now):
     hours=168 if reason=='mapping' else min(72,2**count)
     return {'at':stamp,'reason':reason,'count':count,
             'next_attempt_at':dt.datetime.fromtimestamp(now+hours*3600,dt.timezone.utc).isoformat()}
+
+
+def annual_supply_status(data, now):
+    """A successful market-data request does not renew an older annual block."""
+    annual=data.get('annual') or {}
+    observed=data.get('annual_retrieved_at') or data.get('retrieved_at')
+    retrieved=timestamp(observed);period=timestamp(annual.get('end'))
+    field_dates={k:timestamp(v.get('retrieved_at')) for k,v in (annual.get('field_sources') or {}).items() if isinstance(v,dict) and v.get('retrieved_at')}
+    expires=min([retrieved+7*86400,period+550*86400]+[v+7*86400 for v in field_dates.values() if v]) if retrieved and period else None
+    retained=bool(retrieved and timestamp(data.get('retrieved_at'))>retrieved)
+    fresh=bool(annual and expires and retrieved<=now and period<=now and now<=expires and all(0<v<=now for v in field_dates.values()))
+    return {'state':'current' if fresh else 'retained_stale' if annual and retained else 'annual_invalid_or_stale' if annual else 'annual_missing',
+            'annualObservedAt':observed if annual else None,'period':annual.get('end'),
+            'expiresAt':dt.datetime.fromtimestamp(expires,dt.timezone.utc).isoformat() if expires else None,
+            'retained':retained,'freshAnnualReturned':fresh and not retained and not any(v<retrieved for v in field_dates.values()),'retainedFields':sorted(k for k,v in field_dates.items() if v<retrieved)}

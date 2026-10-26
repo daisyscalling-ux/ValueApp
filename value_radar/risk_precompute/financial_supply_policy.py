@@ -32,13 +32,17 @@ def decision(row,balance,record,attempt,now):
  if not valid_isin(row.get('isin')) or row.get('listing_reference_status') in ('expired','input_mismatch'):return {'due':False,'reason':'identity_blocked','coverageSignature':sig,'nextAttemptAt':None}
  at=parse_date(attempt.get('at'));changed=old_sig is not None and old_sig!=sig
  used=balance.get('source')=='ROIC v3 annual statements'
+ preventive=balance.get('refreshDue') is True and balance.get('state') in ('available','context_only') and not used
  need=balance.get('state') in ('partial','missing') or not balance
- if not need and not used:return {'due':False,'reason':'covered_by_other_source','coverageSignature':sig,'nextAttemptAt':None}
+ if not need and not used and not preventive:return {'due':False,'reason':'covered_by_other_source','coverageSignature':sig,'nextAttemptAt':None}
+ if preventive:
+  next_at=at+dt.timedelta(days=1) if at and at<=now else now
+  return {'due':now>=next_at,'reason':'preventive_fallback_refresh','coverageSignature':sig,'nextAttemptAt':next_at.isoformat()}
  if changed:return {'due':True,'reason':'requirements_changed','coverageSignature':sig,'nextAttemptAt':now.isoformat()}
  error=attempt.get('error');count=attempt.get('consecutiveFailures',1)
  count=min(7,max(1,count)) if isinstance(count,int) else 1
  # Long-lived gaps are checked weekly. Timeouts get bounded exponential retry.
- days= min(7,2**(count-1)) if error and error not in ('eligible_balance_missing','http_404','http_402') else 7
+ days= min(7,2**(count-1)) if error and error not in ('eligible_balance_missing','http_404','http_402','empty_statement_values') else 7
  if not error and used:days=4
  if old_sig is None:days=1  # compatible transition from the existing collector
  ref=at or parse_date(record.get('retrievedAt'))
@@ -71,7 +75,7 @@ def make_plan(universe,coverage,roic,edinet,now=None):
   unresolved=b.get('state') in ('partial','missing') or not b
   if unresolved or d['due']:
    items.append({'symbol':s,'marketTier':market_tier(s),'balanceState':b.get('state','missing'),'expectedPeriod':b.get('period'),
-    'coverageReason':b.get('reason'),'roic':{**d,'observedPeriod':annual.get('end'),'retrievedAt':record.get('retrievedAt'),'missingFields':missing,'periodMismatch':period_mismatch,'lastError':attempt.get('error')},
+    'coverageReason':b.get('reason'),'sourceExpiresAt':b.get('expiresAt'),'preventiveRefresh':b.get('refreshDue',False),'roic':{**d,'observedPeriod':annual.get('end'),'retrievedAt':record.get('retrievedAt'),'missingFields':missing,'periodMismatch':period_mismatch,'lastError':attempt.get('error')},
     'edinet':{'applicable':s.startswith(('TSE:','TYO:','JPX:')),'period':e.get('annual',{}).get('end'),'state':e.get('annual',{}).get('state'),'lastError':ea.get('error'),'missingFields':e.get('annual',{}).get('missing_fields',[]),'parserVersion':e.get('annual',{}).get('parserVersion'),'revisionChain':e.get('filing',{}).get('revisionChain',[]),'reconciliation':b.get('edinetReconciliation'),'debtScope':e.get('annual',{}).get('debtScope')},
     'nextSource':'reconcile_sources' if b.get('edinetReconciliation',{}).get('state')=='not_aligned' else 'EDINET' if s.startswith(('TSE:','TYO:','JPX:')) and unresolved else 'ROIC' if d['due'] else 'original_filing_review' if unresolved and market_tier(s)<=1 else 'scheduled_refresh'})
    counts[d['reason']]+=1

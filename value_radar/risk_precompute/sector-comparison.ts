@@ -148,5 +148,7 @@ export function selectSectorComparison(report:Row,symbol:string,row:Row,now=Date
   const context=selected[field];
   if(context&&(context.state!=='available'||context.method!=='aligned-cohort-v1'||!num(context.peerIssuers)||!fresh(context.observationDate,now,7)||currencyUnit(row.currency)!==context.currency||!matches(row,context.inputIdentity)||context.quality!==quality||context.peerIssuers<minimum))delete selected[field];
  }
+ const fx=selected.currencyAdjustedContext;
+ if(fx&&(fx.state!=='available'||fx.method!=='eur-investor-cohort-v1'||fx.quality!=='currency_adjusted_business_context'||fx.currency!=='EUR'||!matches(row,fx.inputIdentity)||fx.originalCurrency!==row.currency||!num(fx.peerIssuers)||fx.peerIssuers<5||!fresh(fx.observationDate,now,7)||!fresh(fx.fxRetrievedAt,now,1.5)||!fresh(fx.fxLastObservation,now,7)||fx.fxSource!=='ECB euro foreign exchange reference rates'||fx.fxDatePolicy!=='exact_same_date_no_fill'))delete selected.currencyAdjustedContext;
  return selected;
 }

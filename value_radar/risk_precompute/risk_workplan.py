@@ -16,13 +16,18 @@ def build(coverage,now=None):
  if not rows:result['reason']='coverage_empty';return result
  keys=[r.get('symbol') for r in rows]
  if any(not isinstance(s,str) or not s for s in keys) or len(set(keys))!=len(keys):result['reason']='duplicate_or_invalid_listing';return result
- groups={};supplemental=Counter();profiles=Counter();open_symbols=set()
+ groups={};supplemental=Counter();profiles=Counter();peer_context=Counter();open_symbols=set()
  def add(row,kind,reason,owner):
   symbol=row['symbol'];tier=market_tier(symbol);key=(tier,kind,reason)
   group=groups.setdefault(key,{'marketTier':tier,'kind':kind,'reason':reason,'owner':owner,'symbols':set()})
   group['symbols'].add(symbol);open_symbols.add(symbol)
  for row in rows:
-  domains=row.get('domains',{});b=domains.get('balance',{});profiles[b.get('profile','unknown')]+=1
+  domains=row.get('domains',{});sector=domains.get('sector',{});
+  levels=[key for key in ['industryContext','broaderContext'] if sector.get(key,{}).get('state')=='available']
+  if sector.get('state')=='available':levels.append('strict')
+  for level in levels:peer_context[level]+=1
+  peer_context['any_context' if levels else 'no_context']+=1
+  b=domains.get('balance',{});profiles[b.get('profile','unknown')]+=1
   if b.get('state') in ('missing','partial'):
    for reason in sorted(set(str(b.get('reason') or 'balance_unavailable').split(','))):add(row,'financial_fields',reason,'fundamentals-daily / annual source review')
   for reason in sorted(set(b.get('sectorRequirements',[]))):add(row,'sector_framework',reason,'sector-specific original disclosures')
@@ -38,7 +43,7 @@ def build(coverage,now=None):
  for key,g in sorted(groups.items()):result['batches'].append({**g,'symbols':sorted(g['symbols']),'listings':len(g['symbols'])})
  result.update(state='ready',summary={'listings':len(rows),'listingsWithOpenWork':len(open_symbols),'batches':len(groups),
   'mainMarketBatches':sum(x['marketTier']<=1 for x in result['batches']),
-  'profiles':dict(profiles),'supplementalObservations':dict(supplemental),
+  'profiles':dict(profiles),'peerContextCoverage':dict(peer_context),'supplementalObservations':dict(supplemental),
   'byKind':dict(Counter(g['kind'] for g in result['batches']))})
  return result
 

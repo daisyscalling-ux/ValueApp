@@ -79,7 +79,7 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   };
   if(!identityOK)add('identity',!canonical&&!conflict?'daily-risk':'review','listing_identity',100,!canonical&&!conflict);
   if(!context||!history)add('history','daily-risk',!context?'current_history_missing':'long_history_missing',!context?90:60,true);
-  if(balance.needsFinancialRefresh||!quoteOK)add('fundamentals','fundamentals-daily',balance.needsFinancialRefresh?balance.reason:'quote_missing_or_stale',80,true);
+  if(balance.needsFinancialRefresh||balance.refreshDue||!quoteOK)add('fundamentals','fundamentals-daily',balance.needsFinancialRefresh?balance.reason:balance.refreshDue?'annual_refresh_before_expiry':'quote_missing_or_stale',balance.refreshDue?85:80,true);
   if(balance.sectorRequirements.length)add('sector_financials','review',balance.sectorRequirements.join(','),70,false);
   if(!market)add('market','daily-risk',proxy?'benchmark_missing':'unsupported_market',70,!!proxy);
   if(domains.sector.state!=='available')add('sector','review','eligible_industry_history_missing',30,false);

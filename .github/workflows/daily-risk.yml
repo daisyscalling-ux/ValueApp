@@ -51,6 +51,10 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_supply_policy.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_coverage_delta.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_workplan.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_ecb_fx.py'
+      - run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-fx-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-fx-context.mjs
+          node /tmp/test-fx-context.mjs
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs
@@ -148,6 +152,11 @@ jobs:
       - name: Vergleichsgruppen nach Geschaeftsmodell und Emittent vorbereiten
         if: always() && !cancelled()
         run: python value_radar/risk_precompute/peer_groups.py
+      - name: Historische EZB-Referenzkurse laden
+        if: always() && !cancelled()
+        timeout-minutes: 2
+        continue-on-error: true
+        run: python value_radar/risk_precompute/ecb_fx.py
       - name: Zeitgleiche Branchenvergleiche berechnen
         if: always() && !cancelled()
         run: |
@@ -191,6 +200,7 @@ jobs:
             value_radar/daten/cf_sector_context.json
             value_radar/daten/cf_peer_metadata.json
             value_radar/daten/cf_sector_supply_plan.json
+            value_radar/daten/cf_ecb_fx.json
             value_radar/daten/cf_listing_recovery.json
             value_radar/daten/cf_roic_risk_annual.json
             value_radar/daten/cf_edinet_cashflow.json
@@ -206,7 +216,7 @@ jobs:
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
-          for file in cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          for file in cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

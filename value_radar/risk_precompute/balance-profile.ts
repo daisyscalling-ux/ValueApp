@@ -63,8 +63,14 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
    metric(name,[key],()=>fields[key]/fields.total_assets,key!=='cash'||fields.cash>=0);supplemental[name]=metrics[name];delete metrics[name];
   }
  }
+ const expirations=[Date.parse(retrievedAt)+7*DAY,Date.parse(a?.end)+550*DAY,
+  ...required.flatMap(k=>{const f=a?.field_sources?.[k];return [f?.retrieved_at?Date.parse(f.retrieved_at)+7*DAY:NaN,f?.published_at?Date.parse(f.published_at)+700*DAY:NaN]}),
+  a?.published_at?Date.parse(a.published_at)+700*DAY:NaN].filter(Number.isFinite);
+ const expires=expirations.length?Math.min(...expirations):null;
+ const refreshDue=expires!==null&&now>=expires-2*DAY;
  const state=complete?(applicable?'available':'context_only'):Object.values(metrics).some((m:any)=>m.state==='available')?'partial':'missing';
  return {state,reason:reasons.join(',')||(applicable?'annual_book_ratios':'sector_specific_assessment_pending'),profile,
+  retrievedAt:retrievedAt||null,expiresAt:expires===null?null:new Date(expires).toISOString(),refreshDue,refreshLeadDays:2,
   period:a?.end||null,currency:a?.currency||null,publicationDateConfirmed:!!a?.published_at&&recent(a.published_at,now,700),
   source:a?.source||null,sourceUrl:a?.source_url||null,
   anchors:validBase?{totalAssets:fields.total_assets,cash:fieldIssues('cash').length===0&&fields.cash>=0?fields.cash:null}:null,

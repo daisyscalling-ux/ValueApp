@@ -46,4 +46,13 @@ test('sources retained individually and input never mutated',()=>{
  const a=annual();a.field_sources.cash={source:'Other dated source',end:a.end,currency:a.currency};const before=JSON.stringify(a);const b=calc(a);
  assert.equal(b.metrics.netDebtAssets.basis?.fields.cash.source,'Other dated source');assert.equal(JSON.stringify(a),before);
 });
+test('refresh starts two days before expiry without redating values',()=>{
+ const a=annual(),observed='2026-10-20T19:00:00Z';const b=assessBalance(row,a,observed,true,now);
+ assert.equal(b.state,'available');assert.equal(b.refreshDue,true);assert.equal(b.expiresAt,'2026-10-27T19:00:00.000Z');assert.equal(b.retrievedAt,observed);
+ assert.equal(calc(a).refreshDue,false);
+});
+test('older retained field sets the earliest refresh deadline',()=>{
+ const a=annual();a.field_sources.capex={retrieved_at:'2026-10-20T18:00:00Z'};const b=calc(a);
+ assert.equal(b.refreshDue,true);assert.equal(b.expiresAt,'2026-10-27T18:00:00.000Z');
+});
 console.log(count+' field-level balance checks passed');

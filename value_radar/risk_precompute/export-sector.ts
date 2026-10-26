@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {buildSectorComparisons,seriesCheck} from './sector-comparison';
+import {addIndustryContext} from './industry-context';
 import {addBroadSectorContext} from './broad-sector-context';
 const read=(p:string)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return null}};
 export function exportSector(folder='value_radar/daten',cachePath='.risk-sector-series.json',now=Date.now()){
@@ -9,9 +10,11 @@ export function exportSector(folder='value_radar/daten',cachePath='.risk-sector-
  const groups=read(path.join(folder,'cf_peer_groups.json'));
  const metadata=read(path.join(folder,'cf_peer_metadata.json'));
  const cache=read(cachePath),result=addBroadSectorContext(buildSectorComparisons(universe,groups,cache,now),universe,groups,metadata,cache,now);
+ addIndustryContext(result,universe,groups,cache,now);
  const out=path.join(folder,'cf_sector_context.json');fs.writeFileSync(out+'.tmp',JSON.stringify(result));fs.renameSync(out+'.tmp',out);
  const rows=Object.entries(result.stocks).map(([symbol,value]:any)=>({symbol,state:value.state,reason:value.reason,
   group:value.group||null,quality:value.quality||null,peerIssuers:value.peerIssuers??null,
+  industryContext:value.industryContext?{state:'available',peerIssuers:value.industryContext.peerIssuers,group:value.industryContext.group}:value.industryContextStatus||null,
   broaderContext:value.broaderContext?{state:'available',peerIssuers:value.broaderContext.peerIssuers,group:value.broaderContext.group}:value.broaderContextStatus||null,
   membershipOnly: {reason:groups?.listings?.[symbol]?.groupSizeReason||null,
    sameCurrencyPeerIssuers:groups?.listings?.[symbol]?.sameCurrencyPeerIssuerCount??null},

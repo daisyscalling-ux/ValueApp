@@ -52,6 +52,11 @@ class Workplan(unittest.TestCase):
   a=row();a['domains']['news']={'state':'review_required'};a['domains']['sector']={'state':'missing','broaderContext':{'state':'available'},'industryContext':{'state':'available'}}
   r=build(coverage([a]),NOW)['progress']['scopes']['all'];self.assertEqual(r['sector']['available'],0)
   self.assertEqual(r['any_peer_context']['available'],1);self.assertEqual(r['newsStates'],{'review_required':1})
+ def test_fx_context_counts_as_context_not_strict_peer_completion(self):
+  a=row(state='available');a['domains']['sector']={'state':'missing','currencyAdjustedContext':{'state':'available'}}
+  r=build(coverage([a]),NOW);p=r['progress']['scopes']['all']
+  self.assertEqual(p['currency_adjusted_context']['available'],1);self.assertEqual(p['any_peer_context']['available'],1)
+  self.assertEqual(p['sector']['available'],0);self.assertTrue(any(b['kind']=='sector' for b in r['batches']))
  def test_missing_quotes_and_market_proxies_are_actionable_blocks(self):
   a=row(state='available');a['domains']['quote']={'state':'missing'};a['domains']['market']={'state':'unsupported'}
   r=build(coverage([a]),NOW);self.assertEqual({b['kind'] for b in r['batches']},{'quote','market'})

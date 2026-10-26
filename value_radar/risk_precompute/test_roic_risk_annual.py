@@ -14,6 +14,14 @@ def payloads():
 def coverage(now=NOW):return {'generatedAt':now.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':{'state':'partial'}}}]}
 def fetch(symbol,endpoint,timeout):return payloads()[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
 class Tests(unittest.TestCase):
+ def test_migration_of_cached_empty_record_runs_despite_yesterdays_success(self):
+  s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW)
+  s['stocks'][ROW['listing_symbol']]['annual']['fields']={k:None for k in s['stocks'][ROW['listing_symbol']]['annual']['fields']}
+  s['attempts'][ROW['listing_symbol']].pop('normalizationVersion',None)
+  result=run({'kandidaten':[ROW]},coverage(),s,fetch,NOW)
+  self.assertEqual(result['report']['updated'],1);self.assertEqual(result['stocks'][ROW['listing_symbol']]['annual']['fields']['total_assets'],100)
+  self.assertEqual(result['attempts'][ROW['listing_symbol']]['normalizationVersion'],'nonempty-annual-v1')
+
  def test_empty_new_year_selects_actually_returned_older_period(self):
   p=payloads();p['balance']['data'].insert(0,{'symbol':ROW['listing_symbol'],'period_type':'annual','period_end_date':'2026-09-30','currency':'USD','fx_applied':False})
   a=normalize(ROW,p,NOW);self.assertEqual(a['end'],'2026-06-30');self.assertEqual(a['fields']['total_assets'],100);self.assertEqual(a['skippedEmptyPeriods'],['2026-09-30'])

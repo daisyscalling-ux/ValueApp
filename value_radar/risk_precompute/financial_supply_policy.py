@@ -35,6 +35,8 @@ def decision(row,balance,record,attempt,now):
  preventive=balance.get('refreshDue') is True and balance.get('state') in ('available','context_only') and not used
  need=balance.get('state') in ('partial','missing') or not balance
  if not need and not used and not preventive:return {'due':False,'reason':'covered_by_other_source','coverageSignature':sig,'nextAttemptAt':None}
+ if need and record.get('annual') and not any(v is not None for v in record['annual'].get('fields',{}).values()) and attempt.get('normalizationVersion')!='nonempty-annual-v1':
+  return {'due':True,'reason':'repair_empty_legacy_archive','coverageSignature':sig,'nextAttemptAt':now.isoformat()}
  if preventive:
   next_at=at+dt.timedelta(days=1) if at and at<=now else now
   return {'due':now>=next_at,'reason':'preventive_fallback_refresh','coverageSignature':sig,'nextAttemptAt':next_at.isoformat()}
@@ -75,9 +77,10 @@ def make_plan(universe,coverage,roic,edinet,now=None):
   unresolved=b.get('state') in ('partial','missing') or not b
   if unresolved or d['due']:
    items.append({'symbol':s,'marketTier':market_tier(s),'balanceState':b.get('state','missing'),'expectedPeriod':b.get('period'),
-    'coverageReason':b.get('reason'),'sourceExpiresAt':b.get('expiresAt'),'preventiveRefresh':b.get('refreshDue',False),'roic':{**d,'observedPeriod':annual.get('end'),'retrievedAt':record.get('retrievedAt'),'missingFields':missing,'periodMismatch':period_mismatch,'lastError':attempt.get('error')},
+    'coverageReason':b.get('reason'),'selectedSource':b.get('source'),'sourceSelection':b.get('sourceSelection'),'availableMetrics':[k for k,v in b.get('metrics',{}).items() if v.get('state')=='available'],'sourceExpiresAt':b.get('expiresAt'),'preventiveRefresh':b.get('refreshDue',False),'roic':{**d,'observedPeriod':annual.get('end'),'retrievedAt':record.get('retrievedAt'),'missingFields':missing,'periodMismatch':period_mismatch,'lastError':attempt.get('error')},
     'edinet':{'applicable':s.startswith(('TSE:','TYO:','JPX:')),'period':e.get('annual',{}).get('end'),'state':e.get('annual',{}).get('state'),'lastError':ea.get('error'),'missingFields':e.get('annual',{}).get('missing_fields',[]),'parserVersion':e.get('annual',{}).get('parserVersion'),'revisionChain':e.get('filing',{}).get('revisionChain',[]),'reconciliation':b.get('edinetReconciliation'),'debtScope':e.get('annual',{}).get('debtScope')},
-    'nextSource':'reconcile_sources' if b.get('edinetReconciliation',{}).get('state')=='not_aligned' else 'EDINET' if s.startswith(('TSE:','TYO:','JPX:')) and unresolved else 'ROIC' if d['due'] else 'original_filing_review' if unresolved and market_tier(s)<=1 else 'scheduled_refresh'})
+    'automaticNextSource':'ROIC' if d['due'] else None,
+    'nextSource':'reconcile_sources' if b.get('edinetReconciliation',{}).get('state')=='not_aligned' else 'original_debt_scope_review' if b.get('sourceSelection')=='edinet_standalone_original_filing' and 'missing_total_debt' in str(b.get('reason')) else 'EDINET' if s.startswith(('TSE:','TYO:','JPX:')) and unresolved else 'ROIC' if d['due'] else 'original_filing_review' if unresolved and market_tier(s)<=1 else 'scheduled_refresh'})
    counts[d['reason']]+=1
  items.sort(key=lambda x:(not x['roic']['due'],x['marketTier'],x['roic'].get('nextAttemptAt') or '',x['symbol']))
  return {'schema':1,'generatedAt':now.isoformat(),'coverageAsOf':coverage.get('generatedAt'),'coverageFresh':recent(coverage.get('generatedAt'),now,2),'summary':{'trackedListings':len(seen),'unresolvedListingRows':unresolved_rows,'dueRoic':sum(x['roic']['due'] for x in items),'openMainMarketBalances':sum(x['marketTier']<=1 and x['balanceState'] in ('partial','missing') for x in items),'reasons':dict(counts)},'stocks':items}

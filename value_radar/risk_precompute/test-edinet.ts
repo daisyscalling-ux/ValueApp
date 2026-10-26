@@ -67,4 +67,26 @@ test('broader investment spending is separate context and never fills FCF',()=>{
  r.annual.field_sources.noncurrent_asset_purchases.currency='USD';
  assert.equal(withEdinetCashflow(base(),row,a,true,now).edinetObservations.cashflowAfterNoncurrentPurchasesAssets,undefined);
 });
+test('missing primary selects independent original FCF without borrowing old debt',()=>{
+ const b:any=base();b.state='missing';b.anchors=null;b.reason='annual_missing_or_stale';b.metrics.netDebtAssets={state:'missing',value:999};b.supplementalMetrics={bookEquityAssets:{state:'available',value:123}};
+ const before=JSON.stringify(b),r=withEdinetCashflow(b,row,archive(),true,now);
+ assert.equal(r.state,'partial');assert.equal(r.sourceSelection,'edinet_standalone_original_filing');assert.equal(r.metrics.fcfAssets.value,.06);
+ assert.equal(r.metrics.netDebtAssets.value,null);assert.equal(r.reason,'missing_total_debt');assert.equal(r.supplementalMetrics.bookEquityAssets,undefined);
+ assert.equal(r.edinetReconciliation.state,'not_comparable');assert.equal(JSON.stringify(b),before);
+});
+test('complete original source can serve missing primary as one statement',()=>{
+ const a:any=archive(),entry=a.stocks[row.listing_symbol];entry.annual.fields.interest_bearing_debt=30000000;
+ entry.annual.field_sources.interest_bearing_debt={...entry.annual.field_sources.cash};entry.annual.debtScope='reported interest-bearing liabilities';
+ const b:any=base();b.state='missing';b.anchors=null;b.metrics.netDebtAssets={state:'missing',value:null};
+ const r=withEdinetCashflow(b,row,a,true,now);assert.equal(r.state,'available');assert.equal(r.ratios.netDebtAssets,.1);
+ assert.equal(r.retrievedAt,entry.retrievedAt);assert.equal(r.needsFinancialRefresh,false);
+});
+test('original fallback never replaces a valid existing ratio even in inconsistent base status',()=>{
+ const b=base();b.state='missing';const r=withEdinetCashflow(b,row,archive(),true,now);
+ assert.notEqual(r.sourceSelection,'edinet_standalone_original_filing');assert.equal(r.metrics.netDebtAssets.value,.1);
+});
+test('stale original filing cannot supply a missing primary',()=>{
+ const b:any=base();b.state='missing';b.metrics.netDebtAssets={state:'missing',value:null};const a:any=archive();a.stocks[row.listing_symbol].retrievedAt='2026-01-01';
+ assert.deepEqual(withEdinetCashflow(b,row,a,true,now),b);
+});
 console.log(count+' EDINET integration checks passed');

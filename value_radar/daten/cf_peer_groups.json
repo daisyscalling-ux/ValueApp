@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-10-27T13:47:06.684913+00:00",
+  "generatedAt": "2026-10-27T17:38:50.138910+00:00",
   "inputSha256": "3b01481fd548d12a30e856c5ee30d381a81382f8b61779354f027a35f8d097eb",
   "summary": {
     "inputListings": 1330,
@@ -49963,7 +49963,7 @@
         "label": "Drug Manufacturers - General",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/NVSEF/profile/",
-        "observedAt": "2026-10-26T14:28:02.452771+00:00",
+        "observedAt": "2026-10-27T17:37:54.860598+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -54072,7 +54072,7 @@
         "label": "Oil & Gas Integrated",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/BPAQF/profile/",
-        "observedAt": "2026-10-26T14:27:25.069460+00:00",
+        "observedAt": "2026-10-27T17:37:21.921426+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -62699,7 +62699,7 @@
         "label": "Banks - Regional",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/LLDTF/profile/",
-        "observedAt": "2026-10-26T14:27:51.098176+00:00",
+        "observedAt": "2026-10-27T17:37:44.962687+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -66614,8 +66614,8 @@
         "group": "yahoo:financial-services:banks-diversified",
         "label": "Banks - Diversified",
         "level": "provider_subindustry",
-        "source": "https://finance.yahoo.com/quote/WBKCY/profile/",
-        "observedAt": "2026-10-27T13:47:02.906063+00:00",
+        "source": "https://finance.yahoo.com/quote/WEBNF/profile/",
+        "observedAt": "2026-10-27T17:38:02.473773+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -68701,7 +68701,7 @@
         "label": "Drug Manufacturers - General",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/GLAXF/profile/",
-        "observedAt": "2026-10-26T14:27:41.437004+00:00",
+        "observedAt": "2026-10-27T17:37:36.429471+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -73913,7 +73913,7 @@
         "label": "Drug Manufacturers - General",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/SNYNF/profile/",
-        "observedAt": "2026-10-26T14:28:09.401509+00:00",
+        "observedAt": "2026-10-27T17:38:01.049617+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [

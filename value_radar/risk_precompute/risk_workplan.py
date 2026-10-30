@@ -31,6 +31,7 @@ def build(coverage,now=None):
   b=domains.get('balance',{});
   if b.get('bankCapital',{} ) and b['bankCapital'].get('state')=='available':supplemental['regulatory:holdingCapital']+=1
   if ((b.get('bankCapital') or {}).get('creditQuality') or {}).get('state')=='available':supplemental['regulatory:loanQuality']+=1
+  if ((b.get('bankCapital') or {}).get('capitalRequirement') or {}).get('state')=='available':supplemental['regulatory:cet1Requirement']+=1
   profiles[b.get('profile','unknown')]+=1
   if b.get('state') in ('missing','partial'):
    for reason in sorted(set(str(b.get('reason') or 'balance_unavailable').split(','))):add(row,'financial_fields',reason,'fundamentals-daily / annual source review')
@@ -69,4 +70,5 @@ def main():
     f.write('| '+('Primaer' if g['marketTier']==0 else 'Europa')+' | '+g['kind']+' | '+reason+' | '+str(g['listings'])+' |\n')
    f.write('\nVollstaendige Gruppen und zurueckgestellte Maerkte: cf_risk_workplan.json.\n')
 if __name__=='__main__':main()
+
 

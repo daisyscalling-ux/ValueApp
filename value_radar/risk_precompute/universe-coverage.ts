@@ -1,3 +1,4 @@
+import {withRegulatoryContext} from './regulatory-context';
 import {withEdinetCashflow} from './edinet-context';
 import {assessBalanceSnapshot} from './balance-profile';
 import {industryContexts,newsContext} from './context-risk';
@@ -22,7 +23,7 @@ export function retryDue(state:Row|undefined,now:number){
  // Invalid or implausibly remote dates must not permanently suppress a listing.
  const t=Date.parse(state?.nextAttemptAt);return !Number.isFinite(t)||t<=now||t>now+8*DAY;
 }
-export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,Row>,now=Date.now(),fundamentalIndex:Row={},news:Row={},sectorReport?:Row|null,roicArchive?:Row|null,edinetArchive?:Row|null){
+export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,Row>,now=Date.now(),fundamentalIndex:Row={},news:Row={},sectorReport?:Row|null,roicArchive?:Row|null,edinetArchive?:Row|null,regulatoryArchive?:Row|null){
  if(!Array.isArray(universe?.kandidaten)||!universe.kandidaten.length)throw Error('Universum fehlt');
  const grouped=new Map<string,Row[]>();let invalidRows=0;
  for(const r of universe.kandidaten){const key=listingKey(r);if(!/^[A-Z0-9._:-]{1,100}$/.test(key)){invalidRows++;continue}grouped.set(key,[...(grouped.get(key)||[]),r]);}
@@ -50,7 +51,7 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
     &&!['expired','input_mismatch'].includes(r.listing_reference_status)?rawRoic:undefined;
   const baseBalance=assessBalanceSnapshot(r,f,identityOK,now,roic);
   const sameIdentity=rows.every(x=>identityFields.every(k=>(x[k]??null)===(r[k]??null)));
-  const balance=withEdinetCashflow(baseBalance,r,edinetArchive,identityOK&&sameIdentity,now);
+  const balance=withRegulatoryContext(withEdinetCashflow(baseBalance,r,edinetArchive,identityOK&&sameIdentity,now),r,regulatoryArchive,identityOK&&sameIdentity,now);
   const quote=f?.market,quoteOK=recent(quote?.quote_at,now,7)&&number(quote?.fields?.price)&&quote.fields.price>0&&currency(quote.currency)===currency(r.currency);
   const proxy=marketProxy(String(r.country||'')),benchmark=proxy?risk.benchmarks?.[proxy]:null;
   const market=benchmark&&recent(benchmark.retrievedAt,now,1.5)&&historyStatistics(benchmark,now).drawdown!==null;

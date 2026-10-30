@@ -28,7 +28,9 @@ def build(coverage,now=None):
   if sector.get('state')=='available':levels.append('strict')
   for level in levels:peer_context[level]+=1
   peer_context['any_context' if levels else 'no_context']+=1
-  b=domains.get('balance',{});profiles[b.get('profile','unknown')]+=1
+  b=domains.get('balance',{});
+  if b.get('bankCapital',{} ) and b['bankCapital'].get('state')=='available':supplemental['regulatory:holdingCapital']+=1
+  profiles[b.get('profile','unknown')]+=1
   if b.get('state') in ('missing','partial'):
    for reason in sorted(set(str(b.get('reason') or 'balance_unavailable').split(','))):add(row,'financial_fields',reason,'fundamentals-daily / annual source review')
   for reason in sorted(set(b.get('sectorRequirements',[]))):add(row,'sector_framework',reason,'sector-specific original disclosures')

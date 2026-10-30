@@ -53,6 +53,10 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_workplan.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_ecb_fx.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_app_export.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_regulatory_context.py'
+      - run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
+          node /tmp/test-regulatory-context.mjs
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-fx-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-fx-context.mjs
           node /tmp/test-fx-context.mjs
@@ -97,6 +101,7 @@ jobs:
       - name: Universumsweite Datenpruefung und Warteschlange vorbereiten
         run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/audit-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/risk-audit.mjs
+          python value_radar/risk_precompute/regulatory_context.py
           node /tmp/risk-audit.mjs
       - name: Yahoo-Helfer installieren
         continue-on-error: true
@@ -183,6 +188,7 @@ jobs:
       - name: Abdeckung nach dem Lauf neu pruefen
         if: always() && !cancelled()
         run: |
+          python value_radar/risk_precompute/regulatory_context.py
           node /tmp/risk-audit.mjs
           python value_radar/risk_precompute/financial_supply_policy.py
           python value_radar/risk_precompute/coverage_delta.py
@@ -209,6 +215,7 @@ jobs:
             value_radar/daten/cf_financial_supply_plan.json
             value_radar/daten/cf_risk_coverage_changes.json
             value_radar/daten/cf_risk_workplan.json
+            value_radar/daten/cf_regulatory_context.json
             value_radar/daten/cf_risk_app_manifest.json
             value_radar/daten/risk_app/
           retention-days: 90
@@ -221,7 +228,7 @@ jobs:
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
           if test -s value_radar/daten/cf_risk_app_manifest.json; then git add value_radar/daten/cf_risk_app_manifest.json value_radar/daten/risk_app; fi
-          for file in cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          for file in cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

@@ -14,6 +14,7 @@ def measures(rows):
  # An intersection, not an average of unequal domain coverage percentages.
  result['core_data_together']=ratio(sum(all(available(r,d) for d in ['identity','quote','historical','market']) and r.get('domains',{}).get('balance',{}).get('state') in ('available','context_only') for r in rows))
  result['currency_adjusted_context']=ratio(sum(r.get('domains',{}).get('sector',{}).get('currencyAdjustedContext',{}).get('state')=='available' for r in rows))
+ result['verified_holding_capital']=ratio(sum((r.get('domains',{}).get('balance',{}).get('bankCapital') or {}).get('state')=='available' for r in rows))
  result['newsStates']=dict(Counter(r.get('domains',{}).get('news',{}).get('state','not_assessed') for r in rows))
  return result
 
@@ -32,7 +33,7 @@ def progress(rows,batches):
   'interpretation':'Data availability only. Context-only bank/insurer figures do not close sector requirements. News presence is not a verified risk event. Strict peers and broader context are separate. Historical price validation is not full-model validation. No arbitrary total completion percentage.'}
 
 def markdown(p):
- labels={'identity':'Identitaet','quote':'Aktueller Kurs','historical':'Nutzbare Kurshistorie','market':'Marktkontext','balance_complete':'Vollstaendige Basis-Bilanzkennzahlen','balance_context_only':'Nur Finanzbranchen-Kontext','balance_basic_or_context':'Basis-Bilanz oder Finanzbranchen-Kontext','currency_adjusted_context':'Geschaeftsgruppenvergleich in EUR','sector':'Strenger Peer-Vergleich','any_peer_context':'Mindestens ein Vergleichskontext','core_data_together':'Basisdaten gemeinsam vorhanden'}
+ labels={'verified_holding_capital':'Verifizierte Konzern-Kapitalangaben (alle Notierungen als Basis)','identity':'Identitaet','quote':'Aktueller Kurs','historical':'Nutzbare Kurshistorie','market':'Marktkontext','balance_complete':'Vollstaendige Basis-Bilanzkennzahlen','balance_context_only':'Nur Finanzbranchen-Kontext','balance_basic_or_context':'Basis-Bilanz oder Finanzbranchen-Kontext','currency_adjusted_context':'Geschaeftsgruppenvergleich in EUR','sector':'Strenger Peer-Vergleich','any_peer_context':'Mindestens ein Vergleichskontext','core_data_together':'Basisdaten gemeinsam vorhanden'}
  lines=['\n## Messbarer Fortschritt des Risikoprojekts\n','Datenabdeckung, kein Fertigstellungsgrad des gesamten Scores. Finanzbranchen-Kontext ersetzt keine Branchenpruefung.\n','| Datenbereich | Hauptmaerkte | Gesamtes Universum |','|---|---:|---:|']
  def cell(v):return str(v['available'])+'/'+str(v['total'])+(' ('+str(v['percent'])+' %)' if v['percent'] is not None else ' (keine Basis)')
  for key,label in labels.items():lines.append('| '+label+' | '+cell(p['scopes']['mainMarkets'][key])+' | '+cell(p['scopes']['all'][key])+' |')

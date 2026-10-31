@@ -49,6 +49,34 @@ class HistoryTests(unittest.TestCase):
  def test_corrupt_saved_history_is_rejected_not_overwritten(self):
   a,_=self.run_case(self.coverage());next(iter(a['series'].values()))['identity']['isin']='US5949181045'
   with self.assertRaises(ValueError):self.run_case(self.coverage(),a)
+ def backfill(self):
+  identity={k:self.u['kandidaten'][0].get(k) for k in ('listing_symbol','ticker','isin','currency','security_type','share_class')}
+  balances=[self.coverage(str(y)+'-12-31',.1+(y-2020)*.01)['stocks'][0]['domains']['balance'] for y in range(2020,2026)]
+  return {'schema':1,'method':'roic-history-balances-v1','generatedAt':self.now.isoformat(),'stocks':{'NYSE:EX':{'inputIdentity':identity,'balances':balances}}}
+ def test_backfill_keeps_actual_observation_time_and_current_metrics(self):
+  c=self.coverage(source='Yahoo');original=copy.deepcopy(c)
+  a,r=build(c,self.u,{},self.now,self.backfill())
+  m=r['stocks'][0]['domains']['balance']['history']['metrics'][0]
+  self.assertEqual(m['state'],'comparable');self.assertEqual(m['sourceLabel'],'ROIC');self.assertEqual(len(m['points']),6)
+  self.assertEqual(c,original);self.assertEqual(r['stocks'][0]['domains']['balance']['metrics'],original['stocks'][0]['domains']['balance']['metrics'])
+  self.assertFalse(a['pointInTimeUsable'])
+  for series in a['series'].values():
+   for p in series['periods'].values():self.assertEqual(p['firstObservedAt'],self.now.isoformat())
+  again,_=build(c,self.u,a,self.now,self.backfill());self.assertEqual(a['series'],again['series'])
+ def test_stale_or_wrong_identity_backfill_is_not_borrowed(self):
+  for kind in ('identity','timestamp','schema'):
+   bf=self.backfill()
+   if kind=='identity':bf['stocks']['NYSE:EX']['inputIdentity']['isin']='US5949181045'
+   elif kind=='timestamp':bf['generatedAt']='2026-01-01T00:00:00+00:00'
+   else:bf['schema']=2
+   _,r=build(self.coverage(),self.u,{},self.now,bf)
+   self.assertEqual(r['stocks'][0]['domains']['balance']['history']['metrics'][0]['periodCount'],1)
+ def test_backfill_does_not_join_currency_changes_or_missing_years(self):
+  bf=self.backfill();bs=bf['stocks']['NYSE:EX']['balances'];bs[:]=[bs[0],bs[-1]]
+  b=bs[-1]['metrics']['netDebtAssets']['basis'];b['currency']='EUR'
+  for field in b['fields'].values():field['currency']='EUR'
+  _,r=build(self.coverage(source='Yahoo'),self.u,{},self.now,bf)
+  self.assertFalse(any(m['state']=='comparable' for m in r['stocks'][0]['domains']['balance']['history']['metrics']))
  def test_annual_retention_is_twelve_periods(self):
   a={}
   for year in range(2011,2027):

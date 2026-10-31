@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "method": "reviewed-holding-lcr-v1",
+  "records": [{
+    "rssdId": "1951350",
+    "holdingName": "CITIGROUP INC.",
+    "scope": "listed_consolidated_holding",
+    "period": "2026-06-30",
+    "averaging": "quarter_average",
+    "currency": "USD",
+    "hqla": 641200000000,
+    "netOutflows": 567500000000,
+    "reportedRatio": 1.13,
+    "ratioRoundingTolerance": 0.005,
+    "unit": "fraction",
+    "reviewedOn": "2026-11-01",
+    "reviewExpires": "2026-12-27",
+    "sourceUrl": "https://www.sec.gov/Archives/edgar/data/831001/000083100126000045/c-20260630.htm",
+    "sourceSection": "Liquidity Risk / Short-Term Liquidity Measurement: Liquidity Coverage Ratio (LCR), page 65",
+    "publicationDate": null,
+    "pointInTimeUsable": false
+  }]
+}

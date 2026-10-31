@@ -1,3 +1,4 @@
+import {verifiedLiquidity} from './holding-liquidity';
 import {verifiedCapitalRequirement} from './capital-requirement';
 import {verifiedCreditQuality} from './regulatory-credit';
 type Row=Record<string,any>;
@@ -18,10 +19,11 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
   const metrics=Object.fromEntries(Object.entries(r.metrics||{}).filter(([key,v]:any)=>metricCodes[key]===v.sourceField&&v.state==='available'&&v.unit==='fraction'&&typeof v.value==='number'&&Number.isFinite(v.value)&&v.value>=0&&v.value<=1));
   const values=['cet1_ratio','tier1_ratio','total_capital_ratio'].map(k=>(metrics[k] as any)?.value).filter(v=>v!==undefined);
   const consistent=values.every((v,i)=>!i||values[i-1]<=v+1e-6);
-  if(consistent&&m?.state==='available'&&m.unit==='fraction'&&m.sourceField==='BHCAP793'&&typeof m.value==='number'&&Number.isFinite(m.value)&&m.value>=0&&m.value<=1)capital={...r,metrics,creditQuality:verifiedCreditQuality(r.creditQuality,r,now),capitalRequirement:verifiedCapitalRequirement(r.capitalRequirement,{...r,metrics},now)};
+  if(consistent&&m?.state==='available'&&m.unit==='fraction'&&m.sourceField==='BHCAP793'&&typeof m.value==='number'&&Number.isFinite(m.value)&&m.value>=0&&m.value<=1)capital={...r,metrics,liquidity:verifiedLiquidity(r.liquidity,r,now),creditQuality:verifiedCreditQuality(r.creditQuality,r,now),capitalRequirement:verifiedCapitalRequirement(r.capitalRequirement,{...r,metrics},now)};
  }
  const fulfilled=capital&&base.profile==='bank'?['regulatory_capital_CET1']:[];
  if(capital?.capitalRequirement&&base.profile==='bank')fulfilled.push('institution_specific_capital_requirement');
+ if(capital?.liquidity&&base.profile==='bank')fulfilled.push('liquidity_LCR_or_local_equivalent');
  requirements=requirements.filter(k=>!fulfilled.includes(k));
  return {...base,sectorRequirements:requirements,bankCapital:capital,
   sectorAssessment:{state:'open',fulfilledRequirements:fulfilled,openRequirements:requirements,capitalContextAvailable:!!capital,scoreContribution:0,

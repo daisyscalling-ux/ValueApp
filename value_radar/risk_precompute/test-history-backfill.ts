@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';import {historyBalances} from './export-history-backfill';import {assessBalance} from './balance-profile';
+const now=Date.parse('2026-10-31T12:00:00Z'),ts=new Date(now).toISOString();
+const row={listing_symbol:'NYSE:EX',ticker:'EX',isin:'US0378331005',currency:'USD',industry:'Software',metadata_asof:ts};
+const identity=Object.fromEntries(['listing_symbol','ticker','isin','currency','security_type','share_class'].map(k=>[k,(row as any)[k]]));
+const a={symbol:'NYSE:EX',purpose:'standalone_balance_risk_context',source:'ROIC v3 annual statements',end:'2020-12-31',period_type:'annual',currency:'USD',fields:{total_assets:100,total_debt:20,cash:10,operating_cashflow:15,capex:5,equity:40,net_income:8}};
+const u={kandidaten:[row]},coverage={stocks:[{symbol:'NYSE:EX',domains:{identity:{state:'available'}}}]};
+const cache={schema:1,method:'roic-annual-history-v1',stocks:{'NYSE:EX':{inputIdentity:identity,retrievedAt:ts,annuals:[a]}}};
+const out=historyBalances(u,coverage,cache,now);assert.equal(out.stocks['NYSE:EX'].balances[0].metrics.netDebtAssets.value,.1);assert.equal(out.stocks['NYSE:EX'].balances[0].metrics.fcfAssets.value,.1);
+assert.equal(assessBalance(row,a,ts,true,now).state,'missing');
+assert.equal(Object.keys(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],inputIdentity:{...identity,isin:'other'}}}},now).stocks).length,0);
+assert.equal(Object.keys(historyBalances({kandidaten:[row,row]},coverage,cache,now).stocks).length,0);
+assert.equal(Object.keys(historyBalances(u,{stocks:[]},cache,now).stocks).length,0);
+assert.equal(Object.keys(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],retrievedAt:'2026-01-01'}}},now).stocks).length,0);
+console.log('Historical evaluation isolated from current annual freshness; identity, duplicates and cache age verified');
+assert.equal(Object.keys(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],annuals:[a,{...a,fields:{...a.fields,total_assets:200}}]}}},now).stocks).length,0);

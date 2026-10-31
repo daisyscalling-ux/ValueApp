@@ -60,6 +60,7 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_fed_capital_requirements.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_history.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_history_backfill.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec_cashflow_history.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
@@ -92,7 +93,7 @@ jobs:
     needs: tests
     if: github.event_name != 'pull_request' 
     runs-on: ubuntu-latest
-    timeout-minutes: 255
+    timeout-minutes: 275
     steps:
       - uses: actions/checkout@v6
         with:
@@ -206,6 +207,12 @@ jobs:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           HISTORY_BACKFILL_BUDGET_S: '1800'
         run: python value_radar/risk_precompute/history_backfill.py
+      - name: Historische SEC-Cashflows gesammelt ergaenzen
+        if: always() && !cancelled()
+        timeout-minutes: 17
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python value_radar/risk_precompute/sec_cashflow_history.py
       - name: Abdeckung nach dem Lauf neu pruefen
         if: always() && !cancelled()
         run: |
@@ -239,6 +246,7 @@ jobs:
             value_radar/daten/cf_financial_supply_plan.json
             value_radar/daten/cf_risk_coverage_changes.json
             value_radar/daten/cf_risk_workplan.json
+            value_radar/daten/cf_sec_cashflow_history.json
             value_radar/daten/cf_roic_history.json
             value_radar/daten/cf_history_backfill_balances.json
             value_radar/daten/cf_financial_history.json
@@ -256,7 +264,7 @@ jobs:
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
           if test -s value_radar/daten/cf_risk_app_manifest.json; then git add value_radar/daten/cf_risk_app_manifest.json value_radar/daten/risk_app; fi
-          for file in cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          for file in cf_sec_cashflow_history.json cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

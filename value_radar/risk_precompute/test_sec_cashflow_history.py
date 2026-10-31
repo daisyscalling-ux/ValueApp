@@ -53,3 +53,39 @@ class Tests(unittest.TestCase):
  def test_zero_ppe_is_valid_negative_cashflow_is_valid(self):
   self.data['facts']['us-gaap'][TAGS['ppe']]['units']['USD'][-1]['val']=0;self.data['facts']['us-gaap'][TAGS['ocf']]['units']['USD'][-1]['val']=-20;self.assertEqual(normalize(self.data,1,NOW)[-1]['value'],-.2)
 if __name__=='__main__':unittest.main()
+
+class NativeSeriesTests(unittest.TestCase):
+ def convert(self,namespace='ifrs-full',currency='EUR',form='20-F',productive=False):
+  from sec_cashflow_history import IFRS_TAGS
+  d=fixture();old=d['facts'].pop('us-gaap');tags=IFRS_TAGS if namespace=='ifrs-full' else TAGS
+  d['facts'][namespace]={}
+  for key,tag in tags.items():
+   vals=old[TAGS[key]]['units']['USD']
+   for v in vals:v['form']=form
+   name='PaymentsToAcquireProductiveAssets' if key=='ppe' and productive else tag
+   d['facts'][namespace][name]={'units':{currency:vals}}
+  return d
+ def test_ifrs_native_currency_and_foreign_annual_forms(self):
+  for form in ['20-F','20-F/A','40-F','40-F/A']:
+   p=normalize(self.convert(form=form),1,NOW);self.assertEqual(len(p),6);self.assertEqual(p[0]['currency'],'EUR');self.assertEqual(p[0]['value'],.15);self.assertEqual(p[0]['namespace'],'ifrs-full')
+ def test_nonannual_reports_and_missing_currency_not_accepted(self):
+  self.assertEqual(normalize(self.convert(form='6-K'),1,NOW),[])
+  d=self.convert();v=d['facts']['ifrs-full']['Assets']['units'];v['USD']=v.pop('EUR');self.assertEqual(normalize(d,1,NOW),[])
+ def test_frameworks_never_combined(self):
+  d=self.convert();d['facts']['us-gaap']={'Assets':d['facts']['ifrs-full'].pop('Assets')};self.assertEqual(normalize(d,1,NOW),[])
+ def test_negative_investment_not_silently_flipped(self):
+  d=self.convert();from sec_cashflow_history import IFRS_TAGS
+  d['facts']['ifrs-full'][IFRS_TAGS['ppe']]['units']['EUR'][-1]['val']=-5;self.assertEqual(len(normalize(d,1,NOW)),5)
+ def test_productive_assets_keeps_separate_metric(self):
+  d=self.convert('us-gaap','USD','10-K',True);p=normalize(d,1,NOW);self.assertEqual(len(p),6);self.assertEqual(p[0]['metric'],'cashAfterProductiveAssets')
+ def test_multiple_currencies_same_period_are_ambiguous(self):
+  d=self.convert()
+  for tag in d['facts']['ifrs-full'].values():tag['units']['USD']=copy.deepcopy(tag['units']['EUR'])
+  self.assertEqual(normalize(d,1,NOW),[])
+ def test_cached_ifrs_and_productive_scope_reaches_history(self):
+  from roic_risk_annual import identity
+  for ns,currency,form,productive in [('ifrs-full','EUR','20-F',False),('us-gaap','USD','10-K',True)]:
+   periods=normalize(self.convert(ns,currency,form,productive),1,NOW)
+   state={'schema':1,'method':METHOD,'stocks':{'NASDAQ:EX':{'inputIdentity':identity(ROW),'cik':'1','retrievedAt':NOW.isoformat(),'periods':periods}}}
+   b=balances(state,{'kandidaten':[ROW]},NOW);metrics=b['NASDAQ:EX']['balances'][0]['metrics'];key='cashAfterProductiveAssets' if productive else 'cashAfterPpeAssets'
+   self.assertIn(key,metrics);self.assertEqual(metrics[key]['basis']['currency'],currency)

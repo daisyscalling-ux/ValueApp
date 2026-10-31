@@ -5,7 +5,7 @@ from collections import Counter
 from news_identity import valid_isin
 from yahoo_sector import recent,save
 IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_class')
-ANNUAL=('cashAfterPpeAssets','netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
+ANNUAL=('cashAfterProductiveAssets','cashAfterPpeAssets','netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
 def digest(v):return hashlib.sha256(json.dumps(v,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 def finite(v):return isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
 def date(v):return dt.date.fromisoformat(v)
@@ -123,7 +123,7 @@ def main():
  archive,report=build(coverage,universe,read(path,{}),now,backfill=backfill)
  save(path,archive);save(folder/'cf_risk_coverage.json',report);print(json.dumps(archive['summary']))
  if os.getenv('GITHUB_STEP_SUMMARY'):
-  with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## Finanzverlauf\n'+str(archive['summary'].get('listingsWithHistory',0))+' Notierungen mit gespeicherten Beobachtungen; '+str(archive['summary'].get('comparableMetrics',0))+' vergleichbare Kennzahlenpaare. Einzelne Perioden sind noch kein Verlauf. UrsprÃƒÂ¼nglicher VerÃƒÂ¶ffentlichungstag nicht unterstellt.\n')
+  with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## Finanzverlauf\n'+str(archive['summary'].get('listingsWithHistory',0))+' Notierungen mit gespeicherten Beobachtungen; '+str(archive['summary'].get('comparableMetrics',0))+' vergleichbare Kennzahlenpaare. Einzelne Perioden sind noch kein Verlauf. UrsprÃƒÆ’Ã‚Â¼nglicher VerÃƒÆ’Ã‚Â¶ffentlichungstag nicht unterstellt.\n')
 if __name__=='__main__':main()
 
 

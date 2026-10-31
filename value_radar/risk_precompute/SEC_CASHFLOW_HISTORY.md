@@ -26,3 +26,23 @@ Sources:
 - https://www.sec.gov/search-filings/edgar-application-programming-interfaces
 - https://www.sec.gov/about/developer-resources
 - https://www.federalreserve.gov/frrs/regulations/section-24991-disclosure-requirements.htm
+
+
+## Extension — 2026-11-01: native currencies and separate accounting concepts
+
+This extension supersedes the USD-only and 10-K-only restrictions above. The parser evaluates each accounting namespace, investment concept and common three-letter reporting currency separately. Supported annual-duration facts may be filed on 10-K, 20-F, 40-F or their amendments. The 330–400 day duration, identical cashflow start, accession, filed date and end constraints remain in force. No quarterly sums or currency conversion are performed. If the same concept and period has complete facts in multiple currencies, that period is excluded as ambiguous.
+
+Three explicitly defined variants are collected:
+- US-GAAP Assets / NetCashProvidedByUsedInOperatingActivities / PaymentsToAcquirePropertyPlantAndEquipment: existing cashAfterPpeAssets.
+- IFRS-full Assets / CashFlowsFromUsedInOperatingActivities / PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities: cashAfterPpeAssets with separate IFRS source and reporting currency. Never stitched into US-GAAP observations.
+- US-GAAP Assets / NetCashProvidedByUsedInOperatingActivities / PaymentsToAcquireProductiveAssets: separate cashAfterProductiveAssets metric. Its scope is the issuer's reported productive-assets concept, not presumed equivalent to PPE or full capex. No sum with the PPE amount is made.
+
+Negative payment values remain rejected, not absolutized. Unknown concepts, incomplete components and statements from different accessions/frameworks remain excluded. Old USD/PPE cache rows retain compatibility. New rows carry namespace, concept and metric, validated again on consumption. Period counts now count source-series observations and need not equal distinct fiscal years when multiple concepts are reported. Full FCF, DCF, current metrics and risk scores are unaffected.
+
+Name policy v3 handles terminal jurisdiction suffixes without closing slash or with whitespace (actual observed examples /DE, / MA, /UK and /CN), and explicit dotted legal abbreviations. Renames, class changes, unknown suffixes and subsidiary mismatches remain blocked. Previous failures are rechecked once; successful cached issuers refresh normally rather than forcing a universe refetch.
+
+Validation: 266 Python risk tests; eight UI tests, UI typecheck and build pass. New cases exercise IFRS/EUR, foreign annual forms, native US-GAAP currency, missing/mixed currencies, namespace separation, negative amounts, ambiguous dual currency, separate productive-asset history and actual observed SEC name pairs. Authenticated live recovery has not been measured locally; daily-risk must run after merge. No new secret, no manual ticker exceptions. Foreign issuers without supported XBRL facts remain open.
+
+Primary references:
+- SEC Form 20-F and 40-F: https://www.sec.gov/files/form20-f.pdf and https://www.sec.gov/files/form40-f.pdf
+- Official IFRS taxonomy concepts in ESEF: https://www.esma.europa.eu/sites/default/files/2024-05/ESMA32-2009130576-3011_Final_Report_amending_RTS_on_ESEF_-_2024.pdf

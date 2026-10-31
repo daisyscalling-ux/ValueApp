@@ -5,7 +5,7 @@ from collections import Counter
 from news_identity import valid_isin
 from yahoo_sector import recent,save
 IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_class')
-ANNUAL=('netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
+ANNUAL=('cashAfterPpeAssets','netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
 def digest(v):return hashlib.sha256(json.dumps(v,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 def finite(v):return isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
 def date(v):return dt.date.fromisoformat(v)
@@ -111,7 +111,16 @@ def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  def read(path,default=None):return json.loads(path.read_text(encoding='utf-8')) if path.exists() else default
  path=folder/'cf_financial_history.json'
- archive,report=build(read(folder/'cf_risk_coverage.json',{}),read(folder/'cf_universum.json',{}),read(path,{}),backfill=read(folder/'cf_history_backfill_balances.json',{}))
+ from sec_cashflow_history import balances
+ now=dt.datetime.now(dt.timezone.utc);universe=read(folder/'cf_universum.json',{});backfill=read(folder/'cf_history_backfill_balances.json',{})
+ if backfill.get('method')!='roic-history-balances-v1':raise ValueError('historical_export_required')
+ coverage=read(folder/'cf_risk_coverage.json',{})
+ corporate={r['symbol'] for r in coverage.get('stocks',[]) if r.get('domains',{}).get('balance',{}).get('profile')=='corporate'}
+ for symbol,item in balances(read(folder/'cf_sec_cashflow_history.json',{}),universe,now).items():
+  if symbol not in corporate:continue
+  existing=backfill.setdefault('stocks',{}).setdefault(symbol,item)
+  if existing is not item and existing.get('inputIdentity')==item['inputIdentity']:existing['balances'].extend(item['balances'])
+ archive,report=build(coverage,universe,read(path,{}),now,backfill=backfill)
  save(path,archive);save(folder/'cf_risk_coverage.json',report);print(json.dumps(archive['summary']))
  if os.getenv('GITHUB_STEP_SUMMARY'):
   with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## Finanzverlauf\n'+str(archive['summary'].get('listingsWithHistory',0))+' Notierungen mit gespeicherten Beobachtungen; '+str(archive['summary'].get('comparableMetrics',0))+' vergleichbare Kennzahlenpaare. Einzelne Perioden sind noch kein Verlauf. UrsprÃƒÂ¼nglicher VerÃƒÂ¶ffentlichungstag nicht unterstellt.\n')

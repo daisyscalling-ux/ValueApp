@@ -59,10 +59,13 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_regulatory*.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_fed_capital_requirements.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_history.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_history_backfill.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
           node /tmp/test-regulatory-context.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-history-backfill.ts --bundle --platform=node --format=esm --outfile=/tmp/test-history-backfill.mjs
+          node /tmp/test-history-backfill.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-capital-requirement.ts --bundle --platform=node --format=esm --outfile=/tmp/test-capital-requirement.mjs
           node /tmp/test-capital-requirement.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-credit.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-credit.mjs
@@ -89,7 +92,7 @@ jobs:
     needs: tests
     if: github.event_name != 'pull_request' 
     runs-on: ubuntu-latest
-    timeout-minutes: 220
+    timeout-minutes: 255
     steps:
       - uses: actions/checkout@v6
         with:
@@ -117,7 +120,7 @@ jobs:
       - name: Yahoo-Helfer installieren
         continue-on-error: true
         run: python -m pip install "yfinance==0.2.66"
-      - name: Yahoo-DatenprÃƒÆ’Ã‚Â¼fung testen
+      - name: Yahoo-Datenpruefung testen
         run: python value_radar/risk_precompute/test_yahoo_benchmarks.py
       - name: Markt-ETFs als Ersatzquelle laden
         timeout-minutes: 17
@@ -196,6 +199,13 @@ jobs:
         env:
           EDINET_API_KEY: ${{ secrets.EDINET_API_KEY }}
         run: python value_radar/risk_precompute/edinet_supply.py
+      - name: Mehrjaehrige Originalabschluesse gesammelt nachladen
+        if: always() && !cancelled()
+        timeout-minutes: 32
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          HISTORY_BACKFILL_BUDGET_S: '1800'
+        run: python value_radar/risk_precompute/history_backfill.py
       - name: Abdeckung nach dem Lauf neu pruefen
         if: always() && !cancelled()
         run: |
@@ -203,6 +213,8 @@ jobs:
           node /tmp/risk-audit.mjs
           python value_radar/risk_precompute/financial_supply_policy.py
           python value_radar/risk_precompute/coverage_delta.py
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-history-backfill.ts --bundle --platform=node --format=esm --outfile=/tmp/history-backfill.mjs
+          node /tmp/history-backfill.mjs
           python value_radar/risk_precompute/financial_history.py
           python value_radar/risk_precompute/risk_workplan.py
           python value_radar/risk_precompute/risk_app_export.py
@@ -227,13 +239,15 @@ jobs:
             value_radar/daten/cf_financial_supply_plan.json
             value_radar/daten/cf_risk_coverage_changes.json
             value_radar/daten/cf_risk_workplan.json
+            value_radar/daten/cf_roic_history.json
+            value_radar/daten/cf_history_backfill_balances.json
             value_radar/daten/cf_financial_history.json
             value_radar/daten/cf_capital_requirements.json
             value_radar/daten/cf_regulatory_context.json
             value_radar/daten/cf_risk_app_manifest.json
             value_radar/daten/risk_app/
           retention-days: 90
-      - name: Ergebnisse und Teilfortschritt verÃƒÆ’Ã‚Â¶ffentlichen
+      - name: Ergebnisse und Teilfortschritt veroeffentlichen
         if: ${{ always() && !cancelled() }}
         run: |
           set -euo pipefail
@@ -242,7 +256,7 @@ jobs:
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
           if test -s value_radar/daten/cf_risk_app_manifest.json; then git add value_radar/daten/cf_risk_app_manifest.json value_radar/daten/risk_app; fi
-          for file in cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          for file in cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

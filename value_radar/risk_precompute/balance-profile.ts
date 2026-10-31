@@ -10,7 +10,7 @@ export function balanceProfile(row:Row,now:number){
  const industry=String(row.industry).trim().toLowerCase();
  return banks.has(industry)?'bank':insurers.has(industry)?'insurer':specialist.has(industry)?'specialist_financial':'corporate';
 }
-export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK:boolean,now:number){
+export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK:boolean,now:number,maxAnnualAgeDays=550,maxRetrievalAgeDays=7){
  const profile=balanceProfile(row,now),financial=['bank','insurer','specialist_financial'].includes(profile);
  const fields=a?.fields||{},required=financial?['total_assets','equity','net_income']:['total_assets','total_debt','cash','operating_cashflow','capex'];
  const fieldIssues=(k:string)=>{
@@ -18,12 +18,12 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
   if(source?.end&&source.end!==a?.end)issues.push('period_mismatch');
   if(source?.currency&&source.currency!==a?.currency)issues.push('currency_mismatch');
   if(source?.published_at&&!recent(source.published_at,now,700))issues.push('publication_invalid');
-  if(source?.retrieved_at&&!recent(source.retrieved_at,now,7))issues.push('field_retrieval_stale');
+  if(source?.retrieved_at&&!recent(source.retrieved_at,now,maxRetrievalAgeDays))issues.push('field_retrieval_stale');
   if(!finite(fields[k]))issues.push('value_missing');
   return issues;
  };
  const consistent=!!a?.source&&required.every(k=>fieldIssues(k).every(x=>x==='value_missing'));
- const fresh=!!a?.source&&a?.period_type==='annual'&&recent(a?.end,now,550)&&recent(retrievedAt,now,7)&&(!a?.published_at||recent(a.published_at,now,700));
+ const fresh=!!a?.source&&a?.period_type==='annual'&&recent(a?.end,now,maxAnnualAgeDays)&&recent(retrievedAt,now,maxRetrievalAgeDays)&&(!a?.published_at||recent(a.published_at,now,700));
  const capex=finite(fields.capex)&&fields.capex<0&&(a?.field_sources?.capex?.source||a?.source)==='Yahoo annual statements'?-fields.capex:fields.capex;
  const reasons:string[]=[];
  if(!identityOK)reasons.push('listing_identity_unconfirmed');
@@ -63,8 +63,8 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
    metric(name,[key],()=>fields[key]/fields.total_assets,key!=='cash'||fields.cash>=0);supplemental[name]=metrics[name];delete metrics[name];
   }
  }
- const expirations=[Date.parse(retrievedAt)+7*DAY,Date.parse(a?.end)+550*DAY,
-  ...required.flatMap(k=>{const f=a?.field_sources?.[k];return [f?.retrieved_at?Date.parse(f.retrieved_at)+7*DAY:NaN,f?.published_at?Date.parse(f.published_at)+700*DAY:NaN]}),
+ const expirations=[Date.parse(retrievedAt)+maxRetrievalAgeDays*DAY,Date.parse(a?.end)+maxAnnualAgeDays*DAY,
+  ...required.flatMap(k=>{const f=a?.field_sources?.[k];return [f?.retrieved_at?Date.parse(f.retrieved_at)+maxRetrievalAgeDays*DAY:NaN,f?.published_at?Date.parse(f.published_at)+700*DAY:NaN]}),
   a?.published_at?Date.parse(a.published_at)+700*DAY:NaN].filter(Number.isFinite);
  const expires=expirations.length?Math.min(...expirations):null;
  const refreshDue=expires!==null&&now>=expires-2*DAY;

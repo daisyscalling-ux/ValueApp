@@ -20,7 +20,7 @@ IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_cla
 def identity(row):return {k:row.get(k) for k in IDENTITY}
 def number(v):return v if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) else None
 
-def records(payload,symbol,now):
+def records(payload,symbol,now,max_age_days=550):
  data=payload.get('data') if isinstance(payload,dict) else None
  if not isinstance(data,list):raise ValueError('invalid_schema')
  result={}
@@ -29,14 +29,14 @@ def records(payload,symbol,now):
   try:
    date=r['period_end_date'];age=(now.date()-dt.date.fromisoformat(date)).days
   except (ValueError,TypeError,KeyError):continue
-  if not 0<=age<=550 or not re.fullmatch('[A-Z]{3}',str(r.get('currency',''))) or r.get('fx_applied') is not False:continue
+  if not 0<=age<=max_age_days or not re.fullmatch('[A-Z]{3}',str(r.get('currency',''))) or r.get('fx_applied') is not False:continue
   if date in result and result[date]!=r:raise ValueError('conflicting_statement_period')
   result[date]=r
  return result
 
-def normalize(row,payloads,now=None):
+def normalize(row,payloads,now=None,max_age_days=550):
  now=now or dt.datetime.now(UTC);symbol=row['listing_symbol']
- tables={k:records(payloads[k],symbol,now) for k in ('balance','cashflow','income')}
+ tables={k:records(payloads[k],symbol,now,max_age_days) for k in ('balance','cashflow','income')}
  if not tables['balance']:raise ValueError('eligible_balance_missing')
  end=max(tables['balance']);balance=tables['balance'][end];currency=balance['currency']
  # Never take a cash-flow row by list position, year label or another currency.
@@ -68,7 +68,7 @@ def normalize(row,payloads,now=None):
  if all(v is None for v in fields.values()):
   remaining=[r for r in payloads['balance']['data'] if not isinstance(r,dict) or r.get('period_end_date')!=end]
   if not any(date<end for date in tables['balance']):raise ValueError('empty_statement_values')
-  older=normalize(row,{**payloads,'balance':{**payloads['balance'],'data':remaining}},now)
+  older=normalize(row,{**payloads,'balance':{**payloads['balance'],'data':remaining}},now,max_age_days)
   older['skippedEmptyPeriods']=[end]+older.get('skippedEmptyPeriods',[])
   return older
  return {'symbol':symbol,'purpose':'standalone_balance_risk_context','period_type':'annual','end':end,'currency':currency,

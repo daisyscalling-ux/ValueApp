@@ -6,9 +6,22 @@ from news_identity import valid_isin,canonical_names
 from roic_risk_annual import identity,safe_error
 from yahoo_sector import recent,save
 from market_priority import fetch_priority
+from sec_issuer_names import same_issuer,POLICY
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
 TAGS={'assets':'Assets','ocf':'NetCashProvidedByUsedInOperatingActivities','ppe':'PaymentsToAcquirePropertyPlantAndEquipment'}
+
+def diagnostics(data):
+ facts=data.get('facts',{});us=facts.get('us-gaap',{})
+ forms=sorted({f.get('form','') for tag in TAGS.values() for f in us.get(tag,{}).get('units',{}).get('USD',[])})
+ counts={k:len(us.get(t,{}).get('units',{}).get('USD',[])) for k,t in TAGS.items()}
+ alternatives=sorted(k for k in us if k.startswith('PaymentsToAcquire') and ('Property' in k or 'Productive' in k or 'Intangible' in k))
+ reason='matching_annual_filing_missing'
+ if not us:reason='us_gaap_missing'
+ elif not counts['ppe']:reason='cash_ppe_concept_missing'
+ elif not any(f in forms for f in ('10-K','10-K/A')):reason='supported_annual_form_missing'
+ elif any(isinstance(f.get('val'),(int,float)) and f['val']<0 for f in us.get(TAGS['ppe'],{}).get('units',{}).get('USD',[])):reason='negative_cash_ppe_requires_review'
+ return {'reason':reason,'namespaces':sorted(facts),'forms':forms,'conceptCounts':counts,'alternativeConcepts':alternatives}
 
 def normalize(data,cik,now):
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
@@ -58,21 +71,25 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   old=state['stocks'].get(s,{})
   if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7):counts['cached']+=1;continue
   att=state['attempts'].get(s,{})
-  if att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,2):counts['cooldown']+=1;continue
+  cooldown=28 if att.get('error') in ('us_gaap_missing','supported_annual_form_missing') else 2
+  if att.get('policy')==POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)
  candidates.sort(key=lambda r:fetch_priority(r['listing_symbol'],state['attempts'].get(r['listing_symbol'],{}).get('at'),now))
  for r in candidates:
   remaining=budget-(time.monotonic()-started)
   if counts['attempted']>=max_companies or remaining<1:break
-  s=r['listing_symbol'];cik=str(listing_map[s]);att={'at':now.isoformat(),'inputIdentity':identity(r)};counts['attempted']+=1
+  s=r['listing_symbol'];cik=str(listing_map[s]);att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':POLICY};counts['attempted']+=1
   try:
    data=fetch(cik,min(12,remaining))
-   if not canonical_names(data.get('entityName')) & canonical_names(r.get('name_full') or r.get('name')):raise ValueError('issuer_name_mismatch')
+   att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
+   if not same_issuer(data.get('entityName'),r.get('name_full') or r.get('name')):raise ValueError('issuer_name_mismatch')
    periods=normalize(data,cik,now)
-   if not periods:raise ValueError('matching_cashflow_periods_missing')
+   if not periods:
+    att['diagnostics']=diagnostics(data)
+    raise ValueError(att['diagnostics']['reason'])
    state['stocks'][s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':periods,'pointInTimeUsable':False};counts['updated']+=1;counts['periods']+=len(periods)
   except Exception as e:
-   reason=str(e) if isinstance(e,ValueError) and str(e) in ('cik_mismatch','issuer_name_mismatch','matching_cashflow_periods_missing') else safe_error(e)
+   reason=str(e) if isinstance(e,ValueError) and str(e) in ('cik_mismatch','issuer_name_mismatch','matching_cashflow_periods_missing','matching_annual_filing_missing','us_gaap_missing','cash_ppe_concept_missing','supported_annual_form_missing','negative_cash_ppe_requires_review') else safe_error(e)
    att['error']=reason;counts[reason]+=1
   state['attempts'][s]=att;state.update(generatedAt=now.isoformat(),report=dict(counts))
   if checkpoint:checkpoint(state)

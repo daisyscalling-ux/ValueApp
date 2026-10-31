@@ -21,16 +21,28 @@ def diagnostics(data):
  elif not counts['ppe']:reason='cash_ppe_concept_missing'
  elif not any(f in forms for f in ('10-K','10-K/A')):reason='supported_annual_form_missing'
  elif any(isinstance(f.get('val'),(int,float)) and f['val']<0 for f in us.get(TAGS['ppe'],{}).get('units',{}).get('USD',[])):reason='negative_cash_ppe_requires_review'
- return {'reason':reason,'namespaces':sorted(facts),'forms':forms,'conceptCounts':counts,'alternativeConcepts':alternatives}
+ variants=[]
+ for namespace,tags,metric in VARIANTS:
+  f=facts.get(namespace,{})
+  units=[set(f.get(t,{}).get('units',{})) for t in tags.values()]
+  common=sorted(c for c in set.intersection(*units) if re.fullmatch('[A-Z]{3}',c))
+  variant_forms=sorted({str(x.get('form','')) for t in tags.values() for c in common for x in f.get(t,{}).get('units',{}).get(c,[])})
+  variants.append({'namespace':namespace,'concept':tags['ppe'],'metric':metric,'commonCurrencies':common,'forms':variant_forms})
+ if any(v['commonCurrencies'] and any(f in ANNUAL_FORMS for f in v['forms']) for v in variants) and reason in ('us_gaap_missing','cash_ppe_concept_missing','supported_annual_form_missing'):reason='matching_annual_filing_missing'
+ return {'reason':reason,'namespaces':sorted(facts),'forms':forms,'conceptCounts':counts,'alternativeConcepts':alternatives,'variants':variants}
 
-def normalize(data,cik,now):
+ANNUAL_FORMS=('10-K','10-K/A','20-F','20-F/A','40-F','40-F/A')
+IFRS_TAGS={'assets':'Assets','ocf':'CashFlowsFromUsedInOperatingActivities','ppe':'PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities'}
+VARIANTS=[('us-gaap',TAGS,'cashAfterPpeAssets'),('us-gaap',{**TAGS,'ppe':'PaymentsToAcquireProductiveAssets'},'cashAfterProductiveAssets'),('ifrs-full',IFRS_TAGS,'cashAfterPpeAssets')]
+
+def normalize_series(data,cik,now,namespace,tags,currency,metric):
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
  groups={};conflicts=set()
- for key,tag in TAGS.items():
-  for f in data.get('facts',{}).get('us-gaap',{}).get(tag,{}).get('units',{}).get('USD',[]):
+ for key,tag in tags.items():
+  for f in data.get('facts',{}).get(namespace,{}).get(tag,{}).get('units',{}).get(currency,[]):
    try:
     end=dt.date.fromisoformat(f['end']);filed=dt.date.fromisoformat(f['filed']);value=f['val'];acc=f['accn']
-    if f.get('form') not in ('10-K','10-K/A') or not re.fullmatch(r'\d{10}-\d{2}-\d{6}',acc) or not 0<=(now.date()-end).days<=8*366 or not end<=filed<=now.date():continue
+    if f.get('form') not in ANNUAL_FORMS or not re.fullmatch(r'\d{10}-\d{2}-\d{6}',acc) or not 0<=(now.date()-end).days<=8*366 or not end<=filed<=now.date():continue
     if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value):continue
     if key!='assets' and not 330<=(end-dt.date.fromisoformat(f['start'])).days<=400:continue
     group=(str(end),str(filed),acc);item=(value,f.get('start') if key!='assets' else None)
@@ -44,7 +56,7 @@ def normalize(data,cik,now):
   if g['assets'][0]<=0 or g['ppe'][0]<0 or g['ocf'][1]!=g['ppe'][1]:continue
   value=(g['ocf'][0]-g['ppe'][0])/g['assets'][0]
   if not math.isfinite(value):continue
-  v={'end':end,'start':g['ocf'][1],'filed':filed,'accession':acc,'assets':g['assets'][0],'operatingCashflow':g['ocf'][0],'cashPpe':g['ppe'][0],'value':value,'currency':'USD','sourceUrl':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc.replace("-","")}/'}
+  v={'end':end,'start':g['ocf'][1],'filed':filed,'accession':acc,'assets':g['assets'][0],'operatingCashflow':g['ocf'][0],'cashPpe':g['ppe'][0],'value':value,'currency':currency,'namespace':namespace,'concept':tags['ppe'],'metric':metric,'sourceUrl':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc.replace("-","")}/'}
   candidates.setdefault(end,[]).append(v)
  out=[]
  for end,items in sorted(candidates.items()):
@@ -52,6 +64,21 @@ def normalize(data,cik,now):
   if len({(v['assets'],v['operatingCashflow'],v['cashPpe'],v['start']) for v in same})!=1:continue
   out.append(max(same,key=lambda v:v['accession']))
  return out[-8:]
+
+def normalize(data,cik,now):
+ if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
+ out=[]
+ for namespace,tags,metric in VARIANTS:
+  facts=data.get('facts',{}).get(namespace,{})
+  units=[set(facts.get(tag,{}).get('units',{})) for tag in tags.values()]
+  currencies=set.intersection(*units)
+  series=[]
+  for currency in sorted(currencies):
+   if re.fullmatch('[A-Z]{3}',currency):series.extend(normalize_series(data,cik,now,namespace,tags,currency,metric))
+  by_end={}
+  for p in series:by_end.setdefault(p['end'],set()).add(p['currency'])
+  out.extend(p for p in series if len(by_end[p['end']])==1)
+ return out
 
 def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_companies=300,checkpoint=None):
  now=now or dt.datetime.now(dt.timezone.utc);started=time.monotonic()
@@ -108,12 +135,16 @@ def balances(cache,universe,now):
     end=dt.date.fromisoformat(p['end']);filed=dt.date.fromisoformat(p['filed'])
     if not 0<=(now.date()-end).days<=8*366 or not end<=filed<=now.date() or not 330<=(end-dt.date.fromisoformat(p['start'])).days<=400:continue
     if not re.fullmatch(r'\d{10}-\d{2}-\d{6}',p['accession']) or p['sourceUrl']!=f'https://www.sec.gov/Archives/edgar/data/{int(c["cik"])}/{p["accession"].replace("-","")}/':continue
-    if p['assets']<=0 or p['cashPpe']<0 or p['currency']!='USD':continue
+    if p['assets']<=0 or p['cashPpe']<0 or not re.fullmatch('[A-Z]{3}',p['currency']):continue
     value=(p['operatingCashflow']-p['cashPpe'])/p['assets']
     if not math.isfinite(value) or abs(value-p['value'])>1e-12:continue
    except (KeyError,ValueError,TypeError):continue
-   basis={'period':p['end'],'currency':'USD','retrievedAt':c['retrievedAt'],'fields':{k:{'source':SOURCE,'end':p['end'],'currency':'USD','retrievedAt':c['retrievedAt']} for k in TAGS}}
-   items.append({'profile':'corporate','sourceUrl':p['sourceUrl'],'metrics':{'cashAfterPpeAssets':{'state':'available','value':value,'basis':basis}}})
+   if 'namespace' not in p and p['currency']!='USD':continue
+   variant=next((v for v in VARIANTS if v[0]==p.get('namespace','us-gaap') and v[1]['ppe']==p.get('concept',TAGS['ppe']) and v[2]==p.get('metric','cashAfterPpeAssets')),None)
+   if variant is None:continue
+   source=SOURCE if variant[0]=='us-gaap' and variant[2]=='cashAfterPpeAssets' else 'SEC companyfacts / '+variant[0]+' / '+variant[1]['ppe']
+   basis={'period':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt'],'fields':{k:{'source':source,'end':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt']} for k in TAGS}}
+   items.append({'profile':'corporate','sourceUrl':p['sourceUrl'],'metrics':{variant[2]:{'state':'available','value':value,'basis':basis}}})
   if items:out[s]={'inputIdentity':c['inputIdentity'],'balances':items}
  return out
 

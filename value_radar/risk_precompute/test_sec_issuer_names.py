@@ -16,3 +16,10 @@ class Names(unittest.TestCase):
   d['facts']['us-gaap']['PaymentsToAcquirePropertyPlantAndEquipment']['units']['USD']=[{'form':'10-K','val':-1}]
   self.assertEqual(diagnostics(d)['reason'],'negative_cash_ppe_requires_review')
 if __name__=='__main__':unittest.main()
+
+class ProductionNameFixtures(unittest.TestCase):
+ def test_actual_sec_suffixes_without_closing_slash(self):
+  for a,b in [('Applied Materials, Inc.','APPLIED MATERIALS INC /DE'),('Vertex Pharmaceuticals Incorporated','VERTEX PHARMACEUTICALS INC / MA'),('Arm Holdings plc','ARM HOLDINGS PLC /UK'),('Canadian Pacific Kansas City Limited','CANADIAN PACIFIC KANSAS CITY LTD/CN'),('Ferrari NV','Ferrari N.V.'),('Eni S.p.A.','Eni SpA')]:
+   self.assertTrue(same_issuer(a,b))
+ def test_unknown_suffix_and_brand_change_remain_blocked(self):
+  self.assertFalse(same_issuer('Example Inc','Example Inc /UNKNOWN'));self.assertFalse(same_issuer('Vertiv Holdings LLC','Vertiv Holdings Co'))

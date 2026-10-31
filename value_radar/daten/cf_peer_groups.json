@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-10-30T19:19:07.990677+00:00",
+  "generatedAt": "2026-10-31T11:03:50.703484+00:00",
   "inputSha256": "16eb0a7437921d6dc40a8843af5d9216a1885732e7fc1fd412bb4287aa9d355a",
   "summary": {
     "inputListings": 1329,
@@ -69540,7 +69540,7 @@
         "label": "Telecom Services",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/NPPXF/profile/",
-        "observedAt": "2026-10-29T14:57:12.079785+00:00",
+        "observedAt": "2026-10-31T11:03:49.232224+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [

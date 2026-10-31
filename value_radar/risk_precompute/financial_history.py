@@ -17,15 +17,15 @@ def stamp(v):
  if d.tzinfo is None:raise ValueError('timezone_required')
  return d
 
-def observations(balance,now):
+def observations(balance,now,annual_age_days=550,retrieval_days=7):
  result=[]
  for metric in ANNUAL:
   m=balance.get('metrics',{}).get(metric) or balance.get('supplementalMetrics',{}).get(metric) or {}
   basis=m.get('basis') or {};fields=basis.get('fields') or {}
-  if m.get('state')!='available' or not finite(m.get('value')) or not fields or not period_recent(basis.get('period'),now,550):continue
+  if m.get('state')!='available' or not finite(m.get('value')) or not fields or not period_recent(basis.get('period'),now,annual_age_days):continue
   currency=basis.get('currency');retrieved=basis.get('retrievedAt')
-  if not currency or not recent(retrieved,now,7):continue
-  if not all(f.get('source') and f.get('end')==basis['period'] and f.get('currency')==currency and recent(f.get('retrievedAt'),now,7) for f in fields.values()):continue
+  if not currency or not recent(retrieved,now,retrieval_days):continue
+  if not all(f.get('source') and f.get('end')==basis['period'] and f.get('currency')==currency and recent(f.get('retrievedAt'),now,retrieval_days) for f in fields.values()):continue
   source={k:f['source'] for k,f in sorted(fields.items())}
   result.append({'metric':metric,'frequency':'annual','period':basis['period'],'currency':currency,'value':m['value'],'method':{'profile':balance.get('profile'),'sources':source,'version':'annual-assets-ratios-v1'},'sourceRetrievedAt':min([retrieved,*[f['retrievedAt'] for f in fields.values()]],key=stamp),'evidence':{'fields':source,'sourceUrl':balance.get('sourceUrl')}})
  c=balance.get('bankCapital') or {}
@@ -39,7 +39,7 @@ def observations(balance,now):
     if finite(value):result.append({'metric':key,'frequency':'quarterly','period':q['period'],'currency':'RATIO','value':value,'method':{'rssdId':c['rssdId'],'version':q['method']},'sourceRetrievedAt':q['sourceImportedAt'],'evidence':{'sourceUrl':q['sourceUrl'],'sourceFileSha256':q['sourceFileSha256']}})
  return result
 
-def build(coverage,universe,previous,now=None):
+def build(coverage,universe,previous,now=None,backfill=None):
  now=now or dt.datetime.now(dt.timezone.utc)
  if coverage.get('schema')!=1 or not recent(coverage.get('generatedAt'),now,1.5):raise ValueError('coverage_missing_or_stale')
  if previous and (previous.get('schema')!=1 or previous.get('method')!='observed-financial-history-v1' or not isinstance(previous.get('series'),dict)):raise ValueError('unsupported_history_archive')
@@ -65,7 +65,11 @@ def build(coverage,universe,previous,now=None):
   b['history']=summary
   if s in duplicates or row.get('domains',{}).get('identity',{}).get('state')!='available' or not valid_isin(r.get('isin')):continue
   identity={k:r.get(k) for k in IDENTITY};identity_hash=digest(identity)
-  for observation in observations(b,now):
+  historical=[];archive_input=(backfill or {}).get('stocks',{}).get(s,{})
+  if (backfill or {}).get('method')=='roic-history-balances-v1' and (backfill or {}).get('schema')==1 and recent((backfill or {}).get('generatedAt'),now,1.5) and archive_input.get('inputIdentity')==identity:
+   for old_balance in archive_input.get('balances',[]):historical.extend(observations(old_balance,now,8*366,45))
+  current_observations=observations(b,now);views={}
+  for observation in sorted(historical,key=lambda x:x['period'])+current_observations:
    if stamp(observation['sourceRetrievedAt'])>now or date(observation['period'])>now.date():continue
    key=digest({'identity':identity_hash,'metric':observation['metric'],'frequency':observation['frequency'],'currency':observation['currency'],'method':observation['method']})
    series=archive['series'].setdefault(key,{'identity':identity,'metric':observation['metric'],'frequency':observation['frequency'],'currency':observation['currency'],'method':observation['method'],'periods':{}})
@@ -86,9 +90,18 @@ def build(coverage,universe,previous,now=None):
    if prior:
     p=prior[-1];days=(date(period)-date(p)).days;lo,hi=(70,110) if observation['frequency']=='quarterly' else (300,430)
     if lo<=days<=hi:
-     value=periods[p]['revisions'][-1]['value'];view.update(state='comparable',previousPeriod=p,previousValue=value,changePercentagePoints=(current['value']-value)*100);counts['comparableMetrics']+=1
+     value=periods[p]['revisions'][-1]['value'];view.update(state='comparable',previousPeriod=p,previousValue=value,changePercentagePoints=(current['value']-value)*100)
     else:view['state']='period_gap'
-   summary['metrics'].append(view)
+   view['sourceLabel']=' / '.join(sorted(set(observation['method'].get('sources',{}).values()))) or observation['method']['version']
+   view['sourceRetrievedAt']=current['sourceRetrievedAt']
+   view['points']=[{'period':p,'value':periods[p]['revisions'][-1]['value']} for p in sorted(periods) if p<=period][-8:]
+   views[key]=view
+  selected={}
+  for view in views.values():
+   metric=view['metric'];rank=(view['state']=='comparable',view['period'],view['periodCount'])
+   if metric not in selected or rank>selected[metric][0]:selected[metric]=(rank,view)
+  summary['metrics']=[value[1] for value in selected.values()]
+  counts['comparableMetrics']+=sum(v['state']=='comparable' for v in summary['metrics'])
   if summary['metrics']:
    summary.update(state='available',reason='observed_periods_only');counts['listingsWithHistory']+=1
  archive.update(lastCoverageAt=coverage['generatedAt'],summary=dict(counts),pointInTimeUsable=False)
@@ -98,10 +111,10 @@ def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  def read(path,default=None):return json.loads(path.read_text(encoding='utf-8')) if path.exists() else default
  path=folder/'cf_financial_history.json'
- archive,report=build(read(folder/'cf_risk_coverage.json',{}),read(folder/'cf_universum.json',{}),read(path,{}))
+ archive,report=build(read(folder/'cf_risk_coverage.json',{}),read(folder/'cf_universum.json',{}),read(path,{}),backfill=read(folder/'cf_history_backfill_balances.json',{}))
  save(path,archive);save(folder/'cf_risk_coverage.json',report);print(json.dumps(archive['summary']))
  if os.getenv('GITHUB_STEP_SUMMARY'):
-  with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## Finanzverlauf\n'+str(archive['summary'].get('listingsWithHistory',0))+' Notierungen mit gespeicherten Beobachtungen; '+str(archive['summary'].get('comparableMetrics',0))+' vergleichbare Kennzahlenpaare. Einzelne Perioden sind noch kein Verlauf. Ursprünglicher Veröffentlichungstag nicht unterstellt.\n')
+  with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## Finanzverlauf\n'+str(archive['summary'].get('listingsWithHistory',0))+' Notierungen mit gespeicherten Beobachtungen; '+str(archive['summary'].get('comparableMetrics',0))+' vergleichbare Kennzahlenpaare. Einzelne Perioden sind noch kein Verlauf. UrsprÃƒÂ¼nglicher VerÃƒÂ¶ffentlichungstag nicht unterstellt.\n')
 if __name__=='__main__':main()
 
 

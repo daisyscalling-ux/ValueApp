@@ -9,6 +9,7 @@ on:
       - 'value_radar/risk_precompute/**'
       - 'value_radar/regulatory_export/import_credit_quality.py'
       - 'value_radar/regulatory_export/fed-capital-requirements.json'
+      - 'value_radar/regulatory_export/reviewed-liquidity.json'
       - 'value_radar/daten/regulatory/bhcf-credit-quality.json'
       - 'value_radar/fundamental_export/queue_policy.py'
       - 'value_radar/fundamental_export/export_fundamentals.py'
@@ -61,10 +62,13 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_history.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_history_backfill.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec_cashflow_history.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec_issuer_names.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
           node /tmp/test-regulatory-context.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-holding-liquidity.ts --bundle --platform=node --format=esm --outfile=/tmp/test-holding-liquidity.mjs
+          node /tmp/test-holding-liquidity.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-history-backfill.ts --bundle --platform=node --format=esm --outfile=/tmp/test-history-backfill.mjs
           node /tmp/test-history-backfill.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-capital-requirement.ts --bundle --platform=node --format=esm --outfile=/tmp/test-capital-requirement.mjs

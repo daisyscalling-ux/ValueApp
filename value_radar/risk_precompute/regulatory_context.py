@@ -8,9 +8,10 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'regulatory_export'))
 from holding_stocks import enrich
 from regulatory_credit import credit_context
 from fed_capital_requirements import requirement_for
+from holding_liquidity import liquidity_for
 FIELDS=('listing_symbol','ticker','isin','currency','name','name_full','security_type','share_class')
 CODES={'BHCAP793':'cet1_ratio','BHCA7206':'tier1_ratio','BHCA7205':'total_capital_ratio','BHCA7204':'tier1_leverage_ratio'}
-def build(universe,holdings,registry,now=None,credit_archive=None,requirements_archive=None):
+def build(universe,holdings,registry,now=None,credit_archive=None,requirements_archive=None,liquidity_archive=None):
  now=now or dt.datetime.now(dt.timezone.utc);stocks={};rejected={}
  out={'schema':1,'generatedAt':now.isoformat(),'source':'reviewed_FR_Y9C_holding_capital','stocks':stocks,'rejected':rejected,'scoreContribution':0}
  try:
@@ -44,12 +45,13 @@ def build(universe,holdings,registry,now=None,credit_archive=None,requirements_a
    'identityReviewExpires':registry['review_expires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
    'limitations':['Reported capital ratios; institution-specific requirement and buffer not verified.','No holding liquidity or asset-quality inference from subsidiary FDIC ratios.']}
   stocks[s]['capitalRequirement']=requirement_for(stocks[s],requirements_archive or {},now)
+  stocks[s]['liquidity']=liquidity_for(stocks[s],liquidity_archive or {},now)
   stocks[s]['creditQuality']=credit_context(credit_archive or {},stocks[s],now)
  out.update(state='ready',summary={'verifiedHoldings':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
 
 def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
- result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}))
+ result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}),liquidity_archive=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-liquidity.json',{}))
  save(folder/'cf_regulatory_context.json',result);print(result.get('summary',{'state':result['state']}))
 if __name__=='__main__':main()

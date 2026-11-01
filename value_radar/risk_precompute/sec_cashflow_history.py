@@ -9,51 +9,76 @@ from market_priority import fetch_priority
 from sec_issuer_names import same_issuer,POLICY
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
+COLLECTION_POLICY=POLICY+'/cash-context-v4'
+# Numerical concordance only, not proof of functional currency or an FX quote.
+CURRENCY_RATIO_RTOL=1e-4
+CURRENCY_RATIO_ATOL=1e-6
 TAGS={'assets':'Assets','ocf':'NetCashProvidedByUsedInOperatingActivities','ppe':'PaymentsToAcquirePropertyPlantAndEquipment'}
 
-def diagnostics(data):
+def diagnostics(data,audit=None):
  facts=data.get('facts',{});us=facts.get('us-gaap',{})
  forms=sorted({f.get('form','') for tag in TAGS.values() for f in us.get(tag,{}).get('units',{}).get('USD',[])})
  counts={k:len(us.get(t,{}).get('units',{}).get('USD',[])) for k,t in TAGS.items()}
  alternatives=sorted(k for k in us if k.startswith('PaymentsToAcquire') and ('Property' in k or 'Productive' in k or 'Intangible' in k))
- reason='matching_annual_filing_missing'
- if not us:reason='us_gaap_missing'
- elif not counts['ppe']:reason='cash_ppe_concept_missing'
- elif not any(f in forms for f in ('10-K','10-K/A')):reason='supported_annual_form_missing'
- elif any(isinstance(f.get('val'),(int,float)) and f['val']<0 for f in us.get(TAGS['ppe'],{}).get('units',{}).get('USD',[])):reason='negative_cash_ppe_requires_review'
  variants=[]
  for namespace,tags,metric in VARIANTS:
   f=facts.get(namespace,{})
-  units=[set(f.get(t,{}).get('units',{})) for t in tags.values()]
+  units=[{c for c,rows in f.get(t,{}).get('units',{}).items() if rows} for t in tags.values()]
   common=sorted(c for c in set.intersection(*units) if re.fullmatch('[A-Z]{3}',c))
   variant_forms=sorted({str(x.get('form','')) for t in tags.values() for c in common for x in f.get(t,{}).get('units',{}).get(c,[])})
-  variants.append({'namespace':namespace,'concept':tags['ppe'],'metric':metric,'commonCurrencies':common,'forms':variant_forms})
- if any(v['commonCurrencies'] and any(f in ANNUAL_FORMS for f in v['forms']) for v in variants) and reason in ('us_gaap_missing','cash_ppe_concept_missing','supported_annual_form_missing'):reason='matching_annual_filing_missing'
- return {'reason':reason,'namespaces':sorted(facts),'forms':forms,'conceptCounts':counts,'alternativeConcepts':alternatives,'variants':variants}
+  currencies_by_field={key:sorted(c for c,rows in f.get(tag,{}).get('units',{}).items() if rows and re.fullmatch('[A-Z]{3}',c)) for key,tag in tags.items()}
+  variants.append({'namespace':namespace,'concept':tags['ppe'],'metric':metric,'commonCurrencies':common,'forms':variant_forms,'currenciesByField':currencies_by_field})
+ reason='matching_annual_filing_missing'
+ if not any(facts.get(ns) for ns in ('us-gaap','ifrs-full')):reason='supported_accounting_namespace_missing'
+ elif not any(v['currenciesByField']['ppe'] for v in variants):reason='cash_ppe_concept_missing'
+ elif not any(v['commonCurrencies'] for v in variants):reason='same_currency_fields_missing'
+ elif not any(any(f in ANNUAL_FORMS for f in v['forms']) for v in variants):reason='supported_annual_form_missing'
+ if audit:
+  if audit.get('currency_conflict_periods'):reason='multiple_currency_conflict'
+  elif audit.get('group_conflicting_facts'):reason='conflicting_annual_facts'
+  elif audit.get('group_negative_investment'):reason='negative_cash_ppe_requires_review'
+ return {'reason':reason,'namespaces':sorted(facts),'forms':forms,'conceptCounts':counts,'alternativeConcepts':alternatives,'variants':variants,'stageCounts':dict(audit or {})}
+
+def currency_concordant(items):
+ # Do not accept ratios from different filings, periods or accounting definitions.
+ if len({tuple(p[k] for k in ('end','start','filed','accession','namespace','concept','metric')) for p in items})!=1:return False
+ for key in ('operatingCashflow','cashPpe'):
+  values=[p[key]/p['assets'] for p in items]
+  if not all(math.isfinite(v) for v in values):return False
+  # Compare each component, not merely their difference (cancellation can hide errors).
+  if not math.isclose(min(values),max(values),rel_tol=CURRENCY_RATIO_RTOL,abs_tol=CURRENCY_RATIO_ATOL):return False
+ return True
 
 ANNUAL_FORMS=('10-K','10-K/A','20-F','20-F/A','40-F','40-F/A')
 IFRS_TAGS={'assets':'Assets','ocf':'CashFlowsFromUsedInOperatingActivities','ppe':'PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities'}
 VARIANTS=[('us-gaap',TAGS,'cashAfterPpeAssets'),('us-gaap',{**TAGS,'ppe':'PaymentsToAcquireProductiveAssets'},'cashAfterProductiveAssets'),('ifrs-full',IFRS_TAGS,'cashAfterPpeAssets')]
 
-def normalize_series(data,cik,now,namespace,tags,currency,metric):
+def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None):
+ audit=audit if audit is not None else Counter()
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
  groups={};conflicts=set()
  for key,tag in tags.items():
   for f in data.get('facts',{}).get(namespace,{}).get(tag,{}).get('units',{}).get(currency,[]):
    try:
     end=dt.date.fromisoformat(f['end']);filed=dt.date.fromisoformat(f['filed']);value=f['val'];acc=f['accn']
-    if f.get('form') not in ANNUAL_FORMS or not re.fullmatch(r'\d{10}-\d{2}-\d{6}',acc) or not 0<=(now.date()-end).days<=8*366 or not end<=filed<=now.date():continue
-    if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value):continue
-    if key!='assets' and not 330<=(end-dt.date.fromisoformat(f['start'])).days<=400:continue
+    if f.get('form') not in ANNUAL_FORMS:audit['fact_nonannual_form']+=1;continue
+    if not re.fullmatch(r'\d{10}-\d{2}-\d{6}',acc):audit['fact_invalid_accession']+=1;continue
+    if not 0<=(now.date()-end).days<=8*366 or not end<=filed<=now.date():audit['fact_outside_date_window']+=1;continue
+    if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value):audit['fact_invalid_value']+=1;continue
+    if key!='assets' and not 330<=(end-dt.date.fromisoformat(f['start'])).days<=400:audit['fact_nonannual_duration']+=1;continue
+    if key=='assets' and f.get('start'):audit['fact_assets_not_instant']+=1;continue
     group=(str(end),str(filed),acc);item=(value,f.get('start') if key!='assets' else None)
     g=groups.setdefault(group,{})
     if key in g and g[key]!=item:conflicts.add(group)
     g[key]=item
-   except (KeyError,ValueError,TypeError):continue
+   except (KeyError,ValueError,TypeError):audit['fact_malformed']+=1;continue
  candidates={}
  for (end,filed,acc),g in groups.items():
-  if (end,filed,acc) in conflicts or not all(k in g for k in TAGS):continue
-  if g['assets'][0]<=0 or g['ppe'][0]<0 or g['ocf'][1]!=g['ppe'][1]:continue
+  if (end,filed,acc) in conflicts:audit['group_conflicting_facts']+=1;continue
+  if not all(k in g for k in TAGS):audit['group_missing_same_filing_fields']+=1;continue
+  if g['assets'][0]<=0:audit['group_nonpositive_assets']+=1;continue
+  if g['ppe'][0]<0:audit['group_negative_investment']+=1;continue
+  if g['ocf'][1]!=g['ppe'][1]:audit['group_duration_mismatch']+=1;continue
   value=(g['ocf'][0]-g['ppe'][0])/g['assets'][0]
   if not math.isfinite(value):continue
   v={'end':end,'start':g['ocf'][1],'filed':filed,'accession':acc,'assets':g['assets'][0],'operatingCashflow':g['ocf'][0],'cashPpe':g['ppe'][0],'value':value,'currency':currency,'namespace':namespace,'concept':tags['ppe'],'metric':metric,'sourceUrl':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc.replace("-","")}/'}
@@ -61,11 +86,12 @@ def normalize_series(data,cik,now,namespace,tags,currency,metric):
  out=[]
  for end,items in sorted(candidates.items()):
   latest=max(v['filed'] for v in items);same=[v for v in items if v['filed']==latest]
-  if len({(v['assets'],v['operatingCashflow'],v['cashPpe'],v['start']) for v in same})!=1:continue
+  if len({(v['assets'],v['operatingCashflow'],v['cashPpe'],v['start']) for v in same})!=1:audit['period_conflicting_latest_filings']+=1;continue
   out.append(max(same,key=lambda v:v['accession']))
  return out[-8:]
 
-def normalize(data,cik,now):
+def normalize(data,cik,now,audit=None):
+ audit=audit if audit is not None else Counter()
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
  out=[]
  for namespace,tags,metric in VARIANTS:
@@ -74,10 +100,16 @@ def normalize(data,cik,now):
   currencies=set.intersection(*units)
   series=[]
   for currency in sorted(currencies):
-   if re.fullmatch('[A-Z]{3}',currency):series.extend(normalize_series(data,cik,now,namespace,tags,currency,metric))
+   if re.fullmatch('[A-Z]{3}',currency):series.extend(normalize_series(data,cik,now,namespace,tags,currency,metric,audit))
   by_end={}
-  for p in series:by_end.setdefault(p['end'],set()).add(p['currency'])
-  out.extend(p for p in series if len(by_end[p['end']])==1)
+  for p in series:by_end.setdefault(p['end'],[]).append(p)
+  for items in by_end.values():
+   if len(items)>1:
+    if not currency_concordant(items):audit['currency_conflict_periods']+=1;continue
+    audit['currency_concordant_periods']+=1
+    for p in items:p['currencyCheck']={'method':'component-ratios-v1','currencies':sorted(x['currency'] for x in items)}
+   # Preserve separate reported series. Never pick a native currency or convert amounts.
+   out.extend(items)
  return out
 
 def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_companies=300,checkpoint=None):
@@ -98,25 +130,29 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   old=state['stocks'].get(s,{})
   if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7):counts['cached']+=1;continue
   att=state['attempts'].get(s,{})
-  cooldown=28 if att.get('error') in ('us_gaap_missing','supported_annual_form_missing') else 2
-  if att.get('policy')==POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
+  cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
+  if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)
  candidates.sort(key=lambda r:fetch_priority(r['listing_symbol'],state['attempts'].get(r['listing_symbol'],{}).get('at'),now))
  for r in candidates:
   remaining=budget-(time.monotonic()-started)
   if counts['attempted']>=max_companies or remaining<1:break
-  s=r['listing_symbol'];cik=str(listing_map[s]);att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':POLICY};counts['attempted']+=1
+  s=r['listing_symbol'];cik=str(listing_map[s]);att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY};counts['attempted']+=1
   try:
    data=fetch(cik,min(12,remaining))
    att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
    if not same_issuer(data.get('entityName'),r.get('name_full') or r.get('name')):raise ValueError('issuer_name_mismatch')
-   periods=normalize(data,cik,now)
+   audit=Counter();periods=normalize(data,cik,now,audit)
+   att['normalization']=dict(audit)
+   counts['currencyConcordantPeriods']+=audit['currency_concordant_periods']
+   counts['currencyConflictPeriods']+=audit['currency_conflict_periods']
    if not periods:
-    att['diagnostics']=diagnostics(data)
+    att['diagnostics']=diagnostics(data,audit)
     raise ValueError(att['diagnostics']['reason'])
    state['stocks'][s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':periods,'pointInTimeUsable':False};counts['updated']+=1;counts['periods']+=len(periods)
+   counts['fiscalYears']+=len({p['end'] for p in periods})
   except Exception as e:
-   reason=str(e) if isinstance(e,ValueError) and str(e) in ('cik_mismatch','issuer_name_mismatch','matching_cashflow_periods_missing','matching_annual_filing_missing','us_gaap_missing','cash_ppe_concept_missing','supported_annual_form_missing','negative_cash_ppe_requires_review') else safe_error(e)
+   reason=str(e) if isinstance(e,ValueError) and str(e) in ('cik_mismatch','issuer_name_mismatch','matching_cashflow_periods_missing','matching_annual_filing_missing','us_gaap_missing','cash_ppe_concept_missing','supported_annual_form_missing','negative_cash_ppe_requires_review','multiple_currency_conflict','conflicting_annual_facts','supported_accounting_namespace_missing','same_currency_fields_missing') else safe_error(e)
    att['error']=reason;counts[reason]+=1
   state['attempts'][s]=att;state.update(generatedAt=now.isoformat(),report=dict(counts))
   if checkpoint:checkpoint(state)

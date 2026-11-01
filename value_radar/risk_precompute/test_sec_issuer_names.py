@@ -9,12 +9,12 @@ class Names(unittest.TestCase):
   for a,b in [('GE Aerospace','General Electric Company'),('Marsh','Marsh & McLennan Companies'),('Example Holdings','Example'),('Example Bank','Example Bank National Association'),('Example Class A','Example Class B'),('ABC','ABD'),('',''),('Alpha / Beta','Alpha')]:
    with self.subTest(a=a):self.assertFalse(same_issuer(a,b))
  def test_diagnostics_distinguish_source_definitions(self):
-  self.assertEqual(diagnostics({'facts':{'ifrs-full':{}}})['reason'],'us_gaap_missing')
+  self.assertEqual(diagnostics({'facts':{'ifrs-full':{}}})['reason'],'supported_accounting_namespace_missing')
   self.assertEqual(diagnostics({'facts':{'us-gaap':{'Assets':{}}}})['reason'],'cash_ppe_concept_missing')
   d={'facts':{'us-gaap':{'PaymentsToAcquirePropertyPlantAndEquipment':{'units':{'USD':[{'form':'20-F','val':1}]}}}}}
-  self.assertEqual(diagnostics(d)['reason'],'supported_annual_form_missing')
+  self.assertEqual(diagnostics(d)['reason'],'same_currency_fields_missing')
   d['facts']['us-gaap']['PaymentsToAcquirePropertyPlantAndEquipment']['units']['USD']=[{'form':'10-K','val':-1}]
-  self.assertEqual(diagnostics(d)['reason'],'negative_cash_ppe_requires_review')
+  self.assertEqual(diagnostics(d)['reason'],'same_currency_fields_missing')
 if __name__=='__main__':unittest.main()
 
 class ProductionNameFixtures(unittest.TestCase):

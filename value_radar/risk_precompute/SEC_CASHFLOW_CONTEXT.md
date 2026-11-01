@@ -78,3 +78,25 @@ report/attempt diagnostics, and the resulting financial-history export. No new
 secret or Cloudflare code deployment is needed for this collector-only change.
 Additional production coverage can only be established after that live run;
 synthetic regression tests do not prove how many issuers will be recovered.
+
+## Evidence for unresolved fields
+
+`attempts[symbol].sourceEvidence` records bounded diagnostic evidence for failed
+or partial attempts. For each supported variant it includes the exact field,
+latest end date reported in an annual filing, up to eight observations with
+value/unit/start/end/accession, and up to twelve incomplete same-filing groups
+with explicit present/missing field names. `latestAnnualEnd` means the end date
+of a fact found in an annual form; it does not certify annual duration. The
+duration and sign are preserved so invalid inputs remain identifiable.
+
+Up to 48 alternative standard concepts from US-GAAP/IFRS are inventoried with
+two recent observations each. These are candidates for subsequent source review,
+not accepted substitutes. Company-specific extension concepts may not be in
+CompanyFacts at all. Counts and truncation flags disclose bounded output.
+No credentials, contact details, labels or raw response bodies are stored.
+
+This evidence is collected during the existing authenticated GitHub SEC request,
+not through additional per-concept requests. Older partial attempts with missing
+same-filing fields are eligible for one new-policy retry. Subsequent executions
+use the normal cache rules. This diagnostic change does not itself fill the
+missing TSMC/PDD years or alter any financial metric.

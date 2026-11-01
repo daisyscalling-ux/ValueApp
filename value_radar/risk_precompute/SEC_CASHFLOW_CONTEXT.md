@@ -100,3 +100,50 @@ not through additional per-concept requests. Older partial attempts with missing
 same-filing fields are eligible for one new-policy retry. Subsequent executions
 use the normal cache rules. This diagnostic change does not itself fill the
 missing TSMC/PDD years or alter any financial metric.
+
+## Components, original reports and downstream acceptance
+
+The next collection policy supports three coordinated additions:
+
+1. Total operating cashflow may be derived from *both* signed continuing and
+   discontinued operating cashflow concepts. Currency, start/end, accession,
+   filing date and form must all match. Missing discontinued activity is never
+   interpreted as zero. Conflicting duplicates prevent derivation; an explicitly
+   reported total remains authoritative, with component discrepancies counted.
+   The two values and formula remain on each derived observation and are checked
+   again before export. Derived and directly reported source histories remain
+   distinguishable.
+2. For missing/partial or old standardized observations, the existing collector
+   can query SEC submissions and the latest annual inline-XBRL document. It
+   accepts only standard allowlisted concepts and the explicitly reviewed PDD
+   extension documented in fixtures/SEC_SOURCES.md. It verifies document CIK,
+   type and period against submissions, excludes dimensional contexts, resolves
+   taxonomy namespaces and currency units, and applies reviewed numeric formats,
+   scale and signs. Unknown transforms/concepts are not guessed. DTD/entities,
+   oversized files and ambiguous identifiers are rejected. Requests share the
+   SEC pacing, deadline and operator User-Agent. A denied/unavailable Archives
+   document (403 or server error) may be read once from Yahoo Finance's independent
+   public SEC distribution copy, under the same remaining time budget. The exact
+   CIK/accession/document path is preserved and both canonical and distribution
+   URLs are recorded. Operator contact is not forwarded to Yahoo. SEC429 is not
+   retried through another provider; unresolved HTTP403/429 stop the collector.
+   Existing accepted observations are retained when retrieval fails.
+3. Original documents are normalized independently; they never supply individual
+   fields to an incomplete CompanyFacts record. Complete periods are merged by
+   accounting scope/currency and latest filing date with conflict checks. Document
+   hash, URL and filing identity are preserved. The separate PDD metric
+   `cashAfterPpeIntangiblesAssets` flows through financial history and the local
+   Cloudflare UI with its broader investment scope explained. These observations
+   remain context, not a valuation input, score reward or point-in-time study.
+
+Local regression checks using selected actual original filing facts recover
+2024/2025 comparisons for TSMC and PDD, and actual SEC component observations for
+Air Products/GE HealthCare. Full original reports were also parsed locally.
+This does not assert that the live GitHub Archives endpoint will always respond;
+production retrieval and coverage still require the next daily-risk run.
+
+Deployment: merge the coordinated PR, run daily-risk on main, and deploy the
+updated Desktop/cf UI for the new PDD label. Existing SEC_USER_AGENT is reused.
+No new secret or paid data subscription is required. Original-report requests
+are bounded to the existing 900-second collector budget, max 30 seconds for
+submissions plus document per attempted company, and 15 MB per document.

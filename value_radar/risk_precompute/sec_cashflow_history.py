@@ -9,7 +9,7 @@ from market_priority import fetch_priority
 from sec_issuer_names import same_issuer,POLICY
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v4'
+COLLECTION_POLICY=POLICY+'/cash-context-v5-filing-selection'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -53,7 +53,7 @@ ANNUAL_FORMS=('10-K','10-K/A','20-F','20-F/A','40-F','40-F/A')
 IFRS_TAGS={'assets':'Assets','ocf':'CashFlowsFromUsedInOperatingActivities','ppe':'PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities'}
 VARIANTS=[('us-gaap',TAGS,'cashAfterPpeAssets'),('us-gaap',{**TAGS,'ppe':'PaymentsToAcquireProductiveAssets'},'cashAfterProductiveAssets'),('ifrs-full',IFRS_TAGS,'cashAfterPpeAssets')]
 
-def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None):
+def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None,all_filings=False):
  audit=audit if audit is not None else Counter()
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
  groups={};conflicts=set()
@@ -83,6 +83,7 @@ def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None):
   if not math.isfinite(value):continue
   v={'end':end,'start':g['ocf'][1],'filed':filed,'accession':acc,'assets':g['assets'][0],'operatingCashflow':g['ocf'][0],'cashPpe':g['ppe'][0],'value':value,'currency':currency,'namespace':namespace,'concept':tags['ppe'],'metric':metric,'sourceUrl':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc.replace("-","")}/'}
   candidates.setdefault(end,[]).append(v)
+ if all_filings:return [p for items in candidates.values() for p in items]
  out=[]
  for end,items in sorted(candidates.items()):
   latest=max(v['filed'] for v in items);same=[v for v in items if v['filed']==latest]
@@ -100,10 +101,24 @@ def normalize(data,cik,now,audit=None):
   currencies=set.intersection(*units)
   series=[]
   for currency in sorted(currencies):
-   if re.fullmatch('[A-Z]{3}',currency):series.extend(normalize_series(data,cik,now,namespace,tags,currency,metric,audit))
+   if re.fullmatch('[A-Z]{3}',currency):series.extend(normalize_series(data,cik,now,namespace,tags,currency,metric,audit,all_filings=True))
   by_end={}
   for p in series:by_end.setdefault(p['end'],[]).append(p)
-  for items in by_end.values():
+  for end in sorted(by_end)[-8:]:
+   versions=by_end[end]
+   latest=max(p['filed'] for p in versions)
+   items=[p for p in versions if p['filed']==latest]
+   audit['older_filing_observations_superseded']+=len(versions)-len(items)
+   # A currency printed only in an older report must not veto a newer complete report.
+   # Same-day different accessions remain ambiguous unless every currency's values match.
+   selected=[]
+   for currency in sorted({p['currency'] for p in items}):
+    same=[p for p in items if p['currency']==currency]
+    if len({tuple(p[k] for k in ('assets','operatingCashflow','cashPpe','start')) for p in same})!=1:
+     audit['period_conflicting_latest_filings']+=1;selected=[];break
+    selected.append(max(same,key=lambda p:p['accession']))
+   items=selected
+   if not items:continue
    if len(items)>1:
     if not currency_concordant(items):audit['currency_conflict_periods']+=1;continue
     audit['currency_concordant_periods']+=1
@@ -128,8 +143,9 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   if s in duplicates or s not in allowed or not valid_isin(r.get('isin')) or r.get('listing_reference_status') in ('expired','input_mismatch') or not str(cik or '').isdigit():continue
   if r.get('cik') and str(r['cik']).lstrip('0')!=str(cik).lstrip('0'):counts['cikConflict']+=1;continue
   old=state['stocks'].get(s,{})
-  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7):counts['cached']+=1;continue
   att=state['attempts'].get(s,{})
+  retry_partial=att.get('policy')!=COLLECTION_POLICY and att.get('normalization',{}).get('currency_conflict_periods',0)>0
+  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)

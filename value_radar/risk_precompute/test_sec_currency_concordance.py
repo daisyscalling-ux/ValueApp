@@ -46,11 +46,11 @@ class CurrencyConcordance(unittest.TestCase):
         self.assertEqual(diagnostics(data, audit)['reason'], 'multiple_currency_conflict')
 
     def test_other_filing_or_duration_never_corroborates(self):
-        for patch in ({'accn': '0000000001-26-000002'}, {'filed': '2026-03-01'}):
+        for patch, expected in (({'accn': '0000000001-26-000002'}, 10), ({'filed': '2026-03-01'}, 11)):
             data = translated()
             for tag in data['facts']['us-gaap'].values():
                 tag['units']['TWD'][-1].update(patch)
-            self.assertEqual(len(normalize(data, 1, NOW)), 10)
+            self.assertEqual(len(normalize(data, 1, NOW)), expected)
         data = translated()
         for name in ('NetCashProvidedByUsedInOperatingActivities', 'PaymentsToAcquirePropertyPlantAndEquipment'):
             data['facts']['us-gaap'][name]['units']['TWD'][-1]['start'] = '2025-01-02'

@@ -8,9 +8,11 @@ from yahoo_sector import recent,save
 from market_priority import fetch_priority
 from sec_issuer_names import same_issuer,POLICY
 from sec_source_evidence import build as source_evidence
+from sec_cashflow_components import compose,verified as verified_ocf
+from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v6-field-evidence'
+COLLECTION_POLICY=POLICY+'/cash-context-v7-originals-components'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -53,11 +55,12 @@ def currency_concordant(items):
 ANNUAL_FORMS=('10-K','10-K/A','20-F','20-F/A','40-F','40-F/A')
 IFRS_TAGS={'assets':'Assets','ocf':'CashFlowsFromUsedInOperatingActivities','ppe':'PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities'}
 VARIANTS=[('us-gaap',TAGS,'cashAfterPpeAssets'),('us-gaap',{**TAGS,'ppe':'PaymentsToAcquireProductiveAssets'},'cashAfterProductiveAssets'),('ifrs-full',IFRS_TAGS,'cashAfterPpeAssets')]
+VARIANTS.insert(2,('pdd-reviewed',{**TAGS,'ppe':PDD_CONCEPT},'cashAfterPpeIntangiblesAssets'))
 
 def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None,all_filings=False):
  audit=audit if audit is not None else Counter()
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
- groups={};conflicts=set()
+ groups={};conflicts=set();derivations={}
  for key,tag in tags.items():
   for f in data.get('facts',{}).get(namespace,{}).get(tag,{}).get('units',{}).get(currency,[]):
    try:
@@ -72,6 +75,7 @@ def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None,all_
     g=groups.setdefault(group,{})
     if key in g and g[key]!=item:conflicts.add(group)
     g[key]=item
+    if key=='ocf' and f.get('ocfDerivation'):derivations[group]=f['ocfDerivation']
    except (KeyError,ValueError,TypeError):audit['fact_malformed']+=1;continue
  candidates={}
  for (end,filed,acc),g in groups.items():
@@ -83,6 +87,7 @@ def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None,all_
   value=(g['ocf'][0]-g['ppe'][0])/g['assets'][0]
   if not math.isfinite(value):continue
   v={'end':end,'start':g['ocf'][1],'filed':filed,'accession':acc,'assets':g['assets'][0],'operatingCashflow':g['ocf'][0],'cashPpe':g['ppe'][0],'value':value,'currency':currency,'namespace':namespace,'concept':tags['ppe'],'metric':metric,'sourceUrl':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc.replace("-","")}/'}
+  if (end,filed,acc) in derivations:v['ocfDerivation']=derivations[(end,filed,acc)]
   candidates.setdefault(end,[]).append(v)
  if all_filings:return [p for items in candidates.values() for p in items]
  out=[]
@@ -95,8 +100,11 @@ def normalize_series(data,cik,now,namespace,tags,currency,metric,audit=None,all_
 def normalize(data,cik,now,audit=None):
  audit=audit if audit is not None else Counter()
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):raise ValueError('cik_mismatch')
+ data,components=compose(data,now)
+ audit['ocf_components_derived']+=components['derived'];audit['ocf_components_conflict']+=components['conflicts']
  out=[]
  for namespace,tags,metric in VARIANTS:
+  if namespace=='pdd-reviewed' and (str(cik).lstrip('0')!='1737806' or not data.get('originalFiling')):continue
   facts=data.get('facts',{}).get(namespace,{})
   units=[set(facts.get(tag,{}).get('units',{})) for tag in tags.values()]
   currencies=set.intersection(*units)
@@ -126,9 +134,11 @@ def normalize(data,cik,now,audit=None):
     for p in items:p['currencyCheck']={'method':'component-ratios-v1','currencies':sorted(x['currency'] for x in items)}
    # Preserve separate reported series. Never pick a native currency or convert amounts.
    out.extend(items)
+ if data.get('originalFiling'):
+  for p in out:p['originalFiling']=data['originalFiling']
  return out
 
-def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_companies=300,checkpoint=None):
+def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_companies=300,checkpoint=None,fetch_original=None):
  now=now or dt.datetime.now(dt.timezone.utc);started=time.monotonic()
  if state and (state.get('schema')!=1 or state.get('method')!=METHOD):raise ValueError('unsupported_sec_history')
  state=state or {'schema':1,'method':METHOD,'stocks':{},'attempts':{}}
@@ -160,6 +170,20 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
    if not same_issuer(data.get('entityName'),r.get('name_full') or r.get('name')):raise ValueError('issuer_name_mismatch')
    audit=Counter();periods=normalize(data,cik,now,audit)
+   if fetch_original and (not periods or audit.get('group_missing_same_filing_fields') or max(p['end'] for p in periods)<(now.date()-dt.timedelta(days=550)).isoformat()):
+    remaining=budget-(time.monotonic()-started)
+    if remaining>=2:
+     try:
+      original=fetch_original(cik,min(30,remaining))
+      if original:
+       additional=normalize(original,cik,now)
+       from sec_original_supply import merge_periods
+       periods,merge_stats=merge_periods(periods,additional)
+       att['originalFiling']={**original['originalFiling'],'acceptedObservations':len(additional),'merge':merge_stats,'fields':{ns:{tag:{currency:len(rows) for currency,rows in value.get('units',{}).items()} for tag,value in facts.items()} for ns,facts in original['facts'].items()}}
+       counts['originalFilingsParsed']+=1;counts['originalObservations']+=len(additional)
+     except Exception as e:
+      att['originalError']=str(e) if isinstance(e,ValueError) and str(e) in ('filing_too_large','xml_declaration_blocked','ambiguous_namespace','duplicate_context','duplicate_unit','filing_cik_mismatch','filing_metadata_mismatch','submissions_cik_mismatch','submissions_array_mismatch','response_too_large') else safe_error(e);counts['originalFetchFailed']+=1
+      if att['originalError'] in ('http_403','http_429'):att['originalRateLimited']=True
    att['normalization']=dict(audit)
    if not periods or audit.get('group_missing_same_filing_fields') or audit.get('currency_conflict_periods'):
     att['sourceEvidence']=source_evidence(data,cik,now,VARIANTS,periods)
@@ -176,7 +200,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    att['error']=reason;counts[reason]+=1
   state['attempts'][s]=att;state.update(generatedAt=now.isoformat(),report=dict(counts))
   if checkpoint:checkpoint(state)
-  if att.get('error') in ('http_403','http_429'):break
+  if att.get('error') in ('http_403','http_429') or att.get('originalRateLimited'):break
  counts['remainingCandidates']=len(candidates)-counts['attempted'];state.update(generatedAt=now.isoformat(),report=dict(counts));return state
 
 def balances(cache,universe,now):
@@ -198,9 +222,16 @@ def balances(cache,universe,now):
    if 'namespace' not in p and p['currency']!='USD':continue
    variant=next((v for v in VARIANTS if v[0]==p.get('namespace','us-gaap') and v[1]['ppe']==p.get('concept',TAGS['ppe']) and v[2]==p.get('metric','cashAfterPpeAssets')),None)
    if variant is None:continue
+   if 'ocfDerivation' in p and not verified_ocf(p['ocfDerivation'],p['operatingCashflow']):continue
+   if p.get('namespace')=='pdd-reviewed' and (str(c['cik']).lstrip('0')!='1737806' or not p.get('originalFiling')):continue
    source=SOURCE if variant[0]=='us-gaap' and variant[2]=='cashAfterPpeAssets' else 'SEC companyfacts / '+variant[0]+' / '+variant[1]['ppe']
+   if p.get('originalFiling'):
+    from sec_original_supply import verified_original
+    if not verified_original(p,c['cik']):continue
+    source='SEC original annual filing / '+variant[0]+' / '+variant[1]['ppe']
+   if p.get('ocfDerivation'):source+=' / OCF continuing + discontinued'
    basis={'period':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt'],'fields':{k:{'source':source,'end':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt']} for k in TAGS}}
-   items.append({'profile':'corporate','sourceUrl':p['sourceUrl'],'metrics':{variant[2]:{'state':'available','value':value,'basis':basis}}})
+   items.append({'profile':'corporate','sourceUrl':p.get('originalFiling',{}).get('sourceUrl',p['sourceUrl']),'metrics':{variant[2]:{'state':'available','value':value,'basis':basis}}})
   if items:out[s]={'inputIdentity':c['inputIdentity'],'balances':items}
  return out
 
@@ -218,7 +249,8 @@ def main():
   with urllib.request.urlopen(req,timeout=timeout) as r:raw=r.read(25000001)
   if len(raw)>25000000:raise ValueError('response_too_large')
   return json.loads(raw)
- result=run(read(folder/'cf_universum.json'),read(folder/'cf_risk_coverage.json'),read(target),listings,fetch,checkpoint=lambda s:save(target,s))
+ from sec_original_supply import loader
+ result=run(read(folder/'cf_universum.json'),read(folder/'cf_risk_coverage.json'),read(target),listings,fetch,checkpoint=lambda s:save(target,s),fetch_original=loader(ua,last))
  save(target,result);print(json.dumps(result['report']))
  if os.getenv('GITHUB_STEP_SUMMARY'):
   with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## SEC cashflow history\n'+json.dumps(result['report'])+'\nPPE-only cashflow context; not comprehensive free cashflow.\n')

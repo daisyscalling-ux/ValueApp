@@ -5,7 +5,7 @@ from collections import Counter
 from news_identity import valid_isin
 from yahoo_sector import recent,save
 IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_class')
-ANNUAL=('cashAfterProductiveAssets','cashAfterPpeAssets','netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
+ANNUAL=('cashAfterPpeIntangiblesAssets','cashAfterProductiveAssets','cashAfterPpeAssets','netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
 def digest(v):return hashlib.sha256(json.dumps(v,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 def finite(v):return isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
 def date(v):return dt.date.fromisoformat(v)

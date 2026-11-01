@@ -78,9 +78,10 @@ class NativeSeriesTests(unittest.TestCase):
   d['facts']['ifrs-full'][IFRS_TAGS['ppe']]['units']['EUR'][-1]['val']=-5;self.assertEqual(len(normalize(d,1,NOW)),5)
  def test_productive_assets_keeps_separate_metric(self):
   d=self.convert('us-gaap','USD','10-K',True);p=normalize(d,1,NOW);self.assertEqual(len(p),6);self.assertEqual(p[0]['metric'],'cashAfterProductiveAssets')
- def test_multiple_currencies_same_period_are_ambiguous(self):
+ def test_conflicting_multiple_currencies_same_period_remain_blocked(self):
   d=self.convert()
   for tag in d['facts']['ifrs-full'].values():tag['units']['USD']=copy.deepcopy(tag['units']['EUR'])
+  for v in d['facts']['ifrs-full']['Assets']['units']['USD']:v['val']*=2
   self.assertEqual(normalize(d,1,NOW),[])
  def test_cached_ifrs_and_productive_scope_reaches_history(self):
   from roic_risk_annual import identity

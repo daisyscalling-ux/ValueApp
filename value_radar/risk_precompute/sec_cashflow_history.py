@@ -7,9 +7,10 @@ from roic_risk_annual import identity,safe_error
 from yahoo_sector import recent,save
 from market_priority import fetch_priority
 from sec_issuer_names import same_issuer,POLICY
+from sec_source_evidence import build as source_evidence
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v5-filing-selection'
+COLLECTION_POLICY=POLICY+'/cash-context-v6-field-evidence'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -144,7 +145,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   if r.get('cik') and str(r['cik']).lstrip('0')!=str(cik).lstrip('0'):counts['cikConflict']+=1;continue
   old=state['stocks'].get(s,{})
   att=state['attempts'].get(s,{})
-  retry_partial=att.get('policy')!=COLLECTION_POLICY and att.get('normalization',{}).get('currency_conflict_periods',0)>0
+  retry_partial=att.get('policy')!=COLLECTION_POLICY and any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields'))
   if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
@@ -160,6 +161,9 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    if not same_issuer(data.get('entityName'),r.get('name_full') or r.get('name')):raise ValueError('issuer_name_mismatch')
    audit=Counter();periods=normalize(data,cik,now,audit)
    att['normalization']=dict(audit)
+   if not periods or audit.get('group_missing_same_filing_fields') or audit.get('currency_conflict_periods'):
+    att['sourceEvidence']=source_evidence(data,cik,now,VARIANTS,periods)
+    counts['fieldEvidenceCollected']+=1
    counts['currencyConcordantPeriods']+=audit['currency_concordant_periods']
    counts['currencyConflictPeriods']+=audit['currency_conflict_periods']
    if not periods:

@@ -61,8 +61,7 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_fed_capital_requirements.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_history.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_history_backfill.py'
-      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec_cashflow_history.py'
-      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec_issuer_names.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec*.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs

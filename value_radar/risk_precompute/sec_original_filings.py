@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 X='http://www.xbrl.org/2003/instance'
 IX='http://www.xbrl.org/2013/inlineXBRL'
+MAX_DOCUMENT_BYTES=40_000_000
 PDD_CONCEPT='PaymentsToAcquirePropertyEquipmentAndSoftwareAndIntangibleAssets'
 STANDARD={
     'us-gaap':{'Assets','NetCashProvidedByUsedInOperatingActivities','NetCashProvidedByUsedInOperatingActivitiesContinuingOperations','CashProvidedByUsedInOperatingActivitiesDiscontinuedOperations','PaymentsToAcquirePropertyPlantAndEquipment','PaymentsToAcquireProductiveAssets'},
@@ -33,15 +34,52 @@ def transform(qname,namespaces):
     return name
 
 
+def selected_tree(raw):
+    """Discard prose while parsing; retain contexts, units and selected fact subtrees."""
+    root=ET.Element('selected'); namespaces={}; stack=[]; capture=None
+    names=set().union(*STANDARD.values()) | {PDD_CONCEPT,'EntityCentralIndexKey','DocumentType','DocumentPeriodEndDate'}
+    for event,item in ET.iterparse(io.BytesIO(raw),events=['start-ns','start','end']):
+        if event=='start-ns':
+            prefix,uri=item
+            if prefix in namespaces and namespaces[prefix]!=uri:raise ValueError('ambiguous_namespace')
+            namespaces[prefix]=uri
+        elif event=='start':
+            stack.append(item)
+            if capture is None and (item.tag in ('{'+X+'}context','{'+X+'}unit') or
+                (item.tag in ('{'+IX+'}nonNumeric','{'+IX+'}nonFraction') and item.get('name','').split(':')[-1] in names)):
+                capture=item
+        else:
+            if item is capture:
+                root.append(item); capture=None
+                if len(stack)>1:stack[-2].remove(item)
+            elif capture is None:
+                if len(stack)>1:stack[-2].remove(item)
+                item.clear()
+            stack.pop()
+    return root,namespaces
+
+
+def document_date(text,fmt):
+    months='January February March April May June July August September October November December'.split()
+    if fmt in ('date-monthname-day-year-en','datemonthdayyearen'):
+        m=re.fullmatch(r'([A-Za-z]+) (\d{1,2}),? (\d{4})',text)
+        if not m:return None
+        month,day,year=m.groups()
+    elif fmt=='date-day-monthname-year-en':
+        m=re.fullmatch(r'(\d{1,2}) ([A-Za-z]+) (\d{4})',text)
+        if not m:return None
+        day,month,year=m.groups()
+    else:return None
+    if month not in months:return None
+    try:return dt.date(int(year),months.index(month)+1,int(day)).isoformat()
+    except ValueError:return None
+
+
 def parse(raw,cik,filing,source_url):
-    if len(raw)>15_000_000:raise ValueError('filing_too_large')
+    if len(raw)>MAX_DOCUMENT_BYTES:raise ValueError('filing_too_large')
     if b'\x00' in raw:raise ValueError('unsupported_xml_encoding')
     if re.search(br'<!\s*(DOCTYPE|ENTITY)',raw,re.I):raise ValueError('xml_declaration_blocked')
-    namespaces={}
-    for _,(prefix,uri) in ET.iterparse(io.BytesIO(raw),events=['start-ns']):
-        if prefix in namespaces and namespaces[prefix]!=uri:raise ValueError('ambiguous_namespace')
-        namespaces[prefix]=uri
-    root=ET.fromstring(raw)
+    root,namespaces=selected_tree(raw)
     contexts={}
     for c in root.iter('{'+X+'}context'):
         # Segment/scenario can change entity, business, share class or consolidation scope.
@@ -75,12 +113,8 @@ def parse(raw,cik,filing,source_url):
         if name not in ('EntityCentralIndexKey','DocumentType','DocumentPeriodEndDate'):continue
         text=' '.join(''.join(e.itertext()).split())
         if name=='DocumentPeriodEndDate' and e.get('format'):
-            if transform(e.get('format'),namespaces)!='date-monthname-day-year-en':continue
-            m=re.fullmatch(r'([A-Za-z]+) (\d{1,2}),? (\d{4})',text)
-            months='January February March April May June July August September October November December'.split()
-            if not m or m[1] not in months:continue
-            try:text=dt.date(int(m[3]),months.index(m[1])+1,int(m[2])).isoformat()
-            except ValueError:continue
+            text=document_date(text,transform(e.get('format'),namespaces))
+            if text is None:continue
         meta.setdefault(name,set()).add(text)
     if meta.get('EntityCentralIndexKey')!={str(cik).zfill(10)} and meta.get('EntityCentralIndexKey')!={str(int(cik))}:raise ValueError('filing_cik_mismatch')
     if meta.get('DocumentType')!={filing['form']} or meta.get('DocumentPeriodEndDate')!={filing['reportDate']}:raise ValueError('filing_metadata_mismatch')

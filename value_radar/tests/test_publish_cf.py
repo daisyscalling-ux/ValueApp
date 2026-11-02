@@ -45,6 +45,26 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(p.publish(self.repo, self.source, self.now), 'published')
         self.assertEqual(p.publish(self.repo, self.source, self.now), 'unchanged')
 
+    def test_history_recovers_before_partial_snapshot_and_publish_guards_loss(self):
+        from export_continuity import snapshots, baseline
+        full={'stand':'2026-10-17 10:00 UTC','kandidaten':[
+            {'ticker':'X'+str(i),'listing_symbol':'NYSE:X'+str(i),'isin':'US0000000001','currency':'USD'} for i in range(200)]}
+        full['anzahl']=200
+        self.source.write_text(json.dumps(full))
+        p.publish(self.repo,self.source,self.now)
+        partial={**full,'stand':'2026-10-17 11:00 UTC','anzahl':100,'kandidaten':full['kandidaten'][:100]}
+        self.source.write_text(json.dumps(partial))
+        with self.assertRaisesRegex(ValueError,'coverage regression'):
+            p.publish(self.repo,self.source,self.now)
+        # Reproduce the formerly allowed broken publication in local history.
+        target=self.repo/p.TARGET
+        target.write_text(json.dumps(partial))
+        p.git(self.repo,'add','.')
+        p.git(self.repo,'commit','-m','old partial export')
+        saved=baseline([r['ticker'] for r in full['kandidaten']],snapshots(target),self.now)
+        self.assertEqual(len(saved),200)
+        self.assertEqual(saved['X199']['export_observed_at'],full['stand'])
+
     def test_stale_and_empty_rejected(self):
         with self.assertRaises(ValueError):
             p.publish(self.repo, self.source, self.now+dt.timedelta(days=2))
@@ -100,4 +120,5 @@ class PublishTests(unittest.TestCase):
 
 
 if __name__=='__main__': unittest.main()
+
 

@@ -5,7 +5,7 @@ import re
 import time
 import urllib.request
 import urllib.error
-from sec_original_filings import parse,latest_annual
+from sec_original_filings import parse,latest_annual,MAX_DOCUMENT_BYTES
 
 
 def verified_original(period,cik):
@@ -66,7 +66,7 @@ def loader(user_agent,last_request,now=None,transport=None):
         if remaining<1:raise TimeoutError('original_budget_exhausted')
         url=f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{filing["accessionNumber"].replace("-","")}/{filing["primaryDocument"]}'
         distribution=url
-        try:raw=get(url,min(18,remaining),15_000_000)
+        try:raw=get(url,min(18,remaining),MAX_DOCUMENT_BYTES)
         except urllib.error.HTTPError as error:
             # No retry of a denied/rate-limited SEC request. An independent public copy
             # is considered only for Archives 403/server errors, never SEC 429.
@@ -74,7 +74,7 @@ def loader(user_agent,last_request,now=None,transport=None):
             remaining=budget-(time.monotonic()-started)
             if remaining<1:raise
             distribution=f'https://cdn.yahoofinance.com/prod/sec-filings/{int(cik):010d}/{filing["accessionNumber"].replace("-","")}/{filing["primaryDocument"]}'
-            raw=get(distribution,min(18,remaining),15_000_000)
+            raw=get(distribution,min(18,remaining),MAX_DOCUMENT_BYTES)
         result=parse(raw,cik,filing,url)
         result['originalFiling']['distributionUrl']=distribution
         return result

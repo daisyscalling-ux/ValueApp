@@ -10,6 +10,9 @@ on:
     paths:
       - '.github/workflows/precompute-3tage.yml'
       - 'value_radar/publish_cf.py'
+      - 'value_radar/export_cf.py'
+      - 'value_radar/export_continuity.py'
+      - 'value_radar/tests/test_export_continuity.py'
       - 'value_radar/tests/test_publish_cf.py'
   schedule:
     - cron: "17 1 * * *"    # daily
@@ -26,9 +29,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - working-directory: value_radar
+        run: python -m unittest discover -s tests -p 'test_*continuity.py' -v
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_publish_cf.py -v
   precompute:
@@ -42,6 +49,8 @@ jobs:
     timeout-minutes: 260
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -100,4 +109,5 @@ jobs:
           git -C publication config user.name "value-radar-bot"
           git -C publication config user.email "bot@value-radar"
           python value_radar/publish_cf.py publication value_radar/daten/cf_universum.json
+
 

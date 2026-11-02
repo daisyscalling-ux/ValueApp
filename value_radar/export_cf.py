@@ -36,6 +36,7 @@ AUSGABE = Path(os.getenv("EXPORT_PFAD", "daten/cf_universum.json"))
 from peer_metadata import FIELDS as PEER_FIELDS, coverage
 from listing_identity import listing_matches
 from listing_reference import apply_reference
+from export_continuity import snapshots, baseline, scan_order, combine
 
 EXPORT_FELDER = (
     "ticker", "name", "composite", "fair_value", "upside", "quantum",
@@ -92,6 +93,11 @@ def main() -> int:
         _melde("[export] ROIC NICHT AKTIV - Abbruch (kein Schluessel?).")
         return 1
 
+    now = dt.datetime.now(dt.timezone.utc)
+    saved = baseline(universum, snapshots(AUSGABE), now)
+    universum = scan_order(universum, saved)
+    _melde(f"[export] {len(saved)} datierte Bestandswerte; aelteste/fehlende Titel zuerst.")
+    attempted = 0
     ergebnisse = []
     identity_rejected = []
     uebersprungen = 0
@@ -101,6 +107,7 @@ def main() -> int:
             _melde(f"[export] Zeitbudget {BUDGET_MIN:.0f} min erreicht bei "
                    f"Titel {i}/{len(universum)} - speichere was da ist.")
             break
+        attempted += 1
         try:
             row = precompute.score_ticker(ticker, deep=True)
         except Exception:
@@ -114,7 +121,7 @@ def main() -> int:
         # Nur die Export-Felder behalten
         schlank = {k: row.get(k) for k in EXPORT_FELDER if k in row}
         # Falls score_ticker den Ticker anders benennt, sicherstellen
-        schlank["ticker"] = row.get("ticker") or ticker
+        schlank["ticker"] = ticker
         schlank = apply_reference(schlank)
         if schlank.get('listing_reference_status') in ('expired','input_mismatch'):
             identity_rejected.append({'ticker':ticker,'rejected_listing':schlank.get('listing_symbol'),'reason':schlank['listing_reference_status']})
@@ -125,11 +132,16 @@ def main() -> int:
             _melde(f"[export] {i + 1}/{len(universum)} gescannt, "
                    f"{len(ergebnisse)} mit Daten, {verbraucht:.0f} min.")
 
+    refreshed = len(ergebnisse)
+    observed = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ergebnisse = combine(universum, saved, ergebnisse, {r["ticker"] for r in identity_rejected}, observed)
+
     # JSON schreiben
     AUSGABE.parent.mkdir(parents=True, exist_ok=True)
     ausgabe = {
-        "stand": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "stand": observed,
         "anzahl": len(ergebnisse),
+        "scan": {"attempted": attempted, "refreshed": refreshed, "retained": len(ergebnisse)-refreshed, "pending": len(universum)-attempted, "complete": attempted == len(universum)},
         "universum_groesse": len(universum),
         "kandidaten": ergebnisse,
         "identity_rejected": identity_rejected,
@@ -146,4 +158,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

@@ -4,6 +4,7 @@ import json
 import pathlib
 import subprocess
 import sys
+from export_continuity import guard
 
 TARGET = 'value_radar/daten/cf_universum.json'
 
@@ -38,6 +39,7 @@ def publish(repo, source, now=None):
     if target.exists():
         old = json.loads(target.read_text(encoding='utf-8'))
         old_end = dt.datetime.strptime(old['stand'], '%Y-%m-%d %H:%M UTC').replace(tzinfo=dt.timezone.utc)
+        guard(old, data)
         if old_end > end:
             raise RuntimeError('A newer export is already published; refusing replacement')
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -61,4 +63,5 @@ def publish(repo, source, now=None):
 
 if __name__ == '__main__':
     print(publish(sys.argv[1], sys.argv[2]))
+
 

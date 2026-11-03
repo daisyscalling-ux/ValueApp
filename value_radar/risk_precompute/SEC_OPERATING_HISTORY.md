@@ -2,7 +2,7 @@
 
 Production integrity run41661945531 verified1331input/published listings with identical input/processed hashes. The following extension addresses missing capex without substituting zero or changing valuation/risk scores.
 
-Normalize annual operating cashflow / ending total assets independently for standard US-GAAP and IFRS concepts. Require matching accession, filed date, year end, annual form and currency; assets must be positive and instantaneous, operating duration330â€“400days. Retain signed negative cashflow. Detect conflicting duplicate facts and same-day revisions. Compare currency ratios only within matching filings; do not convert currency or merge reported amounts.
+Normalize annual operating cashflow / ending total assets independently for standard US-GAAP and IFRS concepts. Require matching accession, filed date, year end, annual form and currency; assets must be positive and instantaneous, operating duration330–400days. Retain signed negative cashflow. Detect conflicting duplicate facts and same-day revisions. Compare currency ratios only within matching filings; do not convert currency or merge reported amounts.
 
 Store separately in operatingStocks, retaining original filing metadata and signed continuing/discontinued OCF derivation evidence. Revalidate on cache read and append solely to financial-history backfill. Missing PPE keeps its existing diagnostic and never becomes a complete FCF model. Existing UI already labels operatingCashflowAssets. Policy v9 makes older successful caches eligible once for the new series under the existing300company/900second budget; unfinished candidates continue in later runs. No new API endpoint or secret.
 

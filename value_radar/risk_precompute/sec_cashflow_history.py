@@ -12,7 +12,7 @@ from sec_cashflow_components import compose,verified as verified_ocf
 from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v8-original-date-size'
+COLLECTION_POLICY=POLICY+'/cash-context-v9-independent-operating'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -155,7 +155,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   if r.get('cik') and str(r['cik']).lstrip('0')!=str(cik).lstrip('0'):counts['cikConflict']+=1;continue
   old=state['stocks'].get(s,{})
   att=state['attempts'].get(s,{})
-  retry_partial=att.get('policy')!=COLLECTION_POLICY and (att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
+  retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
   if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
@@ -169,6 +169,8 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    data=fetch(cik,min(12,remaining))
    att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
    if not same_issuer(data.get('entityName'),r.get('name_full') or r.get('name')):raise ValueError('issuer_name_mismatch')
+   from sec_operating_history import normalize as operating_normalize, select as operating_select
+   operating=operating_normalize(data,cik,now)
    audit=Counter();periods=normalize(data,cik,now,audit)
    if fetch_original and (not periods or audit.get('group_missing_same_filing_fields') or max(p['end'] for p in periods)<(now.date()-dt.timedelta(days=550)).isoformat()):
     remaining=budget-(time.monotonic()-started)
@@ -176,6 +178,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
      try:
       original=fetch_original(cik,min(30,remaining))
       if original:
+       operating=operating_select([*operating,*operating_normalize(original,cik,now)])
        additional=normalize(original,cik,now)
        from sec_original_supply import merge_periods
        periods,merge_stats=merge_periods(periods,additional)
@@ -184,6 +187,9 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
      except Exception as e:
       att['originalError']=str(e) if isinstance(e,ValueError) and str(e) in ('filing_too_large','xml_declaration_blocked','ambiguous_namespace','duplicate_context','duplicate_unit','filing_cik_mismatch','filing_metadata_mismatch','submissions_cik_mismatch','submissions_array_mismatch','response_too_large') else safe_error(e);counts['originalFetchFailed']+=1
       if att['originalError'] in ('http_403','http_429'):att['originalRateLimited']=True
+   if operating:
+    state.setdefault('operatingStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':operating,'pointInTimeUsable':False}
+    counts['operatingUpdated']+=1;counts['operatingPeriods']+=len(operating)
    att['normalization']=dict(audit)
    if not periods or audit.get('group_missing_same_filing_fields') or audit.get('currency_conflict_periods'):
     att['sourceEvidence']=source_evidence(data,cik,now,VARIANTS,periods)
@@ -233,6 +239,10 @@ def balances(cache,universe,now):
    basis={'period':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt'],'fields':{k:{'source':source,'end':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt']} for k in TAGS}}
    items.append({'profile':'corporate','sourceUrl':p.get('originalFiling',{}).get('sourceUrl',p['sourceUrl']),'metrics':{variant[2]:{'state':'available','value':value,'basis':basis}}})
   if items:out[s]={'inputIdentity':c['inputIdentity'],'balances':items}
+ from sec_operating_history import balances as operating_balances
+ for s,extra in operating_balances(cache,universe,now).items():
+  if s in out:out[s]['balances'].extend(extra['balances'])
+  else:out[s]=extra
  return out
 
 def main():

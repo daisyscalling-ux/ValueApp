@@ -76,7 +76,8 @@ class CurrencyConcordance(unittest.TestCase):
         backfill = {'schema': 1, 'method': 'roic-history-balances-v1', 'generatedAt': NOW.isoformat(),
                     'stocks': balances(state, universe, NOW)}
         archive, result = build(cov, universe, {}, NOW, backfill)
-        self.assertEqual(len(archive['series']), 2)
+        self.assertEqual(len(archive['series']), 4)
+        self.assertEqual({s['metric'] for s in archive['series'].values()}, {'cashAfterPpeAssets','operatingCashflowAssets'})
         self.assertEqual({s['currency'] for s in archive['series'].values()}, {'TWD', 'USD'})
         self.assertTrue(all(len(s['periods']) == 6 for s in archive['series'].values()))
         self.assertEqual(cov['stocks'][0]['domains']['balance']['metrics'], {})

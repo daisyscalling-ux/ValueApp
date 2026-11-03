@@ -49,7 +49,7 @@ class Tests(unittest.TestCase):
   a,r=build(self.c,self.u,{},NOW,bf);m=r['stocks'][0]['domains']['balance']['history']['metrics'][0]
   self.assertEqual(m['metric'],'cashAfterPpeAssets');self.assertEqual(m['periodCount'],6);self.assertEqual(m['state'],'comparable');self.assertEqual(m['firstObservedAt'],NOW.isoformat());self.assertFalse(a['pointInTimeUsable']);self.assertEqual(self.c['stocks'][0]['domains']['balance']['metrics'],{})
  def test_changed_identity_and_stale_cache_are_not_displayed(self):
-  s=self.collect();self.assertFalse(balances(s,self.u,NOW+dt.timedelta(days=15)));s['stocks']['NASDAQ:EX']['inputIdentity']['isin']='US5949181045';self.assertFalse(balances(s,self.u,NOW))
+  s=self.collect();self.assertFalse(balances(s,self.u,NOW+dt.timedelta(days=15)));s['stocks']['NASDAQ:EX']['inputIdentity']['isin']='US5949181045';s['operatingStocks']['NASDAQ:EX']['inputIdentity']['isin']='US5949181045';self.assertFalse(balances(s,self.u,NOW))
  def test_zero_ppe_is_valid_negative_cashflow_is_valid(self):
   self.data['facts']['us-gaap'][TAGS['ppe']]['units']['USD'][-1]['val']=0;self.data['facts']['us-gaap'][TAGS['ocf']]['units']['USD'][-1]['val']=-20;self.assertEqual(normalize(self.data,1,NOW)[-1]['value'],-.2)
 if __name__=='__main__':unittest.main()

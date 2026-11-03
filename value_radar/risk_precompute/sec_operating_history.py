@@ -83,7 +83,9 @@ def balances(cache,universe,now):
                 if not checked or isinstance(p['value'],bool) or not math.isfinite(p['value']) or abs(checked[0]['value']-p['value'])>1e-12 or checked[0]['sourceUrl']!=p['sourceUrl']:continue
                 if p.get('ocfDerivation') and not verified_ocf(p['ocfDerivation'],p['operatingCashflow']):continue
                 if p.get('originalFiling') and not verified_original(p,c['cik']):continue
-                label=('SEC original annual filing' if p.get('originalFiling') else 'SEC companyfacts')+' / '+ns+' / operating cashflow before investments'
+                # Transport is not a different accounting definition. Original-file
+                # provenance remains attached to each observation's source URL.
+                label='SEC annual filings / '+ns+' / operating cashflow before investments'
                 if p.get('ocfDerivation'):label+=' / OCF continuing + discontinued'
                 basis={'period':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt'],'fields':{k:{'source':label,'end':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt']} for k in ('assets','operatingCashflow')}}
                 entries.append({'profile':'corporate','sourceUrl':p.get('originalFiling',{}).get('sourceUrl',p['sourceUrl']),'metrics':{'operatingCashflowAssets':{'state':'available','value':p['value'],'basis':basis}}})

@@ -94,11 +94,12 @@ def build(coverage,universe,previous,now=None,backfill=None):
     else:view['state']='period_gap'
    view['sourceLabel']=' / '.join(sorted(set(observation['method'].get('sources',{}).values()))) or observation['method']['version']
    view['sourceRetrievedAt']=current['sourceRetrievedAt']
-   view['points']=[{'period':p,'value':periods[p]['revisions'][-1]['value']} for p in sorted(periods) if p<=period][-8:]
+   view['points']=[{'period':p,'value':periods[p]['revisions'][-1]['value'],'sourceUrl':periods[p]['revisions'][-1].get('evidence',{}).get('sourceUrl'),'sourceRetrievedAt':periods[p]['revisions'][-1]['sourceRetrievedAt']} for p in sorted(periods) if p<=period][-8:]
    views[key]=view
   selected={}
   for view in views.values():
-   metric=view['metric'];rank=(view['state']=='comparable',view['period'],view['periodCount'])
+   # A current observation must not be hidden by a comparable but older pair.
+   metric=view['metric'];rank=(view['period'],view['state']=='comparable',view['periodCount'])
    if metric not in selected or rank>selected[metric][0]:selected[metric]=(rank,view)
   summary['metrics']=[value[1] for value in selected.values()]
   counts['comparableMetrics']+=sum(v['state']=='comparable' for v in summary['metrics'])

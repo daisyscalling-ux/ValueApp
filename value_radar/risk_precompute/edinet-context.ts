@@ -21,7 +21,7 @@ export function withEdinetCashflow(base:Row,row:Row,archive:Row|undefined|null,i
  const verifiedFlow=(keys:string[])=>verified(keys)&&keys.every(k=>a.field_sources[k].start===a.start);
  const context=(value:number,extra:Row={})=>({state:'available',value,period:a.end,currency:'JPY',source:a.source,sourceUrl:a.source_url,docID:a.docID,retrievedAt:record.retrievedAt,publicationDate:a.published_at,...extra});
  const observations:Row={};
- if(verifiedFlow(['operating_cashflow'])&&finite(f.operating_cashflow/f.total_assets))observations.operatingCashflowAssets=context(f.operating_cashflow/f.total_assets);
+ if(verifiedFlow(['operating_cashflow'])&&finite(f.operating_cashflow/f.total_assets))observations.operatingCashflowAssets=context(f.operating_cashflow/f.total_assets,{basis:{period:a.end,currency:'JPY',retrievedAt:record.retrievedAt,fields:Object.fromEntries(['total_assets','operating_cashflow'].map(k=>[k,{...a.field_sources[k],retrievedAt:record.retrievedAt}]))}});
  if(verifiedFlow(['operating_cashflow','capex'])&&f.capex>=0&&finite((f.operating_cashflow-f.capex)/f.total_assets))observations.fcfAssets=context((f.operating_cashflow-f.capex)/f.total_assets);
  if(verified(['interest_bearing_debt'])&&f.interest_bearing_debt>=0&&a.debtScope&&finite((f.interest_bearing_debt-f.cash)/f.total_assets))observations.netDebtAssets=context((f.interest_bearing_debt-f.cash)/f.total_assets,{debtScope:a.debtScope});
  if(verifiedFlow(['operating_cashflow','noncurrent_asset_purchases'])&&f.noncurrent_asset_purchases>=0&&finite((f.operating_cashflow-f.noncurrent_asset_purchases)/f.total_assets))
@@ -63,18 +63,28 @@ export function withEdinetCashflow(base:Row,row:Row,archive:Row|undefined|null,i
   metricAlignment[key]={state:!observations[key]?'unavailable':blockers.length?'not_aligned':'aligned',requiredAnchors,reasons:blockers};
  }
  for(const key of ['fcfAssets','netDebtAssets'])if(observations[key]&&base.metrics?.[key]?.state==='available')differences[key]={existing:base.metrics[key].value,edinet:observations[key].value,delta:observations[key].value-base.metrics[key].value};
- const enriched={...base,edinetObservations:observations,
+ const enriched:Row={...base,edinetObservations:observations,
   edinetReconciliation:{state:aligned?'aligned':'not_aligned',reasons,existingPeriod:base.period,edinetPeriod:a.end,existingAssets:base.anchors?.totalAssets??null,edinetAssets:f.total_assets,existingCash:base.anchors?.cash??null,edinetCash:f.cash,metricDifferences:differences,metricAlignment,
    cashEvidence:{edinetFieldSource:a.field_sources.cash,definitionEquivalence:'not_established',note:'Amount comparison does not establish identical cash definitions. Cash differences remain unresolved for net debt; FCF does not use cash.'}},
   ...(observations.fcfAssets?{edinetCashflow:{...observations.fcfAssets,alignedWithBalance:cashflowAligned}}:{})};
  if(!cashflowAligned)return enriched;
+ // An independently verified OCF ratio remains useful when capex is absent.
+ // Promote only the complete ratio, never copy OCF into another statement.
+ if(metricAlignment.operatingCashflowAssets.state==='aligned'&&base.supplementalMetrics?.operatingCashflowAssets?.state!=='available'){
+  enriched.supplementalMetrics={...base.supplementalMetrics,operatingCashflowAssets:observations.operatingCashflowAssets};
+  enriched.supplementalSources={...base.supplementalSources,operatingCashflowAssets:observations.operatingCashflowAssets};
+  const outstanding=String(base.reason||'').split(',').filter(x=>x&&x!=='missing_operating_cashflow');
+  if(base.metrics?.fcfAssets?.state!=='available'&&!observations.fcfAssets&&!outstanding.includes('missing_capex')&&!outstanding.includes('fcf_not_verified'))outstanding.push('fcf_not_verified');
+  enriched.reason=outstanding.join(',')||base.reason;
+  enriched.supplementalResolution={...base.supplementalResolution,operatingCashflowAssets:'independent_original_ratio_same_period_currency_and_assets'};
+ }
  const metrics={...base.metrics},sources={...base.metricSources},filled:string[]=[];
  for(const key of ['fcfAssets','netDebtAssets'])if(metricAlignment[key].state==='aligned'&&metrics[key]?.state!=='available'){
   metrics[key]=observations[key];sources[key]=observations[key];filled.push(key);
  }
  if(!filled.length)return enriched;
  const removed=filled.flatMap(k=>k==='fcfAssets'?['missing_operating_cashflow','missing_capex']:['missing_total_debt']);
- const reason=String(base.reason||'').split(',').filter(x=>!removed.includes(x)).join(',');
+ const reason=String(enriched.reason||'').split(',').filter(x=>!removed.includes(x)).join(',');
  const complete=['fcfAssets','netDebtAssets'].every(k=>metrics[k]?.state==='available')&&!reason;
  for(const k of ['fcfAssets','netDebtAssets'])if(!sources[k]&&metrics[k]?.state==='available')sources[k]={source:base.source,period:base.period};
  return {...enriched,metrics,state:complete?'available':'partial',reason:reason||'independently_sourced_aligned_ratios',

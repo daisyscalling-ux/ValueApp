@@ -17,7 +17,7 @@ def build(coverage,now=None):
  if not rows:result['reason']='coverage_empty';return result
  keys=[r.get('symbol') for r in rows]
  if any(not isinstance(s,str) or not s for s in keys) or len(set(keys))!=len(keys):result['reason']='duplicate_or_invalid_listing';return result
- groups={};supplemental=Counter();profiles=Counter();peer_context=Counter();open_symbols=set()
+ groups={};supplemental=Counter();profiles=Counter();peer_context=Counter();reconciliation_metrics=Counter();open_symbols=set()
  def add(row,kind,reason,owner):
   symbol=row['symbol'];tier=market_tier(symbol);key=(tier,kind,reason)
   group=groups.setdefault(key,{'marketTier':tier,'kind':kind,'reason':reason,'owner':owner,'symbols':set()})
@@ -37,6 +37,9 @@ def build(coverage,now=None):
    for reason in sorted(set(str(b.get('reason') or 'balance_unavailable').split(','))):add(row,'financial_fields',reason,'fundamentals-daily / annual source review')
   for reason in sorted(set(b.get('sectorRequirements',[]))):add(row,'sector_framework',reason,'sector-specific original disclosures')
   rec=b.get('edinetReconciliation') or {}
+  for metric,alignment in (rec.get('metricAlignment') or {}).items():
+   if metric in ('operatingCashflowAssets','fcfAssets','netDebtAssets') and alignment.get('state') in ('aligned','not_aligned','unavailable'):
+    reconciliation_metrics[metric+':'+alignment['state']]+=1
   if rec.get('state')=='not_aligned':
    for reason in rec.get('reasons',[]):add(row,'source_reconciliation',reason,'compare statement definitions and source periods')
   for name,m in (b.get('supplementalMetrics') or {}).items():
@@ -49,7 +52,7 @@ def build(coverage,now=None):
  for key,g in sorted(groups.items()):result['batches'].append({**g,'symbols':sorted(g['symbols']),'listings':len(g['symbols'])})
  result.update(state='ready',summary={'listings':len(rows),'listingsWithOpenWork':len(open_symbols),'batches':len(groups),
   'mainMarketBatches':sum(x['marketTier']<=1 for x in result['batches']),
-  'profiles':dict(profiles),'peerContextCoverage':dict(peer_context),'supplementalObservations':dict(supplemental),
+  'profiles':dict(profiles),'peerContextCoverage':dict(peer_context),'supplementalObservations':dict(supplemental),'edinetMetricReconciliation':dict(reconciliation_metrics),
   'byKind':dict(Counter(g['kind'] for g in result['batches']))})
  result['progress']=progress(rows,result['batches'])
  return result

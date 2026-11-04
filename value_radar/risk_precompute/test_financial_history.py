@@ -1,6 +1,15 @@
 import copy,datetime as dt,unittest
 from financial_history import build
 class HistoryTests(unittest.TestCase):
+ def test_supplemental_original_ratio_preserves_own_source_in_history(self):
+  c=self.coverage(source='EDINET annual XBRL');b=c['stocks'][0]['domains']['balance']
+  m=b['metrics'].pop('netDebtAssets');m['sourceUrl']='https://disclosure2.edinet-fsa.go.jp/original'
+  b['supplementalMetrics']={'operatingCashflowAssets':m};b['sourceUrl']='https://www.roic.ai/'
+  a,r=self.run_case(c);series=next(iter(a['series'].values()))
+  self.assertEqual(series['metric'],'operatingCashflowAssets')
+  revision=series['periods']['2025-12-31']['revisions'][0]
+  self.assertEqual(revision['evidence']['sourceUrl'],m['sourceUrl'])
+  self.assertFalse(r['stocks'][0]['domains']['balance']['history']['pointInTimeUsable'])
  def setUp(self):
   self.now=dt.datetime(2026,10,31,tzinfo=dt.timezone.utc)
   self.u={'kandidaten':[{'listing_symbol':'NYSE:EX','ticker':'EX','isin':'US0378331005','currency':'USD','security_type':'common_stock'}]}

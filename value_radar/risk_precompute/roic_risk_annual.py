@@ -20,6 +20,35 @@ IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_cla
 def identity(row):return {k:row.get(k) for k in IDENTITY}
 def number(v):return v if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) else None
 
+def supplement_credit(annual,payload,balance_payload,now):
+ """Use a reported total, never infer zero or debt from leverage ratios."""
+ if number(annual['fields'].get('total_debt')) is not None:return annual
+ end=annual['end'];symbol=annual['symbol'];currency=annual['currency']
+ credit=records(payload,symbol,now).get(end,{})
+ balance=records(balance_payload,symbol,now).get(end,{})
+ evidence={'state':'unavailable','reason':'matching_reported_total_missing'}
+ annual['creditDebtCheck']=evidence
+ # ROIC documents the financial-period ID as the cross-endpoint reference.
+ if not balance.get('id') or credit.get('id')!=balance['id'] or credit.get('currency')!=currency:
+  evidence['reason']='period_record_or_currency_mismatch';return annual
+ total=number(credit.get('short_and_long_term_debt'))
+ if total is None or total<0:return annual
+ tolerance=max(1,abs(total)*.0001)
+ parts={}
+ for key in ('bs_st_borrow','bs_lt_borrow'):
+  a,b=number(balance.get(key)),number(credit.get(key))
+  if any(v is not None and (v<0 or v>total+tolerance) for v in (a,b)) or (a is not None and b is not None and abs(a-b)>tolerance):
+   evidence.update(state='conflict',reason='debt_component_conflict');return annual
+  parts[key]=a if a is not None else b
+ if all(v is not None for v in parts.values()) and abs(sum(parts.values())-total)>tolerance:
+  evidence.update(state='conflict',reason='debt_total_conflict');return annual
+ annual['fields']['total_debt']=total
+ annual['field_sources']['total_debt']={'source':annual['source'],'source_url':'https://www.roic.ai/api/docs/financial-ratios/credit',
+  'end':end,'currency':currency,'provider_field':'short_and_long_term_debt','period_record_id':balance['id'],
+  'derivation':'reported_credit_debt_total','checked_components':parts}
+ evidence.update(state='available',reason='reported_total_same_financial_record')
+ return annual
+
 def records(payload,symbol,now,max_age_days=550):
  data=payload.get('data') if isinstance(payload,dict) else None
  if not isinstance(data,list):raise ValueError('invalid_schema')
@@ -83,7 +112,7 @@ def safe_error(exc):
 def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
  now=now or dt.datetime.now(UTC);start=time.monotonic();state=state if state.get('schema')==1 else {'schema':1,'stocks':{},'attempts':{}}
  state.setdefault('stocks',{});state.setdefault('attempts',{});counts=Counter()
- active={};conflicts=set()
+ active={};conflicts=set();credit_disabled=None
  for r in universe.get('kandidaten',[]):
   s=r.get('listing_symbol')
   if not s:continue
@@ -115,7 +144,7 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
   policy=decision(row,balance,state['stocks'].get(s,{}),old,now)
   if not policy['due']:counts['cooldown']+=1;continue
   if time.monotonic()-start>=budget:counts['budget_reached']+=1;break
-  record={'normalizationVersion':'nonempty-annual-v1','at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
+  record={'normalizationVersion':'nonempty-annual-v1','creditVersion':'reported-debt-v1','at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
   try:
    payloads={}
    for kind,endpoint in [('balance','balance-sheet'),('cashflow','cash-flow'),('income','income-statement')]:
@@ -123,6 +152,19 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
     if remaining<1:raise ValueError('budget_exhausted')
     payloads[kind]=fetch(s,endpoint,min(12,remaining))
    annual=normalize(row,payloads,now)
+   if annual['fields'].get('total_debt') is None and balance.get('profile') not in ('bank','insurer','specialist_financial'):
+    remaining=budget-(time.monotonic()-start)
+    if credit_disabled or remaining<1:
+     annual['creditDebtCheck']={'state':'unavailable','reason':credit_disabled or 'budget_exhausted'}
+    else:
+     counts['credit_attempted']+=1
+     try:
+      annual=supplement_credit(annual,fetch(s,'ratios/credit',min(12,remaining)),payloads['balance'],now)
+      counts['credit_'+annual['creditDebtCheck']['state']]+=1
+     except Exception as exc:
+      error=safe_error(exc);record['creditError']=error
+      annual['creditDebtCheck']={'state':'unavailable','reason':error};counts['credit_'+error]+=1
+      if error in ('http_401','http_402','http_403','http_429'):credit_disabled=error
    state['stocks'][s]={'inputIdentity':identity(row),'retrievedAt':now.isoformat(),'annual':annual};counts['updated']+=1
    counts['skipped_empty_periods']+=len(annual.get('skippedEmptyPeriods',[]))
    counts['empty_statements' if all(v is None for v in annual['fields'].values()) else 'partial_statements' if any(v is None for v in annual['fields'].values()) else 'complete_statements']+=1
@@ -131,7 +173,7 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
    record['consecutiveFailures']=min(7,old.get('consecutiveFailures',0)+1)
   state['attempts'][s]=record;state['generatedAt']=now.isoformat();state['report']=dict(counts)
   if checkpoint:checkpoint(state)
-  if record.get('error') in ('http_401','http_402','http_403','http_429','budget_exhausted'):break
+  if record.get('error') in ('http_401','http_402','http_403','http_429','budget_exhausted') or record.get('creditError')=='http_429':break
  state['generatedAt']=now.isoformat();state['report']=dict(counts);return state
 
 def main():

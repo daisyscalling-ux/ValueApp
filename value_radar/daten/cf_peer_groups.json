@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-11-04T11:43:52.259546+00:00",
+  "generatedAt": "2026-11-04T15:46:54.373938+00:00",
   "inputSha256": "d94eb66cee50d13d6494a484080af12986ec0c4d66483d4afb7fd475d7465b2e",
   "summary": {
     "inputListings": 1330,
@@ -50759,7 +50759,7 @@
         "label": "Packaged Foods",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/MICC.AS/profile/",
-        "observedAt": "2026-11-03T15:21:44.895899+00:00",
+        "observedAt": "2026-11-04T15:45:36.611214+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -58185,7 +58185,7 @@
         "label": "Banks - Regional",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/ALSYDB.CO/profile/",
-        "observedAt": "2026-11-03T15:22:00.919929+00:00",
+        "observedAt": "2026-11-04T15:45:53.113359+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -59725,7 +59725,7 @@
         "label": "Insurance - Specialty",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/BEZ.L/profile/",
-        "observedAt": "2026-11-03T15:21:49.205900+00:00",
+        "observedAt": "2026-11-04T15:45:41.044960+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -61276,7 +61276,7 @@
         "label": "Aerospace & Defense",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/CSG.AS/profile/",
-        "observedAt": "2026-11-03T15:21:41.879390+00:00",
+        "observedAt": "2026-11-04T15:45:33.604699+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -66646,7 +66646,7 @@
         "label": "Insurance - Diversified",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/HBAN.SW/profile/",
-        "observedAt": "2026-11-03T15:21:53.796920+00:00",
+        "observedAt": "2026-11-04T15:45:45.812787+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -67602,7 +67602,7 @@
         "label": "Asset Management",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/SDR.L/profile/",
-        "observedAt": "2026-11-03T15:21:52.221426+00:00",
+        "observedAt": "2026-11-04T15:45:44.056447+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [

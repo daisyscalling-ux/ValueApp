@@ -129,4 +129,31 @@ test('flow inputs must cover the same verified annual duration',()=>{
   assert.equal(r.metrics.fcfAssets.state,'missing');
  }
 });
+test('original OCF fills supplemental metric while capex and primary FCF stay missing',()=>{
+ const a:any=archive();a.stocks[row.listing_symbol].annual.fields.capex=null;
+ const b:any=base();b.supplementalMetrics={operatingCashflowAssets:{state:'missing',value:null},cashAssets:{state:'available',value:.2}};
+ const old=JSON.stringify(b),r=withEdinetCashflow(b,row,a,true,now);
+ assert.equal(r.supplementalMetrics.operatingCashflowAssets.value,.1);
+ assert.equal(r.supplementalMetrics.operatingCashflowAssets.docID,'S100TEST');
+ assert.equal(r.supplementalSources.operatingCashflowAssets.period,b.period);
+ assert.equal(r.supplementalMetrics.cashAssets.value,.2);
+ assert.deepEqual(r.metrics,b.metrics);assert.equal(r.ratios,null);assert.equal(r.needsFinancialRefresh,true);
+ assert.equal(r.reason,'missing_capex');assert.equal(r.state,'partial');assert.equal(JSON.stringify(b),old);
+});
+test('OCF supplemental recovery never implies a cross-source free cashflow calculation',()=>{
+ const a:any=archive();a.stocks[row.listing_symbol].annual.fields.capex=null;
+ const b=base();b.reason='missing_operating_cashflow';
+ const r=withEdinetCashflow(b,row,a,true,now);
+ assert.equal(r.reason,'fcf_not_verified');assert.equal(r.metrics.fcfAssets.state,'missing');
+ assert.equal(r.needsFinancialRefresh,true);
+});
+test('supplemental original recovery respects anchors and never replaces an existing value',()=>{
+ for(const change of [{period:'2025-03-31'},{currency:'USD'},{anchors:{totalAssets:1,cash:1}}]){
+  const r=withEdinetCashflow({...base(),...change},row,archive(),true,now);
+  assert.equal(r.supplementalMetrics,undefined);
+ }
+ const b:any=base();b.supplementalMetrics={operatingCashflowAssets:{state:'available',value:.123,source:'Existing'}};
+ const r=withEdinetCashflow(b,row,archive(),true,now);
+ assert.deepEqual(r.supplementalMetrics,b.supplementalMetrics);
+});
 console.log(count+' EDINET integration checks passed');

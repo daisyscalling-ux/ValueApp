@@ -6,6 +6,13 @@ B={'state':'partial','period':'2026-06-30','currency':'USD','profile':'corporate
 def identity():return {k:ROW.get(k) for k in ('listing_symbol','ticker','isin','currency','security_type','share_class')}
 def attempt(days=1,**kw):return {'at':(NOW-dt.timedelta(days=days)).isoformat(),'inputIdentity':identity(),'coverageSignature':fingerprint(ROW,B),**kw}
 class Tests(unittest.TestCase):
+ def test_new_debt_endpoint_bypasses_gap_cooldown_once_not_access_errors(self):
+  b={**B,'reason':'missing_total_debt'};a=attempt(.1);a['coverageSignature']=fingerprint(ROW,b)
+  self.assertEqual(decision(ROW,b,{},a,NOW)['reason'],'new_reported_debt_endpoint')
+  a['creditVersion']='reported-debt-v1'
+  self.assertFalse(decision(ROW,b,{},a,NOW)['due'])
+  a.pop('creditVersion');a['error']='http_403'
+  self.assertFalse(decision(ROW,b,{},a,NOW)['due'])
  def test_new_and_new_period_immediate(self):
   self.assertTrue(decision(ROW,B,{}, {},NOW)['due'])
   self.assertTrue(decision(ROW,{**B,'period':'2026-09-30'}, {},attempt(.01),NOW)['due'])

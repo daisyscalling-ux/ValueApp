@@ -18,6 +18,14 @@ def verified_original(period,cik):
     mirror=f'https://cdn.yahoofinance.com/prod/sec-filings/{int(cik):010d}/{period["accession"].replace("-","")}/{filename}'
     if o.get('distributionUrl',o['sourceUrl']) not in (o['sourceUrl'],mirror):return False
     if not re.fullmatch('[a-f0-9]{64}',o.get('sha256','')):return False
+    for e in o.get('reportedTableRecoveries',[]):
+        if e.get('end')!=period.get('end') or period.get('concept')!='PaymentsToAcquirePropertyPlantAndEquipment' or 'cashPpe' not in period:continue
+        from math import isfinite
+        numbers=[e.get(k) for k in ('operatingCashflow','reportedFcf','cashPpe')]
+        if any(not isinstance(v,(int,float)) or isinstance(v,bool) or not isfinite(v) for v in numbers):return False
+        ocf,fcf,ppe=numbers
+        if e.get('method')!='explicit-annual-ppe-reconciliation-v1' or e.get('scale')!=1000000 or period.get('currency')!='USD' or ppe<0:return False
+        if period['cashPpe']!=ppe or abs(period['operatingCashflow']-ocf)>500000 or abs(ocf-ppe-fcf)>1:return False
     try:
         end=dt.date.fromisoformat(period['end']);report=dt.date.fromisoformat(o['reportDate']);filed=dt.date.fromisoformat(period['filed'])
     except (KeyError,ValueError,TypeError):return False

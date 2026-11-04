@@ -35,6 +35,8 @@ def decision(row,balance,record,attempt,now):
  preventive=balance.get('refreshDue') is True and balance.get('state') in ('available','context_only') and not used
  need=balance.get('state') in ('partial','missing') or not balance
  if not need and not used and not preventive:return {'due':False,'reason':'covered_by_other_source','coverageSignature':sig,'nextAttemptAt':None}
+ if need and 'missing_total_debt' in str(balance.get('reason','')).split(',') and attempt.get('creditVersion')!='reported-debt-v1' and not attempt.get('error'):
+  return {'due':True,'reason':'new_reported_debt_endpoint','coverageSignature':sig,'nextAttemptAt':now.isoformat()}
  if need and record.get('annual') and not any(v is not None for v in record['annual'].get('fields',{}).values()) and attempt.get('normalizationVersion')!='nonempty-annual-v1':
   return {'due':True,'reason':'repair_empty_legacy_archive','coverageSignature':sig,'nextAttemptAt':now.isoformat()}
  if preventive:

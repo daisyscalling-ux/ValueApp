@@ -12,7 +12,7 @@ from sec_cashflow_components import compose,verified as verified_ocf
 from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v9-independent-operating'
+COLLECTION_POLICY=POLICY+'/cash-context-v10-reported-ppe-table'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -235,6 +235,7 @@ def balances(cache,universe,now):
     from sec_original_supply import verified_original
     if not verified_original(p,c['cik']):continue
     source='SEC original annual filing / '+variant[0]+' / '+variant[1]['ppe']
+    if any(e.get('end')==p['end'] for e in p['originalFiling'].get('reportedTableRecoveries',[])) and p['concept']=='PaymentsToAcquirePropertyPlantAndEquipment':source='SEC original annual filing / us-gaap / reported PPE reconciliation table'
    if p.get('ocfDerivation'):source+=' / OCF continuing + discontinued'
    basis={'period':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt'],'fields':{k:{'source':source,'end':p['end'],'currency':p['currency'],'retrievedAt':c['retrievedAt']} for k in TAGS}}
    items.append({'profile':'corporate','sourceUrl':p.get('originalFiling',{}).get('sourceUrl',p['sourceUrl']),'metrics':{variant[2]:{'state':'available','value':value,'basis':basis}}})

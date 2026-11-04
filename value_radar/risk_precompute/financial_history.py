@@ -27,7 +27,7 @@ def observations(balance,now,annual_age_days=550,retrieval_days=7):
   if not currency or not recent(retrieved,now,retrieval_days):continue
   if not all(f.get('source') and f.get('end')==basis['period'] and f.get('currency')==currency and recent(f.get('retrievedAt'),now,retrieval_days) for f in fields.values()):continue
   source={k:f['source'] for k,f in sorted(fields.items())}
-  result.append({'metric':metric,'frequency':'annual','period':basis['period'],'currency':currency,'value':m['value'],'method':{'profile':balance.get('profile'),'sources':source,'version':'annual-assets-ratios-v1'},'sourceRetrievedAt':min([retrieved,*[f['retrievedAt'] for f in fields.values()]],key=stamp),'evidence':{'fields':source,'sourceUrl':balance.get('sourceUrl')}})
+  result.append({'metric':metric,'frequency':'annual','period':basis['period'],'currency':currency,'value':m['value'],'method':{'profile':balance.get('profile'),'sources':source,'version':'annual-assets-ratios-v1'},'sourceRetrievedAt':min([retrieved,*[f['retrievedAt'] for f in fields.values()]],key=stamp),'evidence':{'fields':source,'sourceUrl':m.get('sourceUrl') or balance.get('sourceUrl')}})
  c=balance.get('bankCapital') or {}
  if c.get('state')=='available' and period_recent(c.get('period'),now,180):
   for key,m in c.get('metrics',{}).items():

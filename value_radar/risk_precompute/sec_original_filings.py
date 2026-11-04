@@ -145,7 +145,15 @@ def parse(raw,cik,filing,source_url):
         gaap=facts.get('us-gaap',{})
         facts['pdd-reviewed']={k:gaap[k] for k in ('Assets','NetCashProvidedByUsedInOperatingActivities') if k in gaap}
         facts['pdd-reviewed'][PDD_CONCEPT]={'units':pdd_units}
-    return {'cik':int(cik),'facts':facts,'originalFiling':{'method':'annual-inline-xbrl-v1','sourceUrl':source_url,'sha256':hashlib.sha256(raw).hexdigest(),'accession':filing['accessionNumber'],'reportDate':filing['reportDate'],'form':filing['form'],'filed':filing['filingDate']}}
+    from sec_reported_ppe import recover
+    recovered=[]
+    if facts.get('us-gaap') and not any(f.get('end')==filing['reportDate'] for f in facts['us-gaap'].get('PaymentsToAcquirePropertyPlantAndEquipment',{}).get('units',{}).get('USD',[])):
+        for f in recover(raw,facts):
+            units=facts['us-gaap'].setdefault('PaymentsToAcquirePropertyPlantAndEquipment',{'units':{}})['units'].setdefault('USD',[])
+            # Preserve tagged facts even if an untagged table disagrees.
+            if any(old.get('end')==f['end'] for old in units):continue
+            units.append(f);recovered.append({'end':f['end'],**f['reportedTableEvidence']})
+    return {'cik':int(cik),'facts':facts,'originalFiling':{'method':'annual-inline-xbrl-v1','sourceUrl':source_url,'sha256':hashlib.sha256(raw).hexdigest(),'accession':filing['accessionNumber'],'reportDate':filing['reportDate'],'form':filing['form'],'filed':filing['filingDate'],**({'reportedTableRecoveries':recovered} if recovered else {})}}
 
 
 def latest_annual(submissions,cik,now):

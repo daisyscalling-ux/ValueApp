@@ -6,6 +6,13 @@ def coverage(rows):return {'generatedAt':NOW.isoformat(),'stocks':rows}
 def row(symbol='NYSE:A',state='partial'):
  return {'symbol':symbol,'domains':{'quote':{'state':'available'},'price':{'state':'available'},'market':{'state':'available'},'identity':{'state':'available'},'historical':{'state':'available'},'sector':{'state':'available'},'balance':{'profile':'corporate','state':state,'reason':'missing_capex','sectorRequirements':[]}}}
 class Workplan(unittest.TestCase):
+ def test_independent_cashflow_alignment_does_not_close_cash_review(self):
+  a=row('TSE:7974',state='available');b=a['domains']['balance']
+  b['edinetReconciliation']={'state':'not_aligned','reasons':['cash_mismatch'],'metricAlignment':{'fcfAssets':{'state':'aligned'},'netDebtAssets':{'state':'not_aligned'}}}
+  r=build(coverage([a]),NOW)
+  self.assertEqual(r['summary']['edinetMetricReconciliation'],{'fcfAssets:aligned':1,'netDebtAssets:not_aligned':1})
+  self.assertEqual(r['summary']['listingsWithOpenWork'],1)
+  self.assertEqual(r['batches'][0]['reason'],'cash_mismatch')
  def test_groups_not_individual_jobs(self):
   r=build(coverage([row(),row('NYSE:B')]),NOW);self.assertEqual(len(r['batches']),1);self.assertEqual(r['batches'][0]['listings'],2)
  def test_sector_pending_survives_context_only(self):

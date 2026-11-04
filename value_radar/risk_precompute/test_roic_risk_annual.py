@@ -2,7 +2,7 @@ import copy
 import datetime as dt
 import unittest
 import urllib.error
-from roic_risk_annual import identity,normalize,run,safe_error
+from roic_risk_annual import identity,normalize,run,safe_error,supplement_credit
 
 NOW=dt.datetime(2026,10,24,12,tzinfo=dt.timezone.utc)
 ROW={'listing_symbol':'NASDAQ:MSFT','ticker':'MSFT','isin':'US5949181045','currency':'USD'}
@@ -14,6 +14,69 @@ def payloads():
 def coverage(now=NOW):return {'generatedAt':now.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':{'state':'partial'}}}]}
 def fetch(symbol,endpoint,timeout):return payloads()[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
 class Tests(unittest.TestCase):
+ def credit_inputs(self,total=30):
+  p=payloads();b=p['balance']['data'][0];b['id']='fnd_verified';b['bs_st_borrow']=None
+  c={'data':[{**b,'short_and_long_term_debt':total}]}
+  return p,c
+ def test_credit_total_fills_missing_maturity_with_provenance(self):
+  p,c=self.credit_inputs();a=supplement_credit(normalize(ROW,p,NOW),c,p['balance'],NOW)
+  self.assertEqual(a['fields']['total_debt'],30)
+  self.assertEqual(a['field_sources']['total_debt']['period_record_id'],'fnd_verified')
+  self.assertEqual(a['creditDebtCheck']['state'],'available')
+ def test_credit_explicit_zero_never_inferred_from_null(self):
+  for total,expected in [(0,0),(None,None),(False,None),('0',None),(-1,None),(float('nan'),None)]:
+   p,c=self.credit_inputs(total);p['balance']['data'][0]['bs_lt_borrow']=None;c['data'][0]['bs_lt_borrow']=None
+   a=supplement_credit(normalize(ROW,p,NOW),c,p['balance'],NOW);self.assertEqual(a['fields']['total_debt'],expected)
+ def test_credit_identity_period_currency_and_conversion_must_match(self):
+  for change in [{'id':'other'},{'id':None},{'symbol':'NYSE:OTHER'},{'currency':'EUR'},{'period_end_date':'2025-06-30'},{'period_type':'ttm'},{'fx_applied':True}]:
+   p,c=self.credit_inputs();c['data'][0].update(change)
+   self.assertIsNone(supplement_credit(normalize(ROW,p,NOW),c,p['balance'],NOW)['fields']['total_debt'])
+ def test_credit_conflicts_and_partial_debt_above_total_are_rejected(self):
+  for change in [{'bs_lt_borrow':33},{'short_and_long_term_debt':25},{'short_and_long_term_debt':40,'bs_st_borrow':2},{'bs_st_borrow':-1}]:
+   p,c=self.credit_inputs();c['data'][0].update(change)
+   a=supplement_credit(normalize(ROW,p,NOW),c,p['balance'],NOW)
+   self.assertIsNone(a['fields']['total_debt']);self.assertEqual(a['creditDebtCheck']['state'],'conflict')
+ def test_credit_never_overwrites_complete_balance_debt(self):
+  p=payloads();a=normalize(ROW,p,NOW);before=copy.deepcopy(a)
+  self.assertEqual(supplement_credit(a,{},p['balance'],NOW),before)
+ def test_optional_credit_timeout_preserves_new_statement_and_redacts(self):
+  p,c=self.credit_inputs()
+  def f(symbol,endpoint,timeout):
+   if endpoint=='ratios/credit':raise TimeoutError('secret-key')
+   return p[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
+  r=run({'kandidaten':[ROW]},coverage(),{},f,NOW)
+  self.assertEqual(r['report']['updated'],1)
+  self.assertEqual(r['stocks'][ROW['listing_symbol']]['annual']['fields']['total_assets'],100)
+  self.assertEqual(r['attempts'][ROW['listing_symbol']]['creditError'],'provider_unavailable')
+  self.assertNotIn('secret-key',str(r))
+ def test_optional_credit_retrieved_once_for_missing_debt_only(self):
+  p,c=self.credit_inputs();calls=[]
+  def f(symbol,endpoint,timeout):
+   calls.append(endpoint)
+   return c if endpoint=='ratios/credit' else p[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
+  r=run({'kandidaten':[ROW]},coverage(),{},f,NOW)
+  self.assertEqual(calls.count('ratios/credit'),1);self.assertEqual(r['report']['credit_available'],1)
+  self.assertEqual(r['stocks'][ROW['listing_symbol']]['annual']['fields']['total_debt'],30)
+ def test_optional_credit_rate_limit_stops_after_preserving_statement(self):
+  p,c=self.credit_inputs()
+  def f(symbol,endpoint,timeout):
+   if endpoint=='ratios/credit':raise urllib.error.HTTPError('redacted',429,'limited',None,None)
+   return p[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
+  r=run({'kandidaten':[ROW]},coverage(),{},f,NOW)
+  self.assertEqual(r['report']['credit_http_429'],1);self.assertEqual(r['report']['updated'],1)
+ def test_optional_credit_access_error_not_repeated_for_every_company(self):
+  other={**ROW,'listing_symbol':'NYSE:TEST'};calls=[]
+  def f(symbol,endpoint,timeout):
+   calls.append((symbol,endpoint))
+   if endpoint=='ratios/credit':raise urllib.error.HTTPError('redacted',402,'subscription',None,None)
+   p,_=self.credit_inputs()
+   for table in p.values():table['data'][0]['symbol']=symbol
+   return p[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
+  r=run({'kandidaten':[ROW,other]},coverage(),{},f,NOW)
+  self.assertEqual(r['report']['updated'],2)
+  self.assertEqual(sum(endpoint=='ratios/credit' for _,endpoint in calls),1)
+  self.assertTrue(all(v['annual']['fields']['total_assets']==100 for v in r['stocks'].values()))
+
  def test_migration_of_cached_empty_record_runs_despite_yesterdays_success(self):
   s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW)
   s['stocks'][ROW['listing_symbol']]['annual']['fields']={k:None for k in s['stocks'][ROW['listing_symbol']]['annual']['fields']}

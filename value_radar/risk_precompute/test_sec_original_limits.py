@@ -8,6 +8,24 @@ from test_sec_currency_concordance import coverage
 
 
 class OriginalLimits(unittest.TestCase):
+    def test_month_capitalization_preserves_strict_date_validation(self):
+        months='January February March April May June July August September October November December'.split()
+        for i,month in enumerate(months,1):
+            for spelling in (month.upper(),month.lower(),month.swapcase()):
+                self.assertEqual(document_date(spelling+' 15, 2025','date-monthname-day-year-en'),f'2025-{i:02d}-15')
+                self.assertEqual(document_date('15 '+spelling+' 2025','date-day-monthname-year-en'),f'2025-{i:02d}-15')
+        self.assertIsNone(document_date('FEBRUARY 30, 2025','date-monthname-day-year-en'))
+        self.assertIsNone(document_date('DEC 31, 2025','date-monthname-day-year-en'))
+        self.assertIsNone(document_date('DECEMBER 31, 2025','unknown-transform'))
+
+    def test_uppercase_metadata_passes_only_for_matching_filing_period(self):
+        meta=dict(accessionNumber='0000002969-25-000055',filingDate='2025-11-20',form='10-K',reportDate='2025-09-30')
+        raw=(FIX/'apd-2025-selected.xhtml').read_bytes()
+        upper=raw.replace(b'September',b'SEPTEMBER')
+        self.assertNotEqual(raw,upper)
+        self.assertEqual(parse(raw,2969,meta,'unused')['facts'],parse(upper,2969,meta,'unused')['facts'])
+        with self.assertRaisesRegex(ValueError,'filing_metadata_mismatch'):
+            parse(upper,2969,{**meta,'reportDate':'2025-10-30'},'unused')
     def test_actual_apd_novartis_selected_facts(self):
         from sec_cashflow_history import normalize
         for name,cik,acc,filed,form,end in (

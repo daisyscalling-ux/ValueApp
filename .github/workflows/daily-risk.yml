@@ -243,6 +243,7 @@ jobs:
           python value_radar/risk_precompute/risk_workplan.py
           python value_radar/risk_precompute/risk_app_export.py
           python value_radar/risk_precompute/run_integrity.py seal value_radar/daten /tmp/risk-input.json
+          python value_radar/risk_precompute/risk_evidence.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -263,6 +264,10 @@ jobs:
             value_radar/daten/cf_edinet_cashflow.json
             value_radar/daten/cf_financial_supply_plan.json
             value_radar/daten/cf_risk_coverage_changes.json
+            value_radar/daten/cf_risk_event_review.json
+            value_radar/daten/cf_sector_review_packets.json
+            value_radar/daten/cf_risk_observation_status.json
+            value_radar/daten/risk_observations/
             value_radar/daten/cf_risk_workplan.json
             value_radar/daten/cf_sec_cashflow_history.json
             value_radar/daten/cf_roic_history.json
@@ -283,7 +288,8 @@ jobs:
           git config user.email 'bot@value-radar'
           git add value_radar/daten/cf_risk.json
           if test -s value_radar/daten/cf_risk_app_manifest.json; then git add value_radar/daten/cf_risk_app_manifest.json value_radar/daten/risk_app; fi
-          for file in cf_risk_run_integrity.json cf_sec_cashflow_history.json cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
+          if test -d value_radar/daten/risk_observations; then git add value_radar/daten/risk_observations; fi
+          for file in cf_risk_event_review.json cf_sector_review_packets.json cf_risk_observation_status.json cf_risk_run_integrity.json cf_sec_cashflow_history.json cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

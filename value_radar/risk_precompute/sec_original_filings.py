@@ -82,6 +82,10 @@ def parse(raw,cik,filing,source_url):
     if b'\x00' in raw:raise ValueError('unsupported_xml_encoding')
     if re.search(br'<!\s*(DOCTYPE|ENTITY)',raw,re.I):raise ValueError('xml_declaration_blocked')
     root,namespaces=selected_tree(raw)
+    return parse_selected(raw,cik,filing,source_url,root,namespaces)
+
+
+def parse_selected(raw,cik,filing,source_url,root,namespaces):
     contexts={}
     for c in root.iter('{'+X+'}context'):
         # Segment/scenario can change entity, business, share class or consolidation scope.

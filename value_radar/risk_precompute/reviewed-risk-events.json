@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "policy": "Explicit source review; no automatic score contribution. Indexed official text is identified as such.",
+  "decisions": [
+    {
+      "candidateId": "d4570fa9525eeb3c4ce3d893bb7d92403b872f9d8232b5763d2b7f2ba37f177d",
+      "symbol": "XETR:RHM",
+      "inputFingerprint": "4b567391c237834c9a68972194a129177307b0e263a4b722ee50f017f021aea0",
+      "state": "confirmed_event",
+      "reviewedAt": "2026-11-05T19:36:27+00:00",
+      "expiresAt": "2026-11-12T19:36:27+00:00",
+      "reviewer": "Codex source review, step52",
+      "sourceType": "issuer_primary",
+      "sourceAccess": "indexed_official_release",
+      "sourceUrl": "https://www.rheinmetall.com/en/media/news-watch/news/2026/11/2026-11-05-rheinmetall-news-quarterly-statement-q3",
+      "sourceLocator": "Outlook: Annual guidance adjusted",
+      "eventDate": "2026-11-05",
+      "rationale": "Rheinmetall nennt Projektverschiebungen und senkt die Umsatzprognose 2026 von 13,7 bis 14,2 auf rund 13,2 Mrd. EUR; operative Margenprognose von rund 19 auf 18,5 Prozent. Bestaetigt ist die Prognoseaenderung, nicht ein bestimmter kuenftiger Kursverlust.",
+      "counterContext": "Die gleiche Meldung berichtet Wachstum von Umsatz und operativem Ergebnis sowie starke Nachfrage. Zeitliche Projektverschiebungen sind nicht gleichbedeutend mit dauerhaft weggefallenen Auftraegen."
+    },
+    {
+      "candidateId": "69d0abc00991873ca080916fcae6e85d26940bc433eef7f6e44a6d328af18f50",
+      "symbol": "NYSE:JNJ",
+      "inputFingerprint": "8f31cf1f52509183ec63a661c45b7d386056fd7f774b25ed500e8207a130059b",
+      "state": "not_subject_of_tagged_event",
+      "reviewedAt": "2026-11-05T19:36:27+00:00",
+      "expiresAt": "2026-11-12T19:36:27+00:00",
+      "reviewer": "Codex headline attribution review, step52",
+      "sourceUrl": "https://www.reuters.com/business/healthcare-pharmaceuticals/smithnephew-cuts-outlook-confirms-failed-merger-talks-with-jjs-orthopaedics-unit-2026-11-04/",
+      "sourceAccess": "provider_headline_only",
+      "rationale": "Die vorliegende Ueberschrift ordnet cuts outlook Smith+Nephew zu. J&J wird im Zusammenhang mit Gespraechen genannt. Kein Nachweis einer J&J-Prognosesenkung; Artikelvolltext nicht abgerufen. Andere moegliche Auswirkungen bleiben ungeprueft."
+    }
+  ]
+}

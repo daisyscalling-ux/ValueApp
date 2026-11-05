@@ -15,6 +15,7 @@ from company_news import PATTERNS,stamp
 from news_identity import prepare_universe,identity_fingerprint
 from market_priority import market_tier
 from yahoo_sector import load,save,recent
+from risk_review import review_news,bank_credit_comparison
 
 
 def encoded(value):return json.dumps(value,sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode('utf-8')
@@ -139,7 +140,9 @@ def main():
     universe=load(folder/'cf_universum.json',{});coverage=load(folder/'cf_risk_coverage.json',{})
     if not recent(coverage.get('generatedAt'),now,1.5):raise ValueError('coverage_stale')
     news=news_review(universe,coverage,load(folder/'cf_company_news.json',{}),now)
+    news=review_news(news,universe,load(Path(__file__).with_name('reviewed-risk-events.json'),{}),now)
     sector=sector_packets(coverage,now)
+    sector['bankCreditComparison']=bank_credit_comparison(coverage,now)
     save(folder/'cf_risk_event_review.json',news);save(folder/'cf_sector_review_packets.json',sector)
     report=checkpoint(folder,now,os.getenv('GITHUB_SHA','local-unversioned'))
     save(folder/'cf_risk_observation_status.json',report)

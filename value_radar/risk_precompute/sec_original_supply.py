@@ -18,6 +18,15 @@ def verified_original(period,cik):
     mirror=f'https://cdn.yahoofinance.com/prod/sec-filings/{int(cik):010d}/{period["accession"].replace("-","")}/{filename}'
     if o.get('distributionUrl',o['sourceUrl']) not in (o['sourceUrl'],mirror):return False
     if not re.fullmatch('[a-f0-9]{64}',o.get('sha256','')):return False
+    linked=o.get('linkedAnnualDocument')
+    if linked is not None:
+        if not isinstance(linked,dict) or linked.get('method')!='explicit-annual-link-v1':return False
+        name=linked.get('filename','')
+        if not re.fullmatch(r'[A-Za-z0-9_.-]+\.html?',name) or name==filename:return False
+        address=prefix+name
+        copy_url=f'https://cdn.yahoofinance.com/prod/sec-filings/{int(cik):010d}/{period["accession"].replace("-","")}/{name}'
+        if linked.get('sourceUrl')!=address or linked.get('distributionUrl',address) not in (address,copy_url):return False
+        if not re.fullmatch('[a-f0-9]{64}',linked.get('sha256','')):return False
     for e in o.get('reportedTableRecoveries',[]):
         if e.get('end')!=period.get('end') or period.get('concept')!='PaymentsToAcquirePropertyPlantAndEquipment' or 'cashPpe' not in period:continue
         from math import isfinite
@@ -73,17 +82,28 @@ def loader(user_agent,last_request,now=None,transport=None):
         remaining=budget-(time.monotonic()-started)
         if remaining<1:raise TimeoutError('original_budget_exhausted')
         url=f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{filing["accessionNumber"].replace("-","")}/{filing["primaryDocument"]}'
-        distribution=url
-        try:raw=get(url,min(18,remaining),MAX_DOCUMENT_BYTES)
-        except urllib.error.HTTPError as error:
-            # No retry of a denied/rate-limited SEC request. An independent public copy
-            # is considered only for Archives 403/server errors, never SEC 429.
-            if error.code!=403 and not 500<=error.code<=599:raise
+        def document(address,filename):
             remaining=budget-(time.monotonic()-started)
-            if remaining<1:raise
-            distribution=f'https://cdn.yahoofinance.com/prod/sec-filings/{int(cik):010d}/{filing["accessionNumber"].replace("-","")}/{filing["primaryDocument"]}'
-            raw=get(distribution,min(18,remaining),MAX_DOCUMENT_BYTES)
+            if remaining<1:raise TimeoutError('original_budget_exhausted')
+            distribution=address
+            try:body=get(address,min(18,remaining),MAX_DOCUMENT_BYTES)
+            except urllib.error.HTTPError as error:
+                if error.code!=403 and not 500<=error.code<=599:raise
+                remaining=budget-(time.monotonic()-started)
+                if remaining<1:raise
+                distribution=f'https://cdn.yahoofinance.com/prod/sec-filings/{int(cik):010d}/{filing["accessionNumber"].replace("-","")}/{filename}'
+                body=get(distribution,min(18,remaining),MAX_DOCUMENT_BYTES)
+            return body,distribution
+        raw,distribution=document(url,filing['primaryDocument'])
         result=parse(raw,cik,filing,url)
+        if not result['facts']:
+            from sec_linked_annual import annual_link,parse_linked
+            filename=annual_link(raw)
+            if filename and filename!=filing['primaryDocument']:
+                address=url.rsplit('/',1)[0]+'/'+filename
+                companion,copy_url=document(address,filename)
+                result=parse_linked(raw,companion,filename,cik,filing,url)
+                result['originalFiling']['linkedAnnualDocument']['distributionUrl']=copy_url
         result['originalFiling']['distributionUrl']=distribution
         return result
     return fetch

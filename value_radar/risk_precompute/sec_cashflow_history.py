@@ -12,7 +12,7 @@ from sec_cashflow_components import compose,verified as verified_ocf
 from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v11-linked-annual'
+COLLECTION_POLICY=POLICY+'/cash-context-v12-dei-date-continuations'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6

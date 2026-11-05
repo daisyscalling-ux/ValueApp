@@ -41,8 +41,8 @@ def parse_linked(primary, companion, filename, cik, filing, source_url):
         metadata=[copy.deepcopy(e) for e in parent.iter('{'+IX+'}nonNumeric') if e.get('name','').split(':')[-1] in names]
         # Inline document sets may keep all shared contexts/units in the primary.
         existing={e.get('id') for e in root.iter() if e.get('id')}
-        for tag in ('context','unit'):
-            for e in parent.iter('{'+X+'}'+tag):
+        for namespace,tag in ((X,'context'),(X,'unit'),(IX,'continuation')):
+            for e in parent.iter('{'+namespace+'}'+tag):
                 if e.get('id') in existing: raise ValueError('linked_context_collision')
                 root.append(copy.deepcopy(e))
         for e in metadata: root.append(e)

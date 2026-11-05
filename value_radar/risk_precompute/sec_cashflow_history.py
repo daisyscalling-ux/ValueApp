@@ -8,6 +8,7 @@ from yahoo_sector import recent,save
 from market_priority import fetch_priority
 from sec_issuer_names import same_issuer,POLICY
 from sec_source_evidence import build as source_evidence
+from sec_supply_inventory import scope as collection_scope,build as supply_inventory
 from sec_cashflow_components import compose,verified as verified_ocf
 from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
@@ -142,8 +143,8 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
  now=now or dt.datetime.now(dt.timezone.utc);started=time.monotonic()
  if state and (state.get('schema')!=1 or state.get('method')!=METHOD):raise ValueError('unsupported_sec_history')
  state=state or {'schema':1,'method':METHOD,'stocks':{},'attempts':{}}
- if not recent(coverage.get('generatedAt'),now,2):state['report']={'stopped':'coverage_missing_or_stale'};return state
- allowed={r['symbol'] for r in coverage.get('stocks',[]) if r.get('domains',{}).get('identity',{}).get('state')=='available' and r.get('domains',{}).get('balance',{}).get('profile')=='corporate'}
+ if not recent(coverage.get('generatedAt'),now,2):state['report']={'stopped':'coverage_missing_or_stale','inventory':supply_inventory(universe,coverage,state,listing_map,now)};return state
+ domains={r['symbol']:r for r in coverage.get('stocks',[]) if r.get('symbol')}
  rows={};duplicates=set();counts=Counter();candidates=[]
  for r in universe.get('kandidaten',[]):
   s=r.get('listing_symbol')
@@ -151,8 +152,10 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   rows[s]=r
  for s,r in rows.items():
   cik=listing_map.get(s)
-  if s in duplicates or s not in allowed or not valid_isin(r.get('isin')) or r.get('listing_reference_status') in ('expired','input_mismatch') or not str(cik or '').isdigit():continue
-  if r.get('cik') and str(r['cik']).lstrip('0')!=str(cik).lstrip('0'):counts['cikConflict']+=1;continue
+  reason=collection_scope(r,domains.get(s,{}),cik,s in duplicates)
+  if reason:
+   if reason=='cik_conflict':counts['cikConflict']+=1
+   continue
   old=state['stocks'].get(s,{})
   att=state['attempts'].get(s,{})
   retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or (att.get('originalFiling',{}).get('fields')=={}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
@@ -207,12 +210,20 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   state['attempts'][s]=att;state.update(generatedAt=now.isoformat(),report=dict(counts))
   if checkpoint:checkpoint(state)
   if att.get('error') in ('http_403','http_429') or att.get('originalRateLimited'):break
- counts['remainingCandidates']=len(candidates)-counts['attempted'];state.update(generatedAt=now.isoformat(),report=dict(counts));return state
+ counts['remainingCandidates']=len(candidates)-counts['attempted'];state.update(generatedAt=now.isoformat(),report=dict(counts))
+ state['report']['inventory']=supply_inventory(universe,coverage,state,listing_map,now)
+ return state
 
 def balances(cache,universe,now):
- out={};rows={r.get('listing_symbol'):r for r in universe.get('kandidaten',[])}
+ out={};rows={};duplicates=set()
+ for r in universe.get('kandidaten',[]):
+  s=r.get('listing_symbol')
+  if s in rows:duplicates.add(s)
+  rows[s]=r
  if cache.get('schema')!=1 or cache.get('method')!=METHOD:return out
  for s,c in cache.get('stocks',{}).items():
+  if s in duplicates:continue
+  if rows.get(s,{}).get('cik') and str(rows[s]['cik']).lstrip('0')!=str(c.get('cik','')).lstrip('0'):continue
   if c.get('inputIdentity')!=identity(rows.get(s,{})) or not recent(c.get('retrievedAt'),now,14):continue
   items=[]
   for p in c.get('periods',[]):
@@ -262,7 +273,9 @@ def main():
   return json.loads(raw)
  from sec_original_supply import loader
  result=run(read(folder/'cf_universum.json'),read(folder/'cf_risk_coverage.json'),read(target),listings,fetch,checkpoint=lambda s:save(target,s),fetch_original=loader(ua,last))
- save(target,result);print(json.dumps(result['report']))
+ save(target,result)
+ report={**result['report'],'inventory':result['report'].get('inventory',{}).get('summary',{})}
+ print(json.dumps(report))
  if os.getenv('GITHUB_STEP_SUMMARY'):
-  with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## SEC cashflow history\n'+json.dumps(result['report'])+'\nPPE-only cashflow context; not comprehensive free cashflow.\n')
+  with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:f.write('\n## SEC cashflow history\n'+json.dumps(report)+'\nPPE-only cashflow context; not comprehensive free cashflow.\n')
 if __name__=='__main__':main()

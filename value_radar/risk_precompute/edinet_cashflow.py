@@ -10,7 +10,7 @@ import zipfile
 X='http://www.xbrl.org/2003/instance'
 D='http://xbrl.org/2006/xbrldi'
 SOURCE='EDINET annual XBRL'
-PARSER_VERSION='edinet-risk-v3'
+PARSER_VERSION='edinet-risk-v4-liability-components'
 # Verified against FSA 2026 taxonomy (1c_Taxonomy.zip, 2025-11-01)
 # and sample instances (ESE140116.zip).
 TAGS={
@@ -23,6 +23,12 @@ TAGS={
   'operating_cashflow':['NetCashProvidedByUsedInOperatingActivitiesIFRS'],
   'ppe':['PurchaseOfPropertyPlantAndEquipmentInvCFIFRS'],'intangibles':['PurchaseOfIntangibleAssetsInvCFIFRS'],
   'gross_capex':['PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS'],
+  'reported_bonds_borrowings':['BondsAndBorrowingsLiabilitiesIFRS'],
+  'current_bonds_borrowings':['BondsAndBorrowingsCLIFRS'],
+  'noncurrent_bonds_borrowings':['BondsAndBorrowingsNCLIFRS'],
+  'reported_lease_liabilities':['LeaseLiabilitiesLiabilitiesIFRS'],
+  'current_lease_liabilities':['LeaseLiabilitiesCLIFRS'],
+  'noncurrent_lease_liabilities':['LeaseLiabilitiesNCLIFRS'],
   'reported_interest_bearing_debt':['InterestBearingLiabilitiesLiabilitiesIFRS'],
   'current_interest_bearing_debt':['InterestBearingLiabilitiesCLIFRS'],
   'noncurrent_interest_bearing_debt':['InterestBearingLiabilitiesNCLIFRS']}}
@@ -76,7 +82,7 @@ def parse_xml(raw,doc,now):
   if e.get('contextRef') not in contexts or e.get('unitRef') not in units or e.get('{http://www.w3.org/2001/XMLSchema-instance}nil') in ('true','1'):continue
   try:observed=float(e.text)
   except (TypeError,ValueError):continue
-  if math.isfinite(observed) and any(x in e.tag for x in ('Purchase','Acquis','InterestBearing','Borrowing','Debt','OperatingActivities')):
+  if math.isfinite(observed) and any(x in e.tag for x in ('Purchase','Acquis','InterestBearing','Borrowing','Debt','LeaseLiabilities','OperatingActivities')):
    diagnostic_facts.append({'tag':e.tag[:300],'context':e.get('contextRef'),'value':observed,'periodKind':contexts[e.get('contextRef')],'decimals':e.get('decimals')})
   match=re.fullmatch(r'\{http://disclosure\.edinet-fsa\.go\.jp/taxonomy/(jppfs|jpigp)/\d{4}-\d{2}-\d{2}/\1_cor\}(.+)',e.tag)
   if not match:continue
@@ -91,7 +97,7 @@ def parse_xml(raw,doc,now):
  for family,mapping in TAGS.items():
   fields={};sources={};conflicts=[]
   for key,tags in mapping.items():
-   kind='instant' if key in ('total_assets','cash','reported_interest_bearing_debt','current_interest_bearing_debt','noncurrent_interest_bearing_debt') else 'duration'
+   kind='instant' if key in ('total_assets','cash','reported_interest_bearing_debt','current_interest_bearing_debt','noncurrent_interest_bearing_debt','reported_bonds_borrowings','current_bonds_borrowings','noncurrent_bonds_borrowings','reported_lease_liabilities','current_lease_liabilities','noncurrent_lease_liabilities') else 'duration'
    values=[(v,c,tag,decimals) for tag in tags for v,c,decimals in facts.get((family,tag,kind),[])]
    if len({v for v,c,t,d in values})>1:conflicts.append(key);continue
    if values:
@@ -129,16 +135,38 @@ def parse_xml(raw,doc,now):
    debt=fields['current_interest_bearing_debt']+fields['noncurrent_interest_bearing_debt'];parts=['current_interest_bearing_debt','noncurrent_interest_bearing_debt'];method='both_reported_interest_bearing_maturities'
   if any(k in conflicts for k in ('reported_interest_bearing_debt','current_interest_bearing_debt','noncurrent_interest_bearing_debt')) or (debt is not None and not math.isfinite(debt)):debt=None
   derived('interest_bearing_debt',debt,parts,method)
+  # Distinct disclosed liability categories. Never relabel them as total debt.
+  liability_evidence={}
+  for category in ('bonds_borrowings','lease_liabilities'):
+   total,current,noncurrent=('reported_'+category,'current_'+category,'noncurrent_'+category)
+   value=None;parts=[];issues=[];method='reported_category_total'
+   present=[k for k in (total,current,noncurrent) if k in fields]
+   if any(k in conflicts for k in (total,current,noncurrent)):issues.append('conflicting_category_facts')
+   if any(fields[k]<0 for k in present):issues.append('negative_liability')
+   if total in fields:
+    value=fields[total];parts=[total]
+    if any(fields[k]>value+tolerance([total,k]) for k in (current,noncurrent) if k in fields):issues.append('total_component_conflict')
+    if current in fields and noncurrent in fields and abs(value-fields[current]-fields[noncurrent])>tolerance([total,current,noncurrent]):issues.append('total_component_conflict')
+   elif current in fields and noncurrent in fields:
+    value=fields[current]+fields[noncurrent];parts=[current,noncurrent];method='both_reported_category_maturities'
+   if value is not None and not math.isfinite(value):issues.append('nonfinite_category_total')
+   if issues:value=None;parts=[]
+   derived(category,value,parts,method)
+   liability_evidence[category]={'state':'available' if value is not None else 'unavailable','issues':sorted(set(issues)),
+    'missingComponents':[] if total in fields else [k for k in (current,noncurrent) if k not in fields],
+    'scope':'Reported bonds and borrowings; not total debt, lease coverage not inferred.' if category=='bonds_borrowings' else 'Reported lease liabilities; not added to other debt categories.'}
   broad=fields.get('noncurrent_asset_purchase_outflow')
   derived('noncurrent_asset_purchases',-broad if broad is not None and broad<=0 else None,['noncurrent_asset_purchase_outflow'] if broad is not None and broad<=0 else [],'reported_noncurrent_asset_purchases_not_capex')
   missing=[k for k in ('total_assets','cash','operating_cashflow','capex') if fields.get(k) is None]
   invalid=fields.get('total_assets',1)<=0 or fields.get('cash',0)<0
-  complete=not missing and not conflicts and not invalid
+  category_conflicts={prefix+category for prefix in ('reported_','current_','noncurrent_') for category in ('bonds_borrowings','lease_liabilities')}
+  complete=not missing and not [c for c in conflicts if c not in category_conflicts] and not invalid
   ratio=(fields['operating_cashflow']-capex)/fields['total_assets'] if complete else None
   if ratio is not None and not math.isfinite(ratio):ratio=None;complete=False;conflicts.append('nonfinite_fcf_ratio')
   candidates.append({'parserVersion':PARSER_VERSION,'fileSha256':hashlib.sha256(raw).hexdigest(),'source':SOURCE,'period_type':'annual','start':str(start),'end':str(end),'currency':'JPY','taxonomy':family,'fields':fields,'field_sources':sources,'missing_fields':missing,'conflicts':conflicts,'state':'available' if complete else 'partial',
    'fcfAssets':ratio,
    'diagnostics':{'monetaryCandidates':diagnostic_facts[:80],'candidateCount':len(diagnostic_facts),'truncated':len(diagnostic_facts)>80},
+   'liabilityEvidence':liability_evidence,
    'debtScope':'reported interest-bearing liabilities; lease coverage not separately reconciled' if debt is not None else None})
  if len(candidates)!=1:raise ValueError('ambiguous_or_unsupported_taxonomy')
  return candidates[0]

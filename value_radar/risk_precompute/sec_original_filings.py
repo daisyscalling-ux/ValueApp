@@ -45,7 +45,7 @@ def selected_tree(raw):
             namespaces[prefix]=uri
         elif event=='start':
             stack.append(item)
-            if capture is None and (item.tag in ('{'+X+'}context','{'+X+'}unit') or
+            if capture is None and (item.tag in ('{'+X+'}context','{'+X+'}unit','{'+IX+'}continuation') or
                 (item.tag in ('{'+IX+'}nonNumeric','{'+IX+'}nonFraction') and item.get('name','').split(':')[-1] in names)):
                 capture=item
         else:
@@ -61,6 +61,14 @@ def selected_tree(raw):
 
 def document_date(text,fmt):
     months='January February March April May June July August September October November December'.split()
+    if fmt in ('date-month-day-year','date-day-month-year'):
+        # Order comes exclusively from the declared transform, never from a guess.
+        m=re.fullmatch(r'(\d{1,2})[^0-9]+(\d{1,2})[^0-9]+(\d{4})',text)
+        if not m:return None
+        first,second,year=map(int,m.groups())
+        month,day=(first,second) if fmt=='date-month-day-year' else (second,first)
+        try:return dt.date(year,month,day).isoformat()
+        except ValueError:return None
     if fmt in ('date-monthname-day-year-en','datemonthdayyearen'):
         m=re.fullmatch(r'([A-Za-z]+) (\d{1,2}),? (\d{4})',text)
         if not m:return None
@@ -75,6 +83,22 @@ def document_date(text,fmt):
     if month not in lookup:return None
     try:return dt.date(int(year),lookup.index(month)+1,int(day)).isoformat()
     except ValueError:return None
+
+
+def metadata_text(element,continuations):
+    """Resolve bounded DEI continuations; ix:exclude is not part of a fact value."""
+    def visible(node):
+        if node.tag=='{'+IX+'}exclude':return ''
+        return (node.text or '')+''.join(visible(child)+(child.tail or '') for child in node)
+    pieces=[];seen=set();current=element
+    for _ in range(16):
+        pieces.append(visible(current))
+        if sum(map(len,pieces))>512:raise ValueError('invalid_metadata_continuation')
+        target=current.get('continuedAt')
+        if not target:return ' '.join(''.join(pieces).split())
+        if target in seen or continuations.get(target) is None:raise ValueError('invalid_metadata_continuation')
+        seen.add(target);current=continuations[target]
+    raise ValueError('invalid_metadata_continuation')
 
 
 def parse(raw,cik,filing,source_url):
@@ -113,11 +137,15 @@ def parse_selected(raw,cik,filing,source_url,root,namespaces):
         if u.get('id') in units:raise ValueError('duplicate_unit')
         units[u.get('id')]=code
     meta={}
+    continuations={}
+    for item in root.iter('{'+IX+'}continuation'):
+        key=item.get('id')
+        continuations[key]=item if key not in continuations else None
     for e in root.iter('{'+IX+'}nonNumeric'):
         uri,name=qualified(e.get('name',''),namespaces)
         if not re.fullmatch(r'https?://xbrl.sec.gov/dei/\d{4}',uri) or e.get('contextRef') not in contexts:continue
         if name not in ('EntityCentralIndexKey','DocumentType','DocumentPeriodEndDate'):continue
-        text=' '.join(''.join(e.itertext()).split())
+        text=metadata_text(e,continuations)
         if name=='DocumentPeriodEndDate' and e.get('format'):
             text=document_date(text,transform(e.get('format'),namespaces))
             if text is None:continue

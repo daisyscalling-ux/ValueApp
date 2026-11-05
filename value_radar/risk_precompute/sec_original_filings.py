@@ -70,8 +70,10 @@ def document_date(text,fmt):
         if not m:return None
         day,month,year=m.groups()
     else:return None
-    if month not in months:return None
-    try:return dt.date(int(year),months.index(month)+1,int(day)).isoformat()
+    # Month-name transforms accept capitalization differences in issuer text.
+    month=month.casefold();lookup=[m.casefold() for m in months]
+    if month not in lookup:return None
+    try:return dt.date(int(year),lookup.index(month)+1,int(day)).isoformat()
     except ValueError:return None
 
 

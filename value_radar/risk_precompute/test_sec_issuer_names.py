@@ -2,6 +2,12 @@ import unittest
 from sec_issuer_names import same_issuer
 from sec_cashflow_history import diagnostics
 class Names(unittest.TestCase):
+ def test_typographic_apostrophes_and_spelled_out_plc(self):
+  for a,b in [("McDonald's Corporation",'McDONALD\u2019S CORPORATION'),("Moody's Corporation",'Moody\u2019s Corporation'),('CRH PLC','CRH public limited company')]:
+   self.assertTrue(same_issuer(a,b))
+ def test_typography_does_not_erase_real_name_differences(self):
+  for a,b in [("Moody's Corporation",'Moody\u2019s Analytics'),('CRH PLC','CRH Bank public limited company'),('General Electric Company','GE Aerospace'),('Vertiv Holdings LLC','Vertiv Holdings Co')]:
+   self.assertFalse(same_issuer(a,b))
  def test_format_only_names(self):
   for a,b in [('Applied Materials, Inc.','APPLIED MATERIALS INC /DE/'),('Costco Wholesale Corporation','COSTCO WHOLESALE CORP /NEW/'),('Booking Holdings Inc. Common Stock','Booking Holdings Inc.'),('Walt Disney Company (The)','The Walt Disney Company'),('3M Company','3M CO'),('BP PLC','BP plc'),('Aon plc','AON PLC'),("Lowe's Companies, Inc.",'LOWES COMPANIES INC'),('American Tower Corporation (REIT)','American Tower Corp'),('Duke Energy Corporation (Holding Company)','Duke Energy Corp')]:
    with self.subTest(a=a):self.assertTrue(same_issuer(a,b))

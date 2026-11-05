@@ -1,0 +1,26 @@
+{
+  "cprt": {
+    "cik": 900075,
+    "form": "10-K",
+    "reportDate": "2026-07-31",
+    "filingDate": "2026-09-29",
+    "accessionNumber": "0001193125-26-405731",
+    "primaryDocument": "cprt-20260731.htm"
+  },
+  "cmi": {
+    "cik": 26172,
+    "form": "10-K",
+    "reportDate": "2025-12-31",
+    "filingDate": "2026-02-10",
+    "accessionNumber": "0000026172-26-000009",
+    "primaryDocument": "cmi-20251231.htm"
+  },
+  "hlt": {
+    "cik": 1585689,
+    "form": "10-K",
+    "reportDate": "2025-12-31",
+    "filingDate": "2026-02-11",
+    "accessionNumber": "0001585689-26-000007",
+    "primaryDocument": "hlt-20251231.htm"
+  }
+}

@@ -12,7 +12,7 @@ from sec_cashflow_components import compose,verified as verified_ocf
 from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
-COLLECTION_POLICY=POLICY+'/cash-context-v10-reported-ppe-table'
+COLLECTION_POLICY=POLICY+'/cash-context-v11-linked-annual'
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -155,7 +155,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   if r.get('cik') and str(r['cik']).lstrip('0')!=str(cik).lstrip('0'):counts['cikConflict']+=1;continue
   old=state['stocks'].get(s,{})
   att=state['attempts'].get(s,{})
-  retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
+  retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or (att.get('originalFiling',{}).get('fields')=={}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
   if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue

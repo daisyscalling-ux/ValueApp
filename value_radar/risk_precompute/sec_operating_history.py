@@ -68,6 +68,7 @@ def balances(cache,universe,now):
         if s in rows:duplicates.add(s)
         rows[s]=row
     for s,c in cache.get('operatingStocks',{}).items():
+        if rows.get(s,{}).get('cik') and str(rows[s]['cik']).lstrip('0')!=str(c.get('cik','')).lstrip('0'):continue
         if s in duplicates or c.get('inputIdentity')!=identity(rows.get(s,{})) or not recent(c.get('retrievedAt'),now,14):continue
         entries=[]
         for p in c.get('periods',[]):

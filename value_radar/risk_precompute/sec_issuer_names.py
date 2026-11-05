@@ -1,6 +1,6 @@
 """Formatting-only issuer comparison, always subordinate to exact SEC listing/CIK."""
 import re,unicodedata
-POLICY='sec-issuer-format-v3-native'
+POLICY='sec-issuer-format-v4-typography'
 def name_key(value):
  s=unicodedata.normalize('NFKD',str(value or '')).casefold()
  s=''.join(c for c in s if not unicodedata.combining(c))
@@ -12,9 +12,9 @@ def name_key(value):
  s=re.sub(r'\s+common\s+stock\s*$','',s)
  s=re.sub(r'\s*\((?:reit|holding company)\)\s*$','',s)
  for dotted,plain in [('n.v.','nv'),('s.p.a.','spa'),('s.a.','sa'),('p.l.c.','plc')]:s=s.replace(dotted,plain)
- s=s.replace('&',' and ').replace("'",'').replace('â€™','')
+ s=s.replace('&',' and ').replace("'",'').replace('\u2019','').replace('\u2018','').replace('\u02bc','').replace('â€™','')
  words=re.findall(r'[a-z0-9]+',s)
- suffixes=[['incorporated'],['corporation'],['limited'],['company'],['corp'],['inc'],['ltd'],['plc'],['co']]
+ suffixes=[['public','limited','company'],['incorporated'],['corporation'],['limited'],['company'],['corp'],['inc'],['ltd'],['plc'],['co']]
  changed=True
  while changed:
   changed=False

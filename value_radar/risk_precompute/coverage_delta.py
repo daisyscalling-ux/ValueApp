@@ -6,6 +6,7 @@ from pathlib import Path
 from collections import Counter
 from market_priority import market_tier
 from yahoo_sector import load, save
+from risk_batch_plan import METRICS,metric_available
 UTC=dt.timezone.utc
 
 def timestamp(value):
@@ -33,9 +34,15 @@ def compare(before,after,now=None):
  try:old=index(before);new=index(after)
  except ValueError as e:result['reason']=str(e);return result
  if not old or not new:result['reason']='empty_snapshot';return result
- counts=Counter();markets={}
+ counts=Counter();markets={};metric_changes=[]
  for symbol in sorted(old.keys() & new.keys()):
   a=old[symbol].get('domains',{});b=new[symbol].get('domains',{});market=('primary','europe','rotation')[market_tier(symbol)]
+  for metric in METRICS:
+   ba=a.get('balance',{});bb=b.get('balance',{})
+   if ba.get('profile')!=bb.get('profile'):continue
+   old_available=a.get('identity',{}).get('state')=='available' and metric_available(ba,metric)
+   new_available=b.get('identity',{}).get('state')=='available' and metric_available(bb,metric)
+   if old_available!=new_available:metric_changes.append({'symbol':symbol,'metric':metric,'beforeAvailable':old_available,'afterAvailable':new_available,'market':market})
   for domain in sorted(a.keys()|b.keys()):
    source=a.get(domain,{}).get('state','missing');target=b.get(domain,{}).get('state','missing')
    framework_changed=domain=='balance' and a.get(domain,{}).get('profile')!=b.get(domain,{}).get('profile')
@@ -44,6 +51,7 @@ def compare(before,after,now=None):
    counts[transition]+=1;markets.setdefault(market,Counter())[transition]+=1
    result['changes'].append({'symbol':symbol,'market':market,'domain':domain,'before':source,'after':target,'transition':transition,'previousProfile':a.get(domain,{}).get('profile') if domain=='balance' else None,'currentProfile':b.get(domain,{}).get('profile') if domain=='balance' else None,'reason':b.get(domain,{}).get('reason')})
  result.update(state='compared',reason=None,addedListings=sorted(new.keys()-old.keys()),removedListings=sorted(old.keys()-new.keys()),
+               metricChanges=metric_changes,metricChangeSummary={'gainedObservations':sum(x['afterAvailable'] for x in metric_changes),'lostObservations':sum(x['beforeAvailable'] for x in metric_changes),'listingsWithGains':len({x['symbol'] for x in metric_changes if x['afterAvailable']}),'listingsWithLosses':len({x['symbol'] for x in metric_changes if x['beforeAvailable']})},
                summary={'transitions':dict(counts),'markets':{k:dict(v) for k,v in markets.items()},'comparableListings':len(old.keys()&new.keys()),'addedListings':len(new.keys()-old.keys()),'removedListings':len(old.keys()-new.keys())})
  return result
 
@@ -57,6 +65,7 @@ def main():
    f.write('\n## Datenabdeckung: Veraenderung seit dem letzten Lauf\n\n')
    if report['state']!='compared':f.write('Kein belastbarer Vorher-nachher-Vergleich: '+report['reason']+'.\n')
    else:
+    m=report['metricChangeSummary'];f.write(str(m['gainedObservations'])+' einzelne Finanzkennzahlen neu nutzbar bei '+str(m['listingsWithGains'])+' Notierungen; '+str(m['lostObservations'])+' Kennzahlen verloren bei '+str(m['listingsWithLosses'])+' Notierungen. Auch Teilfortschritte werden erfasst; Gewinne und Verluste werden nicht verrechnet.\n\n')
     c=report['summary']['transitions'];f.write(str(c.get('became_available',0))+' Datenbereiche neu verfuegbar; '+str(c.get('lost_available',0))+' nicht mehr vollstaendig verfuegbar. Dies sind Datenbereiche, keine Anzahl Unternehmen.\n\n')
     f.write('| Markt | Neu verfuegbar | Verfuegbarkeit verloren | Andere Statuswechsel | Branchenpruefung geaendert |\n|---|---:|---:|---:|---:|\n')
     for market,counts in report['summary']['markets'].items():f.write('| '+market+' | '+str(counts.get('became_available',0))+' | '+str(counts.get('lost_available',0))+' | '+str(counts.get('state_changed',0))+' | '+str(counts.get('framework_changed',0))+' |\n')

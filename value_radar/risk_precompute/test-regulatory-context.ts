@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import './test-insurer-solvency';
 import {withRegulatoryContext as merge} from './regulatory-context';
 const now=Date.parse('2026-10-27T12:00:00Z');
 const row={listing_symbol:'NYSE:EX',isin:'US0378331005',currency:'USD',name:'Example',security_type:'common_stock'};

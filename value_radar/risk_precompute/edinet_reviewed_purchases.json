@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "reviews": [
+    {
+      "symbol": "TSE:4324",
+      "docID": "S100Y36E",
+      "start": "2025-01-01",
+      "end": "2025-12-31",
+      "fileSha256": "463d3e2a21f52fbc38b9bf29a0888bbfc83e1a3adbfe6c236fa118ce89505857",
+      "tag": "{http://disclosure.edinet-fsa.go.jp/jpcrp030000/asr/001/E04760-000/2025-12-31/02/2026-05-15}PurchaseOfNonCurrentAssetsInvCFIFRS",
+      "schemaSha256": "cd9cdaccb62a94acacb11cf8b3348d7d84ca89e360fe9d7d18dcb2f8dd1825a2",
+      "labelSha256": "8eeded7526a9035857cd0d30341cb56e16865042b4994cc0b9c99c29d0e5b6d9",
+      "label": "Purchase of non-current assets",
+      "scope": "Broad non-current asset purchases, not complete PPE plus intangible capex."
+    },
+    {
+      "symbol": "TSE:5411",
+      "docID": "S100YCUD",
+      "start": "2025-04-01",
+      "end": "2026-03-31",
+      "fileSha256": "8ed640a80d713f7eda009d015c3cd7a500e71ad004e92ba2fe14eb31b7ccee95",
+      "tag": "{http://disclosure.edinet-fsa.go.jp/jpcrp030000/asr/001/E01264-000/2026-03-31/01/2026-06-19}PurchaseOfNonCurrentAssetsInvCFIFRS",
+      "schemaSha256": "17b23df546245a88c9398a5896415738fc87c440f1853213a850ae79f8a32b6c",
+      "labelSha256": "4e6465a25904a2b33b9152972333af7669c0b0ed264b28b7e87f7b723b1bcaf2",
+      "label": "Purchase of non-current assets",
+      "scope": "Broad non-current asset purchases, not complete PPE plus intangible capex."
+    },
+    {
+      "symbol": "TSE:9201",
+      "docID": "S100YFIO",
+      "start": "2025-04-01",
+      "end": "2026-03-31",
+      "fileSha256": "ffbd68e562eb20deb29fbe805f98cd924e9264fdcbb2cb89fec134ba3020793d",
+      "tag": "{http://disclosure.edinet-fsa.go.jp/jpcrp030000/asr/001/E04272-000/2026-03-31/01/2026-06-22}PurchaseOfNonCurrentAssetsInvCFIFRS",
+      "schemaSha256": "cdf8db9ede0ba1acd0ee5cc607e4036f0f00dc468d7f2bfe03cd05c60f655d51",
+      "labelSha256": "afa70bf9fc483b351f226d387ad482ef52b9a2e5e50cd8ac18089efc73e8ecb6",
+      "label": "Purchase of non-current assets",
+      "scope": "Broad non-current asset purchases, not complete PPE plus intangible capex."
+    }
+  ]
+}

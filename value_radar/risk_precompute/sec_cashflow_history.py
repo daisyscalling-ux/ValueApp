@@ -175,8 +175,9 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   att=state['attempts'].get(s,{})
   expected=expected_period(domains.get(s,{}),now)
   newer_due=behind_period(old.get('periods',[]),expected) and (att.get('requestedPeriod')!=expected or not recent(att.get('at'),now,2))
+  evidence_due=att.get('requestedPeriodState')=='still_missing' and bool(att.get('originalFiling')) and 'investmentEvidence' not in att['originalFiling'] and not att.get('originalError')
   retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or (att.get('originalFiling',{}).get('fields')=={}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
-  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due:counts['cached']+=1;continue
+  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due and not evidence_due:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)

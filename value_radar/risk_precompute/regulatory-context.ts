@@ -1,6 +1,7 @@
 import {verifiedLiquidity} from './holding-liquidity';
 import {verifiedCapitalRequirement} from './capital-requirement';
 import {verifiedCreditQuality} from './regulatory-credit';
+import {withInsurerSolvency} from './insurer-solvency';
 type Row=Record<string,any>;
 const DAY=86400000;
 const dateOnly=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
@@ -8,6 +9,7 @@ const fresh=(v:any,now:number,days:number)=>typeof v==='string'&&Number.isFinite
 const keys=['listing_symbol','ticker','isin','currency','name','name_full','security_type','share_class'];
 export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|null,identityOK:boolean,now:number){
  if(!['bank','insurer','specialist_financial'].includes(base.profile))return base;
+ if(base.profile==='insurer')return withInsurerSolvency(base,row,archive?.insurers,identityOK,now);
  let requirements=[...(base.sectorRequirements||[])];
  if(base.profile==='bank'&&!requirements.includes('institution_specific_capital_requirement'))requirements.push('institution_specific_capital_requirement');
  const r=archive?.stocks?.[row.listing_symbol];let capital:Row|null=null;

@@ -143,6 +143,8 @@ def main():
     news=review_news(news,universe,load(Path(__file__).with_name('reviewed-risk-events.json'),{}),now)
     sector=sector_packets(coverage,now)
     sector['bankCreditComparison']=bank_credit_comparison(coverage,now)
+    news['coverageGeneratedAt']=coverage['generatedAt']
+    sector['coverageGeneratedAt']=coverage['generatedAt']
     save(folder/'cf_risk_event_review.json',news);save(folder/'cf_sector_review_packets.json',sector)
     report=checkpoint(folder,now,os.getenv('GITHUB_SHA','local-unversioned'))
     save(folder/'cf_risk_observation_status.json',report)

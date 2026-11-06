@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from market_priority import market_tier
 from risk_progress import progress,markdown
+from risk_batch_plan import plan
 from yahoo_sector import load,save,recent
 
 def build(coverage,now=None):
@@ -55,6 +56,7 @@ def build(coverage,now=None):
   'profiles':dict(profiles),'peerContextCoverage':dict(peer_context),'supplementalObservations':dict(supplemental),'edinetMetricReconciliation':dict(reconciliation_metrics),
   'byKind':dict(Counter(g['kind'] for g in result['batches']))})
  result['progress']=progress(rows,result['batches'])
+ result['bulkPlan']=plan(rows,result['batches'])
  return result
 
 def main():
@@ -66,6 +68,10 @@ def main():
    f.write('\n## Naechste Arbeitsbloecke fuer das Universum\n\n')
    if result['state']!='ready':f.write('Nicht auswertbar: '+result['reason']+'\n');return
    f.write(markdown(result['progress']))
+   f.write('\n## Gemeinsame Ursachen statt Einzelaktien\n\n| Ursache | Hauptmaerkte | Zurueckgestellt |\n|---|---:|---:|\n')
+   for category,counts in result['bulkPlan']['categories'].items():f.write('| '+category+' | '+str(counts['mainMarketListings'])+' | '+str(counts['deferredListings'])+' |\n')
+   f.write('\nVorhandener breiter Branchenkontext ist kein strenger Peer-Vergleich. Eine zu kurze Boersenhistorie laesst sich nicht durch wiederholte Abrufe verlaengern. Beide Grenzen bleiben offen und separat sichtbar.\n\n| Kennzahl | Hauptmaerkte: verfuegbar / anwendbar |\n|---|---:|\n')
+   for key,value in result['bulkPlan']['metricCoverage']['mainMarkets'].items():f.write('| '+key+' | '+str(value['available'])+'/'+str(value['applicableListings'])+' |\n')
    f.write('Gruppen koennen dieselben Unternehmen enthalten. Vollstaendige Buchkennzahlen ersetzen keine Branchenpruefung.\n\n| Markt | Aufgabe | Ursache | Notierungen |\n|---|---|---|---:|\n')
    main=[g for g in result['batches'] if g['marketTier']<=1]
    for g in sorted(main,key=lambda x:(x['marketTier'],-x['listings'],x['kind'],x['reason']))[:25]:

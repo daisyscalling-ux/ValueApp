@@ -1,3 +1,4 @@
+import {AdaptiveRoicRate} from './adaptive-roic-rate';
 import {validateHistory,validationReport,VALIDATION_VERSION} from './src/lib/risk-validation';
 import fs from 'node:fs';
 import {failureState,retryDue} from './universe-coverage';
@@ -31,19 +32,20 @@ export async function exportRisk(options:any={}){
  const priority=new Map<string,number>((validQueue&&Array.isArray(queue.jobs)?queue.jobs:[]).filter((j:any)=>j.kind==='history'&&j.state==='queued').map((j:any,i:number)=>[j.symbol,i]));
  inputs.sort((a,b)=>(priority.get(a)??1e9)-(priority.get(b)??1e9)||(Date.parse(data.attempts[a])||0)-(Date.parse(data.attempts[b])||0));
  const sleep=options.sleep||((ms:number)=>new Promise(r=>setTimeout(r,ms)));
- const started=clock(),deadline=started+budget*60000;const rpm=Number(env.RISK_REQUESTS_PER_MINUTE||240);if(!Number.isFinite(rpm)||rpm<20||rpm>240)throw Error('Ungültiges Aufruflimit.');let last=0,spacing=60000/rpm,blockedUntil=0,requests=0,aborted=false,historyDenied=0;let preferredYears:2|5=5;
+ const started=clock(),deadline=started+budget*60000;const rpm=Number(env.RISK_REQUESTS_PER_MINUTE||240);if(!Number.isFinite(rpm)||rpm<20||rpm>240)throw Error('Ungültiges Aufruflimit.');const pacing=new AdaptiveRoicRate(rpm);let requests=0,aborted=false,historyDenied=0;let preferredYears:2|5=5;
  const report:any={attempted:0,updated:0,failed:0,skippedFresh:0,skippedCooldown:0,universe:inputs.length,errors:[],failureReasons:{},rateLimitEvents:0,retries:0,benchmarkFallbacks:0,benchmarkWarnings:[],validation:{enabled:validationEnabled,eligible:0,excluded:0,metadataMissing:0},budgetReached:false};
- const save=()=>{if(sectorEnabled){sector.generatedAt=new Date(clock()).toISOString();fs.mkdirSync(path.dirname(sectorPath),{recursive:true});fs.writeFileSync(sectorPath+'.tmp',JSON.stringify(sector));fs.renameSync(sectorPath+'.tmp',sectorPath)}data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output);if(validationEnabled){fs.mkdirSync(path.dirname(studyPath),{recursive:true});fs.writeFileSync(studyPath+'.tmp',JSON.stringify(study));fs.renameSync(studyPath+'.tmp',studyPath);const allowed=new Set(inputs),active=Object.fromEntries(Object.entries(study.series).filter(([,v]:any)=>allowed.has(v.inputSymbol)&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<7*86400000));const audit:any=validationReport(active,clock());audit.universeSize=inputs.length;audit.refresh={...report.validation};fs.mkdirSync(path.dirname(studyOutput),{recursive:true});fs.writeFileSync(studyOutput+'.tmp',JSON.stringify(audit));fs.renameSync(studyOutput+'.tmp',studyOutput)}};
+ const save=()=>{if(sectorEnabled){sector.generatedAt=new Date(clock()).toISOString();fs.mkdirSync(path.dirname(sectorPath),{recursive:true});fs.writeFileSync(sectorPath+'.tmp',JSON.stringify(sector));fs.renameSync(sectorPath+'.tmp',sectorPath)}data.generatedAt=new Date(clock()).toISOString();data.report={...report,requests,pacing:pacing.stats()};fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output+'.tmp',JSON.stringify(data));fs.renameSync(output+'.tmp',output);if(validationEnabled){fs.mkdirSync(path.dirname(studyPath),{recursive:true});fs.writeFileSync(studyPath+'.tmp',JSON.stringify(study));fs.renameSync(studyPath+'.tmp',studyPath);const allowed=new Set(inputs),active=Object.fromEntries(Object.entries(study.series).filter(([,v]:any)=>allowed.has(v.inputSymbol)&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<7*86400000));const audit:any=validationReport(active,clock());audit.universeSize=inputs.length;audit.refresh={...report.validation};fs.mkdirSync(path.dirname(studyOutput),{recursive:true});fs.writeFileSync(studyOutput+'.tmp',JSON.stringify(audit));fs.renameSync(studyOutput+'.tmp',studyOutput)}};
  const paced:typeof fetch=async(url,opts)=>{
   if(clock()>deadline)throw Error('Zeitbudget erreicht.');
-  const wait=Math.max(0,spacing-(clock()-last));if(wait)await sleep(wait);
-  if(clock()>deadline)throw Error('Zeitbudget erreicht.');opts?.signal?.throwIfAborted();last=clock();requests++;
+  const wait=pacing.delay(clock());if(clock()+wait>=deadline)throw Error('Zeitbudget erreicht.');if(wait)await sleep(wait);
+  if(clock()>deadline)throw Error('Zeitbudget erreicht.');opts?.signal?.throwIfAborted();pacing.start(clock());requests++;
   const r=await fetcher(url,opts);if([401,403].includes(r.status)){aborted=true;throw Error('ROIC-Zugang abgelehnt HTTP '+r.status)}
-  if(r.status===429){report.rateLimitEvents++;const header=r.headers.get('retry-after'),n=header===null?NaN:Number(header),date=header?Date.parse(header):NaN;const delay=Math.max(30000,Number.isFinite(n)?n*1000:Number.isFinite(date)?date-clock():60000);blockedUntil=Math.max(blockedUntil,clock()+delay);spacing=Math.min(3000,spacing*1.5);throw Error('ROIC-Ratenlimit HTTP 429')}
+  pacing.response(r.status,r.headers.get('retry-after'),clock());
+  if(r.status===429){report.rateLimitEvents++;throw Error('ROIC-Ratenlimit HTTP 429')}
   return r;
  };
  const retry=async<T>(task:()=>Promise<T>):Promise<T>=>{for(let attempt=0;;attempt++){
-  const wait=Math.max(0,blockedUntil-clock());if(clock()+wait>=deadline)throw Error('Zeitbudget erreicht.');if(wait)await sleep(wait);
+  const wait=Math.max(0,pacing.blockedUntil-clock());if(clock()+wait>=deadline)throw Error('Zeitbudget erreicht.');if(wait)await sleep(wait);
   try{return await task()}catch(e){if(!/HTTP 429/.test((e as Error).message)||attempt>=2)throw e;report.retries++}
  }};
  const fresh=(v:any)=>v?.schema===RISK_SCHEMA&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<18*3600000;
@@ -56,7 +58,7 @@ export async function exportRisk(options:any={}){
  }
  let processed=0;
  for(const inputSymbol of inputs){
-  if(clock()>deadline||blockedUntil>=deadline||aborted){report.budgetReached=clock()>deadline||blockedUntil>=deadline;break}
+  if(clock()>deadline||pacing.blockedUntil>=deadline||aborted){report.budgetReached=clock()>deadline||pacing.blockedUntil>=deadline;break}
   processed++;if(!retryDue(data.retryState[inputSymbol],clock())){report.skippedCooldown++;continue}data.attempts[inputSymbol]=new Date(clock()).toISOString();
   if(!validationEnabled&&fresh(data.stocks[inputSymbol])&&(!sectorEnabled||sectorSeriesFresh(sector.series[inputSymbol],clock()))){report.skippedFresh++;continue}
   report.attempted++;

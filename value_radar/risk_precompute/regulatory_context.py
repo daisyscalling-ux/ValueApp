@@ -9,6 +9,7 @@ from holding_stocks import enrich
 from regulatory_credit import credit_context
 from fed_capital_requirements import requirement_for
 from holding_liquidity import liquidity_for
+from regulatory_insurer import build_insurers
 FIELDS=('listing_symbol','ticker','isin','currency','name','name_full','security_type','share_class')
 CODES={'BHCAP793':'cet1_ratio','BHCA7206':'tier1_ratio','BHCA7205':'total_capital_ratio','BHCA7204':'tier1_leverage_ratio'}
 def build(universe,holdings,registry,now=None,credit_archive=None,requirements_archive=None,liquidity_archive=None):
@@ -53,5 +54,6 @@ def build(universe,holdings,registry,now=None,credit_archive=None,requirements_a
 def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}),liquidity_archive=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-liquidity.json',{}))
+ result['insurers']=build_insurers(load(folder/'cf_universum.json',{}),load(Path(__file__).with_name('reviewed-insurer-solvency.json'),{}))
  save(folder/'cf_regulatory_context.json',result);print(result.get('summary',{'state':result['state']}))
 if __name__=='__main__':main()

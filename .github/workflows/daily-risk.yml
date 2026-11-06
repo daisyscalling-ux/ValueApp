@@ -27,8 +27,9 @@ on:
       - 'value_radar/fundamental_export/listing_identity.py'
 
 concurrency:
-  group: daily-risk
+  group: daily-risk-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: write
@@ -73,6 +74,10 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_history_backfill.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec*.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_run_integrity.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_bulk_workflows.py'
+      - run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-adaptive-roic-rate.ts --bundle --platform=node --format=esm --outfile=/tmp/test-adaptive-rate.mjs
+          node /tmp/test-adaptive-rate.mjs
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_evidence.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_review.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
@@ -106,6 +111,10 @@ jobs:
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-industry-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-industry-context.mjs
           node /tmp/test-industry-context.mjs
   risk:
+    concurrency:
+      group: roic-bulk-production
+      cancel-in-progress: false
+      queue: max
     needs: tests
     if: github.event_name != 'pull_request' 
     runs-on: ubuntu-latest

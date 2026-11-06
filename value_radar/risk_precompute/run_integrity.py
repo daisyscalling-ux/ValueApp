@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 import subprocess
 import sys
+from risk_app_export import with_reviews
 
 TARGET='value_radar/daten/cf_universum.json'
 
@@ -50,7 +51,11 @@ def seal(folder,record):
         if shard['generatedAt']!=manifest['generatedAt']:raise ValueError('shard_date_mismatch')
         if any(manifest['listings'].get(r['symbol'])!=bucket for r in shard['stocks']):raise ValueError('shard_index_mismatch')
         published.extend(shard['stocks'])
-    if sorted(published,key=lambda r:r['symbol'])!=sorted(coverage['stocks'],key=lambda r:r['symbol']):
+    def optional(name):
+        path=folder/name
+        return json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    expected=with_reviews(coverage,optional('cf_risk_event_review.json'),optional('cf_sector_review_packets.json'),dt.datetime.now(dt.timezone.utc))
+    if sorted(published,key=lambda r:r['symbol'])!=sorted(expected['stocks'],key=lambda r:r['symbol']):
         raise ValueError('shard_coverage_values_mismatch')
     generated=dt.datetime.fromisoformat(manifest['generatedAt'].replace('Z','+00:00'))
     captured=dt.datetime.fromisoformat(original['capturedAt'])

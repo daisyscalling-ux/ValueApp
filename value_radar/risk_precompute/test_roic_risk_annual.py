@@ -14,6 +14,44 @@ def payloads():
 def coverage(now=NOW):return {'generatedAt':now.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':{'state':'partial'}}}]}
 def fetch(symbol,endpoint,timeout):return payloads()[{'balance-sheet':'balance','cash-flow':'cashflow','income-statement':'income'}[endpoint]]
 class Tests(unittest.TestCase):
+ def test_numeric_evidence_cache_keeps_provenance_not_secrets(self):
+  from roic_statement_cache import pack,unpack
+  p=payloads();p['balance']['apikey']='do-not-store';p['balance']['data'][0]['apikey']='do-not-store'
+  p['balance']['data'][0]['bs_future_field']=123
+  cached=pack(p,ROW['listing_symbol'],NOW.isoformat())
+  self.assertNotIn('do-not-store',str(cached))
+  record={'retrievedAt':NOW.isoformat(),'statementEvidence':cached}
+  self.assertEqual(unpack(record,ROW['listing_symbol'],NOW)['balance']['data'][0]['bs_future_field'],123)
+  cached['payloads']['balance']['data'][0]['bs_tot_asset']=999
+  self.assertIsNone(unpack(record,ROW['listing_symbol'],NOW))
+ def test_legacy_partial_capture_once_without_bypassing_error_backoff(self):
+  from financial_supply_policy import decision,fingerprint
+  balance={'state':'partial','reason':'missing_capex'}
+  at=(NOW-dt.timedelta(days=1)).isoformat()
+  attempt={'at':at,'inputIdentity':identity(ROW),'coverageSignature':fingerprint(ROW,balance)}
+  record={'inputIdentity':identity(ROW),'retrievedAt':at,'annual':{'fields':{'total_assets':100}}}
+  self.assertEqual(decision(ROW,balance,record,attempt,NOW)['reason'],'capture_statement_evidence')
+  attempt['evidenceVersion']='risk-statement-evidence-v1'
+  self.assertFalse(decision(ROW,balance,record,attempt,NOW)['due'])
+  attempt.pop('evidenceVersion');attempt['error']='http_402'
+  self.assertNotEqual(decision(ROW,balance,record,attempt,NOW)['reason'],'capture_statement_evidence')
+ def test_evidence_reprocess_without_fetch_or_timestamp_renewal(self):
+  s=run({'kandidaten':[ROW]},coverage(),{},fetch,NOW)
+  old_time=s['stocks'][ROW['listing_symbol']]['retrievedAt']
+  s['stocks'][ROW['listing_symbol']]['parserVersion']='old'
+  s['stocks'][ROW['listing_symbol']]['annual']['fields']['total_assets']=None
+  def forbidden(*args):self.fail('Cache replay must not fetch')
+  result=run({'kandidaten':[ROW]},coverage(),s,forbidden,NOW)
+  self.assertEqual(result['report']['reprocessed_without_network'],1)
+  self.assertEqual(result['stocks'][ROW['listing_symbol']]['retrievedAt'],old_time)
+  self.assertEqual(result['stocks'][ROW['listing_symbol']]['annual']['fields']['total_assets'],100)
+ def test_stale_wrong_identity_and_retimestamped_evidence_rejected(self):
+  from roic_statement_cache import pack,unpack
+  r={'retrievedAt':NOW.isoformat(),'statementEvidence':pack(payloads(),ROW['listing_symbol'],NOW.isoformat())}
+  self.assertIsNone(unpack(r,'NYSE:OTHER',NOW))
+  self.assertIsNone(unpack(r,ROW['listing_symbol'],NOW+dt.timedelta(days=8)))
+  r['retrievedAt']=(NOW+dt.timedelta(hours=1)).isoformat()
+  self.assertIsNone(unpack(r,ROW['listing_symbol'],NOW+dt.timedelta(hours=1)))
  def credit_inputs(self,total=30):
   p=payloads();b=p['balance']['data'][0];b['id']='fnd_verified';b['bs_st_borrow']=None
   c={'data':[{**b,'short_and_long_term_debt':total}]}

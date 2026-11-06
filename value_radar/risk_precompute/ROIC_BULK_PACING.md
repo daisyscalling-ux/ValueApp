@@ -1,0 +1,13 @@
+# Gemeinsame Großlauf-Warteschlange und adaptive Abrufpausen
+
+Die Produktionsjobs `precompute` und `risk` verwenden dieselbe GitHub-Concurrency-Gruppe `roic-bulk-production`. Tests laufen außerhalb dieser Sperre. Laufende Jobs werden nicht abgebrochen; `queue: max` erhält mehrere wartende Jobs innerhalb der GitHub-Grenzen. Die separaten Workflow-Gruppen bleiben erhalten und unterscheiden PRs von Produktion. Die gemeinsame Sperre wird nur auf Jobebene gesetzt, um keine doppelte Sperre desselben Laufs zu erzeugen. Beide Produktionsjobs lesen main beim tatsächlichen Start, damit ein wartender Risikojob den zuletzt veröffentlichten Universumsstand verwendet.
+
+Grundlage: [GitHub-Dokumentation zu Concurrency und queue](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax). Die bestehenden Tageszeitpläne, manuellen Starts und der automatische Risikolauf nach precompute bleiben erhalten. Ein Lauf kann in der Warteschlange länger sichtbar sein, ohne dabei API-Aufrufe auszuführen. Bereits gestartete Läufe mit älterem Workflow übernehmen die neue Sperre nicht. Kleinere andere Jobs und die Online-App sind nicht Teil dieser gemeinsamen Sperre und können weiterhin denselben API-Zugang verwenden.
+
+Der Risiko-Historienexport erhöht nach HTTP 429 weiterhin die Abrufpause und respektiert Retry-After (Sekunden oder HTTP-Datum). Die Wartefrist gilt vor jedem weiteren Abruf, auch nach ausgeschöpften Wiederholungen. Passt die Wartezeit nicht mehr ins Zeitbudget, wird kein weiterer Abruf gestartet.
+
+Neu: Nach mindestens 20 erfolgreichen Antworten und einer störungsfreien Minute wird die Pause um 20 Prozent reduziert. Weitere Schritte erfordern jeweils erneut 20 erfolgreiche Antworten und eine Minute. Andere HTTP-Fehler unterbrechen diese Erholung; ein weiteres 429 setzt die Schutzpause und Erholung zurück. Die konfigurierte Obergrenze bleibt 240 Aufrufe pro Minute, also unter dem angegebenen ROIC-Kontingent von 300. Die Steuerung gilt für den seriellen Historienexport, nicht als globale Kontingentgarantie aller Anwendungen.
+
+Der Exportbericht enthält `pacing.spacingMs`, `configuredRequestsPerMinute` und `recoverySteps`. Dadurch lässt sich am nächsten Produktionslauf prüfen, ob sich der Abruf tatsächlich erholt. Die exakte Laufzeit ist nicht garantiert: Antwortzeiten, weitere Kontingentnutzer, offene Datenlücken und die Nachrichtenverarbeitung bleiben Faktoren. Es werden keine Daten ausgelassen, Aktualitätsgrenzen verlängert oder Fehler als Erfolg umgedeutet.
+
+Tests prüfen die geteilte Produktionssperre, PR-Trennung, aktuellen Checkout, Retry-After, Obergrenze, langsame Erholung, erneute Fehler und den tatsächlichen Exporter mit simuliertem 429. Keine Live-API-Aufrufe in den Tests.

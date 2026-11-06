@@ -14,6 +14,9 @@ from news_identity import valid_isin
 from financial_supply_policy import decision
 from market_priority import fetch_priority,market_tier
 from yahoo_sector import load,save,recent
+from roic_statement_cache import pack,unpack
+
+PARSER_VERSION='annual-risk-parser-v2'
 
 UTC=dt.timezone.utc
 IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_class')
@@ -131,6 +134,7 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
  targets.update(s for s in active if s not in balances)
  # Refresh already used records too, or successful recovery would expire.
  targets.update(s for s,v in state['stocks'].items() if not recent(v.get('retrievedAt'),now,1))
+ targets.update(s for s,v in state['stocks'].items() if v.get('statementEvidence') and v.get('parserVersion')!=PARSER_VERSION)
  rows=[active[s] for s in targets if s in active]
  rows.sort(key=lambda r:fetch_priority(r['listing_symbol'],state['attempts'].get(r['listing_symbol'],{}).get('at'),now))
  for row in rows:
@@ -138,13 +142,23 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
   if market_tier(s)>1:counts['deferred_other_market']+=1;continue
   if not valid_isin(row.get('isin')) or row.get('listing_reference_status') in ('expired','input_mismatch') or not re.fullmatch('[A-Z0-9._-]+:[A-Z0-9._-]+',s):counts['identity_blocked']+=1;continue
   balance=balances.get(s,{})
+  cached=state['stocks'].get(s,{})
+  if cached.get('parserVersion')!=PARSER_VERSION:
+   evidence=unpack(cached,s,now)
+   if evidence:
+    try:
+     annual=normalize(row,evidence,now)
+     if 'credit' in evidence:annual=supplement_credit(annual,evidence['credit'],evidence['balance'],now)
+     state['stocks'][s]={**cached,'annual':annual,'parserVersion':PARSER_VERSION}
+     counts['reprocessed_without_network']+=1
+    except (ValueError,TypeError,KeyError):counts['cached_reprocess_rejected']+=1
   # Legacy archives may contain successful records before the audit selected
   # their source. Do not discard their first refresh during migration.
   if old.get('coverageSignature') is None and s in state['stocks'] and not balance:balance={'state':'missing'}
   policy=decision(row,balance,state['stocks'].get(s,{}),old,now)
   if not policy['due']:counts['cooldown']+=1;continue
   if time.monotonic()-start>=budget:counts['budget_reached']+=1;break
-  record={'normalizationVersion':'nonempty-annual-v1','creditVersion':'reported-debt-v1','at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
+  record={'normalizationVersion':'nonempty-annual-v1','creditVersion':'reported-debt-v1','evidenceVersion':'risk-statement-evidence-v1','at':now.isoformat(),'inputIdentity':identity(row),'coverageSignature':policy['coverageSignature'],'expectedPeriod':balance.get('period')};counts['attempted']+=1
   try:
    payloads={}
    for kind,endpoint in [('balance','balance-sheet'),('cashflow','cash-flow'),('income','income-statement')]:
@@ -159,13 +173,14 @@ def run(universe,coverage,state,fetch,now=None,budget=720,checkpoint=None):
     else:
      counts['credit_attempted']+=1
      try:
-      annual=supplement_credit(annual,fetch(s,'ratios/credit',min(12,remaining)),payloads['balance'],now)
+      payloads['credit']=fetch(s,'ratios/credit',min(12,remaining))
+      annual=supplement_credit(annual,payloads['credit'],payloads['balance'],now)
       counts['credit_'+annual['creditDebtCheck']['state']]+=1
      except Exception as exc:
       error=safe_error(exc);record['creditError']=error
       annual['creditDebtCheck']={'state':'unavailable','reason':error};counts['credit_'+error]+=1
       if error in ('http_401','http_402','http_403','http_429'):credit_disabled=error
-   state['stocks'][s]={'inputIdentity':identity(row),'retrievedAt':now.isoformat(),'annual':annual};counts['updated']+=1
+   state['stocks'][s]={'inputIdentity':identity(row),'retrievedAt':now.isoformat(),'annual':annual,'parserVersion':PARSER_VERSION,'statementEvidence':pack(payloads,s,now.isoformat())};counts['updated']+=1
    counts['skipped_empty_periods']+=len(annual.get('skippedEmptyPeriods',[]))
    counts['empty_statements' if all(v is None for v in annual['fields'].values()) else 'partial_statements' if any(v is None for v in annual['fields'].values()) else 'complete_statements']+=1
   except Exception as e:

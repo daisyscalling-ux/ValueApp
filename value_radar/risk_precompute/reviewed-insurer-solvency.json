@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "source": "reviewed_insurer_original_reports",
+  "reviewedOn": "2026-11-06",
+  "reviewExpires": "2027-02-01",
+  "pointInTimeUsable": false,
+  "entries": [
+    {
+      "inputIdentity": {
+        "listing_symbol": "XETR:ALV",
+        "ticker": "ALV.DE",
+        "isin": "DE0008404005",
+        "currency": "EUR",
+        "name": "Allianz SE",
+        "name_full": "Allianz SE",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Allianz Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DE",
+      "regulator": "BaFin",
+      "scopeSourceUrl": "https://www.allianz.com/content/dam/onemarketing/azcom/Allianz_com/investor-relations/en/results-reports/sfcr/2026/en-Allianz-Group-SFCR-2025.pdf",
+      "scopeSourcePages": "7",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "quarterly_dividend_accrual",
+          "ratio": 2.25,
+          "eligibleOwnFunds": 97000000000,
+          "solvencyRequirement": 43100000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.allianz.com/content/dam/onemarketing/azcom/Allianz_com/investor-relations/en/results/2026-2q/2q-2026-interim-report-allianz.pdf",
+          "sourcePages": "4, 15",
+          "basisNote": "Quartalsweise Dividendenabgrenzung; Volatilitätsanpassung und Zinskurvenverlängerung. Übergangsmaßnahmen im Halbjahresbericht nicht separat quantifiziert."
+        },
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "full_annual_dividend_accrual",
+          "ratio": 2.18,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.allianz.com/content/dam/onemarketing/azcom/Allianz_com/investor-relations/en/results/2026-2q/2q-2026-interim-report-allianz.pdf",
+          "sourcePages": "4, 15",
+          "basisNote": "Regulatorische Quote mit voller jährlicher Dividendenabgrenzung. Zugehörige Eigenmittel und SCR hier nicht separat berichtet."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "XETR:MUV2",
+        "ticker": "MUV2.DE",
+        "isin": "DE0008430026",
+        "currency": "EUR",
+        "name": "Munchener Ruckversicherungs-Gesellschaft",
+        "name_full": "Munchener Ruckversicherungs-Gesellschaft AG",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Munich Re Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DE",
+      "regulator": "BaFin",
+      "scopeSourceUrl": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/SFCR-Munich-Re-Group-2025.pdf/_jcr_content/renditions/original./SFCR-Munich-Re-Group-2025.pdf",
+      "scopeSourcePages": "4",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "including_transitional_measures",
+          "ratio": 3.0,
+          "eligibleOwnFunds": 54660000000,
+          "solvencyRequirement": 18230000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/SFCR-Munich-Re-Group-2025.pdf/_jcr_content/renditions/original./SFCR-Munich-Re-Group-2025.pdf",
+          "sourcePages": "67, 69",
+          "basisNote": "Gesamte Gruppe einschließlich anderer Finanzsektoren und D&A. Mit Übergangsmaßnahmen; vorgeschlagene Dividende und ausstehende Rückkäufe abgezogen."
+        },
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "excluding_transitional_measures",
+          "ratio": 2.98,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/SFCR-Munich-Re-Group-2025.pdf/_jcr_content/renditions/original./SFCR-Munich-Re-Group-2025.pdf",
+          "sourcePages": "69",
+          "basisNote": "Ohne Übergangsmaßnahmen; vorgeschlagene Dividende und ausstehende Rückkäufe abgezogen. Eigenmittel und SCR dieser Variante hier nicht separat berichtet."
+        }
+      ]
+    }
+  ]
+}

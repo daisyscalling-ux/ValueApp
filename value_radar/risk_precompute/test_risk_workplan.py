@@ -6,6 +6,30 @@ def coverage(rows):return {'generatedAt':NOW.isoformat(),'stocks':rows}
 def row(symbol='NYSE:A',state='partial'):
  return {'symbol':symbol,'domains':{'quote':{'state':'available'},'price':{'state':'available'},'market':{'state':'available'},'identity':{'state':'available'},'historical':{'state':'available'},'sector':{'state':'available'},'balance':{'profile':'corporate','state':state,'reason':'missing_capex','sectorRequirements':[]}}}
 class Workplan(unittest.TestCase):
+ def test_bulk_plan_separates_limits_from_provider_gaps(self):
+  a=row();a['domains']['sector']={'state':'missing','reason':'fewer_than_five_same_currency_issuers','broaderContext':{'state':'available'}}
+  a['domains']['historical']={'state':'missing','reason':'Weniger als zwei Handelsjahre vorhanden.'}
+  b=row('NYSE:B');b['domains']['sector']={'state':'missing','reason':'series_missing'}
+  result=build(coverage([a,b]),NOW)['bulkPlan']
+  self.assertEqual(result['categories']['financial_statement_field_batch']['mainMarketListings'],2)
+  self.assertEqual(result['categories']['strict_peer_extension_context_already_present']['mainMarketListings'],1)
+  self.assertEqual(result['categories']['insufficient_listing_history']['mainMarketListings'],1)
+  self.assertFalse(next(g for g in result['batches'] if g['category']=='insufficient_listing_history')['automaticRefreshCandidate'])
+ def test_metric_coverage_counts_partial_valid_values_not_state_flags(self):
+  a=row();a['domains']['balance']['metrics']={'netDebtAssets':{'state':'available','value':0},'fcfAssets':{'state':'available','value':float('nan')}}
+  b=row('NYSE:B','context_only');b['domains']['balance']['profile']='bank'
+  r=build(coverage([a,b]),NOW)['bulkPlan']['metricCoverage']['all']
+  self.assertEqual(r['netDebtAssets'],{'available':1,'applicableListings':1,'percent':100})
+  self.assertEqual(r['fcfAssets']['available'],0)
+ def test_metric_delta_reports_gains_even_while_balance_partial(self):
+  import copy
+  from coverage_delta import compare
+  a=row();a['domains']['balance']['metrics']={'netDebtAssets':{'state':'available','value':.1}}
+  old=coverage([a]);old['generatedAt']=(NOW-dt.timedelta(days=1)).isoformat()
+  b=copy.deepcopy(a);b['domains']['balance']['metrics']['fcfAssets']={'state':'available','value':.02}
+  r=compare(old,coverage([b]),NOW)
+  self.assertEqual(r['changes'],[]);self.assertEqual(r['metricChangeSummary']['listingsWithGains'],1)
+  self.assertEqual(r['metricChanges'][0]['metric'],'fcfAssets')
  def test_independent_cashflow_alignment_does_not_close_cash_review(self):
   a=row('TSE:7974',state='available');b=a['domains']['balance']
   b['edinetReconciliation']={'state':'not_aligned','reasons':['cash_mismatch'],'metricAlignment':{'fcfAssets':{'state':'aligned'},'netDebtAssets':{'state':'not_aligned'}}}

@@ -203,4 +203,34 @@ class PreventiveSupply(unittest.TestCase):
   c=coverage();c['stocks'][0]['domains']['balance'].update(state='available',refreshDue=True)
   out=run({'kandidaten':[ROW]},c,index(),lambda d:self.fail('cached'),lambda d:zipped(),NOW)
   self.assertEqual(out['report']['downloaded'],1)
+class ReviewedPurchaseContext(unittest.TestCase):
+ def fixture(self):
+  review={'symbol':'TSE:1234','docID':'S100TEST','start':'2025-04-01','end':'2026-03-31','fileSha256':'original','tag':'{issuer}Purchase','schemaSha256':'schema','labelSha256':'labels','label':'Purchase of non-current assets','scope':'Broad purchases, not FCF'}
+  fact={'tag':review['tag'],'value':-100,'periodKind':'duration','definition':{'schemaSha256':'schema','periodType':'duration'},'labels':[{'language':'en','role':'http://www.xbrl.org/2003/role/label','text':review['label'],'sha256':'labels'}]}
+  record={'retrievedAt':'2026-10-30T00:00:00Z','filing':{'docID':'S100TEST'},'annual':{**{k:review[k] for k in ('symbol','docID','start','end','fileSha256')},'source':'EDINET annual XBRL','currency':'JPY','fields':{'capex':None},'state':'partial','extensionEvidence':{'method':'local-extension-label-review-v1','candidates':[fact]}}}
+  return record,review
+ def test_review_replay_preserves_freshness_and_missing_fcf(self):
+  from edinet_reviewed_context import apply
+  r,v=self.fixture();self.assertTrue(apply(r,[v]))
+  self.assertEqual(r['annual']['fields']['noncurrent_asset_purchases'],100)
+  self.assertIsNone(r['annual']['fields']['capex']);self.assertEqual(r['annual']['state'],'partial')
+  self.assertEqual(r['retrievedAt'],'2026-10-30T00:00:00Z');self.assertFalse(apply(r,[v]))
+ def test_different_document_period_or_hash_never_reuses_review(self):
+  from edinet_reviewed_context import apply
+  for key in ('symbol','docID','start','end','fileSha256'):
+   r,v=self.fixture();r['annual'][key]='different';self.assertFalse(apply(r,[v]),key)
+ def test_conflicts_unsafe_values_or_definitions_are_rejected(self):
+  from edinet_reviewed_context import apply
+  import copy
+  for value in (True,float('nan'),float('inf'),100):
+   r,v=self.fixture();r['annual']['extensionEvidence']['candidates'][0]['value']=value;self.assertFalse(apply(r,[v]))
+  r,v=self.fixture();facts=r['annual']['extensionEvidence']['candidates'];facts.append({**copy.deepcopy(facts[0]),'value':-101});self.assertFalse(apply(r,[v]))
+  for key in ('schemaSha256','periodType'):
+   r,v=self.fixture();r['annual']['extensionEvidence']['candidates'][0]['definition'][key]='different';self.assertFalse(apply(r,[v]))
+  r,v=self.fixture();r['annual']['extensionEvidence']['candidates'][0]['labels'][0]['sha256']='different';self.assertFalse(apply(r,[v]))
+ def test_existing_reported_context_is_never_overwritten(self):
+  from edinet_reviewed_context import apply
+  r,v=self.fixture();r['annual']['fields']['noncurrent_asset_purchases']=99
+  self.assertFalse(apply(r,[v]));self.assertEqual(r['annual']['fields']['noncurrent_asset_purchases'],99)
+
 if __name__=='__main__':unittest.main()

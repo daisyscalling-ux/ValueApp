@@ -14,6 +14,21 @@ from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
 COLLECTION_POLICY=POLICY+'/cash-context-v12-dei-date-continuations'
+
+def expected_period(domain,now):
+ value=domain.get('domains',{}).get('balance',{}).get('period')
+ try:
+  end=dt.date.fromisoformat(value)
+  return value if len(value)==10 and 0<=(now.date()-end).days<=550 else None
+ except (ValueError,TypeError):return None
+
+def behind_period(periods,expected):
+ if not expected:return False
+ dates=[]
+ for p in periods:
+  try:dates.append(dt.date.fromisoformat(p['end']))
+  except (KeyError,ValueError,TypeError):continue
+ return not dates or (dt.date.fromisoformat(expected)-max(dates)).days>7
 # Numerical concordance only, not proof of functional currency or an FX quote.
 CURRENCY_RATIO_RTOL=1e-4
 CURRENCY_RATIO_ATOL=1e-6
@@ -158,8 +173,10 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    continue
   old=state['stocks'].get(s,{})
   att=state['attempts'].get(s,{})
+  expected=expected_period(domains.get(s,{}),now)
+  newer_due=behind_period(old.get('periods',[]),expected) and (att.get('requestedPeriod')!=expected or not recent(att.get('at'),now,2))
   retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or (att.get('originalFiling',{}).get('fields')=={}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
-  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial:counts['cached']+=1;continue
+  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)
@@ -167,7 +184,8 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
  for r in candidates:
   remaining=budget-(time.monotonic()-started)
   if counts['attempted']>=max_companies or remaining<1:break
-  s=r['listing_symbol'];cik=str(listing_map[s]);att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY};counts['attempted']+=1
+  s=r['listing_symbol'];cik=str(listing_map[s]);expected=expected_period(domains.get(s,{}),now)
+  att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY,'requestedPeriod':expected};counts['attempted']+=1
   try:
    data=fetch(cik,min(12,remaining))
    att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
@@ -175,7 +193,9 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    from sec_operating_history import normalize as operating_normalize, select as operating_select
    operating=operating_normalize(data,cik,now)
    audit=Counter();periods=normalize(data,cik,now,audit)
-   if fetch_original and (not periods or audit.get('group_missing_same_filing_fields') or max(p['end'] for p in periods)<(now.date()-dt.timedelta(days=550)).isoformat()):
+   current_gap=behind_period(periods,expected)
+   if current_gap:counts['newerFiscalPeriodRequested']+=1
+   if fetch_original and (current_gap or not periods or audit.get('group_missing_same_filing_fields') or max(p['end'] for p in periods)<(now.date()-dt.timedelta(days=550)).isoformat()):
     remaining=budget-(time.monotonic()-started)
     if remaining>=2:
      try:
@@ -193,6 +213,8 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    if operating:
     state.setdefault('operatingStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':operating,'pointInTimeUsable':False}
     counts['operatingUpdated']+=1;counts['operatingPeriods']+=len(operating)
+   att['requestedPeriodState']='not_requested' if not expected else 'still_missing' if behind_period(periods,expected) else 'covered'
+   if expected and behind_period(periods,expected):counts['requestedPeriodStillMissing']+=1
    att['normalization']=dict(audit)
    if not periods or audit.get('group_missing_same_filing_fields') or audit.get('currency_conflict_periods'):
     att['sourceEvidence']=source_evidence(data,cik,now,VARIANTS,periods)

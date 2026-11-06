@@ -21,6 +21,7 @@ on:
 concurrency:
   group: precompute-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   publication-test:
@@ -39,6 +40,10 @@ jobs:
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_publish_cf.py -v
   precompute:
+    concurrency:
+      group: roic-bulk-production
+      cancel-in-progress: false
+      queue: max
     if: github.event_name != 'pull_request'
     needs: publication-test
     runs-on: ubuntu-latest
@@ -51,6 +56,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: main
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"

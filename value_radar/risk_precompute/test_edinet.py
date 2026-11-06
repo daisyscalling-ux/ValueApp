@@ -25,6 +25,18 @@ def index():
  return {'schema':1,'days':{str(NOW.date()-dt.timedelta(days=i)):{'checkedAt':NOW.isoformat(),'documents':[DOC] if str(NOW.date()-dt.timedelta(days=i))==DOC['indexDate'] else []} for i in range(461)},'stocks':{},'attempts':{}}
 def coverage():return {'generatedAt':NOW.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'balance':{'state':'partial'}}}]}
 class Parser(unittest.TestCase):
+ def test_extension_label_evidence_does_not_become_capex(self):
+  namespace='http://disclosure.edinet-fsa.go.jp/jpcrp030000/asr/001/E00001-000/2026-03-31/01/2026-06-20'
+  raw=xml().replace('xmlns:j=',f'xmlns:custom="{namespace}" xmlns:j=')
+  raw=raw.replace('</xbrli:xbrl>','<custom:PurchaseOfNonCurrentAssetsInvCFIFRS contextRef="D" unitRef="JPY">-5000000</custom:PurchaseOfNonCurrentAssetsInvCFIFRS></xbrli:xbrl>').replace('-1000000','')
+  schema=f'<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="{namespace}"><element id="custom_purchase" name="PurchaseOfNonCurrentAssetsInvCFIFRS" type="monetaryItemType"/></schema>'
+  labels='<linkbase xmlns="http://www.xbrl.org/2003/linkbase" xmlns:xlink="http://www.w3.org/1999/xlink"><labelLink><loc xlink:label="loc" xlink:href="report.xsd#custom_purchase"/><labelArc xlink:from="loc" xlink:to="text"/><label xlink:label="text" xml:lang="en">Purchase of non-current assets</label></labelLink></linkbase>'
+  b=io.BytesIO()
+  with zipfile.ZipFile(b,'w') as z:
+   z.writestr('XBRL/PublicDoc/report.xbrl',raw);z.writestr('XBRL/PublicDoc/report.xsd',schema);z.writestr('XBRL/PublicDoc/report_lab.xml',labels)
+  a=parse_zip(b.getvalue(),DOC,NOW)
+  self.assertIsNone(a['fields']['capex']);self.assertFalse(a['extensionEvidence']['automaticallyMapped'])
+  self.assertEqual(a['extensionEvidence']['candidates'][0]['labels'][0]['text'],'Purchase of non-current assets')
  def test_scale_and_signed_outflow(self):
   a=parse_zip(zipped(),DOC,NOW);self.assertEqual(a['state'],'available');self.assertEqual(a['fields']['total_assets'],100000000);self.assertEqual(a['fields']['capex'],4000000);self.assertEqual(a['fcfAssets'],.06)
  def test_missing_intangible_is_not_zero(self):
@@ -107,6 +119,12 @@ class AdditionalSupplyTests(unittest.TestCase):
 
 
 class ExtendedStatements(unittest.TestCase):
+ def test_extension_labels_require_exact_local_schema(self):
+  from edinet_extension_evidence import local_reference
+  definition={'id':'purchase','schemaFile':'XBRL/PublicDoc/report.xsd'}
+  self.assertTrue(local_reference('report.xsd#purchase','XBRL/PublicDoc/report_lab.xml',definition))
+  for href in ['https://example.com/report.xsd#purchase','//example.com/report.xsd#purchase','../Other/report.xsd#purchase','report.xsd#other','report.xsd?external=1#purchase','/report.xsd#purchase']:
+   self.assertFalse(local_reference(href,'XBRL/PublicDoc/report_lab.xml',definition),href)
  def extra(self,tag,value,context='D',decimals=None):
   attr=(' decimals="'+str(decimals)+'"') if decimals is not None else ''
   return xml().replace('</xbrli:xbrl>','<j:'+tag+' contextRef="'+context+'" unitRef="JPY"'+attr+'>'+str(value)+'</j:'+tag+'></xbrli:xbrl>')

@@ -34,6 +34,10 @@ def decision(row,balance,record,attempt,now):
  used=balance.get('source')=='ROIC v3 annual statements'
  preventive=balance.get('refreshDue') is True and balance.get('state') in ('available','context_only') and not used
  need=balance.get('state') in ('partial','missing') or not balance
+ # One-time evidence capture for unresolved successful legacy records. Keep
+ # provider-error backoff intact, and do not repeat a same-day migration.
+ if need and record.get('annual') and not record.get('statementEvidence') and attempt.get('evidenceVersion')!='risk-statement-evidence-v1' and not attempt.get('error') and at and dt.timedelta(days=1)<=now-at:
+  return {'due':True,'reason':'capture_statement_evidence','coverageSignature':sig,'nextAttemptAt':now.isoformat()}
  if not need and not used and not preventive:return {'due':False,'reason':'covered_by_other_source','coverageSignature':sig,'nextAttemptAt':None}
  if need and 'missing_total_debt' in str(balance.get('reason','')).split(',') and attempt.get('creditVersion')!='reported-debt-v1' and not attempt.get('error'):
   return {'due':True,'reason':'new_reported_debt_endpoint','coverageSignature':sig,'nextAttemptAt':now.isoformat()}

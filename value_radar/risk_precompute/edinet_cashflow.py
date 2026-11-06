@@ -10,7 +10,7 @@ import zipfile
 X='http://www.xbrl.org/2003/instance'
 D='http://xbrl.org/2006/xbrldi'
 SOURCE='EDINET annual XBRL'
-PARSER_VERSION='edinet-risk-v4-liability-components'
+PARSER_VERSION='edinet-risk-v5-extension-evidence'
 # Verified against FSA 2026 taxonomy (1c_Taxonomy.zip, 2025-11-01)
 # and sample instances (ESE140116.zip).
 TAGS={
@@ -178,4 +178,7 @@ def parse_zip(raw,doc,now):
   if len(names)!=1:raise ValueError('ambiguous_public_instance')
   entry=names[0]
   if entry.file_size>30_000_000 or entry.file_size>max(entry.compress_size,1)*300:raise ValueError('archive_too_large')
-  return parse_xml(archive.read(entry),doc,now)
+  result=parse_xml(archive.read(entry),doc,now)
+  from edinet_extension_evidence import collect
+  result['extensionEvidence']=collect(archive,result)
+  return result

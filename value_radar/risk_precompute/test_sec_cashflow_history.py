@@ -14,6 +14,19 @@ def fixture():
   facts[tag]={'units':{'USD':vals}}
  return {'cik':1,'entityName':'Example Corporation','facts':{'us-gaap':facts}}
 class Tests(unittest.TestCase):
+ def test_new_report_period_bypasses_fresh_old_history_once(self):
+  s=self.collect();self.c['stocks'][0]['domains']['balance']['period']='2026-09-30'
+  calls=[]
+  r=self.collect(s,fetch_original=lambda *a:calls.append(a) or None)
+  self.assertEqual(len(calls),1);self.assertEqual(r['report']['newerFiscalPeriodRequested'],1)
+  self.assertEqual(r['attempts'][ROW['listing_symbol']]['requestedPeriodState'],'still_missing')
+  self.collect(r,fetch_original=lambda *a:self.fail('must respect two-day retry interval'))
+ def test_fiscal_rounding_and_bad_expected_period_do_not_force_download(self):
+  from sec_cashflow_history import behind_period,expected_period
+  self.assertFalse(behind_period([{'end':'2025-12-31'}],'2026-01-04'))
+  self.assertTrue(behind_period([{'end':'2025-12-31'}],'2026-09-30'))
+  for p in ('bad','2026-02-30','2030-01-01'):
+   self.assertIsNone(expected_period({'domains':{'balance':{'period':p}}},NOW))
  def setUp(self):
   self.data=fixture();self.u={'kandidaten':[ROW]};self.c={'schema':1,'generatedAt':NOW.isoformat(),'stocks':[{'symbol':ROW['listing_symbol'],'domains':{'identity':{'state':'available'},'balance':{'profile':'corporate','metrics':{}}}}]}
  def fetch(self,*args):return self.data

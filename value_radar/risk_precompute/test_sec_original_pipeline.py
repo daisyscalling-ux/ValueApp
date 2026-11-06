@@ -69,6 +69,25 @@ class Components(unittest.TestCase):
 
 
 class Originals(unittest.TestCase):
+ def test_unmapped_investments_are_evidence_not_financial_facts(self):
+  from sec_original_filings import PDD_CONCEPT
+  raw=(FIX/'pdd-2025-selected.xhtml').read_bytes().replace(PDD_CONCEPT.encode(),b'PaymentsToAcquireUnreviewedAssets')
+  d=parse(raw,1737806,META['pdd'],'original-source')
+  evidence=d['originalFiling']['investmentEvidence']
+  self.assertTrue(evidence['candidates']);self.assertEqual(evidence['scoreContribution'],0)
+  self.assertTrue(all(c['end']=='2025-12-31' for c in evidence['candidates']))
+  self.assertFalse(normalize(d,1737806,NOW))
+  self.assertNotIn('pdd-reviewed',d['facts'])
+ def test_unmapped_investment_evidence_has_hard_limit(self):
+  import re
+  from sec_original_filings import PDD_CONCEPT
+  raw=(FIX/'pdd-2025-selected.xhtml').read_text(encoding='utf-8').replace(PDD_CONCEPT,'PaymentsToAcquireUnreviewedAssets')
+  facts=re.findall(r'<ix:nonFraction\b[^>]*name="[^"]*PaymentsToAcquireUnreviewedAssets"[^>]*>.*?</ix:nonFraction>',raw)
+  self.assertTrue(facts)
+  for fact in facts:raw=raw.replace(fact,fact*250)
+  e=parse(raw.encode(),1737806,META['pdd'],'original-source')['originalFiling']['investmentEvidence']
+  self.assertLessEqual(len(e['candidates']),100)
+  self.assertTrue(e['truncated'])
  def test_actual_original_reports_restore_2025(self):
   for symbol in META:
    rows=normalize(original(symbol),META[symbol]['cik'],NOW)

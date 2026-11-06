@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-11-05T19:48:11.422454+00:00",
+  "generatedAt": "2026-11-06T10:11:16.435934+00:00",
   "inputSha256": "4dff1861f755c078f0c6be1cbc0299b1cbcd81cf952efc9d5b6d8752afdddfe6",
   "summary": {
     "inputListings": 1331,
@@ -75757,7 +75757,7 @@
         "label": "Asset Management",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/ROSE.L/profile/",
-        "observedAt": "2026-11-04T11:42:07.746769+00:00",
+        "observedAt": "2026-11-06T10:11:15.030969+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [

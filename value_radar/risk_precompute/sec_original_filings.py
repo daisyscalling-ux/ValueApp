@@ -15,6 +15,9 @@ STANDARD={
     'ifrs-full':{'Assets','CashFlowsFromUsedInOperatingActivities','PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities'},
 }
 
+def investment_candidate(name):
+    return len(name)<=240 and any(x in name for x in ('Purchase','PaymentsToAcquire','CapitalExpenditure','AdditionsToProperty'))
+
 
 def qualified(qname, namespaces):
     parts=qname.split(':')
@@ -46,7 +49,7 @@ def selected_tree(raw):
         elif event=='start':
             stack.append(item)
             if capture is None and (item.tag in ('{'+X+'}context','{'+X+'}unit','{'+IX+'}continuation') or
-                (item.tag in ('{'+IX+'}nonNumeric','{'+IX+'}nonFraction') and item.get('name','').split(':')[-1] in names)):
+                (item.tag in ('{'+IX+'}nonNumeric','{'+IX+'}nonFraction') and (item.get('name','').split(':')[-1] in names or investment_candidate(item.get('name','').split(':')[-1])))):
                 capture=item
         else:
             if item is capture:
@@ -152,11 +155,12 @@ def parse_selected(raw,cik,filing,source_url,root,namespaces):
         meta.setdefault(name,set()).add(text)
     if meta.get('EntityCentralIndexKey')!={str(cik).zfill(10)} and meta.get('EntityCentralIndexKey')!={str(int(cik))}:raise ValueError('filing_cik_mismatch')
     if meta.get('DocumentType')!={filing['form']} or meta.get('DocumentPeriodEndDate')!={filing['reportDate']}:raise ValueError('filing_metadata_mismatch')
-    facts={};pdd_units={}
+    facts={};pdd_units={};investment_evidence=[];candidate_count=0
     for e in root.iter('{'+IX+'}nonFraction'):
         uri,name=qualified(e.get('name',''),namespaces);ns=family(uri)
         custom=str(int(cik))=='1737806' and name==PDD_CONCEPT and re.fullmatch(r'https?://www.pinduoduo.com/\d{8}',uri)
-        if not custom and (ns not in STANDARD or name not in STANDARD[ns]):continue
+        accepted=custom or (ns in STANDARD and name in STANDARD[ns])
+        if not accepted and not investment_candidate(name):continue
         context=contexts.get(e.get('contextRef'));currency=units.get(e.get('unitRef'))
         if context is None or currency is None or e.get('continuedAt') or e.get('{http://www.w3.org/2001/XMLSchema-instance}nil') in ('true','1'):continue
         fmt=transform(e.get('format',''),namespaces)
@@ -172,6 +176,14 @@ def parse_selected(raw,cik,filing,source_url,root,namespaces):
             if not math.isfinite(value):continue
         except (ValueError,OverflowError):continue
         row={**context,'val':value,'accn':filing['accessionNumber'],'filed':filing['filingDate'],'form':filing['form']}
+        if not accepted:
+            # Diagnostics only: no inferred equivalence from tag names or amounts.
+            try:annual=330<=(dt.date.fromisoformat(context['end'])-dt.date.fromisoformat(context['start'])).days<=400
+            except (KeyError,ValueError):annual=False
+            if annual and context['end']==filing['reportDate']:
+                candidate_count+=1
+                if len(investment_evidence)<100:investment_evidence.append({'namespace':uri[:400],'concept':name,'currency':currency,'context':e.get('contextRef'),**row})
+            continue
         if custom:pdd_units.setdefault(currency,[]).append(row)
         else:facts.setdefault(ns,{}).setdefault(name,{'units':{}})['units'].setdefault(currency,[]).append(row)
     if pdd_units:
@@ -187,7 +199,7 @@ def parse_selected(raw,cik,filing,source_url,root,namespaces):
             # Preserve tagged facts even if an untagged table disagrees.
             if any(old.get('end')==f['end'] for old in units):continue
             units.append(f);recovered.append({'end':f['end'],**f['reportedTableEvidence']})
-    return {'cik':int(cik),'facts':facts,'originalFiling':{'method':'annual-inline-xbrl-v1','sourceUrl':source_url,'sha256':hashlib.sha256(raw).hexdigest(),'accession':filing['accessionNumber'],'reportDate':filing['reportDate'],'form':filing['form'],'filed':filing['filingDate'],**({'reportedTableRecoveries':recovered} if recovered else {})}}
+    return {'cik':int(cik),'facts':facts,'originalFiling':{'method':'annual-inline-xbrl-v1','sourceUrl':source_url,'sha256':hashlib.sha256(raw).hexdigest(),'accession':filing['accessionNumber'],'reportDate':filing['reportDate'],'form':filing['form'],'filed':filing['filingDate'],'investmentEvidence':{'method':'unmapped-annual-investment-facts-v1','state':'review_required','scoreContribution':0,'candidates':investment_evidence,'candidateCount':candidate_count,'truncated':candidate_count>100},**({'reportedTableRecoveries':recovered} if recovered else {})}}
 
 
 def latest_annual(submissions,cik,now):

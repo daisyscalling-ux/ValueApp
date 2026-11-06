@@ -98,6 +98,10 @@ def run(universe,coverage,state,get_day,get_zip,now=None,budget=1680,checkpoint=
  for bucket in ('stocks','attempts'):
   for s in list(state[bucket]):
    if s not in rows or state[bucket][s].get('inputIdentity')!=identity(rows[s]):del state[bucket][s]
+ # Reuse only reviewed evidence from the same original document. This never
+ # renews retrievedAt, bypasses withdrawal checks or promotes broad purchases to FCF.
+ from edinet_reviewed_context import apply as reviewed_context
+ report['reviewedContextsApplied']=sum(reviewed_context(r) for r in state['stocks'].values())
  def persist():
   state.update(generatedAt=now.isoformat(),report=report)
   if checkpoint:checkpoint(state)
@@ -158,6 +162,7 @@ def run(universe,coverage,state,get_day,get_zip,now=None,budget=1680,checkpoint=
    annual.update(symbol=s,purpose='standalone_cashflow_risk_context',published_at=published(doc).isoformat(),
     source_url='https://disclosure2.edinet-fsa.go.jp/',docID=doc['docID'])
    state['stocks'][s]={'inputIdentity':identity(row),'retrievedAt':now.isoformat(),'filing':doc,'annual':annual}
+   report['reviewedContextsApplied']+=int(reviewed_context(state['stocks'][s]))
    report['downloaded']+=1;report['completeCashflows' if annual['state']=='available' else 'partialCashflows']+=1
   except Exception as e:
    attempt['error']=safe_error(e)

@@ -243,9 +243,9 @@ jobs:
           node /tmp/history-backfill.mjs
           python value_radar/risk_precompute/financial_history.py
           python value_radar/risk_precompute/risk_workplan.py
-          python value_radar/risk_precompute/risk_app_export.py
           python value_radar/risk_precompute/run_integrity.py seal value_radar/daten /tmp/risk-input.json
           python value_radar/risk_precompute/risk_evidence.py
+          python value_radar/risk_precompute/risk_app_export.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

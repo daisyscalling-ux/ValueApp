@@ -10,7 +10,12 @@
     {"old": "SATS", "new": "ECHO", "effective": "2026-06-24", "source": "https://ir.echostar.com/news-releases/news-release-details/echostar-changing-stocker-ticker-sats-echo-marking-companys-next"},
     {"old": "GPS", "new": "GAP", "effective": "2024-08-22", "source": "https://www.miaxglobal.com/alert/2024/08/21/miax-exchange-group-options-markets-corporate-action-alert-gap-incgps-will-0"},
     {"old": "WLTW", "new": "WTW", "effective": "2022-01-10", "source": "https://investors.wtwco.com/news-releases/news-release-details/willis-towers-watson-announces-nasdaq-ticker-symbol-change-wltw"},
-    {"old": "HFC", "new": "DINO", "effective": "2022-03-15", "source": "https://www.sec.gov/Archives/edgar/data/48039/000119312522077293/d260898d8k.htm"}
+    {"old": "HFC", "new": "DINO", "effective": "2022-03-15", "source": "https://www.sec.gov/Archives/edgar/data/48039/000119312522077293/d260898d8k.htm"},
+    {"old": "FRC", "new": "FRCB", "effective": "2023-05-03", "source": "https://api.finra.org/data/group/otcMarket/name/otcDailyList",
+     "finra_record": {"OTCDailyListID": 258557, "calendarDay": "2023-05-02", "exDate": "2023-05-03", "symbol": "FRCB", "dailyListEventCode": "SA",
+                      "reason": "Market Center Change Delisted from NYSE", "security": "FIRST REP BK SAN FRANCISCO CALIF NEW COM"},
+     "closure_source": "https://www.fdic.gov/resources/resolutions/bank-failures/failed-bank-list/first-republic.html",
+     "note": "Bank am 01.05.2023 von der FDIC geschlossen (CERT 59017). Aktionaere stehen im Rang nach allen Glaeubigern; FRCB-Kurse sind OTC-Notierungen, keine Abwicklungserloese."}
   ],
   "identity_splits": [
     {"symbol":"DOW", "before":"2019-04-02", "old_identity":"DOW_CHEMICAL_PRE2017", "source":"https://www.sec.gov/Archives/edgar/data/1751788/000119312519095067/d716962dex991.htm"},

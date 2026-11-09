@@ -26,7 +26,7 @@ Alle acht SEC-CIKs bestaetigen den erwarteten Emittenten. FRC und SBNY sind Bank
 | Wertpapier | Austritt S&P 500 | Spaeterer Verlauf laut Originalmeldung | Kursreihe |
 |---|---|---|---|
 | SIVB | 2023-03-15 | Bank am 10.03.2023 geschlossen, FDIC als Zwangsverwalter; Handel an der Nasdaq ab 10.03.2023 angehalten, Aussetzung 28.03.2023; Chapter 11 am 17.03.2023; Plan am 02.08.2024 bestaetigt | keine (SIVB, SIVBQ leer) |
-| FRC | 2023-05-04 | FDIC-Zwangsverwaltung; keine SEC-Meldungen | FRCB: 1.526 Zeilen ab 12.10.2020, keine Luecke ueber sieben Tage. Identitaetsbeleg ausserhalb der SEC fehlt noch |
+| FRC | 2023-05-04 | FDIC-Schliessung 01.05.2023; ab 03.05.2023 OTC als FRCB (FINRA) | FRCB: 1.526 Zeilen ab 12.10.2020, keine Luecke. **Zuordnung uebernommen** |
 | SBNY | 2023-03-15 | FDIC-Zwangsverwaltung; keine SEC-Meldungen | SBNY erst ab 15.08.2024, davor keine Reihe |
 | HFC | 2021-06-04 | 1:1-Umtausch in HF Sinclair, ab 15.03.2022 als DINO an der NYSE | DINO: 1.526 Zeilen ab 12.10.2020, keine Luecke. **Zuordnung uebernommen** |
 | DISH | 2023-06-20 | Fusion mit EchoStar zum 31.12.2023: 0,350877 EchoStar-Aktien je DISH-Aktie | keine; der Ticker SATS gehoert heute einer anderen Firma |
@@ -46,9 +46,15 @@ Die Yahoo-Reihe DINO reicht vor den Umtausch zurueck. Sie bleibt eine Anbieterre
 
 Kontrolllauf free-source-research 42636211468 (09.11.2026) mit dieser Zuordnung: `HFC -> DINO` erscheint unter den aufgeloesten Zuordnungen mit Kursen. Wertpapiere mit Fensterluecken: 46 statt 48. Dreimonatsfenster: 694.453 lueckenlos, 31.649 unvollstaendig (vorher 694.244 und 31.898). Der Sechsjahreszeitraum hat sich dabei um vier Wochen verschoben (jetzt ab 09.11.2020); die Differenz ist deshalb nicht allein dieser Zuordnung zuzurechnen.
 
+`FRC -> FRCB` ab 2023-05-03. Belege:
+
+- FINRA OTC Daily List, Eintrag 258557 vom 02.05.2023, gueltig ab 03.05.2023: Aufnahme der Stammaktie "FIRST REP BK SAN FRANCISCO CALIF NEW COM" unter FRCB, Grund "Market Center Change Delisted from NYSE". Abruf ueber die oeffentliche FINRA-API (Datensatz otcMarket/otcDailyList, Filter calendarDay). Die Vorzugsaktien erhielten am selben Tag eigene Symbole (FRCCL bis FRCML) und werden nicht zugeordnet.
+- FDIC-Schliessungsseite: First Republic Bank (CERT 59017) am 01.05.2023 geschlossen; JPMorgan Chase uebernahm Einlagen und fast alle Vermoegenswerte. Aktionaere stehen in der Rangfolge nach allen Glaeubigern.
+
+Die FRCB-Kurse nach dem 03.05.2023 sind OTC-Notierungen eines Restanspruchs, keine Abwicklungserloese.
+
 ## Noch offen
 
-1. **FRC -> FRCB**: Reihe vorhanden und lueckenlos. Es fehlt ein Originalbeleg ausserhalb der SEC (FDIC oder OTC Markets), dass FRCB dieselbe Aktie ist. Erst danach uebernehmen.
-2. **SIVB, SBNY**: Kursreihen bis zur Handelsaussetzung und danach fehlen. Bei SIVB ist die Behandlung der Stammaktie im Insolvenzplan noch zu pruefen. Die Meldung vom 08.11.2024 betrifft die Beteiligung der Gesellschaft an ihrer Tochter, nicht die Ansprueche der Aktionaere.
-3. **HBI, LEG, SEE, QRVO, CMA, DISH**: Kursreihen bis zum Delisting fehlen. Die Abfindung ist belegt. Fuer Aktienabfindungen braucht die Abwicklungsrendite zusaetzlich den Kurs der Erwerberaktie am Vollzugstag.
-4. Die Abfindungsbetraege wurden aus Textauszuegen gelesen. Vor einer Verwendung in `settlement_evidence` jeweils das vollstaendige 8-K pruefen.
+1. **SIVB, SBNY**: Kursreihen bis zur Handelsaussetzung und danach fehlen. Bei SIVB ist die Behandlung der Stammaktie im Insolvenzplan noch zu pruefen. Die Meldung vom 08.11.2024 betrifft die Beteiligung der Gesellschaft an ihrer Tochter, nicht die Ansprueche der Aktionaere.
+2. **HBI, LEG, SEE, QRVO, CMA, DISH**: Kursreihen bis zum Delisting fehlen. Die Abfindung ist belegt. Fuer Aktienabfindungen braucht die Abwicklungsrendite zusaetzlich den Kurs der Erwerberaktie am Vollzugstag.
+3. Die Abfindungsbetraege wurden aus Textauszuegen gelesen. Vor einer Verwendung in `settlement_evidence` jeweils das vollstaendige 8-K pruefen.

@@ -1,0 +1,942 @@
+{
+  "method": "price-block-study-v1",
+  "split": "2022-01-01",
+  "lookback_years": 5,
+  "event_threshold": 0.2,
+  "observations": 19759,
+  "excluded_member_quarters": {
+    "no_prices": 1769,
+    "short_or_gappy_history": 152,
+    "stale_last_price": 0
+  },
+  "horizons": {
+    "21": {
+      "development": {
+        "windows": 10099,
+        "securities": 510,
+        "dates": 23,
+        "event_rate": 0.010199029606891771,
+        "candidates": {
+          "A_production_es15_dd10_w20_5": {
+            "mean_rank_correlation": 0.235658258249157,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6572837873013283,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0039584364176150424,
+              0.006941001487357461,
+              0.011380504700643246,
+              0.027874564459930314
+            ]
+          },
+          "B_es15_dd10": {
+            "mean_rank_correlation": 0.2383709168222927,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6724544186606681,
+            "event_rate_by_quintile": [
+              0.0014771048744460858,
+              0.0039584364176150424,
+              0.0074367873078829945,
+              0.010885700148441365,
+              0.0273768043802887
+            ]
+          },
+          "C_volatility": {
+            "mean_rank_correlation": 0.2477641606181794,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6208216296227229,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0054428500742206825,
+              0.006941001487357461,
+              0.008906481939633844,
+              0.02887008461921354
+            ]
+          },
+          "D_es15_vol10_dd5": {
+            "mean_rank_correlation": 0.24756839415292833,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6588475195903604,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0034636318654131617,
+              0.007932573128408527,
+              0.008906481939633844,
+              0.029865604778496764
+            ]
+          },
+          "E_es15_vol15": {
+            "mean_rank_correlation": 0.24558001506844354,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6486249839741722,
+            "event_rate_by_quintile": [
+              0.0004923682914820286,
+              0.004453240969816922,
+              0.007932573128408527,
+              0.008906481939633844,
+              0.02936784469885515
+            ]
+          },
+          "F_production_w20_scale_10_60": {
+            "mean_rank_correlation": 0.23624785612132637,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6571220721298228,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0039584364176150424,
+              0.006941001487357461,
+              0.011380504700643246,
+              0.027874564459930314
+            ]
+          },
+          "production_score": {
+            "mean_rank_correlation": 0.235658258249157,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6572837873013283,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0039584364176150424,
+              0.006941001487357461,
+              0.011380504700643246,
+              0.027874564459930314
+            ]
+          },
+          "volatility_252d": {
+            "mean_rank_correlation": 0.2489998343511126,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6208425117619863,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0054428500742206825,
+              0.006941001487357461,
+              0.008906481939633844,
+              0.02887008461921354
+            ]
+          },
+          "expected_shortfall_5pct": {
+            "mean_rank_correlation": 0.23097924116655175,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6766182201035754,
+            "event_rate_by_quintile": [
+              0.0009847365829640572,
+              0.0029688273132112814,
+              0.00842835894893406,
+              0.009896091044037604,
+              0.02887008461921354
+            ]
+          },
+          "max_drawdown": {
+            "mean_rank_correlation": 0.22676168805982982,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6609595294428451,
+            "event_rate_by_quintile": [
+              0.0014771048744460858,
+              0.004948045522018802,
+              0.009419930589985127,
+              0.009896091044037604,
+              0.02538576406172225
+            ]
+          },
+          "worst_20d": {
+            "mean_rank_correlation": 0.20109919807520563,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5759857340994651,
+            "event_rate_by_quintile": [
+              0.0019694731659281144,
+              0.005937654626422563,
+              0.006941001487357461,
+              0.012370113805047007,
+              0.023892483822797413
+            ]
+          },
+          "current_drawdown_252d": {
+            "mean_rank_correlation": 0.18078906645433473,
+            "dates_with_correlation": 23,
+            "auc_event": 0.6384854912838922,
+            "event_rate_by_quintile": [
+              0.003938946331856229,
+              0.004948045522018802,
+              0.007932573128408527,
+              0.010885700148441365,
+              0.0233947237431558
+            ]
+          }
+        }
+      },
+      "test": {
+        "windows": 9191,
+        "securities": 544,
+        "dates": 19,
+        "event_rate": 0.026656511805026657,
+        "candidates": {
+          "A_production_es15_dd10_w20_5": {
+            "mean_rank_correlation": 0.14804679233878554,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7176174963613883,
+            "event_rate_by_quintile": [
+              0.003246753246753247,
+              0.008714596949891068,
+              0.016304347826086956,
+              0.029956427015250545,
+              0.07536865101037685
+            ]
+          },
+          "B_es15_dd10": {
+            "mean_rank_correlation": 0.15710188718442075,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7343254538569284,
+            "event_rate_by_quintile": [
+              0.0027056277056277055,
+              0.00980392156862745,
+              0.0125,
+              0.03159041394335512,
+              0.07700709994538503
+            ]
+          },
+          "C_volatility": {
+            "mean_rank_correlation": 0.19105629119137194,
+            "dates_with_correlation": 19,
+            "auc_event": 0.768881771353746,
+            "event_rate_by_quintile": [
+              0.003787878787878788,
+              0.007625272331154684,
+              0.014130434782608696,
+              0.027777777777777776,
+              0.08028399781540142
+            ]
+          },
+          "D_es15_vol10_dd5": {
+            "mean_rank_correlation": 0.17701952258943857,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7714315370682143,
+            "event_rate_by_quintile": [
+              0.0016233766233766235,
+              0.008169934640522876,
+              0.01358695652173913,
+              0.02886710239651416,
+              0.08137629710540688
+            ]
+          },
+          "E_es15_vol15": {
+            "mean_rank_correlation": 0.1833535858517517,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7789017552024163,
+            "event_rate_by_quintile": [
+              0.0027056277056277055,
+              0.003812636165577342,
+              0.01576086956521739,
+              0.029956427015250545,
+              0.08137629710540688
+            ]
+          },
+          "F_production_w20_scale_10_60": {
+            "mean_rank_correlation": 0.146457431239774,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7105793491105362,
+            "event_rate_by_quintile": [
+              0.0027056277056277055,
+              0.009259259259259259,
+              0.016304347826086956,
+              0.03159041394335512,
+              0.07373020207536865
+            ]
+          },
+          "production_score": {
+            "mean_rank_correlation": 0.14804679233878554,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7176174963613883,
+            "event_rate_by_quintile": [
+              0.003246753246753247,
+              0.008714596949891068,
+              0.016304347826086956,
+              0.029956427015250545,
+              0.07536865101037685
+            ]
+          },
+          "volatility_252d": {
+            "mean_rank_correlation": 0.19117845106813264,
+            "dates_with_correlation": 19,
+            "auc_event": 0.769369505011931,
+            "event_rate_by_quintile": [
+              0.003787878787878788,
+              0.007625272331154684,
+              0.014130434782608696,
+              0.027777777777777776,
+              0.08028399781540142
+            ]
+          },
+          "expected_shortfall_5pct": {
+            "mean_rank_correlation": 0.16290602611775598,
+            "dates_with_correlation": 19,
+            "auc_event": 0.7539908384547649,
+            "event_rate_by_quintile": [
+              0.0016233766233766235,
+              0.008169934640522876,
+              0.016304347826086956,
+              0.03104575163398693,
+              0.0764609503003823
+            ]
+          },
+          "max_drawdown": {
+            "mean_rank_correlation": 0.12969421194184658,
+            "dates_with_correlation": 19,
+            "auc_event": 0.6811766289346054,
+            "event_rate_by_quintile": [
+              0.005952380952380952,
+              0.011437908496732025,
+              0.02010869565217391,
+              0.034858387799564274,
+              0.06116876024030585
+            ]
+          },
+          "worst_20d": {
+            "mean_rank_correlation": 0.07433578075605547,
+            "dates_with_correlation": 19,
+            "auc_event": 0.5626263248424789,
+            "event_rate_by_quintile": [
+              0.00974025974025974,
+              0.011437908496732025,
+              0.023369565217391305,
+              0.030501089324618737,
+              0.05843801201529219
+            ]
+          },
+          "current_drawdown_252d": {
+            "mean_rank_correlation": 0.10528837692974129,
+            "dates_with_correlation": 19,
+            "auc_event": 0.6661554360174653,
+            "event_rate_by_quintile": [
+              0.01406926406926407,
+              0.01252723311546841,
+              0.01576086956521739,
+              0.03104575163398693,
+              0.060076460950300385
+            ]
+          }
+        }
+      }
+    },
+    "63": {
+      "development": {
+        "windows": 10099,
+        "securities": 510,
+        "dates": 23,
+        "event_rate": 0.0914942073472621,
+        "candidates": {
+          "A_production_es15_dd10_w20_5": {
+            "mean_rank_correlation": 0.2536943463158256,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5612700378640433,
+            "event_rate_by_quintile": [
+              0.04874446085672083,
+              0.06234537357743691,
+              0.07833415964303421,
+              0.0925284512617516,
+              0.17620706819313092
+            ]
+          },
+          "B_es15_dd10": {
+            "mean_rank_correlation": 0.2577017858519166,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5737221770055557,
+            "event_rate_by_quintile": [
+              0.050221565731166914,
+              0.06382978723404255,
+              0.07486365889935548,
+              0.09450766947055914,
+              0.17471378795420608
+            ]
+          },
+          "C_volatility": {
+            "mean_rank_correlation": 0.2533022247668832,
+            "dates_with_correlation": 23,
+            "auc_event": 0.49764653148849336,
+            "event_rate_by_quintile": [
+              0.04874446085672083,
+              0.06432459178624443,
+              0.08081308874566187,
+              0.09401286491835725,
+              0.17023394723743157
+            ]
+          },
+          "D_es15_vol10_dd5": {
+            "mean_rank_correlation": 0.2630305479818422,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5412367741250576,
+            "event_rate_by_quintile": [
+              0.051698670605613,
+              0.05838693715982187,
+              0.08031730292513634,
+              0.095002474022761,
+              0.17272274763563963
+            ]
+          },
+          "E_es15_vol15": {
+            "mean_rank_correlation": 0.25740917365096694,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5223761161635821,
+            "event_rate_by_quintile": [
+              0.05120630231413097,
+              0.06185056902523503,
+              0.07734258800198314,
+              0.0974764967837704,
+              0.17023394723743157
+            ]
+          },
+          "F_production_w20_scale_10_60": {
+            "mean_rank_correlation": 0.2538966977850819,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5611068450169268,
+            "event_rate_by_quintile": [
+              0.049236829148202856,
+              0.0628401781296388,
+              0.07635101636093208,
+              0.09450766947055914,
+              0.1752115480338477
+            ]
+          },
+          "production_score": {
+            "mean_rank_correlation": 0.2536943463158256,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5612700378640433,
+            "event_rate_by_quintile": [
+              0.04874446085672083,
+              0.06234537357743691,
+              0.07833415964303421,
+              0.0925284512617516,
+              0.17620706819313092
+            ]
+          },
+          "volatility_252d": {
+            "mean_rank_correlation": 0.25424635165202303,
+            "dates_with_correlation": 23,
+            "auc_event": 0.4978661665310167,
+            "event_rate_by_quintile": [
+              0.04874446085672083,
+              0.06432459178624443,
+              0.08081308874566187,
+              0.09401286491835725,
+              0.17023394723743157
+            ]
+          },
+          "expected_shortfall_5pct": {
+            "mean_rank_correlation": 0.24737342235797627,
+            "dates_with_correlation": 23,
+            "auc_event": 0.557896599313493,
+            "event_rate_by_quintile": [
+              0.052191038897095025,
+              0.06234537357743691,
+              0.0768468021814576,
+              0.09698169223156854,
+              0.16973618715778996
+            ]
+          },
+          "max_drawdown": {
+            "mean_rank_correlation": 0.2456837433580772,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5840777569387924,
+            "event_rate_by_quintile": [
+              0.052191038897095025,
+              0.06234537357743691,
+              0.0768468021814576,
+              0.09846610588817417,
+              0.16824290691886512
+            ]
+          },
+          "worst_20d": {
+            "mean_rank_correlation": 0.20837776913421616,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5104168583460137,
+            "event_rate_by_quintile": [
+              0.053175775480059084,
+              0.061355764473033154,
+              0.08031730292513634,
+              0.10638297872340426,
+              0.156794425087108
+            ]
+          },
+          "current_drawdown_252d": {
+            "mean_rank_correlation": 0.17625717589893655,
+            "dates_with_correlation": 23,
+            "auc_event": 0.5055084515847459,
+            "event_rate_by_quintile": [
+              0.068931560807484,
+              0.07224146462147452,
+              0.0768468021814576,
+              0.07916872835230084,
+              0.1607765057242409
+            ]
+          }
+        }
+      },
+      "test": {
+        "windows": 8694,
+        "securities": 540,
+        "dates": 18,
+        "event_rate": 0.11697722567287784,
+        "candidates": {
+          "A_production_es15_dd10_w20_5": {
+            "mean_rank_correlation": 0.20276457960827632,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6809912098724445,
+            "event_rate_by_quintile": [
+              0.04233409610983982,
+              0.059297639608520435,
+              0.1,
+              0.1421991940126655,
+              0.24191685912240185
+            ]
+          },
+          "B_es15_dd10": {
+            "mean_rank_correlation": 0.21257305270367427,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6886099650989835,
+            "event_rate_by_quintile": [
+              0.041189931350114416,
+              0.059297639608520435,
+              0.09080459770114943,
+              0.1491076568796776,
+              0.2453810623556582
+            ]
+          },
+          "C_volatility": {
+            "mean_rank_correlation": 0.23364780499944449,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6868508893169384,
+            "event_rate_by_quintile": [
+              0.03546910755148741,
+              0.059297639608520435,
+              0.08850574712643679,
+              0.14680483592400692,
+              0.2557736720554272
+            ]
+          },
+          "D_es15_vol10_dd5": {
+            "mean_rank_correlation": 0.23094902887535865,
+            "dates_with_correlation": 18,
+            "auc_event": 0.7030296731006009,
+            "event_rate_by_quintile": [
+              0.03546910755148741,
+              0.051237766263673,
+              0.0925287356321839,
+              0.15486470926885434,
+              0.2517321016166282
+            ]
+          },
+          "E_es15_vol15": {
+            "mean_rank_correlation": 0.2346655873119635,
+            "dates_with_correlation": 18,
+            "auc_event": 0.7042386374450545,
+            "event_rate_by_quintile": [
+              0.03318077803203661,
+              0.0535405872193437,
+              0.09482758620689655,
+              0.14622913068508925,
+              0.25808314087759815
+            ]
+          },
+          "F_production_w20_scale_10_60": {
+            "mean_rank_correlation": 0.19985454544894365,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6781853853770774,
+            "event_rate_by_quintile": [
+              0.039473684210526314,
+              0.06505469199769717,
+              0.09885057471264368,
+              0.14795624640184227,
+              0.23441108545034642
+            ]
+          },
+          "production_score": {
+            "mean_rank_correlation": 0.20276457960827632,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6809912098724445,
+            "event_rate_by_quintile": [
+              0.04233409610983982,
+              0.059297639608520435,
+              0.1,
+              0.1421991940126655,
+              0.24191685912240185
+            ]
+          },
+          "volatility_252d": {
+            "mean_rank_correlation": 0.23379477995479162,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6868764416409895,
+            "event_rate_by_quintile": [
+              0.03546910755148741,
+              0.059297639608520435,
+              0.08850574712643679,
+              0.14680483592400692,
+              0.2557736720554272
+            ]
+          },
+          "expected_shortfall_5pct": {
+            "mean_rank_correlation": 0.2156306213669479,
+            "dates_with_correlation": 18,
+            "auc_event": 0.69690473619691,
+            "event_rate_by_quintile": [
+              0.03775743707093822,
+              0.05699481865284974,
+              0.09827586206896552,
+              0.1491076568796776,
+              0.24364896073903003
+            ]
+          },
+          "max_drawdown": {
+            "mean_rank_correlation": 0.18479217885780955,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6602423384974644,
+            "event_rate_by_quintile": [
+              0.04977116704805492,
+              0.06850892343120323,
+              0.10114942528735632,
+              0.14277489925158318,
+              0.22344110854503466
+            ]
+          },
+          "worst_20d": {
+            "mean_rank_correlation": 0.11035140160857058,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6000183285091314,
+            "event_rate_by_quintile": [
+              0.07322654462242563,
+              0.08405296488198043,
+              0.10057471264367816,
+              0.13701784686240645,
+              0.1905311778290993
+            ]
+          },
+          "current_drawdown_252d": {
+            "mean_rank_correlation": 0.1558599626605165,
+            "dates_with_correlation": 18,
+            "auc_event": 0.6082628915317293,
+            "event_rate_by_quintile": [
+              0.07551487414187644,
+              0.08347725964306275,
+              0.09310344827586207,
+              0.11917098445595854,
+              0.21420323325635104
+            ]
+          }
+        }
+      }
+    },
+    "126": {
+      "development": {
+        "windows": 9632,
+        "securities": 506,
+        "dates": 22,
+        "event_rate": 0.17898671096345514,
+        "candidates": {
+          "A_production_es15_dd10_w20_5": {
+            "mean_rank_correlation": 0.26494221176200156,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5652830931583277,
+            "event_rate_by_quintile": [
+              0.10480123902942695,
+              0.120850622406639,
+              0.1627665106604264,
+              0.18724066390041494,
+              0.32045929018789143
+            ]
+          },
+          "B_es15_dd10": {
+            "mean_rank_correlation": 0.2687084276443204,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5775644828521032,
+            "event_rate_by_quintile": [
+              0.10686628807434176,
+              0.12448132780082988,
+              0.15548621944877794,
+              0.18983402489626555,
+              0.31941544885177453
+            ]
+          },
+          "C_volatility": {
+            "mean_rank_correlation": 0.2487557428101468,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5011838946609912,
+            "event_rate_by_quintile": [
+              0.11151264842540011,
+              0.13070539419087138,
+              0.16744669786791472,
+              0.18827800829875518,
+              0.2980167014613779
+            ]
+          },
+          "D_es15_vol10_dd5": {
+            "mean_rank_correlation": 0.2687890551738094,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5449174717487768,
+            "event_rate_by_quintile": [
+              0.10841507485802789,
+              0.12033195020746888,
+              0.16172646905876234,
+              0.1924273858921162,
+              0.31315240083507306
+            ]
+          },
+          "E_es15_vol15": {
+            "mean_rank_correlation": 0.25888167684619884,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5258336296645765,
+            "event_rate_by_quintile": [
+              0.10686628807434176,
+              0.129149377593361,
+              0.15912636505460218,
+              0.1950207468879668,
+              0.3058455114822547
+            ]
+          },
+          "F_production_w20_scale_10_60": {
+            "mean_rank_correlation": 0.26501494818277743,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5654613686747949,
+            "event_rate_by_quintile": [
+              0.10480123902942695,
+              0.1229253112033195,
+              0.1606864274570983,
+              0.18775933609958506,
+              0.319937369519833
+            ]
+          },
+          "production_score": {
+            "mean_rank_correlation": 0.26494221176200156,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5652830931583277,
+            "event_rate_by_quintile": [
+              0.10480123902942695,
+              0.120850622406639,
+              0.1627665106604264,
+              0.18724066390041494,
+              0.32045929018789143
+            ]
+          },
+          "volatility_252d": {
+            "mean_rank_correlation": 0.24963991230252172,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5013411922726201,
+            "event_rate_by_quintile": [
+              0.109963861641714,
+              0.13226141078838174,
+              0.16744669786791472,
+              0.1887966804979253,
+              0.2974947807933194
+            ]
+          },
+          "expected_shortfall_5pct": {
+            "mean_rank_correlation": 0.2530546882187487,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5613822297488402,
+            "event_rate_by_quintile": [
+              0.10893133711925658,
+              0.129149377593361,
+              0.15704628185127406,
+              0.19035269709543567,
+              0.3105427974947808
+            ]
+          },
+          "max_drawdown": {
+            "mean_rank_correlation": 0.2604194854345519,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5879310152601789,
+            "event_rate_by_quintile": [
+              0.10789881259679918,
+              0.12448132780082988,
+              0.1627665106604264,
+              0.19553941908713693,
+              0.30532359081419624
+            ]
+          },
+          "worst_20d": {
+            "mean_rank_correlation": 0.21939881459479615,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5172184222385743,
+            "event_rate_by_quintile": [
+              0.11357769747031492,
+              0.12344398340248963,
+              0.1622464898595944,
+              0.20902489626556017,
+              0.28757828810020875
+            ]
+          },
+          "current_drawdown_252d": {
+            "mean_rank_correlation": 0.18043634108414788,
+            "dates_with_correlation": 22,
+            "auc_event": 0.5214319371144026,
+            "event_rate_by_quintile": [
+              0.13990707279297884,
+              0.14989626556016597,
+              0.16380655226209048,
+              0.16441908713692946,
+              0.2776617954070981
+            ]
+          }
+        }
+      },
+      "test": {
+        "windows": 8199,
+        "securities": 535,
+        "dates": 17,
+        "event_rate": 0.20783022319795097,
+        "candidates": {
+          "A_production_es15_dd10_w20_5": {
+            "mean_rank_correlation": 0.22021868007482673,
+            "dates_with_correlation": 17,
+            "auc_event": 0.634973905532244,
+            "event_rate_by_quintile": [
+              0.11885991510006064,
+              0.13125763125763126,
+              0.19256550883607557,
+              0.23870573870573872,
+              0.35884874464176364
+            ]
+          },
+          "B_es15_dd10": {
+            "mean_rank_correlation": 0.23339629895053082,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6451144253253677,
+            "event_rate_by_quintile": [
+              0.11158277744087326,
+              0.13247863247863248,
+              0.18281535648994515,
+              0.2509157509157509,
+              0.3625229638701776
+            ]
+          },
+          "C_volatility": {
+            "mean_rank_correlation": 0.25467141854102987,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6461809734465298,
+            "event_rate_by_quintile": [
+              0.09642207398423287,
+              0.1330891330891331,
+              0.17915904936014626,
+              0.27289377289377287,
+              0.35884874464176364
+            ]
+          },
+          "D_es15_vol10_dd5": {
+            "mean_rank_correlation": 0.25226850612184065,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6565701044862968,
+            "event_rate_by_quintile": [
+              0.09884778653729533,
+              0.13003663003663005,
+              0.17672151127361366,
+              0.2673992673992674,
+              0.3674219228413962
+            ]
+          },
+          "E_es15_vol15": {
+            "mean_rank_correlation": 0.2554101424190944,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6577007593417833,
+            "event_rate_by_quintile": [
+              0.09581564584596726,
+              0.1227106227106227,
+              0.19683120048750763,
+              0.25396825396825395,
+              0.3710961420698102
+            ]
+          },
+          "F_production_w20_scale_10_60": {
+            "mean_rank_correlation": 0.21636589795288427,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6331630145254384,
+            "event_rate_by_quintile": [
+              0.11400848999393572,
+              0.14163614163614163,
+              0.19012797074954296,
+              0.2448107448107448,
+              0.3496631965707287
+            ]
+          },
+          "production_score": {
+            "mean_rank_correlation": 0.22021868007482673,
+            "dates_with_correlation": 17,
+            "auc_event": 0.634973905532244,
+            "event_rate_by_quintile": [
+              0.11885991510006064,
+              0.13125763125763126,
+              0.19256550883607557,
+              0.23870573870573872,
+              0.35884874464176364
+            ]
+          },
+          "volatility_252d": {
+            "mean_rank_correlation": 0.25481337230365925,
+            "dates_with_correlation": 17,
+            "auc_event": 0.646219826012787,
+            "event_rate_by_quintile": [
+              0.09642207398423287,
+              0.1330891330891331,
+              0.17915904936014626,
+              0.27289377289377287,
+              0.35884874464176364
+            ]
+          },
+          "expected_shortfall_5pct": {
+            "mean_rank_correlation": 0.2335141131435108,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6476986631103016,
+            "event_rate_by_quintile": [
+              0.10369921164342026,
+              0.13797313797313798,
+              0.18769043266301036,
+              0.2515262515262515,
+              0.3594611145131659
+            ]
+          },
+          "max_drawdown": {
+            "mean_rank_correlation": 0.20787970318593865,
+            "dates_with_correlation": 17,
+            "auc_event": 0.6282919417970486,
+            "event_rate_by_quintile": [
+              0.12431776834445118,
+              0.1391941391941392,
+              0.1858622790981109,
+              0.25335775335775335,
+              0.33741579914268216
+            ]
+          },
+          "worst_20d": {
+            "mean_rank_correlation": 0.10532851122409086,
+            "dates_with_correlation": 17,
+            "auc_event": 0.5606467777669352,
+            "event_rate_by_quintile": [
+              0.16737416616130987,
+              0.1684981684981685,
+              0.182205971968312,
+              0.2326007326007326,
+              0.28903857930189836
+            ]
+          },
+          "current_drawdown_252d": {
+            "mean_rank_correlation": 0.18874369516672967,
+            "dates_with_correlation": 17,
+            "auc_event": 0.5953096820595113,
+            "event_rate_by_quintile": [
+              0.1334141904184354,
+              0.15995115995115994,
+              0.17428397318708105,
+              0.2313797313797314,
+              0.34109001837109615
+            ]
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Kostenlose Anbieterreihen ohne archivierte Point-in-Time-Version; Identitaeten nur vorlaeufig.",
+    "Fehlende Reihen ausgeschiedener Firmen bleiben ausgeschlossen und sind in excluded_member_quarters gezaehlt.",
+    "Ueberlappende Fenster und gemeinsame Marktereignisse: Beobachtungen nicht unabhaengig, keine Signifikanztests.",
+    "Nur Kursblock; Finanz-, Bewertungs- und Wettbewerbsbloecke sind ohne Point-in-Time-Daten nicht pruefbar."
+  ],
+  "selection": {
+    "rule": "Hoechste mittlere Stichtags-Rangkorrelation im Entwicklungszeitraum, 63 Sitzungen",
+    "selected": "D_es15_vol10_dd5"
+  }
+}

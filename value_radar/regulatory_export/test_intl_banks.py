@@ -53,6 +53,13 @@ class IntlBankImportTests(unittest.TestCase):
         self.assertEqual(r['mappingReviewExpires'], '2027-01-01')
         self.assertIn('X', r['open'])
 
+    def test_entry_without_disclosed_requirement_keeps_capital_only(self):
+        e = {'isin': 'JP3351500008', 'issuer': 'Shizuoka Financial Group, Inc.', 'jurisdiction': 'JP', 'regulator': 'JFSA', 'period': '2026-06-30',
+             'cet1_ratio': .1624, 'tier1_ratio': .1624, 'total_capital_ratio': .1624, 'cet1Requirement': None, 'lcr': None,
+             'source': {'type': 'basel_pillar3_km1', 'url': 'https://example.org/r.pdf', 'sha256': 'b' * 64}}
+        self.assertEqual(intl.reviewed_problem(e), '')
+        self.assertEqual(intl.reviewed_problem({**e, 'cet1Requirement': .08, 'requirementComponents': {'minimum': .045}}), 'requirement_components_mismatch')
+
     def test_reviewed_file_is_consistent(self):
         d = json.loads((Path(intl.__file__).parent / 'reviewed-key-metrics.json').read_text(encoding='utf-8'))
         for e in d['entries']:

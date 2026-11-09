@@ -82,6 +82,7 @@ jobs:
           node /tmp/test-adaptive-rate.mjs
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_evidence.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_review.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_feature_snapshot.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
@@ -261,6 +262,10 @@ jobs:
           python value_radar/risk_precompute/risk_evidence.py
           python value_radar/risk_precompute/risk_app_export.py
           python value_radar/risk_precompute/run_integrity.py seal value_radar/daten /tmp/risk-input.json
+      - name: Rohdaten aller Risikobloecke taeglich archivieren
+        if: ${{ always() && !cancelled() && steps.riskpack.outcome == 'success' }}
+        continue-on-error: true
+        run: python value_radar/risk_precompute/feature_snapshot.py value_radar/daten
       - uses: actions/upload-artifact@v4
         if: always()
         with:

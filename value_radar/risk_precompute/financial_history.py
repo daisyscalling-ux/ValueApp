@@ -32,9 +32,12 @@ def observations(balance,now,annual_age_days=550,retrieval_days=7):
  if c.get('state')=='available' and period_recent(c.get('period'),now,180):
   for key,m in c.get('metrics',{}).items():
    if m.get('state')=='available' and m.get('unit')=='fraction' and finite(m.get('value')):
-    result.append({'metric':key,'frequency':'quarterly','period':c['period'],'currency':'RATIO','value':m['value'],'method':{'rssdId':c['rssdId'],'sourceField':m['sourceField'],'version':'FRY9C-capital-v1'},'sourceRetrievedAt':c['sourceImportedAt'],'evidence':{'sourceUrl':c['sourceUrl'],'sourceFileSha256':c['sourceFileSha256']}})
+    # US-Holdings (FR Y-9C) tragen eine RSSD-ID; EU- und internationale Banken stattdessen LEI bzw. Quellkennung.
+    us=c.get('scope')=='listed_consolidated_holding'
+    method={'rssdId':c['rssdId'],'sourceField':m['sourceField'],'version':'FRY9C-capital-v1'} if us else {'scope':c.get('scope'),'lei':c.get('lei'),'sourceType':c.get('sourceType'),'sourceField':m.get('sourceField'),'version':(c.get('scope') or 'bank')+'-capital-v1'}
+    result.append({'metric':key,'frequency':'quarterly','period':c['period'],'currency':'RATIO','value':m['value'],'method':method,'sourceRetrievedAt':c.get('sourceImportedAt'),'evidence':{'sourceUrl':c.get('sourceUrl'),'sourceFileSha256':c.get('sourceFileSha256')}})
   q=c.get('creditQuality') or {}
-  if q.get('state')=='available' and q.get('period')==c['period']:
+  if c.get('scope')=='listed_consolidated_holding' and q.get('state')=='available' and q.get('period')==c['period']:
    for key,value in q.get('ratios',{}).items():
     if finite(value):result.append({'metric':key,'frequency':'quarterly','period':q['period'],'currency':'RATIO','value':value,'method':{'rssdId':c['rssdId'],'version':q['method']},'sourceRetrievedAt':q['sourceImportedAt'],'evidence':{'sourceUrl':q['sourceUrl'],'sourceFileSha256':q['sourceFileSha256']}})
  return result

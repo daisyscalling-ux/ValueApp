@@ -29,4 +29,11 @@ test('stale quarter, wrong source tag, identity mismatch and inconsistent hierar
  assert.equal(verifiedIntlCapital(archive({...record,metrics:{...record.metrics,tier1_ratio:{...record.metrics.tier1_ratio,value:.11}}}),row,true,now),null);
  assert.equal(verifiedIntlCapital(archive({...record,liquidity:{...record.liquidity,period:'2026-03-31'}}),row,true,now)!.liquidity,null);
 });
+test('Basel CR1 defaulted-loan ratio passes only with matching method and period',()=>{
+ const credit={state:'available',method:'basel-cr1-default-v1',unit:'fraction',ratio:.011,period:'2026-06-30'};
+ const r=merge(base,row,archive({...record,creditQuality:credit}),true,now);
+ assert.equal(r.bankCapital.creditQuality.ratio,.011);assert.ok(r.sectorAssessment.fulfilledRequirements.includes('asset_quality_nonperforming_loans'));
+ assert.equal(verifiedIntlCapital(archive({...record,creditQuality:{...credit,period:'2026-03-31'}}),row,true,now)!.creditQuality,null);
+ assert.equal(verifiedIntlCapital(archive({...record,creditQuality:{...credit,method:'eba-npl-v1'}}),row,true,now)!.creditQuality,null);
+});
 console.log(checks+' international capital checks passed');

@@ -101,11 +101,16 @@ def build_intl(universe,data,now):
   liq={'state':'available','method':'intl-lcr-v1','reportedRatio':i['lcr'],'nsfr':i.get('nsfr'),'period':i['period'],'unit':'fraction','sourceType':src['type']} if isinstance(i.get('lcr'),(int,float)) and 0<i['lcr']<10 else None
   req=None
   if isinstance(i.get('cet1Requirement'),(int,float)) and 0<i['cet1Requirement']<.3:
-   req={'state':'available','method':'basel-km1-cet1-requirement-v1','unit':'fraction','value':i['cet1Requirement'],'comparisonPeriod':i['period'],'reviewExpires':data['mappingReviewExpires'],'definition':i.get('cet1RequirementDefinition'),'scoreContribution':0}
+   req={'state':'available','method':'basel-km1-cet1-requirement-v1','unit':'fraction','value':i['cet1Requirement'],'comparisonPeriod':i['period'],'reviewExpires':data['mappingReviewExpires'],'definition':i.get('cet1RequirementDefinition'),
+        'components':i.get('requirementComponents'),'componentSourceUrl':i.get('requirementSourceUrl'),'scoreContribution':0}
+  credit=None
+  if isinstance(i.get('defaultedLoanRatio'),(int,float)) and 0<=i['defaultedLoanRatio']<=1:
+   credit={'state':'available','method':'basel-cr1-default-v1','unit':'fraction','ratio':i['defaultedLoanRatio'],'period':i['period'],
+           'definition':'Defaulted / (defaulted + non-defaulted) gross carrying value of loans, Basel Pillar 3 table CR1.','scoreContribution':0}
   stocks[s]={'state':'available','scope':'basel_key_metrics','holdingName':i['issuer'],'jurisdiction':i['jurisdiction'],'regulator':i['regulator'],'consolidation':i['scope'],
    'inputIdentity':{k:row.get(k) for k in FIELDS},'period':i['period'],'sourceImportedAt':data['importedAt'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceType':src['type'],
-   'sourceDetail':src.get('tables') or src.get('page'),'identityReviewExpires':data['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
-   'capitalRequirement':req,'liquidity':liq,'creditQuality':None,
+   'sourceDetail':src.get('tables') or src.get('location'),'identityReviewExpires':data['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
+   'capitalRequirement':req,'liquidity':liq,'creditQuality':credit,
    'limitations':['Published key metrics of the supervised consolidated group; no institution-specific requirement unless disclosed.','No harmonised non-performing loan ratio in this source.']}
  out.update(state='ready',summary={'intlBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out

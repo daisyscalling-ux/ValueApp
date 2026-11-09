@@ -80,15 +80,19 @@ def bank_block(balance, reviewed):
     if not isinstance(c, dict) or c.get('state') != 'available':
         return None
     req, liq = c.get('capitalRequirement') or {}, c.get('liquidity') or {}
-    credit = (reviewed or {}).get('bankCredit') or {}
-    return {'period': c.get('period'), 'rssdId': c.get('rssdId'),
-            'ratios': {k: finite((c.get('metrics') or {}).get(k, {}).get('value')) for k in ('cet1_ratio', 'tier1_ratio', 'total_capital_ratio', 'tier1_leverage_ratio')},
+    # US: Kreditqualitaet aus reviewedRisk.bankCredit; EU (EBA): direkt am Kapitaleintrag (creditQuality, eba-npl-v1).
+    eu_credit = c.get('creditQuality') or {}
+    credit = eu_credit if c.get('scope') == 'eu_prudential_group' else (reviewed or {}).get('bankCredit') or {}
+    return {'period': c.get('period'), 'rssdId': c.get('rssdId'), 'lei': c.get('lei'), 'scope': c.get('scope'),
+            'ratios': {k: finite((c.get('metrics') or {}).get(k, {}).get('value')) for k in ('cet1_ratio', 'tier1_ratio', 'total_capital_ratio', 'tier1_leverage_ratio', 'leverage_ratio')},
             'cet1Requirement': finite(req.get('value')) if req.get('state') == 'available' else None,
+            'cet1RequirementMethod': req.get('method') if req.get('state') == 'available' else None,
             'requirementReviewExpires': req.get('reviewExpires'),
             'lcr': finite(liq.get('reportedRatio')) if liq.get('state') == 'available' else None,
             'lcrPeriod': liq.get('period'), 'lcrReviewExpires': liq.get('reviewExpires'),
             'problemLoanRatio': finite(credit.get('ratio')) if credit.get('state') == 'available' else None,
-            'problemLoanPeriod': credit.get('period'), 'problemLoanPeerMedian': finite(credit.get('peerMedian'))}
+            'problemLoanPeriod': credit.get('period'), 'problemLoanPeerMedian': finite(credit.get('peerMedian')),
+            'problemLoanMethod': credit.get('method') if credit.get('state') == 'available' else None}
 
 
 def insurer_block(balance):

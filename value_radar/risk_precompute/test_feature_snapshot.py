@@ -86,6 +86,15 @@ class FeatureSnapshotTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'shard_hash'):
                 fs.build(fixture(tmp, bad_hash=True), NOW)
 
+    def test_eu_bank_npl_and_leverage_come_from_the_capital_record(self):
+        c = {'state': 'available', 'scope': 'eu_prudential_group', 'lei': 'L' * 20, 'period': '2025-06-30',
+             'metrics': {'cet1_ratio': {'value': .13}, 'leverage_ratio': {'value': .058}},
+             'capitalRequirement': {'state': 'available', 'method': 'ecb-p2r-partial-cet1-v1', 'value': .078},
+             'creditQuality': {'state': 'available', 'method': 'eba-npl-v1', 'ratio': .022, 'period': '2025-06-30'}}
+        b = fs.bank_block({'bankCapital': c}, {'bankCredit': {'state': 'available', 'ratio': .5}})
+        self.assertEqual((b['problemLoanRatio'], b['problemLoanMethod'], b['ratios']['leverage_ratio']), (.022, 'eba-npl-v1', .058))
+        self.assertEqual((b['scope'], b['lei'], b['cet1RequirementMethod']), ('eu_prudential_group', 'L' * 20, 'ecb-p2r-partial-cet1-v1'))
+
     def test_compact_rounds_and_drops_empty(self):
         self.assertEqual(fs.compact({'a': 0.123456789, 'b': None, 'c': {}, 'd': [1.0000001], 'e': ''}), {'a': 0.123457, 'd': [1.0]})
 

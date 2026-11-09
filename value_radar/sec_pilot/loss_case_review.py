@@ -75,6 +75,44 @@ def series_check(rows, metadata, pattern, start, exit_day):
     return out
 
 
+EXCERPT_TERMS = re.compile(r'converted into|right to receive|per share|in cash|exchange ratio|trading symbol|ticker symbol|'
+                           r'symbol\s+[“"]|OTC|suspend|delist|receivership|chapter 11', re.I)
+
+
+def terminal_filings(filings, decision_start, limit=3):
+    """8-Ks documenting a delisting notice or bankruptcy since the decision start, newest first."""
+    chosen = [f for f in filings if f['form'].startswith('8-K') and f['filing_date'] >= decision_start
+              and ({'1.03', '3.01'} & set(f['items'].split(';')))]
+    return chosen[:limit]
+
+
+def excerpts(html, max_sentences=8, max_chars=400):
+    """Plain-text sentences with settlement or listing terms; for reading, not for parsing amounts."""
+    text = re.sub(r'(?is)<(script|style).*?</\1>', ' ', html)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&nbsp;|&#160;|&#xa0;', ' ', text, flags=re.I)
+    text = re.sub(r'&amp;', '&', re.sub(r'&#8217;|&rsquo;', "'", re.sub(r'&#822[01];|&[lr]dquo;', '"', text)))
+    text = re.sub(r'\s+', ' ', text)
+    found = []
+    for sentence in re.split(r'(?<=[.;])\s+(?=[A-Z(])', text):
+        if EXCERPT_TERMS.search(sentence) and sentence not in found:
+            found.append(sentence[:max_chars])
+        if len(found) >= max_sentences:
+            break
+    return found
+
+
+def fetch_document(url, user_agent, raw_dir):
+    req = urllib.request.Request(url, headers={'User-Agent': user_agent})
+    with urllib.request.urlopen(req, timeout=20) as response:
+        raw = response.read(5_000_001)
+    if len(raw) > 5_000_000:
+        raise ValueError('SEC document too large')
+    (raw_dir / ('sec-' + url.rstrip('/').split('/')[-2] + '-' + url.split('/')[-1])).write_bytes(raw)
+    time.sleep(0.6)
+    return raw.decode('utf-8', errors='replace'), hashlib.sha256(raw).hexdigest()
+
+
 def case_status(case, sec, series):
     if case.get('cik') and sec is None:
         return 'sec_unavailable_retry'
@@ -117,18 +155,28 @@ def fetch_yahoo(symbol, start, raw_dir):
     return rows, metadata
 
 
-def review(candidates, output, sec_fetch, yahoo_fetch, pause=3.0):
+def review(candidates, output, sec_fetch, yahoo_fetch, pause=3.0, document_fetch=None):
     output = Path(output); raw = output / 'raw'; raw.mkdir(parents=True, exist_ok=True)
     start = candidates['decision_start']
-    cases, series_rows, filing_rows = [], [], []
+    cases, series_rows, filing_rows, excerpt_rows = [], [], [], []
     for case in candidates['cases']:
         sec, sec_error, sec_hash = None, '', ''
         if case.get('cik'):
             try:
                 submissions, sec_hash, _ = sec_fetch(case['cik'], raw)
                 sec = sec_identity(submissions, case['name_pattern'])
-                for f in sec_filings(submissions, case['cik']):
+                filings = sec_filings(submissions, case['cik'])
+                for f in filings:
                     filing_rows.append(dict(identity=case['identity'], cik=case['cik'], **f))
+                for f in terminal_filings(filings, start) if document_fetch else []:
+                    try:
+                        html, digest = document_fetch(f['url'], raw)
+                        found, error = excerpts(html), ''
+                    except Exception as exc:
+                        found, digest, error = [], '', type(exc).__name__
+                    for n, sentence in enumerate(found or [''], 1):
+                        excerpt_rows.append(dict(identity=case['identity'], filing_date=f['filing_date'], items=f['items'],
+                                                 url=f['url'], sha256=digest, n=n if found else 0, excerpt=sentence, error=error))
             except Exception as exc:
                 sec_error = type(exc).__name__
         series = []
@@ -156,6 +204,8 @@ def review(candidates, output, sec_fetch, yahoo_fetch, pause=3.0):
     write_csv(output / 'kursreihen_kandidaten.csv', series_rows, series_fields)
     write_csv(output / 'sec_statusmeldungen.csv', filing_rows,
               ['identity', 'cik', 'form', 'filing_date', 'accession', 'items', 'meaning', 'url'])
+    write_csv(output / 'abschlussmeldungen_auszuege.csv', excerpt_rows,
+              ['identity', 'filing_date', 'items', 'url', 'sha256', 'n', 'excerpt', 'error'])
     report = dict(generated_at=dt.datetime.now(dt.timezone.utc).isoformat(), candidates_sha256=hashlib.sha256(
                       json.dumps(candidates, sort_keys=True).encode()).hexdigest(),
                   cases=len(cases), status_counts={s: sum(c['status'] == s for c in cases) for s in sorted({c['status'] for c in cases})},
@@ -184,6 +234,16 @@ def detail_markdown(output):
     lines += ['', '### SEC-Statusmeldungen', '', '| Wertpapier | Formular | Datum | Bedeutung | Beleg |', '|---|---|---|---|---|']
     for r in table('sec_statusmeldungen.csv'):
         lines.append(f"| {r['identity']} | {r['form']} | {r['filing_date']} | {r['meaning']} | {r['url']} |")
+    excerpt_file = Path(output) / 'abschlussmeldungen_auszuege.csv'
+    if excerpt_file.exists():
+        lines += ['', '### Auszuege aus Delisting- und Insolvenzmeldungen (ungeprueft, nur zum Lesen)', '']
+        current = None
+        for r in table(excerpt_file.name):
+            if r['url'] != current:
+                current = r['url']
+                lines += ['', f"**{r['identity']} · 8-K {r['filing_date']} · Items {r['items']}** {r['url']}" + (f" · Fehler: {r['error']}" if r['error'] else '')]
+            if r['excerpt']:
+                lines.append('- ' + r['excerpt'].replace('|', '/'))
     return '\n'.join(lines) + '\n'
 
 
@@ -204,7 +264,8 @@ def main():
     if '@' not in user_agent:
         raise SystemExit('Set SEC_USER_AGENT to application name and real contact email.')
     candidates = json.loads(CANDIDATES.read_text(encoding='utf8'))
-    report, cases = review(candidates, args.output, lambda cik, raw: fetch_sec(cik, user_agent, raw), fetch_yahoo)
+    report, cases = review(candidates, args.output, lambda cik, raw: fetch_sec(cik, user_agent, raw), fetch_yahoo,
+                           document_fetch=lambda url, raw: fetch_document(url, user_agent, raw))
     markdown = summary_markdown(report, cases) + detail_markdown(args.output)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf8') as stream:

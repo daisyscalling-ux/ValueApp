@@ -92,11 +92,12 @@ def excerpts(html, max_sentences=8, max_chars=400):
     text = re.sub(r'<[^>]+>', ' ', text)
     text = re.sub(r'&nbsp;|&#160;|&#xa0;', ' ', text, flags=re.I)
     text = re.sub(r'&amp;', '&', re.sub(r'&#8217;|&rsquo;', "'", re.sub(r'&#822[01];|&[lr]dquo;', '"', text)))
-    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
     found = []
     for sentence in re.split(r'(?<=[.;])\s+(?=[A-Z(])', text):
+        sentence = sentence.strip()[:max_chars]
         if EXCERPT_TERMS.search(sentence) and sentence not in found:
-            found.append(sentence[:max_chars])
+            found.append(sentence)
         if len(found) >= max_sentences:
             break
     return found

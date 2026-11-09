@@ -5,7 +5,13 @@
  "method": "Values read from the original Basel Pillar 3 KM1 and CR1 tables of each bank and checked against the source; ratios as fractions.",
  "open": {
   "CA0636711016": "Bank of Montreal website did not respond to automated requests from this environment (connection timeout).",
-  "GB0008706128": "Lloyds Banking Group loads its document links by JavaScript; source document not yet located."
+  "GB0008706128": "Lloyds Banking Group loads its document links by JavaScript; source document not yet located.",
+  "JP3892100003": "Sumitomo Mitsui Trust Group: the investor site under www.smth.jp is refused through the proxy; the group renamed itself and the current domain still needs to be confirmed.",
+  "JP3946750001": "Japan Post Bank: Basel disclosure not yet located; capital standard (international or domestic) still to be confirmed.",
+  "JP3500610005": "Resona Holdings: website refuses automated requests (HTTP 403); domestic capital standard expected, which is not comparable with CET1.",
+  "JP3511800009": "Chiba Bank: Basel disclosure not yet located.",
+  "JP3805010000": "Fukuoka Financial Group: English investor site not found; domestic capital standard expected.",
+  "JP3305990008": "Yokohama Financial Group: website unreachable through the proxy (HTTP 502/403)."
  },
  "entries": [
   {
@@ -204,6 +210,112 @@
     "url": "https://www.sc.com/en/uploads/sites/66/content/docs/standard-chartered-plc-q3-2026-pillar-3-disclosure.pdf",
     "sha256": "c8eabe864c4df4b884bfec3766b34d1d0afe9f88ab19ddd7b3d2c10b68906bad",
     "location": "PDF page 4, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   }
+  },
+  {
+   "isin": "JP3902900004",
+   "issuer": "Mitsubishi UFJ Financial Group, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "period": "2026-06-30",
+   "cet1_ratio": 0.1295,
+   "tier1_ratio": 0.156,
+   "total_capital_ratio": 0.1744,
+   "leverage_ratio": 0.0532,
+   "cet1Requirement": 0.0869,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.0419
+   },
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation, countercyclical and G-SIB buffers). Japan publishes no institution-specific Pillar 2 requirement.",
+   "lcr": 1.404,
+   "nsfr": 1.181,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.mufg.jp/dam/ir/report/basel3/2027-1q/pdf/mufg2606_09_en.pdf",
+    "sha256": "401a5dbb5c91fc6578b39a656a5631ce78db0f9fe73f554324851ae3b35b0e31",
+    "location": "KM1 (Mitsubishi UFJ Financial Group) rows 5-7, 11, 14, 17, 20, column a June 30, 2026"
+   }
+  },
+  {
+   "isin": "JP3890350006",
+   "issuer": "Sumitomo Mitsui Financial Group, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "period": "2026-06-30",
+   "cet1_ratio": 0.1263,
+   "tier1_ratio": 0.1504,
+   "total_capital_ratio": 0.1624,
+   "leverage_ratio": 0.0525,
+   "cet1Requirement": 0.0817,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.0367
+   },
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation, countercyclical and G-SIB buffers). Japan publishes no institution-specific Pillar 2 requirement.",
+   "lcr": 1.383,
+   "nsfr": 1.148,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.smfg.co.jp/english/investor/library/basel_3/2027/2027_fgq1_e_km101.pdf",
+    "sha256": "53176b5f5e1949516e153f457c0acc20d0de70a9b2d67679e2ea8ecaa0ff38d3",
+    "location": "KM1 rows 5-7, 11, 14, column a As of June 30, 2026; LCR/NSFR rows 17 and 20 in 2027_fgq1_e_km102.pdf (first quarter of fiscal 2026)",
+    "supplementary": {
+     "url": "https://www.smfg.co.jp/english/investor/library/basel_3/2027/2027_fgq1_e_km102.pdf",
+     "sha256": "5621dbea37bd1ef2dd9a550a6ad9abda8746da91d313fccea2d75a57e8b352ab"
+    }
+   }
+  },
+  {
+   "isin": "JP3885780001",
+   "issuer": "Mizuho Financial Group, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "period": "2026-06-30",
+   "cet1_ratio": 0.1351,
+   "tier1_ratio": 0.1594,
+   "total_capital_ratio": 0.1774,
+   "leverage_ratio": 0.0486,
+   "cet1Requirement": 0.08,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "capitalConservationBuffer": 0.025,
+    "gsibBuffer": 0.01
+   },
+   "cet1RequirementDefinition": "CET1 requirement = regulatory minimum of 8.0 % disclosed by Mizuho (4.5 % + 2.5 % capital conservation buffer + 1.0 % G-SIB buffer), excluding the countercyclical buffer (typically below 0.2 percentage points for Japanese banks). Japan publishes no institution-specific Pillar 2 requirement.",
+   "lcr": 1.261,
+   "nsfr": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://library.mizuhogroup.com/asset/1877b010-b672-4471-ba8c-89524b031db2/Capital_Ratio_Material_for_FY2026_Q1.pdf",
+    "sha256": "c047b8d78214c5ea5c7f5707f2a426eb39da48050e7793138aa433016677fa18",
+    "location": "Basel Regulatory Disclosures page 1: CET1 13.51 % with regulatory minimum 8.0 % (excl. countercyclical buffer), leverage ratio 4.86 %, LCR FY26 Q1 126.1 %; tier 1 and total capital ratios from the capital ratio release of August 14, 2026 (Mizuho Financial Group, consolidated, international standard)",
+    "supplementary": {
+     "url": "https://library.mizuhogroup.com/asset/b3a751e0-8f01-4ea5-abea-9b4318516854/fg-data26_1q_3.pdf",
+     "sha256": "d4649dedcd27ad9bd2fd0c62a839e9e634274bff8b6ea297c607cac8432620ce"
+    }
+   }
+  },
+  {
+   "isin": "JP3351500008",
+   "issuer": "Shizuoka Financial Group, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "period": "2026-06-30",
+   "cet1_ratio": 0.1624,
+   "tier1_ratio": 0.1624,
+   "total_capital_ratio": 0.1624,
+   "leverage_ratio": null,
+   "cet1Requirement": null,
+   "requirementComponents": null,
+   "cet1RequirementDefinition": null,
+   "lcr": null,
+   "nsfr": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.shizuoka-fg.co.jp/english/pdf/ir/2026_1Q_basel-regulatory-disclosures.pdf",
+    "sha256": "baf0105b074ae1b07d49a0afaeba44eb52fcf581f9e336582a55f572cd1f4cf5",
+    "location": "Capital ratio release, Shizuoka Financial Group, Inc. (Consolidated), International Standard, As of Jun. 30, 2026; no buffer requirement, LCR or leverage ratio in this release"
    }
   }
  ]

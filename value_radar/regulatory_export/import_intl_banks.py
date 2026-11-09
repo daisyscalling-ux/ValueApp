@@ -78,7 +78,7 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
         issuers[e['isin']] = {'issuer': e['issuer'], 'jurisdiction': e['jurisdiction'], 'regulator': e['regulator'], 'scope': 'consolidated_group',
                               'period': e['period'], 'metrics': {k: e[k] for k in ('cet1_ratio', 'tier1_ratio', 'total_capital_ratio', 'leverage_ratio') if fraction(e.get(k)) is not None},
                               'lcr': fraction(e.get('lcr')), 'nsfr': fraction(e.get('nsfr')),
-                              'cet1Requirement': e['cet1Requirement'], 'cet1RequirementDefinition': e['cet1RequirementDefinition'],
+                              'cet1Requirement': e.get('cet1Requirement'), 'cet1RequirementDefinition': e.get('cet1RequirementDefinition'),
                               'requirementComponents': e.get('requirementComponents'), 'requirementSourceUrl': e.get('requirementSourceUrl'),
                               'defaultedLoanRatio': dl / (dl + nd) if isinstance(dl, (int, float)) and isinstance(nd, (int, float)) and dl >= 0 and nd > 0 else None,
                               'source': e['source']}
@@ -89,14 +89,16 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
 
 def reviewed_problem(e):
     """Geprueft abgelegte KM1-Werte: Pflichtfelder, Kapitalhierarchie, Anforderung = Summe der Bestandteile."""
-    if not all(k in e for k in ('isin', 'issuer', 'period', 'cet1_ratio', 'cet1Requirement', 'source')) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(e['period'])):
+    if not all(k in e for k in ('isin', 'issuer', 'period', 'cet1_ratio', 'source')) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(e['period'])):
         return 'reviewed_entry_incomplete'
     chain = [fraction(e.get(k)) for k in ('cet1_ratio', 'tier1_ratio', 'total_capital_ratio')]
     if chain[0] is None or chain[0] > 1 or any(a is not None and b is not None and a > b + 1e-6 for a, b in zip(chain, chain[1:])):
         return 'capital_missing_or_inconsistent'
-    parts = (e.get('requirementComponents') or {}).values()
-    if not 0 < e['cet1Requirement'] < .3 or abs(sum(parts) - e['cet1Requirement']) > 1e-6:
-        return 'requirement_components_mismatch'
+    # Anforderung nur, wenn die Bank sie offenlegt; dann muss sie genau der Summe ihrer Bestandteile entsprechen.
+    if e.get('cet1Requirement') is not None:
+        parts = (e.get('requirementComponents') or {}).values()
+        if not 0 < e['cet1Requirement'] < .3 or abs(sum(parts) - e['cet1Requirement']) > 1e-6 or not e.get('cet1RequirementDefinition'):
+            return 'requirement_components_mismatch'
     if e['source'].get('type') != 'basel_pillar3_km1' or not re.fullmatch(r'[0-9a-f]{64}', e['source'].get('sha256', '')) or not str(e['source'].get('url', '')).startswith('https://'):
         return 'source_unverified'
     return ''

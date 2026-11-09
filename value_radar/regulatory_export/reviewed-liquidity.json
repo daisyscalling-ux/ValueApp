@@ -39,6 +39,44 @@
       "sourceSection": "Liquidity Risk Management, page 52, JPMorgan Chase & Co. average LCR, three months ended June 30 2026 (not subsidiary bank)",
       "publicationDate": null,
       "pointInTimeUsable": false
+    },
+    {
+      "rssdId": "2380443",
+      "holdingName": "GOLDMAN SACHS GROUP, INC., THE",
+      "scope": "listed_consolidated_holding",
+      "period": "2026-06-30",
+      "averaging": "quarter_average",
+      "currency": "USD",
+      "hqla": 454349000000,
+      "netOutflows": 359599000000,
+      "reportedRatio": 1.26,
+      "ratioRoundingTolerance": 0.005,
+      "unit": "fraction",
+      "reviewedOn": "2026-11-09",
+      "reviewExpires": "2026-12-27",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/886982/000088698226000297/gs-20260630.htm",
+      "sourceSection": "Liquidity Risk Management, Liquidity Coverage Ratio, page 146: average daily LCR three months ended June 2026 (eligible HQLA, not total HQLA of 542,086 million), group level",
+      "publicationDate": null,
+      "pointInTimeUsable": false
+    },
+    {
+      "rssdId": "1026632",
+      "holdingName": "CHARLES SCHWAB CORPORATION, THE",
+      "scope": "listed_consolidated_holding",
+      "period": "2026-06-30",
+      "averaging": "quarter_average",
+      "currency": "USD",
+      "hqla": 51927000000,
+      "netOutflows": 38534000000,
+      "reportedRatio": 1.35,
+      "ratioRoundingTolerance": 0.005,
+      "unit": "fraction",
+      "reviewedOn": "2026-11-09",
+      "reviewExpires": "2026-12-27",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/316709/000031670926000031/schw-20260630.htm",
+      "sourceSection": "Liquidity Risk, Liquidity Coverage Ratio, page 22: average for the three months ended June 30, 2026, total eligible HQLA and net cash outflows, group level (full LCR rule)",
+      "publicationDate": null,
+      "pointInTimeUsable": false
     }
   ]
 }

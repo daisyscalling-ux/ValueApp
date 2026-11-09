@@ -34,7 +34,9 @@ export function verifiedIntlCapital(archive:Row|undefined|null,row:Row,identityO
  const l=r.liquidity,q=r.capitalRequirement,cet1=(metrics.cet1_ratio as any).value;
  const liquidity=l?.state==='available'&&l.method==='intl-lcr-v1'&&l.period===r.period&&typeof l.reportedRatio==='number'&&l.reportedRatio>0&&l.reportedRatio<10?l:null;
  const requirement=q?.state==='available'&&q.method==='basel-km1-cet1-requirement-v1'&&q.comparisonPeriod===r.period&&typeof q.value==='number'&&q.value>0&&q.value<.3&&dateOnly(q.reviewExpires)&&q.reviewExpires>=today?{...q,headroomPercentagePoints:(cet1-q.value)*100}:null;
- return {...r,metrics,liquidity,capitalRequirement:requirement,creditQuality:null};
+ const c=r.creditQuality;
+ const credit=c?.state==='available'&&c.method==='basel-cr1-default-v1'&&c.unit==='fraction'&&c.period===r.period&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1?c:null;
+ return {...r,metrics,liquidity,capitalRequirement:requirement,creditQuality:credit};
 }
 export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|null,identityOK:boolean,now:number){
  if(!['bank','insurer','specialist_financial'].includes(base.profile))return base;
@@ -56,7 +58,7 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
  if(!capital&&base.profile==='bank')capital=verifiedIntlCapital(archive,row,identityOK,now);
  const fulfilled=capital&&base.profile==='bank'?['regulatory_capital_CET1']:[];
  // EU: Teilanforderung ohne systemische Puffer erfuellt die bankspezifische Anforderung nicht vollstaendig; NPL schliesst die Kreditqualitaet.
- if(capital?.scope==='eu_prudential_group'&&capital.creditQuality)fulfilled.push('asset_quality_nonperforming_loans');
+ if(['eu_prudential_group','basel_key_metrics'].includes(capital?.scope)&&capital.creditQuality)fulfilled.push('asset_quality_nonperforming_loans');
  if(capital?.capitalRequirement&&capital.scope!=='eu_prudential_group'&&base.profile==='bank')fulfilled.push('institution_specific_capital_requirement');
  if(capital?.liquidity&&base.profile==='bank')fulfilled.push('liquidity_LCR_or_local_equivalent');
  requirements=requirements.filter(k=>!fulfilled.includes(k));

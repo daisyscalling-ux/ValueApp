@@ -1,0 +1,210 @@
+{
+ "schema": 1,
+ "reviewed_on": "2026-11-09",
+ "review_expires": "2027-05-08",
+ "method": "Values read from the original Basel Pillar 3 KM1 and CR1 tables of each bank and checked against the source; ratios as fractions.",
+ "open": {
+  "CA0636711016": "Bank of Montreal website did not respond to automated requests from this environment (connection timeout).",
+  "GB0008706128": "Lloyds Banking Group loads its document links by JavaScript; source document not yet located."
+ },
+ "entries": [
+  {
+   "isin": "CA7800871021",
+   "issuer": "Royal Bank of Canada",
+   "jurisdiction": "CA",
+   "regulator": "OSFI",
+   "period": "2026-07-31",
+   "cet1_ratio": 0.135,
+   "tier1_ratio": 0.149,
+   "total_capital_ratio": 0.167,
+   "leverage_ratio": 0.043,
+   "cet1Requirement": 0.111,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.036,
+    "domesticStabilityBuffer": 0.03
+   },
+   "requirementSourceUrl": "https://www.osfi-bsif.gc.ca/en/news/osfi-lowers-domestic-stability-buffer-30-so-canadas-largest-banks-can-deploy-more-capital",
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation, countercyclical and D-SIB buffers) + OSFI Domestic Stability Buffer 3.0 % (effective 2026-06-19). Excludes confidential Pillar 2 add-ons.",
+   "lcr": null,
+   "nsfr": null,
+   "defaultedLoans": 11730,
+   "nonDefaultedLoans": 1050180,
+   "loanUnit": "CAD_million",
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.rbc.com/investor-relations/_assets-custom/data/2026q3pillar3-quantitative-tables.xlsx",
+    "sha256": "cf453ace1567e5d881a6f8f375ec3480a9e83f52417d49f09af3e722edcb4b6b",
+    "location": "Sheet KM1 rows 5-7, 11, 14 (column a, July 31 2026; row 12a = 11.1 % confirms the requirement); sheet CR1 row 1 Loans, as at July 31 2026"
+   }
+  },
+  {
+   "isin": "CA8911605092",
+   "issuer": "Toronto-Dominion Bank",
+   "jurisdiction": "CA",
+   "regulator": "OSFI",
+   "period": "2026-07-31",
+   "cet1_ratio": 0.143,
+   "tier1_ratio": 0.161,
+   "total_capital_ratio": 0.179,
+   "leverage_ratio": 0.045,
+   "cet1Requirement": 0.11,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.035,
+    "domesticStabilityBuffer": 0.03
+   },
+   "requirementSourceUrl": "https://www.osfi-bsif.gc.ca/en/news/osfi-lowers-domestic-stability-buffer-30-so-canadas-largest-banks-can-deploy-more-capital",
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation, countercyclical and D-SIB buffers) + OSFI Domestic Stability Buffer 3.0 % (effective 2026-06-19). Excludes confidential Pillar 2 add-ons.",
+   "lcr": null,
+   "nsfr": null,
+   "defaultedLoans": 5143,
+   "nonDefaultedLoans": 971004,
+   "loanUnit": "CAD_million",
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2026/q3/2026-q3-supp-regulatory-disc-en.xlsx",
+    "sha256": "76c2c5a35ff956ee7906e5c4c2dfee98a5159fec3223e75a96d814773f61292b",
+    "location": "Sheet 7 (KM1) lines 5-7, 11, 14, column Q3 2026; sheet 22 (CR1) line 1 Loans, Q3 2026"
+   }
+  },
+  {
+   "isin": "CA1360691010",
+   "issuer": "Canadian Imperial Bank of Commerce",
+   "jurisdiction": "CA",
+   "regulator": "OSFI",
+   "period": "2026-07-31",
+   "cet1_ratio": 0.134,
+   "tier1_ratio": 0.156,
+   "total_capital_ratio": 0.175,
+   "leverage_ratio": 0.043,
+   "cet1Requirement": 0.11,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.035,
+    "domesticStabilityBuffer": 0.03
+   },
+   "requirementSourceUrl": "https://www.osfi-bsif.gc.ca/en/news/osfi-lowers-domestic-stability-buffer-30-so-canadas-largest-banks-can-deploy-more-capital",
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation, countercyclical and D-SIB buffers) + OSFI Domestic Stability Buffer 3.0 % (effective 2026-06-19). Excludes confidential Pillar 2 add-ons.",
+   "lcr": null,
+   "nsfr": null,
+   "defaultedLoans": 4024,
+   "nonDefaultedLoans": 612037,
+   "loanUnit": "CAD_million",
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.cibc.com/content/dam/cibc-public-assets/about-cibc/investor-relations/pdfs/quarterly-results/2026/q326disclosureexcel-en.xlsx",
+    "sha256": "14eebd09b45e0df964203f816933cde2fcec929b4563df866cdb85b983c2a73f",
+    "location": "Sheet 'KM1 - CQ, PQ1, PQ2' rows 5-7, 11, 14, column Q3/26; sheet 'CR1 - CQ, PQ1, PQ2' row 1 Loans, Q3/26"
+   }
+  },
+  {
+   "isin": "CA0641491075",
+   "issuer": "Bank of Nova Scotia",
+   "jurisdiction": "CA",
+   "regulator": "OSFI",
+   "period": "2026-07-31",
+   "cet1_ratio": 0.131,
+   "tier1_ratio": 0.151,
+   "total_capital_ratio": 0.169,
+   "leverage_ratio": 0.043,
+   "cet1Requirement": 0.1107,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.0357,
+    "domesticStabilityBuffer": 0.03
+   },
+   "requirementSourceUrl": "https://www.osfi-bsif.gc.ca/en/news/osfi-lowers-domestic-stability-buffer-30-so-canadas-largest-banks-can-deploy-more-capital",
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation, countercyclical and D-SIB buffers) + OSFI Domestic Stability Buffer 3.0 % (effective 2026-06-19). Excludes confidential Pillar 2 add-ons.",
+   "lcr": null,
+   "nsfr": null,
+   "defaultedLoans": 7726,
+   "nonDefaultedLoans": 791444,
+   "loanUnit": "CAD_million",
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.scotiabank.com/content/dam/scotiabank/corporate/quarterly-reports/2026/q3/Q326_Supplementary_Regulatory_Capital_Disclosures-EN.xlsx",
+    "sha256": "e23fca3e81083b6121973ef4239486c7746583d7b964bd9371bfad7c0a27e849",
+    "location": "Sheet KM1 rows 5-7, 11, 14, column Q3 2026 (footnote confirms DSB 3.0 % from Q3 2026); sheet CR1 row 1 Loans, Q3 2026"
+   }
+  },
+  {
+   "isin": "GB0005405286",
+   "issuer": "HSBC Holdings plc",
+   "jurisdiction": "GB",
+   "regulator": "PRA",
+   "period": "2026-09-30",
+   "cet1_ratio": 0.139,
+   "tier1_ratio": 0.163,
+   "total_capital_ratio": 0.192,
+   "leverage_ratio": 0.049,
+   "cet1Requirement": 0.112,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1RowUK7a": 0.014,
+    "km1Row11": 0.053
+   },
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row UK-7a (additional CET1 SREP requirement, Pillar 2A) + KM1 row 11 (combined buffer requirement).",
+   "lcr": 1.32,
+   "nsfr": 1.39,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.hsbc.com/-/files/hsbc/investors/hsbc-results/2026/3q/pdfs/hsbc-holdings-plc/261103-hsbc-holdings-plc-pillar-3-disclosures-at-30-september-2026-english.pdf",
+    "sha256": "e3ed6c1c448466cd876f25d521d94f493acc966e93386f5236c3d67e398b7e3e",
+    "location": "PDF page 5, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   }
+  },
+  {
+   "isin": "GB00BM8PJY71",
+   "issuer": "NatWest Group plc",
+   "jurisdiction": "GB",
+   "regulator": "PRA",
+   "period": "2026-09-30",
+   "cet1_ratio": 0.135,
+   "tier1_ratio": 0.16,
+   "total_capital_ratio": 0.186,
+   "leverage_ratio": 0.046,
+   "cet1Requirement": 0.103,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1RowUK7a": 0.016,
+    "km1Row11": 0.042
+   },
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row UK-7a (additional CET1 SREP requirement, Pillar 2A) + KM1 row 11 (combined buffer requirement).",
+   "lcr": 1.37,
+   "nsfr": 1.31,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://investors.natwestgroup.com/~/media/Files/R/RBS-IR-V2/results-center/30102026/nwg-q3-2026-pillar-3-report.pdf",
+    "sha256": "6f555f71e09e71a4b6b631bf6a98a800cf9660d04423644bbc1347a869dabbd8",
+    "location": "PDF page 6, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   }
+  },
+  {
+   "isin": "GB0004082847",
+   "issuer": "Standard Chartered PLC",
+   "jurisdiction": "GB",
+   "regulator": "PRA",
+   "period": "2026-09-30",
+   "cet1_ratio": 0.138,
+   "tier1_ratio": 0.173,
+   "total_capital_ratio": 0.202,
+   "leverage_ratio": 0.046,
+   "cet1Requirement": 0.1028,
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1RowUK7a": 0.0188,
+    "km1Row11": 0.039
+   },
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row UK-7a (additional CET1 SREP requirement, Pillar 2A) + KM1 row 11 (combined buffer requirement).",
+   "lcr": 1.566,
+   "nsfr": 1.351,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.sc.com/en/uploads/sites/66/content/docs/standard-chartered-plc-q3-2026-pillar-3-disclosure.pdf",
+    "sha256": "c8eabe864c4df4b884bfec3766b34d1d0afe9f88ab19ddd7b3d2c10b68906bad",
+    "location": "PDF page 4, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   }
+  }
+ ]
+}

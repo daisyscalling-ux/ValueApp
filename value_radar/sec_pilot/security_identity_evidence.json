@@ -9,7 +9,8 @@
     {"old": "RE", "new": "EG", "effective": "2023-07-10", "source": "https://investors.everestglobal.com/news/news-details/2023/Everest-to-Rebrand-Company-Name-and-NYSE-Ticker-to-Reflect-its-Evolution-Global-Growth-and-Diversification-Strategy/default.aspx"},
     {"old": "SATS", "new": "ECHO", "effective": "2026-06-24", "source": "https://ir.echostar.com/news-releases/news-release-details/echostar-changing-stocker-ticker-sats-echo-marking-companys-next"},
     {"old": "GPS", "new": "GAP", "effective": "2024-08-22", "source": "https://www.miaxglobal.com/alert/2024/08/21/miax-exchange-group-options-markets-corporate-action-alert-gap-incgps-will-0"},
-    {"old": "WLTW", "new": "WTW", "effective": "2022-01-10", "source": "https://investors.wtwco.com/news-releases/news-release-details/willis-towers-watson-announces-nasdaq-ticker-symbol-change-wltw"}
+    {"old": "WLTW", "new": "WTW", "effective": "2022-01-10", "source": "https://investors.wtwco.com/news-releases/news-release-details/willis-towers-watson-announces-nasdaq-ticker-symbol-change-wltw"},
+    {"old": "HFC", "new": "DINO", "effective": "2022-03-15", "source": "https://www.sec.gov/Archives/edgar/data/48039/000119312522077293/d260898d8k.htm"}
   ],
   "identity_splits": [
     {"symbol":"DOW", "before":"2019-04-02", "old_identity":"DOW_CHEMICAL_PRE2017", "source":"https://www.sec.gov/Archives/edgar/data/1751788/000119312519095067/d716962dex991.htm"},

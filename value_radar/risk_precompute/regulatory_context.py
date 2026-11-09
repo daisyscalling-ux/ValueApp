@@ -51,9 +51,45 @@ def build(universe,holdings,registry,now=None,credit_archive=None,requirements_a
  out.update(state='ready',summary={'verifiedHoldings':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
 
+EU_ITEMS={'cet1_ratio':'2520140','tier1_ratio':'2520141','total_capital_ratio':'2520142','leverage_ratio':'2520905'}
+def build_eu(universe,capital,mapping,now):
+ """EU/EWR-Banken: EBA-Kapital und -NPL je LEI, Teilanforderung aus EZB-P2R. Gleiche Identitaetsregeln wie bei US-Holdings."""
+ stocks,rejected={},{}
+ out={'schema':1,'source':'eba_transparency_ecb_p2r','method':capital.get('method'),'stocks':stocks,'rejected':rejected,'scoreContribution':0}
+ if capital.get('method')!='eu-bank-capital-v1' or not isinstance(capital.get('banks'),dict):out['state']='source_unavailable';return out
+ by_isin={i:b['lei'] for b in mapping.get('banks',[]) for i in b.get('isins',[])}
+ eba=capital['sources']['eba'];ecb=capital['sources']['ecb']
+ for row in universe.get('kandidaten',[]):
+  s=row.get('listing_symbol');lei=by_isin.get(row.get('isin'))
+  if not s or not lei:continue
+  b=capital['banks'].get(lei)
+  if not b:rejected[s]='no_eu_capital_for_lei';continue
+  if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
+   rejected[s]='listing_identity_unverified';continue
+  metrics={k:{'state':'available','value':b['metrics'][k],'unit':'fraction','sourceField':'EBA:'+code} for k,code in EU_ITEMS.items() if isinstance(b['metrics'].get(k),(int,float)) and 0<=b['metrics'][k]<=1}
+  if 'cet1_ratio' not in metrics:rejected[s]='eu_cet1_missing';continue
+  req=None
+  if isinstance(b.get('cet1RequirementPartial'),(int,float)):
+   req={'state':'available','method':'ecb-p2r-partial-cet1-v1','unit':'fraction','value':b['cet1RequirementPartial'],'p2r':b['p2r']['value'],'p2rYear':b['p2r']['year'],
+        'p2rFootnote':b['p2r'].get('footnote') or None,'ecbName':b['p2r']['ecbName'],'sourceUrl':ecb['url'],'sourceSha256':ecb['sha256'],'comparisonPeriod':b['period'],
+        'headroomPercentagePoints':(b['metrics']['cet1_ratio']-b['cet1RequirementPartial'])*100,'reviewExpires':capital['mappingReviewExpires'],
+        'definition':capital['requirementDefinition'],'excludes':['countercyclical_buffer','systemic_risk_buffer','O-SII_or_G-SII_buffer','CET1_share_above_legal_minimum'],'scoreContribution':0}
+  credit=None
+  if isinstance(b.get('nplRatio'),(int,float)) and 0<=b['nplRatio']<=1:
+   credit={'state':'available','method':'eba-npl-v1','unit':'fraction','ratio':b['nplRatio'],'period':b['period'],'lei':lei,'item':b['loans']['item'],
+           'sourceUrl':eba['tr_cre.csv']['url'],'sourceFileSha256':eba['tr_cre.csv']['sha256'],'definition':capital['nplDefinition'],'scoreContribution':0}
+  stocks[s]={'state':'available','scope':'eu_prudential_group','lei':lei,'holdingName':b['ebaName'],'country':b['country'],'inputIdentity':{k:row.get(k) for k in FIELDS},
+   'period':b['period'],'exercise':capital.get('exercise'),'sourceImportedAt':capital['importedAt'],'sourceUrl':eba['tr_oth.csv']['url'],'sourceFileSha256':eba['tr_oth.csv']['sha256'],
+   'identityReviewExpires':capital['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
+   'capitalRequirement':req,'liquidity':None,'creditQuality':credit,
+   'limitations':['EBA transparency data are published annually; the period can be up to 24 months old.','Partial CET1 requirement excludes countercyclical, systemic and O-SII/G-SII buffers.','No LCR in this source.']}
+ out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
+ return out
+
 def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}),liquidity_archive=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-liquidity.json',{}))
  result['insurers']=build_insurers(load(folder/'cf_universum.json',{}),load(Path(__file__).with_name('reviewed-insurer-solvency.json'),{}))
+ result['euBanks']=build_eu(load(folder/'cf_universum.json',{}),load(folder/'regulatory/eu-bank-capital.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/eu-bank-map.json',{}),dt.datetime.now(dt.timezone.utc))
  save(folder/'cf_regulatory_context.json',result);print(result.get('summary',{'state':result['state']}))
 if __name__=='__main__':main()

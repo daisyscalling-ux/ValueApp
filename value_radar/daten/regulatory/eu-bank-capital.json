@@ -1,0 +1,1026 @@
+{
+ "schema": 1,
+ "method": "eu-bank-capital-v1",
+ "importedAt": "2026-11-09T17:22:45.895093+00:00",
+ "exercise": "EBA 2025 EU-wide Transparency Exercise",
+ "sources": {
+  "eba": {
+   "tr_oth.csv": {
+    "url": "https://www.eba.europa.eu/assets/TE2025/Full_database/883401/tr_oth.csv",
+    "sha256": "1785417e172907b3a49623eb13e2cc6c7af26a02ae982bfe2ba3a70f782e4104"
+   },
+   "tr_cre.csv": {
+    "url": "https://www.eba.europa.eu/assets/TE2025/Full_database/883401/tr_cre.csv",
+    "sha256": "a29ca3b808d4f51b6aa2d74ccb3cd39d05f416e10d26e16340cce45842637c99"
+   },
+   "TR_Metadata.xlsx": {
+    "url": "https://www.eba.europa.eu/assets/TE2025/Full_database/883401/TR_Metadata.xlsx",
+    "sha256": "8110aea2ed614bc86cb5e00058787e8fe2b5e1ce816a5ec1f9346647668eb5df"
+   }
+  },
+  "ecb": {
+   "url": "https://www.bankingsupervision.europa.eu/activities/srep/shared/Pillar_2_requirement.en.xlsx",
+   "sha256": "5cfd75145f6975db73dfeb46075588b6eedd81e870b20a2089a4434a8303b312"
+  }
+ },
+ "mappingReviewExpires": "2027-05-08",
+ "requirementDefinition": "Partial CET1 requirement = 4.5 % minimum + 2.5 % capital conservation buffer + 56.25 % of P2R. Excludes countercyclical, systemic risk and O-SII/G-SII buffers; 56.25 % is the legal minimum CET1 share of P2R.",
+ "nplDefinition": "Non-performing / total gross carrying amount of loans and advances (EBA item 2520603), consolidated.",
+ "banks": {
+  "529900S9YO2JHTIIDG38": {
+   "lei": "529900S9YO2JHTIIDG38",
+   "ebaName": "BAWAG Group AG",
+   "country": "AT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.12548429935838,
+    "tier1_ratio": 0.15208405042976,
+    "total_capital_ratio": 0.189324556656,
+    "leverage_ratio": 0.04783095609702
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.013329488092607693,
+   "loans": {
+    "nonPerforming": 665.34069969,
+    "total": 49914.94760095,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.025,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "BAWAG Group AG"
+   },
+   "cet1RequirementPartial": 0.08406250000000001
+  },
+  "9ZHRYM6F437SQJ6OUG95": {
+   "lei": "9ZHRYM6F437SQJ6OUG95",
+   "ebaName": "Raiffeisen Bank International AG",
+   "country": "AT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.18176572211671,
+    "tier1_ratio": 0.19924634763671,
+    "total_capital_ratio": 0.22303312979455,
+    "leverage_ratio": 0.0828407954734
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.028573913191736508,
+   "loans": {
+    "nonPerforming": 3377.62680573,
+    "total": 118206.65874728,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0279,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Raiffeisen Bank International AG"
+   },
+   "cet1RequirementPartial": 0.08569375000000001
+  },
+  "213800X3Q9LSAKRUWY91": {
+   "lei": "213800X3Q9LSAKRUWY91",
+   "ebaName": "KBC Groupe",
+   "country": "BE",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.1459044054268,
+    "tier1_ratio": 0.16894268040098,
+    "total_capital_ratio": 0.19016722444554,
+    "leverage_ratio": 0.05526163401973
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.015442503493855977,
+   "loans": {
+    "nonPerforming": 3731.734056,
+    "total": 241653.437701,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0175,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "KBC Group NV"
+   },
+   "cet1RequirementPartial": 0.07984375
+  },
+  "851WYGNLUQLFZBSYGB56": {
+   "lei": "851WYGNLUQLFZBSYGB56",
+   "ebaName": "COMMERZBANK Aktiengesellschaft",
+   "country": "DE",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.14559014764824,
+    "tier1_ratio": 0.16522328305701,
+    "total_capital_ratio": 0.20097659269926,
+    "leverage_ratio": 0.04325822504225
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.013895969982387759,
+   "loans": {
+    "nonPerforming": 5035.67919899,
+    "total": 362384.1448544,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0225,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "COMMERZBANK Aktiengesellschaft"
+   },
+   "cet1RequirementPartial": 0.08265625
+  },
+  "MAES062Z21O4RZ2U7M96": {
+   "lei": "MAES062Z21O4RZ2U7M96",
+   "ebaName": "Danske Bank A/S",
+   "country": "DK",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.18672221282432,
+    "tier1_ratio": 0.1962361858175,
+    "total_capital_ratio": 0.22350277174975,
+    "leverage_ratio": 0.04742861688086
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.014234238860773457,
+   "loans": {
+    "nonPerforming": 4055.94872143173,
+    "total": 284943.140346553,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "3M5E1GQGKL17HI6CPN30": {
+   "lei": "3M5E1GQGKL17HI6CPN30",
+   "ebaName": "Jyske Bank A/S",
+   "country": "DK",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.16262640214639,
+    "tier1_ratio": 0.18322376247836,
+    "total_capital_ratio": 0.21514433511473,
+    "leverage_ratio": 0.05393237636858
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.013280218936643433,
+   "loans": {
+    "nonPerforming": 1034.98390870806,
+    "total": 77934.250455185,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "K8MS7FD7N5Z2WQ51AZ71": {
+   "lei": "K8MS7FD7N5Z2WQ51AZ71",
+   "ebaName": "Banco Bilbao Vizcaya Argentaria, S.A.",
+   "country": "ES",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.13340270116457,
+    "tier1_ratio": 0.14758439932076,
+    "total_capital_ratio": 0.17724442426127,
+    "leverage_ratio": 0.06925898127875
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.02997592110516111,
+   "loans": {
+    "nonPerforming": 14136.25,
+    "total": 471586.843,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0168,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Banco Bilbao Vizcaya Argentaria, S.A."
+   },
+   "cet1RequirementPartial": 0.07945
+  },
+  "5493006QMFDDMYWIAM13": {
+   "lei": "5493006QMFDDMYWIAM13",
+   "ebaName": "Banco Santander, S.A.",
+   "country": "ES",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.1298487767851,
+    "tier1_ratio": 0.14515453276543,
+    "total_capital_ratio": 0.17217004583259,
+    "leverage_ratio": 0.04907476369953
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.0334620739090728,
+   "loans": {
+    "nonPerforming": 35924.454,
+    "total": 1073587.193,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0174,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Banco Santander, S.A."
+   },
+   "cet1RequirementPartial": 0.07978750000000001
+  },
+  "SI5RG2M0WQQLZCXKRM20": {
+   "lei": "SI5RG2M0WQQLZCXKRM20",
+   "ebaName": "Banco de Sabadell, S.A.",
+   "country": "ES",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.13059744983114,
+    "tier1_ratio": 0.16530256928242,
+    "total_capital_ratio": 0.18819233308811,
+    "leverage_ratio": 0.05193844463583
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.024659710005284628,
+   "loans": {
+    "nonPerforming": 4356.326,
+    "total": 176657.633,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0225,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Banco de Sabadell, S.A."
+   },
+   "cet1RequirementPartial": 0.08265625
+  },
+  "VWMYAEQSTOPNV0SUGU82": {
+   "lei": "VWMYAEQSTOPNV0SUGU82",
+   "ebaName": "Bankinter, S.A.",
+   "country": "ES",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.12574219117191,
+    "tier1_ratio": 0.14389890955308,
+    "total_capital_ratio": 0.17321309125402,
+    "leverage_ratio": 0.05102172067347
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.023916564675837252,
+   "loans": {
+    "nonPerforming": 2277.580703,
+    "total": 95230.26128,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.013,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Bankinter, S.A."
+   },
+   "cet1RequirementPartial": 0.0773125
+  },
+  "7CUNS533WID6K7DGFI87": {
+   "lei": "7CUNS533WID6K7DGFI87",
+   "ebaName": "CaixaBank, S.A.",
+   "country": "ES",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.12249989185179,
+    "tier1_ratio": 0.14084657015472,
+    "total_capital_ratio": 0.16615323393877,
+    "leverage_ratio": 0.05509089823468
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.023324052011208497,
+   "loans": {
+    "nonPerforming": 9157.315,
+    "total": 392612.527,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0175,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "CaixaBank, S.A."
+   },
+   "cet1RequirementPartial": 0.07984375
+  },
+  "R0MUWSFPU8MPRO8K5P83": {
+   "lei": "R0MUWSFPU8MPRO8K5P83",
+   "ebaName": "BNP Paribas",
+   "country": "FR",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.12458720899514,
+    "tier1_ratio": 0.14545814889555,
+    "total_capital_ratio": 0.16725151720958,
+    "leverage_ratio": 0.04405036998575
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.027884920665009572,
+   "loans": {
+    "nonPerforming": 26870.41322,
+    "total": 963618.06235,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0184,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "BNP Paribas S.A."
+   },
+   "cet1RequirementPartial": 0.08035
+  },
+  "O2RNE8IBXP4R0TD8PU41": {
+   "lei": "O2RNE8IBXP4R0TD8PU41",
+   "ebaName": "Société générale S.A.",
+   "country": "FR",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.13539139947483,
+    "tier1_ratio": 0.15828887161761,
+    "total_capital_ratio": 0.18443069844139,
+    "leverage_ratio": 0.04369823436989
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.02765367338744131,
+   "loans": {
+    "nonPerforming": 14006.8686233,
+    "total": 506510.23562248,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0238,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Société Générale S.A."
+   },
+   "cet1RequirementPartial": 0.0833875
+  },
+  "213800DBQIB6VBNU5C64": {
+   "lei": "213800DBQIB6VBNU5C64",
+   "ebaName": "Alpha Bank S.A.",
+   "country": "GR",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.16078933140027,
+    "tier1_ratio": 0.18366180056731,
+    "total_capital_ratio": 0.21690750674202,
+    "leverage_ratio": 0.07536595765049
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.03484824066236418,
+   "loans": {
+    "nonPerforming": 1531.086783,
+    "total": 43935.841635,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.03,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "ALPHA BANK S.A. 4"
+   },
+   "cet1RequirementPartial": 0.08687500000000001
+  },
+  "5UMCZOEYKCVFAW8ZLO05": {
+   "lei": "5UMCZOEYKCVFAW8ZLO05",
+   "ebaName": "National Bank of Greece, S.A.",
+   "country": "GR",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.18929114061414,
+    "tier1_ratio": 0.18929114061414,
+    "total_capital_ratio": 0.21670766245241,
+    "leverage_ratio": 0.08993170587759
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.03371101906565259,
+   "loans": {
+    "nonPerforming": 1344.853,
+    "total": 39893.5729999999,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0275,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "National Bank of Greece S.A."
+   },
+   "cet1RequirementPartial": 0.08546875000000001
+  },
+  "635400AKJBGNS5WNQL34": {
+   "lei": "635400AKJBGNS5WNQL34",
+   "ebaName": "AIB Group plc",
+   "country": "IE",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.16741157939896,
+    "tier1_ratio": 0.19090642456351,
+    "total_capital_ratio": 0.22058621231312,
+    "leverage_ratio": 0.07142599578904
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.025451750486001894,
+   "loans": {
+    "nonPerforming": 2039.06874493,
+    "total": 80115.06894394,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.024,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "AIB Group plc"
+   },
+   "cet1RequirementPartial": 0.0835
+  },
+  "7LVZJ6XRIE7VNZ4UBX81": {
+   "lei": "7LVZJ6XRIE7VNZ4UBX81",
+   "ebaName": "BANCA MEDIOLANUM S.P.A.",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.22434929875076,
+    "tier1_ratio": 0.22434929875076,
+    "total_capital_ratio": 0.22434929875076,
+    "leverage_ratio": 0.08351152229722
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.013950750443369502,
+   "loans": {
+    "nonPerforming": 266.748909,
+    "total": 19120.756986,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.015,
+    "footnote": "1",
+    "year": 2025,
+    "ecbName": "Banca Mediolanum S.p.A."
+   },
+   "cet1RequirementPartial": 0.07843750000000001
+  },
+  "815600E4E6DCD2D25E30": {
+   "lei": "815600E4E6DCD2D25E30",
+   "ebaName": "BANCO BPM SOCIETA' PER AZIONI",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.14154630271041,
+    "tier1_ratio": 0.16316830987826,
+    "total_capital_ratio": 0.19231184148568,
+    "leverage_ratio": 0.04882780194907
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.02734195028759585,
+   "loans": {
+    "nonPerforming": 2904.953,
+    "total": 106245.274,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0225,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Banco BPM S.p.A."
+   },
+   "cet1RequirementPartial": 0.08265625
+  },
+  "N747OI7JINV7RUUH6190": {
+   "lei": "N747OI7JINV7RUUH6190",
+   "ebaName": "BPER Banca S.p.A.",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.16219343530391,
+    "tier1_ratio": 0.18226574341966,
+    "total_capital_ratio": 0.21027344379926,
+    "leverage_ratio": 0.06760399448189
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.025037629342303375,
+   "loans": {
+    "nonPerforming": 2381.70455,
+    "total": 95125.002349,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.024,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "BPER Banca S.p.A."
+   },
+   "cet1RequirementPartial": 0.0835
+  },
+  "J4CP7MHCXR8DAQMKIL78": {
+   "lei": "J4CP7MHCXR8DAQMKIL78",
+   "ebaName": "Banca Monte dei Paschi di Siena S.p.A.",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.19615332730665,
+    "tier1_ratio": 0.19615332730665,
+    "total_capital_ratio": 0.21838864101302,
+    "leverage_ratio": 0.06917616921868
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.036488659117745355,
+   "loans": {
+    "nonPerforming": 3064.443505,
+    "total": 83983.450724,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.022,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "BANCA MONTE DEI PASCHI DI SIENA S.p.A."
+   },
+   "cet1RequirementPartial": 0.082375
+  },
+  "549300L7YCATGO57ZE10": {
+   "lei": "549300L7YCATGO57ZE10",
+   "ebaName": "FINECOBANK S.P.A.",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.23461023373798,
+    "tier1_ratio": 0.32073574638746,
+    "total_capital_ratio": 0.32073574638746,
+    "leverage_ratio": 0.05199351350787
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.004792642407616695,
+   "loans": {
+    "nonPerforming": 30.299273,
+    "total": 6322.039164,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.02,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "FinecoBank S.p.A."
+   },
+   "cet1RequirementPartial": 0.08125
+  },
+  "2W8N8UU78PMDQKZENC08": {
+   "lei": "2W8N8UU78PMDQKZENC08",
+   "ebaName": "Intesa Sanpaolo S.p.A.",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.12971478055016,
+    "tier1_ratio": 0.15456849760912,
+    "total_capital_ratio": 0.18549615280455,
+    "leverage_ratio": 0.05788833468929
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.022026519139744644,
+   "loans": {
+    "nonPerforming": 9902.828841,
+    "total": 449586.644997,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.015,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Intesa Sanpaolo S.p.A."
+   },
+   "cet1RequirementPartial": 0.07843750000000001
+  },
+  "549300TRUWO2CD2G5692": {
+   "lei": "549300TRUWO2CD2G5692",
+   "ebaName": "UNICREDIT, SOCIETA' PER AZIONI",
+   "country": "IT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.1601998386566,
+    "tier1_ratio": 0.17743598016775,
+    "total_capital_ratio": 0.20363253494227,
+    "leverage_ratio": 0.05693652331063
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.02374784320353894,
+   "loans": {
+    "nonPerforming": 11723.7475539999,
+    "total": 493676.307929,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.02,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "UniCredit S.p.A."
+   },
+   "cet1RequirementPartial": 0.08125
+  },
+  "BFXS5XCH7N0Y05NIXW11": {
+   "lei": "BFXS5XCH7N0Y05NIXW11",
+   "ebaName": "ABN AMRO Bank N.V.",
+   "country": "NL",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.14537073815333,
+    "tier1_ratio": 0.17556158645511,
+    "total_capital_ratio": 0.20576067307002,
+    "leverage_ratio": 0.05466562869551
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.017930007163570072,
+   "loans": {
+    "nonPerforming": 5567.387523,
+    "total": 310506.709351,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0225,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "ABN AMRO Bank N.V."
+   },
+   "cet1RequirementPartial": 0.08265625
+  },
+  "549300NYKK9MWM7GGW15": {
+   "lei": "549300NYKK9MWM7GGW15",
+   "ebaName": "ING Groep N.V.",
+   "country": "NL",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.13261921161574,
+    "tier1_ratio": 0.15117318932406,
+    "total_capital_ratio": 0.1823277195923,
+    "leverage_ratio": 0.04277571278226
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.014888307825899914,
+   "loans": {
+    "nonPerforming": 12329.485,
+    "total": 828132.058,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0165,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "ING Groep N.V."
+   },
+   "cet1RequirementPartial": 0.07928125000000001
+  },
+  "549300GKFG0RYRRQ1414": {
+   "lei": "549300GKFG0RYRRQ1414",
+   "ebaName": "DNB BANK ASA",
+   "country": "NO",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.18330104712495,
+    "tier1_ratio": 0.20119896573687,
+    "total_capital_ratio": 0.22740077215512,
+    "leverage_ratio": 0.06210986902076
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.010792729536120087,
+   "loans": {
+    "nonPerforming": 2229.73447944568,
+    "total": 206595.974816511,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "549300Q3OIWRHQUQM052": {
+   "lei": "549300Q3OIWRHQUQM052",
+   "ebaName": "SpareBank 1 Sør-Norge",
+   "country": "NO",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.18629460920662,
+    "tier1_ratio": 0.20668411624487,
+    "total_capital_ratio": 0.23469258975203,
+    "leverage_ratio": 0.07330151054805
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.006213875373079539,
+   "loans": {
+    "nonPerforming": 240.096921542946,
+    "total": 38638.8376218682,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "5493000LKS7B3UTF7H35": {
+   "lei": "5493000LKS7B3UTF7H35",
+   "ebaName": "Bank Polska Kasa Opieki S.A.",
+   "country": "PL",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.161441106295,
+    "tier1_ratio": 0.161441106295,
+    "total_capital_ratio": 0.17744343131148,
+    "leverage_ratio": 0.07190894264
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.04651333399335885,
+   "loans": {
+    "nonPerforming": 2070.89404450416,
+    "total": 44522.5888301157,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "P4GTT6GF1W40CVIMFR43": {
+   "lei": "P4GTT6GF1W40CVIMFR43",
+   "ebaName": "Powszechna Kasa Oszczednosci Bank Polski S.A.",
+   "country": "PL",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.16786086101372,
+    "tier1_ratio": 0.16786086101372,
+    "total_capital_ratio": 0.17803535408298,
+    "leverage_ratio": 0.07580907381797
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.03688673202411342,
+   "loans": {
+    "nonPerforming": 2548.23555948424,
+    "total": 69082.7140181033,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "JU1U6S0DG9YLT7N8ZV32": {
+   "lei": "JU1U6S0DG9YLT7N8ZV32",
+   "ebaName": "Banco Comercial Português, SA",
+   "country": "PT",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.1637652422142,
+    "tier1_ratio": 0.17575096332915,
+    "total_capital_ratio": 0.20562779754203,
+    "leverage_ratio": 0.06393273675516
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.027298734375581526,
+   "loans": {
+    "nonPerforming": 1572.36599837,
+    "total": 57598.49437476,
+    "unit": "EUR_million",
+    "item": "2520603"
+   },
+   "p2r": {
+    "value": 0.0225,
+    "footnote": "",
+    "year": 2025,
+    "ecbName": "Banco Comercial Português, S.A."
+   },
+   "cet1RequirementPartial": 0.08265625
+  },
+  "F3JS33DEI6XQ4ZBPTN86": {
+   "lei": "F3JS33DEI6XQ4ZBPTN86",
+   "ebaName": "Skandinaviska Enskilda Banken - gruppen",
+   "country": "SE",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.17659338655426,
+    "tier1_ratio": 0.19128756755198,
+    "total_capital_ratio": 0.21664024812547,
+    "leverage_ratio": 0.04933426932557
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.00425167217609164,
+   "loans": {
+    "nonPerforming": 822.99186354461,
+    "total": 193568.984027632,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "NHBDILHZTYCNBV5UYZ31": {
+   "lei": "NHBDILHZTYCNBV5UYZ31",
+   "ebaName": "Svenska Handelsbanken - gruppen",
+   "country": "SE",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.18360000001114,
+    "tier1_ratio": 0.19531867866935,
+    "total_capital_ratio": 0.2273665276443,
+    "leverage_ratio": 0.04527480661204
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.0030688783190649773,
+   "loans": {
+    "nonPerforming": 651.998709011797,
+    "total": 212455.054005024,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  },
+  "M312WZV08Y7LYUC71685": {
+   "lei": "M312WZV08Y7LYUC71685",
+   "ebaName": "Swedbank - Grupp",
+   "country": "SE",
+   "period": "2025-06-30",
+   "metrics": {
+    "cet1_ratio": 0.19704359741976,
+    "tier1_ratio": 0.21457497696319,
+    "total_capital_ratio": 0.23546709031824,
+    "leverage_ratio": 0.06681235686383
+   },
+   "sourceItems": {
+    "cet1_ratio": "2520140",
+    "tier1_ratio": "2520141",
+    "total_capital_ratio": "2520142",
+    "leverage_ratio": "2520905"
+   },
+   "nplRatio": 0.006842241166289011,
+   "loans": {
+    "nonPerforming": 1160.1602296685,
+    "total": 169558.511819853,
+    "unit": "EUR_million",
+    "item": "2520603"
+   }
+  }
+ },
+ "rejected": {},
+ "scoreContribution": 0
+}

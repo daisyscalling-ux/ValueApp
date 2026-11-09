@@ -87,6 +87,9 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
             'issuers': issuers, 'rejected': rejected, 'open': {**mapping.get('open', {}), **(reviewed or {}).get('open', {})}, 'scoreContribution': 0}
 
 
+# KM1-Tabelle der Säule-3-Offenlegung oder, wo zum Stichtag keine vorliegt, Kapitalangaben aus dem Zwischen-/Quartalsbericht.
+REVIEWED_SOURCE_TYPES = ('basel_pillar3_km1', 'bank_capital_release')
+
 def reviewed_problem(e):
     """Geprueft abgelegte KM1-Werte: Pflichtfelder, Kapitalhierarchie, Anforderung = Summe der Bestandteile."""
     if not all(k in e for k in ('isin', 'issuer', 'period', 'cet1_ratio', 'source')) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(e['period'])):
@@ -99,7 +102,7 @@ def reviewed_problem(e):
         parts = (e.get('requirementComponents') or {}).values()
         if not 0 < e['cet1Requirement'] < .3 or abs(sum(parts) - e['cet1Requirement']) > 1e-6 or not e.get('cet1RequirementDefinition'):
             return 'requirement_components_mismatch'
-    if e['source'].get('type') != 'basel_pillar3_km1' or not re.fullmatch(r'[0-9a-f]{64}', e['source'].get('sha256', '')) or not str(e['source'].get('url', '')).startswith('https://'):
+    if e['source'].get('type') not in REVIEWED_SOURCE_TYPES or not re.fullmatch(r'[0-9a-f]{64}', e['source'].get('sha256', '')) or not str(e['source'].get('url', '')).startswith('https://'):
         return 'source_unverified'
     return ''
 

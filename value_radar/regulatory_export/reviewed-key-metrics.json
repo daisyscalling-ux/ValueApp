@@ -2,7 +2,7 @@
  "schema": 1,
  "reviewed_on": "2026-11-09",
  "review_expires": "2027-05-08",
- "method": "Values read from the original Basel Pillar 3 KM1 and CR1 tables of each bank and checked against the source; where a bank publishes no current KM1 (Cembra, China Merchants Bank, Bank of Communications, Shizuoka) the capital ratios come from its interim or quarterly report and the location says so; ratios as fractions.",
+ "method": "Values read from the original Basel Pillar 3 KM1 and CR1 tables of each bank and checked against the source; where a bank publishes no current KM1 (Cembra, China Merchants Bank, Bank of Communications, Shizuoka) the capital ratios come from its interim or quarterly report (source type bank_capital_release) and the location says so; ratios as fractions.",
  "open": {
   "CA0636711016": "Bank of Montreal website did not respond to automated requests from this environment (connection timeout).",
   "GB0008706128": "Lloyds Banking Group loads its document links by JavaScript; source document not yet located.",
@@ -312,7 +312,7 @@
    "lcr": null,
    "nsfr": null,
    "source": {
-    "type": "basel_pillar3_km1",
+    "type": "bank_capital_release",
     "url": "https://www.shizuoka-fg.co.jp/english/pdf/ir/2026_1Q_basel-regulatory-disclosures.pdf",
     "sha256": "baf0105b074ae1b07d49a0afaeba44eb52fcf581f9e336582a55f572cd1f4cf5",
     "location": "Capital ratio release, Shizuoka Financial Group, Inc. (Consolidated), International Standard, As of Jun. 30, 2026; no buffer requirement, LCR or leverage ratio in this release"
@@ -438,7 +438,7 @@
    "lcr": 1.803,
    "nsfr": null,
    "source": {
-    "type": "basel_pillar3_km1",
+    "type": "bank_capital_release",
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001614.pdf",
     "sha256": "1365e20b1335c759fce1393dd3ef935b1e84dd32ca07ced70a8ab6ee40f06a02",
     "location": "Third Quarterly Report of 2026 (H Share, HKEX), PDF pages 18-19 section 4.6 (Group, advanced approach; requirement 8.25 %), PDF page 29 section 6 (average LCR of the quarter); KM1 itself not in this report, NSFR not disclosed"
@@ -460,7 +460,7 @@
    "lcr": null,
    "nsfr": null,
    "source": {
-    "type": "basel_pillar3_km1",
+    "type": "bank_capital_release",
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000550.pdf",
     "sha256": "fbf8a3d2b6ad1446e81c98f308c31cd208907c22aa39993ad47fe667c8818ad7",
     "location": "Results Announcement for the Third Quarter 2026 (HKEX), PDF page 8 section 4 Capital Adequacy Ratio; the separate Pillar 3 report is only on www.bankcomm.com, which this environment cannot reach, so requirement, leverage ratio and LCR are left out"
@@ -534,7 +534,7 @@
    "lcr": null,
    "nsfr": null,
    "source": {
-    "type": "basel_pillar3_km1",
+    "type": "bank_capital_release",
     "url": "https://www.cembra.ch/assets/cembra/investor-relation/berichte-und-praesentationen/finanzberichte/halbjahresbericht-2026-en.pdf",
     "sha256": "a59be88b20dbceab95355bc244fdbaff4ab0ce22c1be3caee056f7bbd27ef8a7",
     "location": "Interim Report 2026, PDF page 44, capital adequacy note (Group, 30 June 2026); KM1 is only published annually (Basel III Pillar 3 disclosures 2025), so requirement, leverage ratio and LCR are left out"

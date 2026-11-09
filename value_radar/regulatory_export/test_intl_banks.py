@@ -60,6 +60,13 @@ class IntlBankImportTests(unittest.TestCase):
         self.assertEqual(intl.reviewed_problem(e), '')
         self.assertEqual(intl.reviewed_problem({**e, 'cet1Requirement': .08, 'requirementComponents': {'minimum': .045}}), 'requirement_components_mismatch')
 
+    def test_report_source_type_is_accepted_unknown_is_not(self):
+        e = {'isin': 'CH0225173167', 'issuer': 'Cembra Money Bank AG', 'jurisdiction': 'CH', 'regulator': 'FINMA', 'period': '2026-06-30',
+             'cet1_ratio': .153, 'tier1_ratio': .177, 'total_capital_ratio': .177, 'cet1Requirement': None,
+             'source': {'type': 'bank_capital_release', 'url': 'https://example.org/h1.pdf', 'sha256': 'c' * 64}}
+        self.assertEqual(intl.reviewed_problem(e), '')
+        self.assertEqual(intl.reviewed_problem({**e, 'source': {**e['source'], 'type': 'press_article'}}), 'source_unverified')
+
     def test_reviewed_file_is_consistent(self):
         d = json.loads((Path(intl.__file__).parent / 'reviewed-key-metrics.json').read_text(encoding='utf-8'))
         for e in d['entries']:

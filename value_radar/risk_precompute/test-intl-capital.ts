@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {withRegulatoryContext as merge,verifiedIntlCapital} from './regulatory-context';
+const now=Date.parse('2026-11-09T18:00:00Z');
+const row={listing_symbol:'OTC:CBAUF',isin:'AU000000CBA7',currency:'USD',name:'Commonwealth Bank of Australia',security_type:'stock'};
+const base={profile:'bank',state:'context_only',sectorRequirements:[]};
+const T='apra_adi_centralised_publication';
+const record={state:'available',scope:'basel_key_metrics',inputIdentity:row,period:'2026-06-30',identityReviewExpires:'2027-05-08',sourceFileSha256:'a'.repeat(64),sourceType:T,
+ metrics:{cet1_ratio:{state:'available',unit:'fraction',sourceField:T+':cet1_ratio',value:.12},tier1_ratio:{state:'available',unit:'fraction',sourceField:T+':tier1_ratio',value:.135}},
+ liquidity:{state:'available',method:'intl-lcr-v1',reportedRatio:1.32,nsfr:1.151,period:'2026-06-30',unit:'fraction'},capitalRequirement:null};
+const archive=(r:any=record,extra:any={})=>({schema:1,generatedAt:'2026-11-09T17:30:00Z',stocks:{},intlBanks:{schema:1,source:'intl_basel_key_metrics',state:'ready',stocks:{'OTC:CBAUF':r}},...extra});
+let checks=0;
+function test(name:string,f:()=>void){f();checks++;console.log('OK '+name)}
+test('APRA capital and LCR reach the balance context; no requirement means it stays open',()=>{
+ const r=merge(base,row,archive(),true,now);
+ assert.equal(r.bankCapital.scope,'basel_key_metrics');assert.equal(r.bankCapital.liquidity.reportedRatio,1.32);assert.equal(r.bankCapital.capitalRequirement,null);
+ assert.deepEqual(r.sectorAssessment.fulfilledRequirements,['regulatory_capital_CET1','liquidity_LCR_or_local_equivalent']);
+ assert.ok(r.sectorRequirements.includes('institution_specific_capital_requirement'));
+});
+test('a disclosed KM1 requirement is recomputed and closes the bank-specific requirement',()=>{
+ const r=merge(base,row,archive({...record,capitalRequirement:{state:'available',method:'basel-km1-cet1-requirement-v1',unit:'fraction',value:.1025,comparisonPeriod:'2026-06-30',reviewExpires:'2027-05-08',headroomPercentagePoints:99}}),true,now);
+ assert.ok(Math.abs(r.bankCapital.capitalRequirement.headroomPercentagePoints-1.75)<1e-9);
+ assert.ok(r.sectorAssessment.fulfilledRequirements.includes('institution_specific_capital_requirement'));
+});
+test('stale quarter, wrong source tag, identity mismatch and inconsistent hierarchy are rejected',()=>{
+ assert.ok(verifiedIntlCapital(archive(),row,true,now));
+ assert.equal(verifiedIntlCapital(archive({...record,period:'2025-12-31'}),row,true,now),null);
+ assert.equal(verifiedIntlCapital(archive({...record,metrics:{cet1_ratio:{...record.metrics.cet1_ratio,sourceField:'EBA:2520140'}}}),row,true,now),null);
+ assert.equal(verifiedIntlCapital(archive({...record,inputIdentity:{...row,security_type:'dr'}}),row,true,now),null);
+ assert.equal(verifiedIntlCapital(archive({...record,metrics:{...record.metrics,tier1_ratio:{...record.metrics.tier1_ratio,value:.11}}}),row,true,now),null);
+ assert.equal(verifiedIntlCapital(archive({...record,liquidity:{...record.liquidity,period:'2026-03-31'}}),row,true,now)!.liquidity,null);
+});
+console.log(checks+' international capital checks passed');

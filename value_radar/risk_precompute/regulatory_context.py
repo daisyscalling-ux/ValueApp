@@ -86,10 +86,35 @@ def build_eu(universe,capital,mapping,now):
  out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
 
+def build_intl(universe,data,now):
+ """Banken ausserhalb EU/EWR/USA (APRA, spaeter Basel-KM1): Kapitalquoten, LCR, NSFR je Konzern. Gleiche Identitaetsregeln."""
+ stocks,rejected={},{}
+ out={'schema':1,'source':'intl_basel_key_metrics','method':data.get('method'),'stocks':stocks,'rejected':rejected,'scoreContribution':0}
+ if data.get('method')!='intl-bank-metrics-v1' or not isinstance(data.get('issuers'),dict):out['state']='source_unavailable';return out
+ for row in universe.get('kandidaten',[]):
+  s=row.get('listing_symbol');i=data['issuers'].get(row.get('isin'))
+  if not s or not i:continue
+  if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
+   rejected[s]='listing_identity_unverified';continue
+  src=i['source'];metrics={k:{'state':'available','value':v,'unit':'fraction','sourceField':src['type']+':'+k} for k,v in i['metrics'].items() if isinstance(v,(int,float)) and 0<=v<=1}
+  if 'cet1_ratio' not in metrics:rejected[s]='intl_cet1_missing';continue
+  liq={'state':'available','method':'intl-lcr-v1','reportedRatio':i['lcr'],'nsfr':i.get('nsfr'),'period':i['period'],'unit':'fraction','sourceType':src['type']} if isinstance(i.get('lcr'),(int,float)) and 0<i['lcr']<10 else None
+  req=None
+  if isinstance(i.get('cet1Requirement'),(int,float)) and 0<i['cet1Requirement']<.3:
+   req={'state':'available','method':'basel-km1-cet1-requirement-v1','unit':'fraction','value':i['cet1Requirement'],'comparisonPeriod':i['period'],'reviewExpires':data['mappingReviewExpires'],'definition':i.get('cet1RequirementDefinition'),'scoreContribution':0}
+  stocks[s]={'state':'available','scope':'basel_key_metrics','holdingName':i['issuer'],'jurisdiction':i['jurisdiction'],'regulator':i['regulator'],'consolidation':i['scope'],
+   'inputIdentity':{k:row.get(k) for k in FIELDS},'period':i['period'],'sourceImportedAt':data['importedAt'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceType':src['type'],
+   'sourceDetail':src.get('tables') or src.get('page'),'identityReviewExpires':data['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
+   'capitalRequirement':req,'liquidity':liq,'creditQuality':None,
+   'limitations':['Published key metrics of the supervised consolidated group; no institution-specific requirement unless disclosed.','No harmonised non-performing loan ratio in this source.']}
+ out.update(state='ready',summary={'intlBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
+ return out
+
 def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}),liquidity_archive=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-liquidity.json',{}))
  result['insurers']=build_insurers(load(folder/'cf_universum.json',{}),load(Path(__file__).with_name('reviewed-insurer-solvency.json'),{}))
  result['euBanks']=build_eu(load(folder/'cf_universum.json',{}),load(folder/'regulatory/eu-bank-capital.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/eu-bank-map.json',{}),dt.datetime.now(dt.timezone.utc))
+ result['intlBanks']=build_intl(load(folder/'cf_universum.json',{}),load(folder/'regulatory/intl-bank-metrics.json',{}),dt.datetime.now(dt.timezone.utc))
  save(folder/'cf_regulatory_context.json',result);print(result.get('summary',{'state':result['state']}))
 if __name__=='__main__':main()

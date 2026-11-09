@@ -23,6 +23,19 @@ export function verifiedEuCapital(archive:Row|undefined|null,row:Row,identityOK:
  const credit=c?.state==='available'&&c.method==='eba-npl-v1'&&c.unit==='fraction'&&c.period===r.period&&c.lei===r.lei&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&/^[0-9a-f]{64}$/.test(c.sourceFileSha256||'')?c:null;
  return {...r,metrics,capitalRequirement:requirement,creditQuality:credit,liquidity:null};
 }
+// Banken ausserhalb EU/EWR/USA: veroeffentlichte Basel-Kennzahlen (APRA, spaeter KM1). Hoechstalter 270 Tage (Quartalsdaten).
+export function verifiedIntlCapital(archive:Row|undefined|null,row:Row,identityOK:boolean,now:number):Row|null{
+ const x=archive?.intlBanks,r=x?.stocks?.[row.listing_symbol],today=new Date(now).toISOString().slice(0,10);
+ if(!identityOK||archive?.schema!==1||!fresh(archive.generatedAt,now,1.5)||x?.schema!==1||x.source!=='intl_basel_key_metrics'||x.state!=='ready'||r?.state!=='available'||r.scope!=='basel_key_metrics')return null;
+ if(!keys.every(k=>(row[k]??null)===(r.inputIdentity?.[k]??null))||!dateOnly(r.period)||!fresh(r.period,now,270)||!dateOnly(r.identityReviewExpires)||r.identityReviewExpires<today||!/^[0-9a-f]{64}$/.test(r.sourceFileSha256||'')||typeof r.sourceType!=='string')return null;
+ const metrics=Object.fromEntries(Object.entries(r.metrics||{}).filter(([key,v]:any)=>v.sourceField===r.sourceType+':'+key&&v.state==='available'&&v.unit==='fraction'&&typeof v.value==='number'&&Number.isFinite(v.value)&&v.value>=0&&v.value<=1));
+ const chain=['cet1_ratio','tier1_ratio','total_capital_ratio'].map(k=>(metrics[k] as any)?.value).filter(v=>v!==undefined);
+ if(!metrics.cet1_ratio||!chain.every((v,i)=>!i||chain[i-1]<=v+1e-6))return null;
+ const l=r.liquidity,q=r.capitalRequirement,cet1=(metrics.cet1_ratio as any).value;
+ const liquidity=l?.state==='available'&&l.method==='intl-lcr-v1'&&l.period===r.period&&typeof l.reportedRatio==='number'&&l.reportedRatio>0&&l.reportedRatio<10?l:null;
+ const requirement=q?.state==='available'&&q.method==='basel-km1-cet1-requirement-v1'&&q.comparisonPeriod===r.period&&typeof q.value==='number'&&q.value>0&&q.value<.3&&dateOnly(q.reviewExpires)&&q.reviewExpires>=today?{...q,headroomPercentagePoints:(cet1-q.value)*100}:null;
+ return {...r,metrics,liquidity,capitalRequirement:requirement,creditQuality:null};
+}
 export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|null,identityOK:boolean,now:number){
  if(!['bank','insurer','specialist_financial'].includes(base.profile))return base;
  if(base.profile==='insurer')return withInsurerSolvency(base,row,archive?.insurers,identityOK,now);
@@ -40,6 +53,7 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
   if(consistent&&m?.state==='available'&&m.unit==='fraction'&&m.sourceField==='BHCAP793'&&typeof m.value==='number'&&Number.isFinite(m.value)&&m.value>=0&&m.value<=1)capital={...r,metrics,liquidity:verifiedLiquidity(r.liquidity,r,now),creditQuality:verifiedCreditQuality(r.creditQuality,r,now),capitalRequirement:verifiedCapitalRequirement(r.capitalRequirement,{...r,metrics},now)};
  }
  if(!capital&&base.profile==='bank')capital=verifiedEuCapital(archive,row,identityOK,now);
+ if(!capital&&base.profile==='bank')capital=verifiedIntlCapital(archive,row,identityOK,now);
  const fulfilled=capital&&base.profile==='bank'?['regulatory_capital_CET1']:[];
  // EU: Teilanforderung ohne systemische Puffer erfuellt die bankspezifische Anforderung nicht vollstaendig; NPL schliesst die Kreditqualitaet.
  if(capital?.scope==='eu_prudential_group'&&capital.creditQuality)fulfilled.push('asset_quality_nonperforming_loans');

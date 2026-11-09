@@ -168,6 +168,25 @@ def review(candidates, output, sec_fetch, yahoo_fetch, pause=3.0):
     return report, cases
 
 
+def detail_markdown(output):
+    """Series and filing tables, so the review is readable without the artifact."""
+    import csv
+    def table(name):
+        with open(Path(output) / name, encoding='utf-8-sig') as stream:
+            return list(csv.DictReader(stream))
+    lines = ['', '### Kursreihen-Kandidaten', '',
+             '| Angefragt | Anbietername | Boerse | Zeilen | Von | Bis | Vor Austritt | Nach Austritt | Luecken >7T | Groesste Luecke | Pruefung | Fehler |',
+             '|---|---|---|---:|---|---|---:|---:|---:|---|---|---|']
+    for r in table('kursreihen_kandidaten.csv'):
+        lines.append('| ' + ' | '.join(str(r.get(k) or '-') for k in (
+            'requested_symbol', 'provider_name', 'exchange', 'rows', 'first', 'last', 'rows_before_exit',
+            'rows_after_exit', 'gaps_over_7_days', 'largest_gap', 'basic_checks_passed', 'error')) + ' |')
+    lines += ['', '### SEC-Statusmeldungen', '', '| Wertpapier | Formular | Datum | Bedeutung | Beleg |', '|---|---|---|---|---|']
+    for r in table('sec_statusmeldungen.csv'):
+        lines.append(f"| {r['identity']} | {r['form']} | {r['filing_date']} | {r['meaning']} | {r['url']} |")
+    return '\n'.join(lines) + '\n'
+
+
 def summary_markdown(report, cases):
     lines = ['## Pruefung Kursverfall- und Insolvenzfaelle', '',
              f"{report['cases']} Faelle, automatisch uebernommen: {report['admitted_automatically']}", '',
@@ -186,7 +205,7 @@ def main():
         raise SystemExit('Set SEC_USER_AGENT to application name and real contact email.')
     candidates = json.loads(CANDIDATES.read_text(encoding='utf8'))
     report, cases = review(candidates, args.output, lambda cik, raw: fetch_sec(cik, user_agent, raw), fetch_yahoo)
-    markdown = summary_markdown(report, cases)
+    markdown = summary_markdown(report, cases) + detail_markdown(args.output)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf8') as stream:
             stream.write(markdown)

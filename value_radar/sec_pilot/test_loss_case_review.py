@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from loss_case_review import CANDIDATES, case_status, review, sec_filings, sec_identity, series_check
+from loss_case_review import CANDIDATES, case_status, detail_markdown, review, sec_filings, sec_identity, series_check
 
 SUBMISSIONS = {
     'name': 'SVB FINANCIAL GROUP', 'formerNames': [{'name': 'SILICON VALLEY BANCSHARES'}],
@@ -81,6 +81,9 @@ class LossCaseReviewTests(unittest.TestCase):
             self.assertEqual(cases[0]['usable_series'], 'SIVBQ')
             self.assertEqual(cases[0]['status_filings'], 2)
             self.assertTrue((Path(tmp) / 'kursreihen_kandidaten.csv').read_text(encoding='utf-8-sig').count('ValueError') == 1)
+            details = detail_markdown(tmp)
+            self.assertIn('| SIVBQ | SVB Financial Group |', details)
+            self.assertIn('bankruptcy_or_receivership', details)
 
 
 if __name__ == '__main__':

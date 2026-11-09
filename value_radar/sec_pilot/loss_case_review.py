@@ -86,7 +86,7 @@ def terminal_filings(filings, decision_start, limit=3):
     return chosen[:limit]
 
 
-def excerpts(html, max_sentences=8, max_chars=400):
+def excerpts(html, max_sentences=8, max_chars=1000):
     """Plain-text sentences with settlement or listing terms; for reading, not for parsing amounts."""
     text = re.sub(r'(?is)<(script|style).*?</\1>', ' ', html)
     text = re.sub(r'<[^>]+>', ' ', text)

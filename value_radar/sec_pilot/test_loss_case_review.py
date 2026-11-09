@@ -3,7 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from loss_case_review import CANDIDATES, case_status, detail_markdown, review, sec_filings, sec_identity, series_check
+from loss_case_review import (CANDIDATES, case_status, detail_markdown, excerpts, review, sec_filings,
+                              sec_identity, series_check, terminal_filings)
 
 SUBMISSIONS = {
     'name': 'SVB FINANCIAL GROUP', 'formerNames': [{'name': 'SILICON VALLEY BANCSHARES'}],
@@ -31,6 +32,20 @@ class LossCaseReviewTests(unittest.TestCase):
         self.assertEqual([r['form'] for r in rows], ['8-K', '25-NSE'])
         self.assertEqual(rows[0]['meaning'], 'bankruptcy_or_receivership')
         self.assertIn('/719739/000071973923000012/a.htm', rows[0]['url'])
+
+    def test_terminal_filings_need_delisting_or_bankruptcy_item(self):
+        rows = sec_filings(SUBMISSIONS, '0000719739')
+        self.assertEqual([r['filing_date'] for r in terminal_filings(rows, '2020-10-12')], ['2023-03-17'])
+        self.assertEqual(terminal_filings(rows, '2023-03-18'), [])
+
+    def test_excerpts_keep_settlement_sentences_only(self):
+        html = ('<p>Item 2.01.</p><p>Each share was converted into the right to receive $40.00 in cash, without interest.'
+                '</p><p>The board met on Monday.</p><script>per share</script>'
+                '<p>The NYSE filed Form 25 to delist the shares; trading was suspended.</p>')
+        found = excerpts(html)
+        self.assertEqual(len(found), 2)
+        self.assertIn('$40.00 in cash', found[0])
+        self.assertNotIn('board', ' '.join(found))
 
     def test_former_names_count_for_identity(self):
         self.assertTrue(sec_identity(SUBMISSIONS, 'Silicon Valley')['sec_name_match'])
@@ -76,7 +91,9 @@ class LossCaseReviewTests(unittest.TestCase):
             return [('2020-10-09', 300.0), ('2023-03-09', 100.0)], dict(symbol='SIVBQ', longName='SVB Financial Group',
                                                                      instrumentType='EQUITY', currency='USD')
         with tempfile.TemporaryDirectory() as tmp:
-            report, cases = review(candidates, tmp, lambda cik, raw: (SUBMISSIONS, 'abc', ''), yahoo, pause=0)
+            doc = lambda url, raw: ('<p>SVB Financial Group filed a voluntary petition under Chapter 11.</p>', 'h')
+            report, cases = review(candidates, tmp, lambda cik, raw: (SUBMISSIONS, 'abc', ''), yahoo, pause=0,
+                                   document_fetch=doc)
             self.assertEqual(report['admitted_automatically'], 0)
             self.assertEqual(cases[0]['usable_series'], 'SIVBQ')
             self.assertEqual(cases[0]['status_filings'], 2)
@@ -84,6 +101,7 @@ class LossCaseReviewTests(unittest.TestCase):
             details = detail_markdown(tmp)
             self.assertIn('| SIVBQ | SVB Financial Group |', details)
             self.assertIn('bankruptcy_or_receivership', details)
+            self.assertIn('- SVB Financial Group filed a voluntary petition under Chapter 11.', details)
 
 
 if __name__ == '__main__':

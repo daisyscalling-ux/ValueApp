@@ -30,7 +30,8 @@
     {"identity":"VYLR", "date":"2026-10-01", "source":"https://www.sec.gov/Archives/edgar/data/30554/000119312526409895/d116808d8k.htm"}
   ],
   "event_overrides": [
-    {"symbol": "FBHS", "date": "2022-12-19", "side": "removed", "name": "Fortune Brands Home & Security", "identity": "FBIN", "source": "https://www.spglobal.com/spdji/en/documents/indexnews/announcements/20221212-1460145/1460145_5fbhs.pdf", "note": "Index announcement used old ticker for deletion after legal ticker change. Exact event override only."}
+    {"symbol": "FBHS", "date": "2022-12-19", "side": "removed", "name": "Fortune Brands Home & Security", "identity": "FBIN", "source": "https://www.spglobal.com/spdji/en/documents/indexnews/announcements/20221212-1460145/1460145_5fbhs.pdf", "note": "Index announcement used old ticker for deletion after legal ticker change. Exact event override only."},
+    {"symbol": "FRC", "date": "2023-05-04", "side": "removed", "name": "First Republic Bank", "identity": "FRCB", "source": "https://api.finra.org/data/group/otcMarket/name/otcDailyList", "note": "Index deletion recorded under FRC one day after the common stock moved to OTC as FRCB (FINRA OTC Daily List 258557, effective 2023-05-03). Exact event override only."}
   ],
   "capital_actions_review": [
     {"identity": "BFH", "date": "2021-11-05", "action": "Loyalty Ventures spin-off; adjusted-return treatment unverified", "source": "https://www.sec.gov/Archives/edgar/data/1101215/000110121523000049/bfh-20221231.htm"},

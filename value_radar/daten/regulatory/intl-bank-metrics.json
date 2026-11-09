@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "intl-bank-metrics-v1",
- "importedAt": "2026-11-09T19:53:18.702205+00:00",
+ "importedAt": "2026-11-09T20:18:55.548200+00:00",
  "mappingReviewExpires": "2027-05-08",
  "issuers": {
   "AU000000CBA7": {
@@ -400,6 +400,291 @@
     "sha256": "baf0105b074ae1b07d49a0afaeba44eb52fcf581f9e336582a55f572cd1f4cf5",
     "location": "Capital ratio release, Shizuoka Financial Group, Inc. (Consolidated), International Standard, As of Jun. 30, 2026; no buffer requirement, LCR or leverage ratio in this release"
    }
+  },
+  "CNE000001P37": {
+   "issuer": "Industrial and Commercial Bank of China Limited",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1307,
+    "tier1_ratio": 0.1427,
+    "total_capital_ratio": 0.185,
+    "leverage_ratio": 0.0716
+   },
+   "lcr": 1.3888,
+   "nsfr": 1.2851,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000694.pdf",
+    "sha256": "29d9c4e6dfedb31456b578c1c48f81b96eeda48fe59a14b1365f9b79b271c013",
+    "location": "Third Quarterly Report 2026 (HKEX), PDF pages 22-23, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter; G-SIB surcharge rises to 2.0 % from 1 January 2027"
+   }
+  },
+  "CNE100000742": {
+   "issuer": "China Construction Bank Corporation",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1439,
+    "tier1_ratio": 0.1544,
+    "total_capital_ratio": 0.1955,
+    "leverage_ratio": 0.0769
+   },
+   "lcr": 1.402,
+   "nsfr": 1.2796,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000860.pdf",
+    "sha256": "18f535edbd2c3100907ce15b215eae48fc04c52b71155847235dea0379e4fb01",
+    "location": "Capital Management Pillar III Third Quarter Report 2026 (HKEX), PDF pages 4-5, Table 1 (KM1) rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter"
+   }
+  },
+  "CNE000001N05": {
+   "issuer": "Bank of China Limited",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1204,
+    "tier1_ratio": 0.1386,
+    "total_capital_ratio": 0.1845,
+    "leverage_ratio": 0.0721
+   },
+   "lcr": 1.3478,
+   "nsfr": 1.2795,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000882.pdf",
+    "sha256": "c6f2537401a7e28eb12a43ffbc8c45c3784435c48e37b6393346e1afdd73aea6",
+    "location": "2026 Q3 Pillar 3 Disclosure Report (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; footnote 3 confirms the 5 % CET1 minimum; LCR = daily average of the quarter"
+   }
+  },
+  "CNE100000RJ0": {
+   "issuer": "Agricultural Bank of China Limited",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.109,
+    "tier1_ratio": 0.1275,
+    "total_capital_ratio": 0.1805,
+    "leverage_ratio": 0.0616
+   },
+   "lcr": 1.31,
+   "nsfr": 1.324,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001644.pdf",
+    "sha256": "e52e312708746a91eb2f9a829895eb8db12a2389958618b2413a5bc4a5b07217",
+    "location": "Pillar 3 Report for the Third Quarter of 2026 (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026"
+   }
+  },
+  "CNE000001B33": {
+   "issuer": "China Merchants Bank Co., Ltd.",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1439,
+    "tier1_ratio": 0.1689,
+    "total_capital_ratio": 0.1865,
+    "leverage_ratio": 0.0823
+   },
+   "lcr": 1.803,
+   "nsfr": null,
+   "cet1Requirement": 0.0825,
+   "cet1RequirementDefinition": "CET1 requirement = 8.25 % core tier 1 ratio stated by the bank (5 % minimum + 2.5 % capital conservation buffer + 0.75 % D-SIB surcharge under the Ancillary Regulatory Provision for Systemically Important Banks).",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "capitalConservationBuffer": 0.025,
+    "dsibSurcharge": 0.0075
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001614.pdf",
+    "sha256": "1365e20b1335c759fce1393dd3ef935b1e84dd32ca07ced70a8ab6ee40f06a02",
+    "location": "Third Quarterly Report of 2026 (H Share, HKEX), PDF pages 18-19 section 4.6 (Group, advanced approach; requirement 8.25 %), PDF page 29 section 6 (average LCR of the quarter); KM1 itself not in this report, NSFR not disclosed"
+   }
+  },
+  "CNE1000000S2": {
+   "issuer": "Bank of Communications Co., Ltd.",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1135,
+    "tier1_ratio": 0.1255,
+    "total_capital_ratio": 0.1609
+   },
+   "lcr": null,
+   "nsfr": null,
+   "cet1Requirement": null,
+   "cet1RequirementDefinition": null,
+   "requirementComponents": null,
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000550.pdf",
+    "sha256": "fbf8a3d2b6ad1446e81c98f308c31cd208907c22aa39993ad47fe667c8818ad7",
+    "location": "Results Announcement for the Third Quarter 2026 (HKEX), PDF page 8 section 4 Capital Adequacy Ratio; the separate Pillar 3 report is only on www.bankcomm.com, which this environment cannot reach, so requirement, leverage ratio and LCR are left out"
+   }
+  },
+  "CH0531751755": {
+   "issuer": "Banque Cantonale Vaudoise",
+   "jurisdiction": "CH",
+   "regulator": "FINMA",
+   "scope": "consolidated_group",
+   "period": "2026-06-30",
+   "metrics": {
+    "cet1_ratio": 0.176,
+    "tier1_ratio": 0.176,
+    "total_capital_ratio": 0.178,
+    "leverage_ratio": 0.053
+   },
+   "lcr": 1.33,
+   "nsfr": 1.2,
+   "cet1Requirement": 0.088,
+   "cet1RequirementDefinition": "CET1 requirement = KM1 row 12c (CAO Annex 8 CET1 requirement plus countercyclical buffer: 4.5 % minimum + 3.3 % Annex 8 buffer + 1.0 % countercyclical buffer). The temporary 1 % FINMA add-on under CAO Art. 45 applies to total capital and is not included.",
+   "requirementComponents": {
+    "minimum": 0.045,
+    "annex8CET1Buffer": 0.033,
+    "countercyclicalBuffer": 0.01
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.bcv.ch/content/dam/bcv/fichiers/publications/publications-institutionnelles/rapports/ra-et-rse/bale-iii/2026/BCV%2026%2008%2010%20B%C3%A2le%20III%20Final%20-%20Pilier%203%20au%2030.06.2026%20v1.0_eng_final.pdf",
+    "sha256": "871d6d3480dd277b54500283e6590633b9cf268d24c400fc8331e7cdc3d9b1cc",
+    "location": "PDF page 67, Table 32 (full KM1) rows 5-7, 12c, 14, 20, column 30/6/26; LCR from PDF page 6 Table 2 (average of the six preceding months)"
+   }
+  },
+  "CH0014786500": {
+   "issuer": "Valiant Holding AG",
+   "jurisdiction": "CH",
+   "regulator": "FINMA",
+   "scope": "consolidated_group",
+   "period": "2026-06-30",
+   "metrics": {
+    "cet1_ratio": 0.1702,
+    "tier1_ratio": 0.1702,
+    "total_capital_ratio": 0.1702,
+    "leverage_ratio": 0.0654
+   },
+   "lcr": 1.42,
+   "nsfr": 1.2,
+   "cet1Requirement": 0.0948,
+   "cet1RequirementDefinition": "CET1 requirement = KM1 row 12c (CAO Annex 8 CET1 requirement plus countercyclical buffer: 4.5 % minimum + 3.3 % Annex 8 buffer + 1.68 % countercyclical buffer).",
+   "requirementComponents": {
+    "minimum": 0.045,
+    "annex8CET1Buffer": 0.033,
+    "countercyclicalBuffer": 0.0168
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.valiant.ch/documents/35003/13319974/Valiant+Holding+AG+%E2%80%93+Disclosures+of+capital+adequacy+and+liquidity+30+June+2026.pdf/d4dd15e8-63bd-ce34-7297-daa835836ed3?version=1.1",
+    "sha256": "3528ed953c1d56e811367fc72cb0086a20657f6c3af196d7af00527446977b48",
+    "location": "PDF page 4, Table KM1 rows 5-7, 12c, 14, column T (30 June 2026); LCR row 17 (quarter average, calculated for Valiant Bank AG) and NSFR row 20 on the following page"
+   }
+  },
+  "CH0225173167": {
+   "issuer": "Cembra Money Bank AG",
+   "jurisdiction": "CH",
+   "regulator": "FINMA",
+   "scope": "consolidated_group",
+   "period": "2026-06-30",
+   "metrics": {
+    "cet1_ratio": 0.153,
+    "tier1_ratio": 0.177,
+    "total_capital_ratio": 0.177
+   },
+   "lcr": null,
+   "nsfr": null,
+   "cet1Requirement": null,
+   "cet1RequirementDefinition": null,
+   "requirementComponents": null,
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.cembra.ch/assets/cembra/investor-relation/berichte-und-praesentationen/finanzberichte/halbjahresbericht-2026-en.pdf",
+    "sha256": "a59be88b20dbceab95355bc244fdbaff4ab0ce22c1be3caee056f7bbd27ef8a7",
+    "location": "Interim Report 2026, PDF page 44, capital adequacy note (Group, 30 June 2026); KM1 is only published annually (Basel III Pillar 3 disclosures 2025), so requirement, leverage ratio and LCR are left out"
+   }
+  },
+  "SG1L01001701": {
+   "issuer": "DBS Group Holdings Ltd",
+   "jurisdiction": "SG",
+   "regulator": "MAS",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.159,
+    "tier1_ratio": 0.159,
+    "total_capital_ratio": 0.165,
+    "leverage_ratio": 0.057
+   },
+   "lcr": 1.46,
+   "nsfr": 1.15,
+   "cet1Requirement": 0.092,
+   "cet1RequirementDefinition": "CET1 requirement = 6.5 % MAS Notice 637 minimum CET1 ratio for Singapore-incorporated D-SIBs + KM1 row 11 (capital conservation and countercyclical buffers); KM1 row 12 (6.5 %) is consistent with these minima.",
+   "requirementComponents": {
+    "minimum": 0.065,
+    "km1Row11": 0.027
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.dbs.com/iwov-resources/images/investors/quarterly-financials/2026/3Q26_P3_other_regulatory_disclosures.pdf",
+    "sha256": "3738f9ca2dd648d3a92fee3de7e1ad56a22f5de3692b962d99b7a2768b786411",
+    "location": "PDF page 4 (A-1), section 3 KM1 rows 5-7, 11, 14, 17, 20, column 30 Sep 26; LCR = average of the quarter"
+   }
   }
  },
  "rejected": {},
@@ -412,7 +697,8 @@
   "JP3500610005": "Resona Holdings: website refuses automated requests (HTTP 403); domestic capital standard expected, which is not comparable with CET1.",
   "JP3511800009": "Chiba Bank: Basel disclosure not yet located.",
   "JP3805010000": "Fukuoka Financial Group: English investor site not found; domestic capital standard expected.",
-  "JP3305990008": "Yokohama Financial Group: website unreachable through the proxy (HTTP 502/403)."
+  "JP3305990008": "Yokohama Financial Group: website unreachable through the proxy (HTTP 502/403).",
+  "SG1S04926220": "Oversea-Chinese Banking Corporation: the Pillar 3 PDF on www.ocbc.com sits behind a bot-protection page (Incapsula) and is not fetched automatically."
  },
  "scoreContribution": 0
 }

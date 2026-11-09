@@ -11,6 +11,10 @@ Stand 09.11.2026. Gemeinsames Format `intl-bank-metrics-v1` für veröffentlicht
   - Offen: BMO (Website antwortet aus dieser Umgebung nicht), Lloyds (Dokumentlinks werden per JavaScript geladen).
   - Japan, Stichtag 30.06.2026: MUFG und SMFG (KM1, Anforderung = 4,5 % + Zeile 11; LCR, NSFR), Mizuho (Basel-Überblick der Bank: CET1-Mindestquote 8,0 % ohne antizyklischen Puffer, LCR; Tier 1 und Gesamtkapital aus der Mitteilung vom 14.08.2026), Shizuoka Financial Group (nur Kapitalquoten, internationaler Standard, keine Anforderung offengelegt). Japan veröffentlicht keine bankspezifische Säule-2-Anforderung.
   - Japan offen: Sumitomo Mitsui Trust (Domain nach Umfirmierung unklar), Japan Post Bank (Offenlegung und Kapitalstandard noch nicht ermittelt), Resona (Website sperrt automatisierte Abrufe; voraussichtlich Inlandsstandard), Chiba Bank (Offenlegung nicht gefunden), Fukuoka (englische IR-Seite nicht gefunden; voraussichtlich Inlandsstandard), Yokohama (Website nicht erreichbar). Banken nach japanischem Inlandsstandard melden eine „Core Capital Ratio“, die mit CET1 nicht vergleichbar ist.
+  - China, Stichtag 30.09.2026, Quelle Hongkonger Börse (www1.hkexnews.hk, die H-Aktien-Meldungen der Banken): ICBC, CCB, Bank of China, Agricultural Bank (KM1, CET1-Anforderung = 5 % Mindestquote der NFRA + Zeile 11 mit Erhaltungspuffer 2,5 % und G-SIB-Zuschlag 1,5 %; LCR als Tagesdurchschnitt des Quartals, NSFR). China Merchants Bank: Quartalsbericht, Anforderung 8,25 % laut Bank (5 % + 2,5 % + 0,75 % D-SIB), LCR, keine NSFR. Bank of Communications: nur Kapitalquoten aus der Quartalsmitteilung; der KM1-Bericht liegt nur auf www.bankcomm.com, das aus dieser Umgebung nicht erreichbar ist. Bei ICBC steigt der G-SIB-Zuschlag ab 01.01.2027 auf 2,0 %.
+  - Schweiz, Stichtag 30.06.2026 (halbjährlich): BCV und Valiant (KM1, CET1-Anforderung = Zeile 12c: 4,5 % + 3,3 % Puffer nach Anhang 8 ERV + antizyklischer Puffer; LCR, NSFR). Der befristete FINMA-Zuschlag von 1 % für BCV (Art. 45 ERV) gilt für das Gesamtkapital und ist nicht enthalten. Cembra: nur Kapitalquoten aus dem Halbjahresbericht, KM1 erscheint nur jährlich.
+  - Singapur, Stichtag 30.09.2026: DBS (KM1, CET1-Anforderung = 6,5 % MAS-Mindestquote + Zeile 11; LCR, NSFR). OCBC offen: die Säule-3-Datei liegt hinter einer Bot-Schutzseite und wird nicht automatisch geladen.
+  - Die Quelle wird in der App als „Basel-Offenlegung KM1“ geführt. Wo keine aktuelle KM1-Tabelle vorliegt (Cembra, China Merchants Bank, Bank of Communications, Shizuoka), nennt die Fundstelle den Zwischen- bzw. Quartalsbericht.
 
 ## Zuordnung (`intl-bank-map.json`)
 
@@ -27,7 +31,7 @@ Im Universum sind nur US-OTC-Notierungen dieser Banken. Die drei Stammaktien (OT
 
 Bewertet werden der Abstand der CET1-Quote zur Anforderung (wo offengelegt), die LCR und die Quote ausgefallener Kredite (CR1). Die APRA veröffentlicht keine bankspezifische Anforderung, deshalb bleibt der Kapitalpuffer bei den australischen Banken offen.
 
-Probelauf 09.11.2026: 17 internationale Notierungen mit Kapitaldaten (davon 7 japanische), insgesamt 61 Banken. Depositary Receipts werden abgelehnt.
+Probelauf 09.11.2026: 27 internationale Notierungen mit Kapitaldaten (7 Japan, 6 China, 3 Schweiz, 1 Singapur), insgesamt 71 von 142 Banken. Depositary Receipts werden abgelehnt.
 
 Eine Anforderung ist nur bei offengelegten Bestandteilen gesetzt; Einträge ohne Anforderung (z. B. Shizuoka) liefern nur die Kapitalquoten.
 

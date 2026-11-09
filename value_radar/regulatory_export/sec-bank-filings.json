@@ -1,0 +1,13 @@
+{
+ "note": "SEC-Einreichungen auslaendischer Banken, deren Websites automatisierte Abrufe sperren. Zugangsnummern aus data.sec.gov/submissions.",
+ "filings": [
+  {"label": "bmo_q3_2026_release", "cik": "0000927971", "accession": "0000927971-26-000106"},
+  {"label": "bmo_q3_2026_report", "cik": "0000927971", "accession": "0000927971-26-000108"},
+  {"label": "bmo_2026-08-25_a", "cik": "0000927971", "accession": "0001193125-26-364523"},
+  {"label": "bmo_2026-08-25_b", "cik": "0000927971", "accession": "0001193125-26-364526"},
+  {"label": "bmo_2026-08-25_c", "cik": "0000927971", "accession": "0001193125-26-364529"},
+  {"label": "bmo_2026-08-25_d", "cik": "0000927971", "accession": "0001193125-26-364532"},
+  {"label": "lloyds_q3_2026_ims", "cik": "0001160106", "accession": "0001160106-26-000026"},
+  {"label": "lloyds_2026-11-05", "cik": "0001160106", "accession": "0000950103-26-017021"}
+ ]
+}

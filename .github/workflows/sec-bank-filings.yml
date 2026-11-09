@@ -1,0 +1,27 @@
+name: sec-bank-filings
+# Laedt die in sec-bank-filings.json gelisteten SEC-Einreichungen mit dem hinterlegten SEC_USER_AGENT
+# und legt sie mit SHA-256 als Artefakt ab (Grundlage fuer reviewed-key-metrics.json).
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths: ['value_radar/regulatory_export/sec-bank-filings.json', 'value_radar/regulatory_export/fetch_sec_filings.py', '.github/workflows/sec-bank-filings.yml']
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: SEC-Dokumente laden
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python value_radar/regulatory_export/fetch_sec_filings.py value_radar/regulatory_export/sec-bank-filings.json sec-bank-filings
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sec-bank-filings-${{ github.run_id }}
+          path: sec-bank-filings/
+          retention-days: 30

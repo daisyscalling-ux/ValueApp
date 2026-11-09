@@ -53,6 +53,18 @@ Kontrolllauf free-source-research 42636211468 (09.11.2026) mit dieser Zuordnung:
 
 Die FRCB-Kurse nach dem 03.05.2023 sind OTC-Notierungen eines Restanspruchs, keine Abwicklungserloese.
 
+Wikipedia vermerkt die Indexstreichung am 04.05.2023 noch unter FRC, einen Tag nach dem Symbolwechsel. Ein exakter `event_overrides`-Eintrag ordnet nur dieses Ereignis FRCB zu, wie bereits bei FBHS. Ohne ihn fanden die FRCB-Kurse keine Mitgliedschaft (`blocked_no_membership_overlap`).
+
+Kontrolllauf free-source-research 42642438250, gleicher Zeitraum wie Lauf 42636211468 (ab 09.11.2020), daher direkt vergleichbar:
+
+| Horizont | Lueckenlos vorher | Lueckenlos nachher | Davon ueber Indexaustritt hinaus |
+|---|---:|---:|---:|
+| 21 Handelstage | 715.494 | 716.118 | 1.366 -> 1.388 |
+| 63 Handelstage | 694.453 | 695.077 | 3.775 -> 3.839 |
+| 126 Handelstage | 663.011 | 663.635 | 6.921 -> 7.048 |
+
+Wertpapiere mit Fensterluecken: 45 statt 46.
+
 ## Noch offen
 
 1. **SIVB, SBNY**: Kursreihen bis zur Handelsaussetzung und danach fehlen. Bei SIVB ist die Behandlung der Stammaktie im Insolvenzplan noch zu pruefen. Die Meldung vom 08.11.2024 betrifft die Beteiligung der Gesellschaft an ihrer Tochter, nicht die Ansprueche der Aktionaere.

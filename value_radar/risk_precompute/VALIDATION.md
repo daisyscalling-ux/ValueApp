@@ -30,3 +30,7 @@ Der Job verwendet die ohnehin geladenen ROIC-Historien; es gibt keinen zusätzli
 
 Nach Änderungen an dieser Methode oder den Score-Schwellen muss VALIDATION_VERSION einschließlich Cache-Key erhöht werden, damit keine unterschiedlich berechneten Ergebnisse vermischt werden.
 
+
+## Version 2 (9. November 2026): Kursblock nach historischer Studie
+
+Der Kursblock rechnet jetzt Expected Shortfall 15, Jahresvolatilität 10 (Skala 15–60 %) und größten Rückgang 5. Die schlechteste 20-Tage-Phase fällt aus dem Score. Auswahl und Bestätigung: `value_radar/sec_pilot/PRICE-BLOCK-STUDY.md`. `historyStatistics` liefert zusätzlich `vol`; ältere Zusammenfassungen ohne `vol` bleiben gültig, die Volatilität ist dort offen. `VALIDATION_VERSION` 2 und Cache-Schlüssel `risk-validation-v2` trennen die Ergebnisse von Version 1. Der erste Lauf lädt deshalb die Historien für die historische Prüfung einmalig neu. `src/lib/risk-statistics.ts`, `risk-score.ts` und `risk-validation.ts` sind identisch mit dem App-Repository valueapp-cf.

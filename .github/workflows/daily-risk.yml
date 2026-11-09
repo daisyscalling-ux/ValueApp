@@ -157,8 +157,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .risk-validation-cache.json
-          key: risk-validation-v1-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: risk-validation-v1-
+          key: risk-validation-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: risk-validation-v2-
       - uses: actions/cache/restore@v4
         with:
           path: .risk-sector-series.json

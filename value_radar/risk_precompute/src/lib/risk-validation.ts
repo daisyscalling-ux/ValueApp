@@ -1,6 +1,6 @@
 import {riskScore} from './risk-score';
 type Row=Record<string,any>;
-export const VALIDATION_VERSION=1;
+export const VALIDATION_VERSION=2;
 export const SPLIT_DATE='2025-01-01';
 export type Observation={date:string;entry:string;end:string;horizon:number;score:number;volatility:number;loss:number;drawdown:number;return:number};
 export function validateHistory(h:Row,now=Date.now()):Observation[]{

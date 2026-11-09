@@ -1,0 +1,352 @@
+{
+ "schema": 1,
+ "reviewed_on": "2026-11-09",
+ "review_expires": "2027-05-08",
+ "method": "ISIN to LEI via GLEIF lei-records filter[isin] (single match only); LEI must equal the EBA reporting LEI; ECB P2R matched by exact institution name, reviewed manually.",
+ "open": {
+  "EURONEXT:ACA": "EBA reports Credit Agricole Group LEI, not the listed Credit Agricole S.A.",
+  "ATHEX:EUROB": "EBA 2025 reports the former holding LEI; listed Eurobank S.A. is its universal successor (ECB footnote 5)",
+  "ATHEX:TPEIR": "EBA 2025 reports the former holding LEI; listed Piraeus Bank S.A. is its universal successor (ECB footnote 6)",
+  "EURONEXT:BIRG": "GLEIF returned no single LEI for the ISIN",
+  "VIE:EBS": "Not in EBA 2025 sample under the listed LEI",
+  "GPW:MBK": "Not in EBA 2025 sample",
+  "GPW:EBP": "Not in EBA 2025 sample",
+  "GPW:MIL": "Not in EBA 2025 sample",
+  "CPH:RILBA": "Not in EBA 2025 sample",
+  "CPH:ALSYDB": "Not in EBA 2025 sample",
+  "OSL:SBNOR": "Not in EBA 2025 sample",
+  "OSL:STB": "Insurance-led group, not in EBA 2025 sample"
+ },
+ "banks": [
+  {
+   "lei": "529900S9YO2JHTIIDG38",
+   "ebaCountry": "AT",
+   "ebaName": "BAWAG Group AG",
+   "ecbName": "BAWAG Group AG",
+   "isins": [
+    "AT0000BAWAG2"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=AT0000BAWAG2"
+  },
+  {
+   "lei": "9ZHRYM6F437SQJ6OUG95",
+   "ebaCountry": "AT",
+   "ebaName": "Raiffeisen Bank International AG",
+   "ecbName": "Raiffeisen Bank International AG",
+   "isins": [
+    "AT0000606306"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=AT0000606306"
+  },
+  {
+   "lei": "213800X3Q9LSAKRUWY91",
+   "ebaCountry": "BE",
+   "ebaName": "KBC Groupe",
+   "ecbName": "KBC Group NV",
+   "isins": [
+    "BE0003565737"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=BE0003565737"
+  },
+  {
+   "lei": "851WYGNLUQLFZBSYGB56",
+   "ebaCountry": "DE",
+   "ebaName": "COMMERZBANK Aktiengesellschaft",
+   "ecbName": "COMMERZBANK Aktiengesellschaft",
+   "isins": [
+    "DE000CBK1001"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=DE000CBK1001"
+  },
+  {
+   "lei": "MAES062Z21O4RZ2U7M96",
+   "ebaCountry": "DK",
+   "ebaName": "Danske Bank A/S",
+   "ecbName": null,
+   "isins": [
+    "DK0010274414"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=DK0010274414"
+  },
+  {
+   "lei": "3M5E1GQGKL17HI6CPN30",
+   "ebaCountry": "DK",
+   "ebaName": "Jyske Bank A/S",
+   "ecbName": null,
+   "isins": [
+    "DK0010307958"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=DK0010307958"
+  },
+  {
+   "lei": "K8MS7FD7N5Z2WQ51AZ71",
+   "ebaCountry": "ES",
+   "ebaName": "Banco Bilbao Vizcaya Argentaria, S.A.",
+   "ecbName": "Banco Bilbao Vizcaya Argentaria, S.A.",
+   "isins": [
+    "ES0113211835"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=ES0113211835"
+  },
+  {
+   "lei": "5493006QMFDDMYWIAM13",
+   "ebaCountry": "ES",
+   "ebaName": "Banco Santander, S.A.",
+   "ecbName": "Banco Santander, S.A.",
+   "isins": [
+    "ES0113900J37"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=ES0113900J37"
+  },
+  {
+   "lei": "SI5RG2M0WQQLZCXKRM20",
+   "ebaCountry": "ES",
+   "ebaName": "Banco de Sabadell, S.A.",
+   "ecbName": "Banco de Sabadell, S.A.",
+   "isins": [
+    "ES0113860A34"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=ES0113860A34"
+  },
+  {
+   "lei": "VWMYAEQSTOPNV0SUGU82",
+   "ebaCountry": "ES",
+   "ebaName": "Bankinter, S.A.",
+   "ecbName": "Bankinter, S.A.",
+   "isins": [
+    "ES0113679I37"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=ES0113679I37"
+  },
+  {
+   "lei": "7CUNS533WID6K7DGFI87",
+   "ebaCountry": "ES",
+   "ebaName": "CaixaBank, S.A.",
+   "ecbName": "CaixaBank, S.A.",
+   "isins": [
+    "ES0140609019"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=ES0140609019"
+  },
+  {
+   "lei": "R0MUWSFPU8MPRO8K5P83",
+   "ebaCountry": "FR",
+   "ebaName": "BNP Paribas",
+   "ecbName": "BNP Paribas S.A.",
+   "isins": [
+    "FR0000131104"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=FR0000131104"
+  },
+  {
+   "lei": "O2RNE8IBXP4R0TD8PU41",
+   "ebaCountry": "FR",
+   "ebaName": "Société générale S.A.",
+   "ecbName": "Société Générale S.A.",
+   "isins": [
+    "FR0000130809"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=FR0000130809"
+  },
+  {
+   "lei": "213800DBQIB6VBNU5C64",
+   "ebaCountry": "GR",
+   "ebaName": "Alpha Bank S.A.",
+   "ecbName": "ALPHA BANK S.A. 4",
+   "isins": [
+    "GRS830003000"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=GRS830003000"
+  },
+  {
+   "lei": "5UMCZOEYKCVFAW8ZLO05",
+   "ebaCountry": "GR",
+   "ebaName": "National Bank of Greece, S.A.",
+   "ecbName": "National Bank of Greece S.A.",
+   "isins": [
+    "GRS003003035"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=GRS003003035"
+  },
+  {
+   "lei": "635400AKJBGNS5WNQL34",
+   "ebaCountry": "IE",
+   "ebaName": "AIB Group plc",
+   "ecbName": "AIB Group plc",
+   "isins": [
+    "IE00BF0L3536"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IE00BF0L3536"
+  },
+  {
+   "lei": "7LVZJ6XRIE7VNZ4UBX81",
+   "ebaCountry": "IT",
+   "ebaName": "BANCA MEDIOLANUM S.P.A.",
+   "ecbName": "Banca Mediolanum S.p.A.",
+   "isins": [
+    "IT0004776628"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0004776628"
+  },
+  {
+   "lei": "815600E4E6DCD2D25E30",
+   "ebaCountry": "IT",
+   "ebaName": "BANCO BPM SOCIETA' PER AZIONI",
+   "ecbName": "Banco BPM S.p.A.",
+   "isins": [
+    "IT0005218380"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0005218380"
+  },
+  {
+   "lei": "N747OI7JINV7RUUH6190",
+   "ebaCountry": "IT",
+   "ebaName": "BPER Banca S.p.A.",
+   "ecbName": "BPER Banca S.p.A.",
+   "isins": [
+    "IT0000066123"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0000066123"
+  },
+  {
+   "lei": "J4CP7MHCXR8DAQMKIL78",
+   "ebaCountry": "IT",
+   "ebaName": "Banca Monte dei Paschi di Siena S.p.A.",
+   "ecbName": "BANCA MONTE DEI PASCHI DI SIENA S.p.A.",
+   "isins": [
+    "IT0005508921"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0005508921"
+  },
+  {
+   "lei": "549300L7YCATGO57ZE10",
+   "ebaCountry": "IT",
+   "ebaName": "FINECOBANK S.P.A.",
+   "ecbName": "FinecoBank S.p.A.",
+   "isins": [
+    "IT0000072170"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0000072170"
+  },
+  {
+   "lei": "2W8N8UU78PMDQKZENC08",
+   "ebaCountry": "IT",
+   "ebaName": "Intesa Sanpaolo S.p.A.",
+   "ecbName": "Intesa Sanpaolo S.p.A.",
+   "isins": [
+    "IT0000072618"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0000072618"
+  },
+  {
+   "lei": "549300TRUWO2CD2G5692",
+   "ebaCountry": "IT",
+   "ebaName": "UNICREDIT, SOCIETA' PER AZIONI",
+   "ecbName": "UniCredit S.p.A.",
+   "isins": [
+    "IT0005239360"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=IT0005239360"
+  },
+  {
+   "lei": "BFXS5XCH7N0Y05NIXW11",
+   "ebaCountry": "NL",
+   "ebaName": "ABN AMRO Bank N.V.",
+   "ecbName": "ABN AMRO Bank N.V.",
+   "isins": [
+    "NL0011540547"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=NL0011540547"
+  },
+  {
+   "lei": "549300NYKK9MWM7GGW15",
+   "ebaCountry": "NL",
+   "ebaName": "ING Groep N.V.",
+   "ecbName": "ING Groep N.V.",
+   "isins": [
+    "NL0011821202"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=NL0011821202"
+  },
+  {
+   "lei": "549300GKFG0RYRRQ1414",
+   "ebaCountry": "NO",
+   "ebaName": "DNB BANK ASA",
+   "ecbName": null,
+   "isins": [
+    "NO0010161896"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=NO0010161896"
+  },
+  {
+   "lei": "549300Q3OIWRHQUQM052",
+   "ebaCountry": "NO",
+   "ebaName": "SpareBank 1 Sør-Norge",
+   "ecbName": null,
+   "isins": [
+    "NO0010631567"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=NO0010631567"
+  },
+  {
+   "lei": "5493000LKS7B3UTF7H35",
+   "ebaCountry": "PL",
+   "ebaName": "Bank Polska Kasa Opieki S.A.",
+   "ecbName": null,
+   "isins": [
+    "PLPEKAO00016"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=PLPEKAO00016"
+  },
+  {
+   "lei": "P4GTT6GF1W40CVIMFR43",
+   "ebaCountry": "PL",
+   "ebaName": "Powszechna Kasa Oszczednosci Bank Polski S.A.",
+   "ecbName": null,
+   "isins": [
+    "PLPKO0000016"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=PLPKO0000016"
+  },
+  {
+   "lei": "JU1U6S0DG9YLT7N8ZV32",
+   "ebaCountry": "PT",
+   "ebaName": "Banco Comercial Português, SA",
+   "ecbName": "Banco Comercial Português, S.A.",
+   "isins": [
+    "PTBCP0AM0015"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=PTBCP0AM0015"
+  },
+  {
+   "lei": "F3JS33DEI6XQ4ZBPTN86",
+   "ebaCountry": "SE",
+   "ebaName": "Skandinaviska Enskilda Banken - gruppen",
+   "ecbName": null,
+   "isins": [
+    "SE0000148884"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=SE0000148884"
+  },
+  {
+   "lei": "NHBDILHZTYCNBV5UYZ31",
+   "ebaCountry": "SE",
+   "ebaName": "Svenska Handelsbanken - gruppen",
+   "ecbName": null,
+   "isins": [
+    "SE0007100599"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=SE0007100599"
+  },
+  {
+   "lei": "M312WZV08Y7LYUC71685",
+   "ebaCountry": "SE",
+   "ebaName": "Swedbank - Grupp",
+   "ecbName": null,
+   "isins": [
+    "SE0000242455"
+   ],
+   "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=SE0000242455"
+  }
+ ]
+}

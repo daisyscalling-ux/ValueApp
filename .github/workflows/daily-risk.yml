@@ -14,6 +14,8 @@ on:
       - 'value_radar/regulatory_export/import_credit_quality.py'
       - 'value_radar/regulatory_export/fed-capital-requirements.json'
       - 'value_radar/regulatory_export/reviewed-liquidity.json'
+      - 'value_radar/regulatory_export/eu-bank-map.json'
+      - 'value_radar/daten/regulatory/eu-bank-capital.json'
       - 'value_radar/daten/regulatory/bhcf-credit-quality.json'
       - 'value_radar/fundamental_export/queue_policy.py'
       - 'value_radar/fundamental_export/export_fundamentals.py'
@@ -92,6 +94,8 @@ jobs:
           node /tmp/test-capital-requirement.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-credit.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-credit.mjs
           node /tmp/test-regulatory-credit.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-eu-capital.ts --bundle --platform=node --format=esm --outfile=/tmp/test-eu-capital.mjs
+          node /tmp/test-eu-capital.mjs
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-fx-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-fx-context.mjs
           node /tmp/test-fx-context.mjs

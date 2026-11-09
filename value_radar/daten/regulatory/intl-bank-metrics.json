@@ -1,0 +1,79 @@
+{
+ "schema": 1,
+ "method": "intl-bank-metrics-v1",
+ "importedAt": "2026-11-09T17:49:29.313007+00:00",
+ "mappingReviewExpires": "2027-05-08",
+ "issuers": {
+  "AU000000CBA7": {
+   "issuer": "Commonwealth Bank of Australia",
+   "jurisdiction": "AU",
+   "regulator": "APRA",
+   "scope": "highest_consolidation_level",
+   "period": "2026-06-30",
+   "metrics": {
+    "cet1_ratio": 0.12,
+    "tier1_ratio": 0.135,
+    "total_capital_ratio": 0.208
+   },
+   "lcr": 1.32,
+   "nsfr": 1.151,
+   "cet1Requirement": null,
+   "source": {
+    "type": "apra_adi_centralised_publication",
+    "entity": "Commonwealth Bank of Australia",
+    "url": "https://www.apra.gov.au/quarterly-authorised-deposit-taking-institution-statistics",
+    "sha256": "7071a63231ce76065da6cd4b739cdede7fdbc36f05cec47b8406038b5e2daae7",
+    "tables": "Table 1 Regulatory capital; Table 3 Liquidity ratios (mean LCR over the quarter)"
+   }
+  },
+  "AU000000NAB4": {
+   "issuer": "National Australia Bank Limited",
+   "jurisdiction": "AU",
+   "regulator": "APRA",
+   "scope": "highest_consolidation_level",
+   "period": "2026-06-30",
+   "metrics": {
+    "cet1_ratio": 0.119,
+    "tier1_ratio": 0.135,
+    "total_capital_ratio": 0.208
+   },
+   "lcr": 1.343,
+   "nsfr": 1.15,
+   "cet1Requirement": null,
+   "source": {
+    "type": "apra_adi_centralised_publication",
+    "entity": "National Australia Bank Limited",
+    "url": "https://www.apra.gov.au/quarterly-authorised-deposit-taking-institution-statistics",
+    "sha256": "7071a63231ce76065da6cd4b739cdede7fdbc36f05cec47b8406038b5e2daae7",
+    "tables": "Table 1 Regulatory capital; Table 3 Liquidity ratios (mean LCR over the quarter)"
+   }
+  },
+  "AU000000WBC1": {
+   "issuer": "Westpac Banking Corporation",
+   "jurisdiction": "AU",
+   "regulator": "APRA",
+   "scope": "highest_consolidation_level",
+   "period": "2026-06-30",
+   "metrics": {
+    "cet1_ratio": 0.121,
+    "tier1_ratio": 0.139,
+    "total_capital_ratio": 0.208
+   },
+   "lcr": 1.335,
+   "nsfr": 1.112,
+   "cet1Requirement": null,
+   "source": {
+    "type": "apra_adi_centralised_publication",
+    "entity": "Westpac Banking Corporation",
+    "url": "https://www.apra.gov.au/quarterly-authorised-deposit-taking-institution-statistics",
+    "sha256": "7071a63231ce76065da6cd4b739cdede7fdbc36f05cec47b8406038b5e2daae7",
+    "tables": "Table 1 Regulatory capital; Table 3 Liquidity ratios (mean LCR over the quarter)"
+   }
+  }
+ },
+ "rejected": {},
+ "open": {
+  "AU000000ANZ3": "Listed ANZ Group Holdings Limited is a non-operating holding company; APRA publishes the authorised deposit-taking institution Australia and New Zealand Banking Group Limited (Level 2)."
+ },
+ "scoreContribution": 0
+}

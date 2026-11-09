@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "prepared_at": "2026-11-09",
+  "purpose": "Pruefliste fuer Index-Austritte nach Kursverfall oder Insolvenz. Alle Angaben sind zu pruefende Hypothesen, keine belegten Zuordnungen.",
+  "selection_rule": "Alle 10 Wertpapiere aus datenbeschaffung_prioritaeten.csv (Lauf 38209892625), deren Wikipedia-Austrittsgrund keine Uebernahme nennt (other_or_unknown_exit) und die keine reine Tickeraenderung sind (CDAY ausgenommen, bereits belegt). Auswahl nach Austrittsart, nicht nach spaeterer Rendite; alle uebrigen Faelle bleiben im Nenner.",
+  "decision_start": "2020-10-12",
+  "cases": [
+    {"identity": "SIVB", "group": "failure", "last_index_exit": "2023-03-15", "name_pattern": "SVB Financial", "cik": "0000719739", "yahoo_candidates": ["SIVB", "SIVBQ"]},
+    {"identity": "FRC", "group": "failure", "last_index_exit": "2023-05-04", "name_pattern": "First Republic", "cik": null, "regulator_note": "Bank ohne Holding: Berichte bei der FDIC, nicht bei der SEC.", "yahoo_candidates": ["FRC", "FRCB"]},
+    {"identity": "SBNY", "group": "failure", "last_index_exit": "2023-03-15", "name_pattern": "Signature Bank", "cik": null, "regulator_note": "Bank ohne Holding: Berichte bei der FDIC, nicht bei der SEC.", "yahoo_candidates": ["SBNY", "SBNYQ"]},
+    {"identity": "HBI", "group": "index_drop", "last_index_exit": "2021-12-20", "name_pattern": "Hanesbrands", "cik": "0001359841", "yahoo_candidates": ["HBI"]},
+    {"identity": "LEG", "group": "index_drop", "last_index_exit": "2021-12-20", "name_pattern": "Leggett", "cik": "0000058492", "yahoo_candidates": ["LEG"]},
+    {"identity": "SEE", "group": "index_drop", "last_index_exit": "2023-12-18", "name_pattern": "Sealed Air", "cik": "0001012100", "yahoo_candidates": ["SEE"]},
+    {"identity": "QRVO", "group": "index_drop", "last_index_exit": "2024-12-23", "name_pattern": "Qorvo", "cik": "0001604778", "yahoo_candidates": ["QRVO"]},
+    {"identity": "DISH", "group": "index_drop", "last_index_exit": "2023-06-20", "name_pattern": "DISH", "cik": "0001001082", "successor_note": "Spaetere Umwandlung in EchoStar-Aktien ist ein Nachfolgerpfad, keine identische Aktie.", "yahoo_candidates": ["DISH"]},
+    {"identity": "HFC", "group": "index_drop", "last_index_exit": "2021-06-04", "name_pattern": "Holly|HF Sinclair", "cik": "0000048039", "successor_cik": "0001915657", "yahoo_candidates": ["HFC", "DINO"]},
+    {"identity": "CMA", "group": "index_drop", "last_index_exit": "2024-06-24", "name_pattern": "Comerica", "cik": "0000028412", "yahoo_candidates": ["CMA"]}
+  ]
+}

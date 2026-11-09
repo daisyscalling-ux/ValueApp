@@ -20,9 +20,9 @@ test('identity, period, expiry, source and dates fail closed',()=>{
  for(const generatedAt of ['2026-10-25T00:00:00Z','2026-10-28T00:00:00Z','bad'])assert.equal(run(record,base,{...archive,generatedAt}).bankCapital,null);
  assert.equal(merge(base,row,archive,false,now).bankCapital,null);
 });
-test('insurers cannot inherit bank ratios, specialists remain open, corporates unchanged',()=>{
+test('insurers cannot inherit bank ratios, specialists with US holding capital count as bank groups, corporates unchanged',()=>{
  assert.equal(run(record,{...base,profile:'insurer'}).bankCapital,null);
- const s=run(record,{...base,profile:'specialist_financial',sectorRequirements:['business_model_and_applicable_capital_framework']});assert.ok(s.bankCapital);assert.deepEqual(s.sectorAssessment.fulfilledRequirements,[]);assert.equal(s.sectorRequirements.length,1);
+ const s=run(record,{...base,profile:'specialist_financial',sectorRequirements:['business_model_and_applicable_capital_framework']});assert.ok(s.bankCapital);assert.deepEqual(s.sectorAssessment.fulfilledRequirements,['regulatory_capital_CET1']);assert.equal(s.sectorRequirements.length,1);
  const c={...base,profile:'corporate'};assert.equal(run(record,c),c);
 });
 test('units, finite values and hierarchy validated; zero is a real observation',()=>{

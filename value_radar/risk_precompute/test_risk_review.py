@@ -57,6 +57,10 @@ class BankCredit(unittest.TestCase):
             rows=self.rows();rows[0]['domains']['balance']['bankCapital']['creditQuality'].update(patch)
             self.assertNotIn('NYSE:X0',self.compare(rows)['stocks'])
         rows=self.rows();rows[0]['domains']['balance']['profile']='specialist_financial'
+        self.assertIn('NYSE:X0',self.compare(rows)['stocks'],'specialist with verified US holding capital is a bank group')
+        rows=self.rows();rows[0]['domains']['balance']['profile']='corporate'
+        self.assertNotIn('NYSE:X0',self.compare(rows)['stocks'])
+        rows=self.rows();rows[0]['domains']['balance']['profile']='specialist_financial';rows[0]['domains']['balance']['bankCapital']['scope']='eu_prudential_group'
         self.assertNotIn('NYSE:X0',self.compare(rows)['stocks'])
     def test_small_cohort_has_no_median_and_stale_has_no_rows(self):
         self.assertIsNone(self.compare(self.rows()[:5])['stocks']['NYSE:X0']['peerMedian'])

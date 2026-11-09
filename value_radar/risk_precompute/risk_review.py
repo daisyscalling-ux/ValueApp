@@ -71,7 +71,8 @@ def validate_decision(d,c,identities,now):
 
 def valid_credit(row,now):
     b=row.get('domains',{}).get('balance',{});p=b.get('bankCapital') or {};c=p.get('creditQuality') or {}
-    if b.get('profile')!='bank' or row.get('domains',{}).get('identity',{}).get('state')!='available':return None
+    # Spezialfinanzierer mit geprueftem US-Holding-Kapital (z. B. Goldman Sachs, Schwab) sind Bankkonzerne.
+    if b.get('profile') not in ('bank','specialist_financial') or row.get('domains',{}).get('identity',{}).get('state')!='available':return None
     if p.get('state')!='available' or p.get('scope')!='listed_consolidated_holding' or c.get('state')!='available' or c.get('method')!='bhcf-loan-quality-v1':return None
     if any(c.get(k)!=p.get(k) or not p.get(k) for k in ('period','rssdId','sourceFileSha256')):return None
     date=stamp(p['period']+'T00:00:00+00:00');imported=stamp(c.get('sourceImportedAt'))

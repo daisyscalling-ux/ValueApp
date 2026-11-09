@@ -52,3 +52,12 @@ aliases receive no inherited mapping. A new listing needs its own documented
 review. Existing mappings expire on 2027-04-18 and require renewed evidence.
 No Cloudflare UI change is included: this publishes the verified data layer for
 the subsequent single-stock display integration.
+
+## Bankkonzerne im Profil „Spezialfinanzierer“ (9. November 2026)
+
+Goldman Sachs und Charles Schwab ordnet der Datenanbieter als „Investment Banks/Brokers“ ein. Beide reichen aber FR Y-9C ein und sind Bankholdings. Für Spezialfinanzierer mit geprüftem Kapital der Ebene `listed_consolidated_holding` gilt deshalb:
+- `risk_review.py` (`valid_credit`) nimmt ihre Kreditqualität in den gleichen US-Periodenvergleich auf.
+- `regulatory-context.ts` zählt bei ihnen Kapitalquote, Anforderung und LCR als erfüllte Nachweise, wie bei Banken.
+- `reviewed-liquidity.json` enthält ihre Konzern-LCR aus dem 10-Q zum 30.06.2026: GS 126 % aus berücksichtigungsfähigen HQLA, Schwab 135 %. Beide Dokumente lädt der Workflow `sec-bank-filings`.
+
+Andere Spezialfinanzierer bleiben unverändert.

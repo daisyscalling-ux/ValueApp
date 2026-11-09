@@ -56,11 +56,13 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
  }
  if(!capital&&base.profile==='bank')capital=verifiedEuCapital(archive,row,identityOK,now);
  if(!capital&&base.profile==='bank')capital=verifiedIntlCapital(archive,row,identityOK,now);
- const fulfilled=capital&&base.profile==='bank'?['regulatory_capital_CET1']:[];
+ // Spezialfinanzierer mit geprueftem US-Holding-Kapital (FR Y-9C) sind Bankkonzerne und erfuellen dieselben Nachweise.
+ const bankLike=base.profile==='bank'||base.profile==='specialist_financial'&&capital?.scope==='listed_consolidated_holding';
+ const fulfilled=capital&&bankLike?['regulatory_capital_CET1']:[];
  // EU: Teilanforderung ohne systemische Puffer erfuellt die bankspezifische Anforderung nicht vollstaendig; NPL schliesst die Kreditqualitaet.
  if(['eu_prudential_group','basel_key_metrics'].includes(capital?.scope)&&capital.creditQuality)fulfilled.push('asset_quality_nonperforming_loans');
- if(capital?.capitalRequirement&&capital.scope!=='eu_prudential_group'&&base.profile==='bank')fulfilled.push('institution_specific_capital_requirement');
- if(capital?.liquidity&&base.profile==='bank')fulfilled.push('liquidity_LCR_or_local_equivalent');
+ if(capital?.capitalRequirement&&capital.scope!=='eu_prudential_group'&&bankLike)fulfilled.push('institution_specific_capital_requirement');
+ if(capital?.liquidity&&bankLike)fulfilled.push('liquidity_LCR_or_local_equivalent');
  requirements=requirements.filter(k=>!fulfilled.includes(k));
  return {...base,sectorRequirements:requirements,bankCapital:capital,
   sectorAssessment:{state:'open',fulfilledRequirements:fulfilled,openRequirements:requirements,capitalContextAvailable:!!capital,scoreContribution:0,

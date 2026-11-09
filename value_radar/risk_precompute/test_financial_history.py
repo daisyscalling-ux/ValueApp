@@ -1,5 +1,5 @@
 import copy,datetime as dt,unittest
-from financial_history import build
+from financial_history import build,observations
 class HistoryTests(unittest.TestCase):
  def test_supplemental_original_ratio_preserves_own_source_in_history(self):
   c=self.coverage(source='EDINET annual XBRL');b=c['stocks'][0]['domains']['balance']
@@ -92,4 +92,16 @@ class HistoryTests(unittest.TestCase):
    when=dt.datetime(year,10,31,tzinfo=dt.timezone.utc)
    a,_=self.run_case(self.coverage(str(year-1)+'-12-31',now=when),a,when)
   self.assertEqual(len(next(iter(a['series'].values()))['periods']),12)
+
+class NonUsBankCapitalTests(unittest.TestCase):
+ def test_eu_and_international_capital_need_no_rssd_id(self):
+  now=dt.datetime(2026,11,9,18,tzinfo=dt.timezone.utc)
+  for scope,extra in (('basel_key_metrics',{'sourceType':'basel_pillar3_km1'}),('eu_prudential_group',{'lei':'L'*20})):
+   cap={'state':'available','scope':scope,'period':'2026-07-31','sourceImportedAt':now.isoformat(),'sourceUrl':'https://example.org/p3.xlsx','sourceFileSha256':'a'*64,
+        'metrics':{'cet1_ratio':{'state':'available','unit':'fraction','value':.135,'sourceField':'x:cet1_ratio'}},
+        'creditQuality':{'state':'available','method':'basel-cr1-default-v1','period':'2026-07-31','ratio':.011},**extra}
+   rows=observations({'bankCapital':cap},now)
+   self.assertEqual([(r['metric'],r['value'],r['method']['scope']) for r in rows],[('cet1_ratio',.135,scope)])
+   self.assertNotIn('rssdId',rows[0]['method'])
+
 if __name__=='__main__':unittest.main()

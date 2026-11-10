@@ -9,9 +9,12 @@ Ergebnis: daten/cf_risk_construct_coverage.json mit Befuellung je Profil und Blo
 Rangliste der groessten Luecken (Gewicht x fehlende Notierungen).
 """
 import datetime as dt
+import functools
 import json
 import math
 import os
+import re
+import unicodedata
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -19,7 +22,30 @@ from pathlib import Path
 DATA = Path(os.environ.get('RISK_DATA_DIR') or Path(__file__).resolve().parents[1] / 'daten')
 BLOCKS = {'Kursrisiko': 30, 'Finanzielle Verwundbarkeit': 25, 'Umfeldstress': 15, 'Bewertungsrisiko': 15, 'Wettbewerbsanfälligkeit': 15}
 CONSTRUCT_VERSION = '0.8'
+METHOD = 'offline-input-availability-v2'
 MIN_OBSERVATIONS = 505
+PEER_HISTORIES = 5   # die App laedt die Kurshistorien der ersten fuenf ausgewaehlten Peers
+PEER_MINIMUM = 3     # und braucht mindestens drei mit aktuellem Abstand zum Jahreshoch
+
+# Spiegel von selectPeers/peerFamily (valueapp-cf, src/lib/peer-selection.ts); nur fuer die Messung.
+FAMILIES = [
+    ('Universalbanken', r'citigroup|jpmorgan|bank of america|wells fargo|hsbc|bnp paribas|banco santander|barclays|deutsche bank|unicredit|mitsubishi ufj|sumitomo mitsui|mizuho'),
+    ('Regionalbanken', r'pnc financial|us bancorp|u\.?s\.? bancorp|truist|fifth third|regions financial|huntington bancshares|keycorp'),
+    ('Investmentbanken', r'goldman sachs|morgan stanley|jefferies'),
+    ('Vermögensverwalter', r'blackrock|schroders|man group|t\.? rowe price|franklin resources|amundi'),
+    ('Versicherer', r'allianz|axa|unipol|zurich insurance|chubb|travelers|progressive|munich re|swiss re'),
+    ('Beteiligungsgesellschaften', r'investor ab|industriv|berkshire hathaway|exor'),
+    ('Zahlungsnetzwerke', r'^(visa|mastercard)\b'),
+    ('Unternehmenssoftware', r'microsoft|oracle|salesforce|sap se|servicenow|adobe|workday'),
+    ('Chipdesigner', r'nvidia|advanced micro devices|broadcom|qualcomm|marvell'),
+    ('Chipfertiger', r'taiwan semiconductor|united microelectronics|globalfoundries'),
+    ('Speicherchips', r'micron|sk hynix'),
+    ('Halbleiterausrüstung', r'asml|applied materials|lam research|kla corporation'),
+    ('Internetwerbung', r'alphabet|meta platforms'),
+    ('Telekommunikation', r'deutsche telekom|verizon|at&t|vodafone|telefonica|orange sa|t-mobile'),
+    ('Automobilhersteller', r'toyota|volkswagen|mercedes|bmw|ford motor|general motors|honda motor|suzuki motor|tesla|stellantis'),
+    ('Getränkehersteller', r'coca.cola|pepsico|keurig dr pepper'),
+]
 
 
 def finite(v):
@@ -37,17 +63,117 @@ def available(d):
     return isinstance(d, dict) and d.get('state') == 'available'
 
 
+VENUES = {"DE": ["XETR"], "F": ["FRA"], "L": ["LSE"], "IL": ["LSE"], "PA": ["EPA", "EURONEXT"], "AS": ["AMS", "EURONEXT"], "BR": ["EBR", "EURONEXT"],
+          "IR": ["ISE", "DUB", "EURONEXT"], "LS": ["ELI", "EURONEXT"], "MI": ["MIL"], "MC": ["BME"], "WA": ["GPW"], "AT": ["ATHEX"], "SW": ["SIX"], "VX": ["SIX"],
+          "ST": ["STO"], "HE": ["HEL"], "OL": ["OSL"], "CO": ["CPH"], "VI": ["VIE"], "T": ["TSE", "TYO", "JPX"], "HK": ["HKEX", "HKG"], "TO": ["TSX"], "AX": ["ASX"],
+          "BK": ["SET"], "KL": ["MYX"], "MU": ["MUN"], "BE": ["BER"], "SG": ["STU"], "DU": ["DUS"], "HM": ["HAM"], "HA": ["HAN"]}
+
+
+def listing_matches(ticker, listing):
+    """Spiegel von listingMatches (valueapp-cf, src/lib/listing-identity.ts)."""
+    q, s = _text(ticker).upper(), _text(listing).upper()
+    if not q or ':' not in s:
+        return False
+    if ':' in q:
+        return q == s
+    ex, base = s.split(':', 1)
+    if q in ('BRK.A', 'BRK.B'):
+        q = q.replace('.', '-')
+    if '.' in q:
+        at = q.rfind('.')
+        return ex in VENUES.get(q[at + 1:], []) and base == q[:at]
+    return ex in ('NASDAQ', 'NYSE', 'NYSEAMERICAN', 'AMEX', 'OTC') and base.replace('.', '-') == q
+
+
+def _text(x):
+    return str(x if x is not None else '').strip()
+
+
+def peer_symbol(x):
+    return _text(x).upper().split(':')[-1]
+
+
+def _company(x):
+    s = _text(x).lower().replace('&', 'and')
+    s = re.sub(r'\b(incorporated|inc|corporation|corp|plc|limited|ltd|company|co|publ|class [a-z])\b', '', s)
+    return re.sub(r'[\W_]', '', s)
+
+
+def peer_family(r):
+    sub_ = _text(r.get('sub_industry')).lower()
+    if sub_ and not re.fullmatch(r'unknown|other|n/a', sub_):
+        return 'Unterbranche: ' + re.sub(r'[\W_]+', ' ', sub_)
+    name = _text(r.get('name_full') or r.get('name')).lower()
+    for family, rx in FAMILIES:
+        if re.search(rx, name):
+            return family
+    ind = re.sub(r'[^a-z0-9]+', ' ', _text(r.get('industry')).lower()).strip()
+    if re.fullmatch(r'major banks|banks diversified|diversified banks|money center banks', ind):
+        return 'Universalbanken'
+    if re.fullmatch(r'regional banks|banks regional', ind):
+        return 'Regionalbanken'
+    return 'Branche: ' + ind if ind and not re.fullmatch(r'finance|financial services|technology|industrials|other|unknown', ind) else ''
+
+
+def same_company(a, b):
+    cik = lambda x: _text(x).lstrip('0') if re.fullmatch(r'0*[1-9][0-9]*', _text(x)) else ''
+    ca, cb = _company(a.get('name_full') or a.get('name')), _company(b.get('name_full') or b.get('name'))
+    return (_text(a.get('ticker')).upper() == _text(b.get('ticker')).upper() or (bool(a.get('listing_symbol')) and a.get('listing_symbol') == b.get('listing_symbol'))
+            or bool(a.get('isin') and a.get('isin') == b.get('isin')) or bool(cik(a.get('cik')) and cik(a.get('cik')) == cik(b.get('cik')))
+            or bool(a.get('lei') and a.get('lei') == b.get('lei')) or bool(ca and ca == cb))
+
+
+def _preferred(r):
+    return bool(re.search(r'preferred|preference|warrant|fund|etf|bond', _text(r.get('security_type')), re.I)
+                or re.search(r'[-.]P(?:R)?[A-Z]+$|\^|/P[A-Z]', peer_symbol(r.get('ticker')))
+                or re.search(r'preferred|depositary shares|preference shares|warrant', _text(r.get('name')), re.I))
+
+
+def select_peers(target, rows, families, limit=8):
+    """Peer-Auswahl wie /api/peers: gleiche Familie, Primaernotierung zuerst, dann Groesse in gleicher Waehrung, dann kurzes Symbol."""
+    group = families.get(id(target))
+    if not group:
+        return []
+    viable = [r for r in rows if _text(r.get('ticker')) and families.get(id(r)) == group and not _preferred(r) and not same_company(target, r)]
+    cap = lambda r: r['market_cap'] if finite(r.get('market_cap')) and r['market_cap'] > 0 else None
+    base = cap(target)
+
+    def compare(a, b):
+        # Paarweiser Vergleich wie in der App (nicht als Sortierschluessel darstellbar).
+        primary = int(b.get('is_primary') is True) - int(a.get('is_primary') is True)
+        if primary:
+            return primary
+        ac, bc = cap(a), cap(b)
+        if base and ac and bc and target.get('currency') and a.get('currency') == target.get('currency') and b.get('currency') == target.get('currency'):
+            d = abs(math.log(ac / base)) - abs(math.log(bc / base))
+            return (d > 0) - (d < 0)
+        d = len(peer_symbol(a.get('ticker'))) - len(peer_symbol(b.get('ticker')))
+        if d:
+            return d
+        # localeCompare: zuerst ohne Gross-/Kleinschreibung und Akzente, dann exakt.
+        fold = lambda s: (unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode().casefold(), s.swapcase())
+        na, nb = fold(_text(a.get('name'))), fold(_text(b.get('name')))
+        return (na > nb) - (na < nb)
+    selected = []
+    for r in sorted(viable, key=functools.cmp_to_key(compare)):
+        if not any(same_company(p, r) for p in selected):
+            selected.append(r)
+        if len(selected) == limit:
+            break
+    return selected
+
+
 class Listing:
     """Offline verfuegbare Eingangsdaten einer Notierung."""
 
-    def __init__(self, symbol, domains, universe_row, stats, annual, market_currency, peers):
+    def __init__(self, symbol, domains, universe_row, stats, annual, market_currency, peers, peer_selected=0, peer_usable=0):
         self.symbol, self.domains, self.u, self.stats = symbol, domains or {}, universe_row or {}, stats or {}
         self.balance = self.domains.get('balance') or {}
         self.f = (annual or {}).get('fields') or {}
         ac, mc = (annual or {}).get('currency'), market_currency
         # Waehrungskonflikt wie in der App-Datenpruefung: Bericht und Handel verschieden (GBP/Pence gilt als gleich).
         self.currency_conflict = bool(annual) and ac != mc and not (ac == 'GBP' and mc == 'GBp')
-        self.peers = peers
+        self.peers, self.peer_selected, self.peer_usable = peers, peer_selected, peer_usable
         bc = self.balance.get('bankCapital') or {}
         profile = self.balance.get('profile') or 'unclassified'
         self.bank_like = profile == 'specialist_financial' and available(bc)
@@ -108,7 +234,9 @@ def metrics(x):
         out += [m(F, 'Nettoschulden / EBITDA', 15, *yes((finite(ebitda) and ebitda > 0 and finite(f.get('total_debt')) and finite(f.get('cash'))) or finite(u.get('net_debt_ebitda')), 'EBITDA, Schulden oder Kasse fehlen')),
                 m(F, 'FCFF-Marge', 10, *yes(finite(f.get('operating_cashflow')) and finite(f.get('capex')) and finite(f.get('revenue')) and f['revenue'] > 0, 'Cashflow, Investitionen oder Umsatz fehlen'))]
     out += [m(U, 'Markt-ETF', 10, *yes(available(x.domains.get('market')), 'Kein Markt-ETF zugeordnet')),
-            m(U, 'Peer-Stress', 5, *yes(available(x.domains.get('sector')), 'Vergleichsgruppe zu klein oder nicht geprüft'))]
+            m(U, 'Peer-Stress', 5, *first((x.peer_selected == 0, 'Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)'),
+                                          (x.peer_selected < PEER_MINIMUM, 'Weniger als drei Peers ausgewählt'),
+                                          (x.peer_usable < PEER_MINIMUM, 'Weniger als drei der ersten fünf Peers mit aktueller Kurshistorie')))]
     growth = f.get('revenue_growth') if finite(f.get('revenue_growth')) else (u['revenue_growth'] / 100 if finite(u.get('revenue_growth')) else None)
     if p in ('bank', 'insurer'):
         out.append(m(V, 'Erwartungslücke Eigenkapitalrendite', 10, *first((x.currency_conflict, 'Währungskonflikt (Bericht und Handel verschieden)'),
@@ -146,11 +274,20 @@ def build(universe, shards, risk, annuals, now=None):
             margins[r['industry']] += 1
     per_profile = defaultdict(lambda: {'listings': 0, 'blocks': defaultdict(lambda: defaultdict(float))})
     per_metric = defaultdict(lambda: {'filled': 0, 'missing': 0, 'app_only': 0, 'by_design': 0, 'weight': 0, 'reasons': defaultdict(int)})
+    pool = [r for r in universe.get('kandidaten', []) if not (r.get('listing_symbol') and r.get('ticker')) or listing_matches(r['ticker'], r['listing_symbol'])]
+    families = {id(r): peer_family(r) for r in pool}
+    by_symbol = {r.get('listing_symbol'): r for r in pool}
+    def drawdown_ok(r):
+        s = (risk.get(r.get('listing_symbol')) or {}).get('statistics') or {}
+        return finite(s.get('drawdown')) and not s.get('error')
     for symbol, domains in shards.items():
         u = rows.get(symbol, {})
+        target = by_symbol.get(symbol)
+        chosen = select_peers(target, pool, families) if target is not None else []
+        usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
         annual, currency = annuals.get(symbol, (None, None))
         own = 1 if finite(u.get('ebitda_margin')) else 0
-        x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own)
+        x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own, len(chosen), usable)
         prof = per_profile[x.profile]
         prof['listings'] += 1
         for k in metrics(x):
@@ -178,11 +315,11 @@ def build(universe, shards, risk, annuals, now=None):
     app_only = sorted({(b, n) for (p, b, n), v in per_metric.items() if v['app_only']})
     listings = sum(p['listings'] for p in profiles.values())
     overall = {k: round(sum(p['averageWeight'][k] * p['listings'] for p in profiles.values()) / listings, 1) for k in ('filled', 'missing', 'app_only', 'by_design')} if listings else {}
-    return {'schema': 1, 'method': 'offline-input-availability-v1', 'constructVersion': CONSTRUCT_VERSION, 'generatedAt': now.isoformat(),
+    return {'schema': 1, 'method': METHOD, 'constructVersion': CONSTRUCT_VERSION, 'generatedAt': now.isoformat(),
             'listings': listings, 'overallAverageWeight': overall, 'profiles': profiles, 'largestGaps': gaps[:25],
             'appOnlyMetrics': [{'block': b, 'metric': n} for b, n in app_only],
             'limitations': ['Measures whether offline inputs exist, not the score the app computes with live data.',
-                            'Peer stress uses the precomputed sector domain as a proxy for the peer histories loaded by the app.',
+                            'Peer stress mirrors the app peer selection (selectPeers) and counts the first five peers with a precomputed current drawdown.',
                             'Corporate FCF uses operating cash flow minus capex from the dated annual record, not the FCFF of the app.']}
 
 

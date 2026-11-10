@@ -94,4 +94,15 @@ class EvEbitdaFallbackTests(unittest.TestCase):
   g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:N1':{'statistics':STATS}},ann)['largestGaps']}
   self.assertEqual(g[('corporate','Erwartungslücke Reverse DCF')]['reasons'],{'Kein positiver Cashflow und kein positives EV/EBITDA':1})
 
+class ShortHistoryTests(unittest.TestCase):
+ def test_short_history_fills_es_and_vol_but_not_drawdown(self):
+  uni={'kandidaten':[{'listing_symbol':'NASDAQ:Y1','ticker':'Y1','name':'Young One','industry':'Software'}]}
+  sh={'NASDAQ:Y1':{'balance':{'profile':'corporate'},'market':{'state':'available'}}}
+  short={'observations':300,'error':'','es':.04,'vol':.5,'dd':None,'shortHistory':True}
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NASDAQ:Y1':{'statistics':short}},{'NASDAQ:Y1':(annual(),'USD')})['largestGaps']}
+  self.assertNotIn(('corporate','Expected Shortfall'),g);self.assertNotIn(('corporate','Volatilität'),g)
+  self.assertEqual(g[('corporate','Größter Rückgang')]['reasons'],{'Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren':1})
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NASDAQ:Y1':{'statistics':{**short,'shortHistory':None}}},{'NASDAQ:Y1':(annual(),'USD')})['largestGaps']}
+  self.assertIn(('corporate','Expected Shortfall'),g,'unflagged short values stay missing')
+
 if __name__=='__main__':unittest.main()

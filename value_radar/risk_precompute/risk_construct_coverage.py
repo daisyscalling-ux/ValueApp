@@ -27,6 +27,7 @@ BLOCKS = {'Kursrisiko': 30, 'Finanzielle Verwundbarkeit': 25, 'Umfeldstress': 15
 CONSTRUCT_VERSION = '0.8'
 METHOD = 'offline-input-availability-v2'
 MIN_OBSERVATIONS = 505
+SHORT_OBSERVATIONS = 253
 PEER_HISTORIES = 5   # die App laedt die Kurshistorien der ersten fuenf ausgewaehlten Peers
 PEER_MINIMUM = 3     # und braucht mindestens drei mit aktuellem Abstand zum Jahreshoch
 
@@ -233,9 +234,12 @@ def metrics(x):
     out = []
     K, F, U, V, W = BLOCKS.keys()
     s = x.stats
+    # Verkuerzte Historie (253-504 Kurspunkte, shortHistory): ES und Volatilitaet gefuellt, groesster Rueckgang offen (wie die App).
+    short = s.get('shortHistory') is True and finite(s.get('observations')) and SHORT_OBSERVATIONS <= s['observations'] < MIN_OBSERVATIONS
     for name, key, w in (('Expected Shortfall', 'es', 15), ('Volatilität', 'vol', 10), ('Größter Rückgang', 'dd', 5)):
         out.append(m(K, name, w, *first((not s, 'Keine Kurshistorie'), (bool(s.get('error')), 'Kurshistorie fehlerhaft'),
-                                        (not (finite(s.get('observations')) and s['observations'] >= MIN_OBSERVATIONS), 'Kurshistorie kürzer als 505 Handelstage'),
+                                        (key == 'dd' and short, 'Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren'),
+                                        (not (finite(s.get('observations')) and (s['observations'] >= MIN_OBSERVATIONS or short)), 'Kurshistorie kürzer als 505 Handelstage'),
                                         (not finite(s.get(key)), 'Kennzahl in der Vorberechnung noch nicht vorhanden'))))
     f, u, b = x.f, x.u, x.balance
     p = x.profile

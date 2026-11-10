@@ -42,4 +42,21 @@ class CoverageTests(unittest.TestCase):
    cc.main(d);r=json.loads((d/'cf_risk_construct_coverage.json').read_text(encoding='utf-8'))
    self.assertEqual(r['listings'],4);self.assertEqual(r['constructVersion'],'0.8')
 
+class PeerSelectionTests(unittest.TestCase):
+ def test_listing_matches_like_app(self):
+  for t,l,ok in [('ALV.DE','XETR:ALV',True),('AAPL','NASDAQ:AAPL',True),('BRK.B','NYSE:BRK-B',True),('ALV.DE','LSE:ALV',False),('XETR:ALV','XETR:ALV',True),('SAP','XETR:SAP',False)]:
+   self.assertEqual(cc.listing_matches(t,l),ok,(t,l))
+ def test_family_and_selection(self):
+  rows=[{'listing_symbol':'NYSE:JPM','ticker':'JPM','name':'JPMorgan Chase','currency':'USD','market_cap':500,'is_primary':True},
+        {'listing_symbol':'NYSE:C','ticker':'C','name':'Citigroup','currency':'USD','market_cap':100,'is_primary':True},
+        {'listing_symbol':'NYSE:BAC','ticker':'BAC','name':'Bank of America','currency':'USD','market_cap':300,'is_primary':True},
+        {'listing_symbol':'OTC:BACPR','ticker':'BAC-PL','name':'Bank of America preferred','currency':'USD','market_cap':1},
+        {'listing_symbol':'NYSE:X','ticker':'X','name':'Other Co','industry':'Steel','currency':'USD'}]
+  fam={id(r):cc.peer_family(r) for r in rows}
+  self.assertEqual(cc.peer_family(rows[0]),'Universalbanken');self.assertEqual(cc.peer_family(rows[4]),'Branche: steel')
+  self.assertEqual([p['listing_symbol'] for p in cc.select_peers(rows[0],rows,fam)],['NYSE:BAC','NYSE:C'],'closest size first, preferred share excluded')
+ def test_peer_stress_needs_three_peers_with_drawdown(self):
+  r=CoverageTests().run_build();g={(x['profile'],x['metric']):x for x in r['largestGaps']}
+  self.assertIn('Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)',g[('bank','Peer-Stress')]['reasons'])
+
 if __name__=='__main__':unittest.main()

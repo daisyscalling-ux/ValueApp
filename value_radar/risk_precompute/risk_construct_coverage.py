@@ -204,6 +204,7 @@ class Listing:
         self.balance = self.domains.get('balance') or {}
         self.f = (annual or {}).get('fields') or {}
         ac, mc = (annual or {}).get('currency'), market_currency
+        self.annual_currency, self.market_currency = ac, mc
         # Waehrungskonflikt wie in der App-Datenpruefung: Bericht und Handel verschieden (GBP/Pence gilt als gleich).
         # Geprüfte Aktienbasis plus EZB-Kurse lösen den Konflikt wie verifiedFxScale in der App (Verhältnis 1:1, höchstens 180 Tage alt).
         self.fx_resolved = fx_resolved(share_basis, fx, ac, mc, today)
@@ -237,6 +238,25 @@ def first(*checks):
         if failed:
             return 'missing', reason
     return 'filled', ''
+
+
+def bank_pb(x):
+    """KBV wie die App (financialValuationMetrics): Kurs / (Eigenkapital zum EZB-Kurs / Aktienzahl der Notierung), wenn
+    Abschluss und Kurs vorliegen und der Waehrungsunterschied geprueft aufgeloest ist; sonst das KBV des Universums."""
+    q, eq = getattr(x, 'quote', {}) or {}, x.f.get('equity')
+    price, shares = q.get('price'), q.get('shares_out')
+    rates = (getattr(x, 'fx', {}) or {}).get('rates') or {}
+    ac, mc = x.annual_currency, x.market_currency
+    if finite(price) and finite(shares) and shares > 0 and finite(eq) and eq > 0 and ac and mc:
+        if ac == mc or (ac == 'GBP' and mc in ('GBp', 'GBX')):
+            scale = 100 if mc in ('GBp', 'GBX') and ac == 'GBP' else 1
+        elif x.fx_resolved and finite(rates.get(ac)) and finite(rates.get('GBP' if mc in ('GBp', 'GBX') else mc)):
+            scale = rates['GBP' if mc in ('GBp', 'GBX') else mc] / rates[ac] * (100 if mc in ('GBp', 'GBX') else 1)
+        else:
+            scale = None
+        if scale:
+            return price / (eq * scale / shares)
+    return x.u.get('pb')
 
 
 def metrics(x):
@@ -284,7 +304,7 @@ def metrics(x):
     growth = f.get('revenue_growth') if finite(f.get('revenue_growth')) else (u['revenue_growth'] / 100 if finite(u.get('revenue_growth')) else None)
     if p in ('bank', 'insurer'):
         out.append(m(V, 'Erwartungslücke Eigenkapitalrendite', 10, *first((x.currency_conflict, x.conflict_reason),
-                                                                        (not (finite(u.get('pb')) and .05 < u['pb'] < 15), 'KBV fehlt oder unplausibel'),
+                                                                        (not (finite(bank_pb(x)) and .05 < bank_pb(x) < 15), 'KBV fehlt oder unplausibel'),
                                                                         (not finite(u.get('roe')), 'Eigenkapitalrendite fehlt'))))
     elif p == 'specialist_financial':
         ni = f.get('net_income')
@@ -335,10 +355,11 @@ def build(universe, shards, risk, annuals, now=None):
         chosen = select_peers(target, pool, families, groups=groups) if target is not None else []
         usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
         ev_peers = sum(1 for r in chosen if finite(r.get('ev_ebitda')) and r['ev_ebitda'] > 0)
-        annual, currency, basis, fx = (tuple(annuals.get(symbol) or ()) + (None, None, None, None))[:4]
+        annual, currency, basis, fx, quote = (tuple(annuals.get(symbol) or ()) + (None, None, None, None, None))[:5]
         own = 1 if finite(u.get('ebitda_margin')) else 0
         x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own, len(chosen), usable, basis, fx, now.date())
         x.peer_ev_ebitda = ev_peers
+        x.quote, x.fx = quote or {}, fx or {}
         prof = per_profile[x.profile]
         prof['listings'] += 1
         for k in metrics(x):
@@ -379,7 +400,7 @@ def annual_records(folder):
     for f in (folder / 'fundamentals').glob('*.json'):
         d = load(f, {})
         a = d.get('annual') if isinstance(d.get('annual'), dict) else None
-        out[f.stem] = (a, (d.get('market') or {}).get('currency'), d.get('share_basis'), d.get('fx'))
+        out[f.stem] = (a, (d.get('market') or {}).get('currency'), d.get('share_basis'), d.get('fx'), (d.get('market') or {}).get('fields') or {})
     return out
 
 
@@ -391,7 +412,7 @@ def main(folder=DATA):
         for s in load(folder / 'risk_app' / f'{h}.json', {}).get('stocks', []):
             shards[s['symbol']] = s.get('domains', {})
     files = annual_records(folder)
-    annuals = {sym: files.get(sym.replace(':', '_'), (None, None, None, None)) for sym in shards}
+    annuals = {sym: files.get(sym.replace(':', '_'), (None, None, None, None, None)) for sym in shards}
     result = build(load(folder / 'cf_universum.json', {}), shards, (load(folder / 'cf_risk.json', {}).get('stocks') or {}), annuals)
     (folder / 'cf_risk_construct_coverage.json').write_text(json.dumps(result, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     print(json.dumps({'listings': result['listings'], 'overallAverageWeight': result['overallAverageWeight'],

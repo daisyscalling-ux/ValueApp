@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-10T18:33:23.566869+00:00",
+ "generatedAt": "2026-11-10T19:22:07.344120+00:00",
  "listings": 1330,
  "overallAverageWeight": {
-  "filled": 77.6,
-  "missing": 4.8,
+  "filled": 77.9,
+  "missing": 4.5,
   "app_only": 13.9,
   "by_design": 3.7
  },
@@ -14,8 +14,8 @@
   "bank": {
    "listings": 144,
    "averageWeight": {
-    "filled": 55.2,
-    "missing": 18.2,
+    "filled": 58.0,
+    "missing": 15.3,
     "app_only": 9.2,
     "by_design": 17.5
    },
@@ -30,11 +30,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 10.23,
-     "missing": 12.69,
+     "filled": 13.09,
+     "missing": 9.83,
      "app_only": 0.0,
      "by_design": 2.08,
-     "filledShareOfMeasurable": 0.446
+     "filledShareOfMeasurable": 0.571
     },
     "Umfeldstress": {
      "weight": 15,
@@ -230,18 +230,6 @@
    }
   },
   {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Liquiditätsdeckung (LCR)",
-   "weight": 7.5,
-   "missingListings": 93,
-   "filledListings": 39,
-   "weightedGap": 697.5,
-   "reasons": {
-    "Geprüfte LCR fehlt": 93
-   }
-  },
-  {
    "profile": "insurer",
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Solvenzquote",
@@ -266,18 +254,6 @@
    }
   },
   {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Kernkapital-Puffer (CET1)",
-   "weight": 10,
-   "missingListings": 56,
-   "filledListings": 76,
-   "weightedGap": 560,
-   "reasons": {
-    "Geprüfte Kapitalquote mit Anforderung fehlt": 56
-   }
-  },
-  {
    "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Expected Shortfall",
@@ -291,6 +267,18 @@
    }
   },
   {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Kernkapital-Puffer (CET1)",
+   "weight": 10,
+   "missingListings": 47,
+   "filledListings": 85,
+   "weightedGap": 470,
+   "reasons": {
+    "Geprüfte Kapitalquote mit Anforderung fehlt": 47
+   }
+  },
+  {
    "profile": "corporate",
    "block": "Wettbewerbsanfälligkeit",
    "metric": "EBITDA-Marge gegenüber Peers",
@@ -300,6 +288,18 @@
    "weightedGap": 450,
    "reasons": {
     "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 90
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Liquiditätsdeckung (LCR)",
+   "weight": 7.5,
+   "missingListings": 50,
+   "filledListings": 82,
+   "weightedGap": 375.0,
+   "reasons": {
+    "Geprüfte LCR fehlt": 50
    }
   },
   {

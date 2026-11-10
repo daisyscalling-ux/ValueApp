@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-10T19:22:07.344120+00:00",
+ "generatedAt": "2026-11-10T20:38:09.028252+00:00",
  "listings": 1330,
  "overallAverageWeight": {
-  "filled": 77.9,
-  "missing": 4.5,
+  "filled": 78.3,
+  "missing": 4.1,
   "app_only": 13.9,
   "by_design": 3.7
  },
@@ -14,8 +14,8 @@
   "bank": {
    "listings": 144,
    "averageWeight": {
-    "filled": 58.0,
-    "missing": 15.3,
+    "filled": 59.0,
+    "missing": 14.4,
     "app_only": 9.2,
     "by_design": 17.5
    },
@@ -30,11 +30,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 13.09,
-     "missing": 9.83,
+     "filled": 14.05,
+     "missing": 8.87,
      "app_only": 0.0,
      "by_design": 2.08,
-     "filledShareOfMeasurable": 0.571
+     "filledShareOfMeasurable": 0.613
     },
     "Umfeldstress": {
      "weight": 15,
@@ -65,8 +65,8 @@
   "corporate": {
    "listings": 1053,
    "averageWeight": {
-    "filled": 82.5,
-    "missing": 2.5,
+    "filled": 82.8,
+    "missing": 2.2,
     "app_only": 15.0,
     "by_design": 0.0
    },
@@ -105,19 +105,19 @@
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
-     "filled": 4.57,
-     "missing": 0.43,
+     "filled": 4.86,
+     "missing": 0.14,
      "app_only": 10.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.915
+     "filledShareOfMeasurable": 0.972
     }
    }
   },
   "insurer": {
    "listings": 54,
    "averageWeight": {
-    "filled": 57.0,
-    "missing": 13.0,
+    "filled": 57.9,
+    "missing": 12.1,
     "app_only": 10.0,
     "by_design": 20.0
    },
@@ -132,11 +132,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 3.89,
-     "missing": 11.11,
+     "filled": 4.72,
+     "missing": 10.28,
      "app_only": 0.0,
      "by_design": 10.0,
-     "filledShareOfMeasurable": 0.259
+     "filledShareOfMeasurable": 0.315
     },
     "Umfeldstress": {
      "weight": 15,
@@ -230,18 +230,6 @@
    }
   },
   {
-   "profile": "insurer",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Solvenzquote",
-   "weight": 15,
-   "missingListings": 40,
-   "filledListings": 14,
-   "weightedGap": 600,
-   "reasons": {
-    "Geprüfte Solvenzquote fehlt": 40
-   }
-  },
-  {
    "profile": "bank",
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Kreditqualität",
@@ -251,6 +239,18 @@
    "weightedGap": 570.0,
    "reasons": {
     "Geprüfte Kreditqualität fehlt": 76
+   }
+  },
+  {
+   "profile": "insurer",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Solvenzquote",
+   "weight": 15,
+   "missingListings": 37,
+   "filledListings": 17,
+   "weightedGap": 555,
+   "reasons": {
+    "Geprüfte Solvenzquote fehlt": 37
    }
   },
   {
@@ -271,35 +271,11 @@
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Kernkapital-Puffer (CET1)",
    "weight": 10,
-   "missingListings": 47,
-   "filledListings": 85,
-   "weightedGap": 470,
+   "missingListings": 40,
+   "filledListings": 92,
+   "weightedGap": 400,
    "reasons": {
-    "Geprüfte Kapitalquote mit Anforderung fehlt": 47
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Wettbewerbsanfälligkeit",
-   "metric": "EBITDA-Marge gegenüber Peers",
-   "weight": 5,
-   "missingListings": 90,
-   "filledListings": 963,
-   "weightedGap": 450,
-   "reasons": {
-    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 90
-   }
-  },
-  {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Liquiditätsdeckung (LCR)",
-   "weight": 7.5,
-   "missingListings": 50,
-   "filledListings": 82,
-   "weightedGap": 375.0,
-   "reasons": {
-    "Geprüfte LCR fehlt": 50
+    "Geprüfte Kapitalquote mit Anforderung fehlt": 40
    }
   },
   {
@@ -327,6 +303,18 @@
    "reasons": {
     "Währungskonflikt: ADR oder unklare Aktienbasis": 26,
     "Kein positiver Cashflow und kein positives EV/EBITDA": 5
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Liquiditätsdeckung (LCR)",
+   "weight": 7.5,
+   "missingListings": 41,
+   "filledListings": 91,
+   "weightedGap": 307.5,
+   "reasons": {
+    "Geprüfte LCR fehlt": 41
    }
   },
   {
@@ -380,6 +368,18 @@
    "reasons": {
     "Kurshistorie fehlerhaft": 17,
     "Keine Kurshistorie": 16
+   }
+  },
+  {
+   "profile": "corporate",
+   "block": "Wettbewerbsanfälligkeit",
+   "metric": "EBITDA-Marge gegenüber Peers",
+   "weight": 5,
+   "missingListings": 29,
+   "filledListings": 1024,
+   "weightedGap": 145,
+   "reasons": {
+    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 29
    }
   },
   {

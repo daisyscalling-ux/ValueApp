@@ -78,3 +78,13 @@ annual_diagnostics nennt nun die konkret fehlenden Felder und unterscheidet fehl
 
 Aktivierung dieser Ergänzung: PR zusammenführen, nach dem bereits laufenden Universumsexport fundamentals-daily auf main starten. Der laufende Export braucht nicht abgebrochen oder neu gestartet zu werden. Für Quellenanzeige und Bereinigung alten Cashflows den aktualisierten cf-Ordner deployen. Der allgemeine Abgleich des Screener-Bewertungskerns mit der Einzelanalyse bleibt ein eigenes offenes Arbeitspaket.
 
+
+## Nordische Aktiengattungen bei Yahoo (10. November 2026)
+
+Seit der Notierungsreparatur vom 23.10.2026 tragen 41 nordische Notierungen Symbole wie `STO:ATCO_A` oder `CPH:NOVO_B`. `yahoo_symbol` übersetzte sie zu `ATCO_A.ST`, Yahoo kennt aber nur `ATCO-A.ST`. Die Abrufe scheiterten deshalb täglich mit `provider_or_identity`. Betroffen waren unter anderem Volvo, Novo Nordisk, Ericsson, Atlas Copco, H&M, Investor, SEB, Handelsbanken, Swedbank, Maersk und Carlsberg. Sie hatten keine Abschlussdateien unter dem Notierungssymbol, und ihre ADRs bekamen kein Umtauschverhältnis.
+
+Neu gilt:
+- An STO, CPH und HEL wird der Gattungsbuchstabe mit Bindestrich angehängt.
+- Eine geänderte Yahoo-Zuordnung löst sofort einen neuen Versuch aus, ohne Wartezeit: `corrected_london_retry` gilt jetzt allgemein, wenn das gespeicherte `mapped_symbol` abweicht.
+
+Geprüft: Alle 41 neuen Symbole liefern bei Yahoo Kurse (HTTP 200), die alten nicht (HTTP 404).

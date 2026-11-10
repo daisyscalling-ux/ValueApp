@@ -27,7 +27,8 @@ class CoverageTests(unittest.TestCase):
   g={(x['profile'],x['metric']):x for x in self.run_build()['largestGaps']}
   self.assertTrue(any(k.startswith('Währungskonflikt') or k.startswith('Kein positiver Cashflow') for k in g[('corporate','Erwartungslücke Reverse DCF')]['reasons']))
   self.assertEqual(g[('corporate','Expected Shortfall')]['reasons'],{'Keine Kurshistorie':1})
-  self.assertNotIn(('corporate','EBITDA-Marge gegenüber Peers'),g,'own margin plus at least three industry peers with a margin')
+  # Wie die App: zaehlt nur ausgewaehlte Peers; diese Zeilen haben keine Ticker, also keine Peer-Auswahl.
+  self.assertEqual(g[('corporate','EBITDA-Marge gegenüber Peers')]['reasons'],{'Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen':2})
  def test_bank_like_specialist_counts_as_bank_and_by_design_metrics(self):
   r=self.run_build()['profiles'];self.assertEqual(r['bank']['listings'],2);self.assertNotIn('specialist_financial',r)
   self.assertEqual(r['bank']['blocks']['Wettbewerbsanfälligkeit']['by_design'],10.0)
@@ -122,5 +123,18 @@ class ParisPeerTests(unittest.TestCase):
  def test_paris_suffix_not_preferred(self):
   self.assertFalse(cc._preferred({'ticker':'BNP.PA','listing_symbol':'EURONEXT:BNP'}))
   self.assertTrue(cc._preferred({'ticker':'BAC-PB'}));self.assertTrue(cc._preferred({'ticker':'XYZ.PA'}),'no listing proof keeps the old caution')
+
+class EbitdaPeerTests(unittest.TestCase):
+ def test_selected_peers_with_margin_like_app(self):
+  mk=lambda t,ind,m=None:{'listing_symbol':'NYSE:'+t,'ticker':t,'name':'Co '+t,'industry':ind,**({'ebitda_margin':m} if m is not None else {})}
+  sh=lambda s:{s:{'balance':{'profile':'corporate'},'market':{'state':'available'}}}
+  # Branche zu klein (1 Peer), Gruppe fuellt auf: Peers aus verwandten Branchen zaehlen wie in der App.
+  uni={'kandidaten':[mk('T','Pharmaceuticals: generic',20),mk('G2','Pharmaceuticals: generic',18),*[mk('M'+str(i),'Pharmaceuticals: major',25+i) for i in range(3)]]}
+  g={(x['profile'],x['metric']) for x in cc.build(uni,sh('NYSE:T'),{'NYSE:T':{'statistics':STATS}},{'NYSE:T':(annual(),'USD')})['largestGaps']}
+  self.assertNotIn(('corporate','EBITDA-Marge gegenüber Peers'),g)
+  # Gleiche Branche gross genug, aber Peers ohne Marge: Luecke, auch wenn die Branche andere Firmen mit Marge haette.
+  uni={'kandidaten':[mk('T','Steel',20),*[mk('S'+str(i),'Steel') for i in range(4)]]}
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh('NYSE:T'),{'NYSE:T':{'statistics':STATS}},{'NYSE:T':(annual(),'USD')})['largestGaps']}
+  self.assertIn(('corporate','EBITDA-Marge gegenüber Peers'),g)
 
 if __name__=='__main__':unittest.main()

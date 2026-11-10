@@ -29,7 +29,7 @@ class AdrBasis(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    d=Path(d);adr,home=files()
    (d/'NYSE_SHEL.json').write_text(json.dumps(adr))
-   out={'method':'roic_isin_primary_yahoo_quote_v1','homes':{'GB00BP6MXD84':{'roicSymbol':'EURONEXT:SHELL','yahooSymbol':'SHELL.AS','market':home['market']}}}
+   out={'method':'roic_isin_primary_yahoo_quote_v2','homes':{'GB00BP6MXD84':{'roicSymbol':'EURONEXT:SHELL','yahooSymbol':'SHELL.AS','market':home['market']}}}
    self.assertEqual(apply(d,{'kandidaten':[DR]},{},D,outside=out)['ratio_set'],1)
    ev=json.loads((d/'NYSE_SHEL.json').read_text())['share_basis']['evidence']
    self.assertEqual((ev['homeListing'],ev['homeOutsideUniverse'],ev['homeYahooSymbol']),('EURONEXT:SHELL',True,'SHELL.AS'))

@@ -23,7 +23,7 @@ import urllib.request
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'risk_precompute'))
 from news_identity import valid_isin, canonical_names  # noqa: E402
 
-METHOD = 'roic_isin_primary_yahoo_quote_v1'
+METHOD = 'roic_isin_primary_yahoo_quote_v2'   # v2: Suche ueber ISIN, ADR-Ticker und Namen, mit Diagnose
 RESOLVE_DAYS = 30
 SUFFIX = {'XETR': '.DE', 'LSE': '.L', 'TSE': '.T', 'HKEX': '.HK', 'SIX': '.SW', 'STO': '.ST', 'CPH': '.CO', 'HEL': '.HE', 'OSL': '.OL',
           'MIL': '.MI', 'BME': '.MC', 'VIE': '.VI', 'ATHEX': '.AT', 'GPW': '.WA', 'ASX': '.AX', 'SGX': '.SI', 'TWSE': '.TW', 'TPEX': '.TWO',
@@ -115,14 +115,26 @@ def run(universe, folder, state, search, quote, now=None):
         except (KeyError, ValueError, TypeError):
             fresh = False
         if not fresh:
+            # ROIC findet per ISIN-Anfrage oft nichts; Ticker und Name liefern die Notierungen samt ISIN (wie bei den Kurshistorien).
+            queries = list(dict.fromkeys([isin, *[d.split(':')[-1].split('.')[0] for d in t['drs']], re.split(r'[,.(]', str(t['name'] or ''))[0].strip()]))
+            seen, home = [], None
             try:
-                home = choose_home(isin, search(isin))
+                for q in [q for q in queries if len(q) >= 2]:
+                    hits = search(q)
+                    seen.extend(hits)
+                    home = choose_home(isin, hits)
+                    if home:
+                        break
             except Exception:
                 report['unresolved']['search_failed'] = report['unresolved'].get('search_failed', 0) + 1
                 continue
+            same = {c['symbol']: c for c in seen if isinstance(c, dict) and c.get('isin') == isin and isinstance(c.get('symbol'), str)}
+            diagnosis = {'queries': queries, 'results': len(seen),
+                         'sameIsin': [{'symbol': c['symbol'], 'type': c.get('type'), 'isPrimary': c.get('is_primary') is True, 'country': c.get('listing_country_code')} for c in list(same.values())[:6]]}
             ysym = yahoo_home_symbol(home['symbol'], home.get('listing_country_code')) if home else None
             old = {'isin': isin, 'resolvedAt': now.isoformat(), 'roicSymbol': home['symbol'] if home else None, 'yahooSymbol': ysym,
-                   'reason': '' if ysym else ('no_unique_primary_listing' if not home else 'yahoo_mapping_unclear'), 'source': 'ROIC v3 tickers/search · exact ISIN'}
+                   'reason': '' if ysym else ('no_unique_primary_listing' if not home else 'yahoo_mapping_unclear'), 'source': 'ROIC v3 tickers/search · exact ISIN',
+                   'diagnosis': diagnosis}
         old['drs'] = t['drs']
         old.pop('market', None)
         state['homes'][isin] = old

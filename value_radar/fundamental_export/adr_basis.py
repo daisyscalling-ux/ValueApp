@@ -15,6 +15,7 @@ import sys
 from collections import defaultdict
 
 METHOD = 'share_count_and_price_ratio_v1'
+HOME_METHOD = 'roic_isin_primary_yahoo_quote_v2'   # muss adr_home_quotes.METHOD entsprechen
 
 
 def save(path, data):
@@ -74,7 +75,7 @@ def outside_home(outside, isin, today):
         age = (today - dt.date.fromisoformat(str(m.get('quote_at'))[:10])).days
     except ValueError:
         return None, None
-    if (outside or {}).get('method') != 'roic_isin_primary_yahoo_quote_v1' or not h.get('roicSymbol') or not 0 <= age <= 7:
+    if (outside or {}).get('method') != HOME_METHOD or not h.get('roicSymbol') or not 0 <= age <= 7:
         return None, None
     return {'listing_symbol': h['roicSymbol'], 'yahoo_symbol': h.get('yahooSymbol'), 'outside_universe': True}, {'market': m}
 

@@ -15,3 +15,12 @@ Ausgabe: `daten/fundamentals/adr_homes.json`.
 **Grenzen:**
 - Für TWD veröffentlicht die EZB keinen Kurs, TSMC, ASE und Hon Hai bleiben deshalb offen.
 - ADRs mit eigener US-ISIN im Universum bleiben offen: Alibaba, PDD, NetEase, Roche, Intesa.
+
+## Erster Lauf und Korrektur der Suche (10. November 2026)
+
+Der erste Lauf löste nur 1 von 50 ISINs auf (SK hynix → `KRX:000660`), denn die ROIC-Suche liefert per ISIN-Anfrage meist nichts. Methode v2 fragt deshalb nacheinander:
+1. die ISIN,
+2. den Ticker des ADR (z. B. `ASML`),
+3. den Emittentennamen.
+
+Das entspricht der Suche bei den Kurshistorien (`export-home-histories.ts`). Die Auswahlregel bleibt unverändert: genau eine Hauptnotierung mit exakt derselben ISIN. Jeder Eintrag trägt jetzt eine Diagnose mit den Anfragen, der Zahl der Treffer und den Kandidaten derselben ISIN. Mit der neuen Methodenkennung werden die 49 zwischengespeicherten Fehlanzeigen sofort neu aufgelöst, statt 30 Tage zu warten. `adr_basis.py` prüft dieselbe Kennung (`HOME_METHOD`), ein Test sichert die Gleichheit.

@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "eba-p3dh-km1-v1",
- "importedAt": "2026-11-10T19:05:10.035973+00:00",
+ "importedAt": "2026-11-10T19:31:32.611218+00:00",
  "mappingReviewExpires": "2027-05-08",
  "source": {
   "name": "EBA Pillar 3 data hub (P3DH), Originaldateien",
@@ -24,6 +24,44 @@
   }
  },
  "banks": {
+  "2138002M5U5K4OUMVV62": {
+   "name": "RINGKJØBING LANDBOBANK. AKTIESELSKAB",
+   "period": "2026-06-30",
+   "scope": "individual",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/2138002M5U5K4OUMVV62.IND_DK_PILLAR3020100_CODIS_2026-06-30_20260825133211088.zip",
+   "sourceFileSha256": "f4cb25a858ba22f6a0e5d48ecc8ee6fec8d82c89b0cf1eff715f7708b5db2111",
+   "baseCurrency": "iso4217:DKK",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.160771416286,
+    "tier1_ratio": 0.160771416286,
+    "total_capital_ratio": 0.210266857918,
+    "srep_total": 0.091121,
+    "srep_additional": 0.011121,
+    "srep_additional_cet1": 0.0062555625,
+    "combined_buffer": 0.055647725776,
+    "overall_requirement": 0.146768725774,
+    "leverage_ratio": 0.10282691329,
+    "lcr": 2.122069317665,
+    "nsfr": 1.17489527177
+   },
+   "lcr": 2.122069317665,
+   "nsfr": 1.17489527177,
+   "cet1Requirement": {
+    "value": 0.106903,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.0062555625,
+     "combined_buffer": 0.055647725776
+    },
+    "check": {
+     "overall_requirement": 0.146768725774,
+     "srep_total": 0.091121
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null
+  },
   "213800DBQIB6VBNU5C64": {
    "name": "Alpha Bank S.A.",
    "period": "2026-06-30",
@@ -56,6 +94,120 @@
     },
     "check": {
      "overall_requirement": 0.14844238024,
+     "srep_total": 0.109
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null
+  },
+  "213800KGF4EFNUQKAT69": {
+   "name": "ΤΡΑΠΕΖΑ EUROBANK ΑΝΩΝΥΜΗ EΤΑΙΡΕΙΑ (Eurobank S.A.)",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/213800KGF4EFNUQKAT69.CON_GR_PILLAR3020100_CODIS_2026-06-30_20261030105100000.zip",
+   "sourceFileSha256": "4da8bc7e6dbec904fcc47c699d80f870a3b2b189bf018cfafdb5eedc7b2b0d86",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.151217401030052,
+    "tier1_ratio": 0.171013260596832,
+    "total_capital_ratio": 0.200075638581946,
+    "srep_total": 0.1075,
+    "srep_additional": 0.0275,
+    "srep_additional_cet1": 0.0155,
+    "combined_buffer": 0.0452000000000901,
+    "overall_requirement": 0.1527,
+    "leverage_ratio": 0.0790842006103404,
+    "lcr": 1.72718971979832,
+    "nsfr": 1.42833467488713
+   },
+   "lcr": 1.72718971979832,
+   "nsfr": 1.42833467488713,
+   "cet1Requirement": {
+    "value": 0.1057,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.0155,
+     "combined_buffer": 0.0452000000000901
+    },
+    "check": {
+     "overall_requirement": 0.1527,
+     "srep_total": 0.1075
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null
+  },
+  "213800M7T3CYVZ3ZRT12": {
+   "name": "SPAREBANKEN NORGE",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/213800M7T3CYVZ3ZRT12.CON_NO_PILLAR3020100_CODIS_2026-06-30_20261020085847321.zip",
+   "sourceFileSha256": "e8de78e3bbe205fa89c469608c390187ac0ec987cb26374c33081dd9a81d7ec3",
+   "baseCurrency": "iso4217:NOK",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.17295648633573,
+    "tier1_ratio": 0.194953453355635,
+    "total_capital_ratio": 0.220382633710294,
+    "srep_total": 0.096,
+    "srep_additional": 0.016,
+    "srep_additional_cet1": 0.009000000000000001,
+    "combined_buffer": 0.095,
+    "overall_requirement": 0.191,
+    "leverage_ratio": 0.0694423448743852,
+    "lcr": 1.7199453858495772,
+    "nsfr": 1.2316
+   },
+   "lcr": 1.7199453858495772,
+   "nsfr": 1.2316,
+   "cet1Requirement": {
+    "value": 0.149,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.009000000000000001,
+     "combined_buffer": 0.095
+    },
+    "check": {
+     "overall_requirement": 0.191,
+     "srep_total": 0.096
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null
+  },
+  "213800OYHR1MPQ5VJL60": {
+   "name": "ΤΡΑΠΕΖΑ ΠΕΙΡΑΙΩΣ ΑΝΩΝΥΜΟΣ ΕΤΑΙΡΕΙΑ (Piraeus Bank S.A.)",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/213800OYHR1MPQ5VJL60.CON_GR_PILLAR3020100_CODIS_2026-06-30_20260925124732001.zip",
+   "sourceFileSha256": "50335f79ae56d13ab10fc19454211790679f155377113a01bdef15a050d24e19",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.1278,
+    "tier1_ratio": 0.1546,
+    "total_capital_ratio": 0.1861,
+    "srep_total": 0.109,
+    "srep_additional": 0.029,
+    "srep_additional_cet1": 0.01631,
+    "combined_buffer": 0.0383750776797684,
+    "overall_requirement": 0.14738,
+    "leverage_ratio": 0.06098465,
+    "lcr": 2.0975765451388,
+    "nsfr": 1.26486719140143
+   },
+   "lcr": 2.0975765451388,
+   "nsfr": 1.26486719140143,
+   "cet1Requirement": {
+    "value": 0.099685,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.01631,
+     "combined_buffer": 0.0383750776797684
+    },
+    "check": {
+     "overall_requirement": 0.14738,
      "srep_total": 0.109
     },
     "derivation": null
@@ -95,6 +247,82 @@
     "check": {
      "overall_requirement": 0.15208091239173535,
      "srep_total": 0.0995
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null
+  },
+  "259400DZXF7UJKK2AY35": {
+   "name": "mBank Spółka Akcyjna",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/259400DZXF7UJKK2AY35.CON_PL_PILLAR3020100_CODIS_2026-06-30_20260812112240154.zip",
+   "sourceFileSha256": "64c93b95cfc32ad7c1368455d0eabe48df550dc904160b3d3bd7fdc0647e7800",
+   "baseCurrency": "iso4217:PLN",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.126,
+    "tier1_ratio": 0.1363,
+    "total_capital_ratio": 0.1531,
+    "srep_total": 0.08,
+    "srep_additional": null,
+    "srep_additional_cet1": null,
+    "combined_buffer": 0.040179,
+    "overall_requirement": 0.120179,
+    "leverage_ratio": 0.0593,
+    "lcr": 2.3671,
+    "nsfr": 1.710821
+   },
+   "lcr": 2.3671,
+   "nsfr": 1.710821,
+   "cet1Requirement": {
+    "value": 0.085179,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.0,
+     "combined_buffer": 0.040179
+    },
+    "check": {
+     "overall_requirement": 0.120179,
+     "srep_total": 0.08
+    },
+    "derivation": "p2r_cet1_zero_because_total_srep_equals_pillar1_8pct"
+   },
+   "cet1RequirementOpen": null
+  },
+  "259400LGXW3K0GDAG361": {
+   "name": "ERSTE BANK POLSKA SPÓŁKA AKCYJNA",
+   "period": "2026-09-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/259400LGXW3K0GDAG361.CON_PL_PILLAR3020100_CODIS_2026-09-30_20261029122354257.zip",
+   "sourceFileSha256": "5d3d4cc8b9fbaff0c0202c397beb3d0d8f46a724d6a1081deac5df9595e842b6",
+   "baseCurrency": "iso4217:PLN",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.1853,
+    "tier1_ratio": 0.1853,
+    "total_capital_ratio": 0.1875,
+    "srep_total": 0.08,
+    "srep_additional": 0.0,
+    "srep_additional_cet1": 0.0,
+    "combined_buffer": 0.0596,
+    "overall_requirement": 0.1396,
+    "leverage_ratio": 0.0748,
+    "lcr": 1.9771,
+    "nsfr": 1.5552
+   },
+   "lcr": 1.9771,
+   "nsfr": 1.5552,
+   "cet1Requirement": {
+    "value": 0.1046,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.0,
+     "combined_buffer": 0.0596
+    },
+    "check": {
+     "overall_requirement": 0.1396,
+     "srep_total": 0.08
     },
     "derivation": null
    },
@@ -708,6 +936,32 @@
    },
    "cet1RequirementOpen": null
   },
+  "969500TJ5KRTCJQWXH05": {
+   "name": "CREDIT AGRICOLE SA",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/969500TJ5KRTCJQWXH05.CON_FR_PILLAR3020100_CODIS_2026-06-30_20261015135523900.zip",
+   "sourceFileSha256": "af570e0c5697e0205eac267cfc28332abb0d10cf1f52798a501401c4cec7f941",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.1127,
+    "tier1_ratio": 0.1307,
+    "total_capital_ratio": 0.1677,
+    "srep_total": 0.0965,
+    "srep_additional": 0.0165,
+    "srep_additional_cet1": 0.9281,
+    "combined_buffer": 0.0332,
+    "overall_requirement": 0.1297,
+    "leverage_ratio": 0.0372,
+    "lcr": 1.4129,
+    "nsfr": 1.1525
+   },
+   "lcr": 1.4129,
+   "nsfr": 1.1525,
+   "cet1Requirement": null,
+   "cet1RequirementOpen": "requirement_out_of_range"
+  },
   "9ZHRYM6F437SQJ6OUG95": {
    "name": "Raiffeisen Bank International AG",
    "period": "2026-06-30",
@@ -821,6 +1075,32 @@
     "derivation": null
    },
    "cet1RequirementOpen": null
+  },
+  "GP5DT10VX1QRQUKVBK64": {
+   "name": "AL Sydbank A/S",
+   "period": "2026-09-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/GP5DT10VX1QRQUKVBK64.CON_DK_PILLAR3020100_CODIS_2026-09-30_20261102123740794.zip",
+   "sourceFileSha256": "76beaafac687c1abe158e6bafa23c51a7ebc13cc26ca7eb7d5b041689cdc2560",
+   "baseCurrency": "iso4217:DKK",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.165915467428,
+    "tier1_ratio": 0.178526224626,
+    "total_capital_ratio": 0.200405229443,
+    "srep_total": null,
+    "srep_additional": null,
+    "srep_additional_cet1": null,
+    "combined_buffer": 0.066563825142,
+    "overall_requirement": 0.158446402168,
+    "leverage_ratio": 0.073336585676,
+    "lcr": 2.71,
+    "nsfr": 1.44
+   },
+   "lcr": 2.71,
+   "nsfr": 1.44,
+   "cet1Requirement": null,
+   "cet1RequirementOpen": "p2r_cet1_or_buffer_missing"
   },
   "J4CP7MHCXR8DAQMKIL78": {
    "name": "Banca Monte dei Paschi di Siena S.p.A.",
@@ -1152,6 +1432,44 @@
    },
    "cet1RequirementOpen": null
   },
+  "PQOH26KWDF7CG10L6792": {
+   "name": "ERSTE GROUP BANK AG",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/PQOH26KWDF7CG10L6792.CON_AT_PILLAR3020100_CODIS_2026-06-30_20260928050914888.zip",
+   "sourceFileSha256": "0a5edfe180c47cd314f1de3e1f33f8a6af84ff95e6ec1ab10ab03308ef39e528",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.15235636922288,
+    "tier1_ratio": 0.172329512270376,
+    "total_capital_ratio": 0.19982499936081,
+    "srep_total": 0.1,
+    "srep_additional": 0.02,
+    "srep_additional_cet1": 0.01125,
+    "combined_buffer": 0.060706380948557,
+    "overall_requirement": 0.160706,
+    "leverage_ratio": 0.065918481756519,
+    "lcr": 1.476579016593,
+    "nsfr": 1.398757650918675
+   },
+   "lcr": 1.476579016593,
+   "nsfr": 1.398757650918675,
+   "cet1Requirement": {
+    "value": 0.116956,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.01125,
+     "combined_buffer": 0.060706380948557
+    },
+    "check": {
+     "overall_requirement": 0.160706,
+     "srep_total": 0.1
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null
+  },
   "R0MUWSFPU8MPRO8K5P83": {
    "name": "BNP Paribas",
    "period": "2026-09-30",
@@ -1267,6 +1585,10 @@
    "cet1RequirementOpen": null
   }
  },
- "rejected": {},
+ "rejected": {
+  "259400OFDZ9KPZEO8K78": [
+   "2025-12-31:too_old"
+  ]
+ },
  "scoreContribution": 0
 }

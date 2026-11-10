@@ -4,17 +4,7 @@
  "review_expires": "2027-05-08",
  "method": "ISIN to LEI via GLEIF lei-records filter[isin] (single match only); LEI must equal the EBA reporting LEI; ECB P2R matched by exact institution name, reviewed manually.",
  "open": {
-  "EURONEXT:ACA": "EBA reports Credit Agricole Group LEI, not the listed Credit Agricole S.A.",
-  "ATHEX:EUROB": "EBA 2025 reports the former holding LEI; listed Eurobank S.A. is its universal successor (ECB footnote 5)",
-  "ATHEX:TPEIR": "EBA 2025 reports the former holding LEI; listed Piraeus Bank S.A. is its universal successor (ECB footnote 6)",
   "EURONEXT:BIRG": "GLEIF returned no single LEI for the ISIN",
-  "VIE:EBS": "Not in EBA 2025 sample under the listed LEI",
-  "GPW:MBK": "Not in EBA 2025 sample",
-  "GPW:EBP": "Not in EBA 2025 sample",
-  "GPW:MIL": "Not in EBA 2025 sample",
-  "CPH:RILBA": "Not in EBA 2025 sample",
-  "CPH:ALSYDB": "Not in EBA 2025 sample",
-  "OSL:SBNOR": "Not in EBA 2025 sample",
   "OSL:STB": "Insurance-led group, not in EBA 2025 sample"
  },
  "banks": [
@@ -348,5 +338,118 @@
    ],
    "gleifSource": "https://api.gleif.org/api/v1/lei-records?filter[isin]=SE0000242455"
   }
- ]
+ ],
+ "pillar3Only": [
+  {
+   "lei": "969500TJ5KRTCJQWXH05",
+   "isins": [
+    "FR0000045072"
+   ],
+   "listing": "EURONEXT:ACA",
+   "gleifName": "CREDIT AGRICOLE SA",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "213800KGF4EFNUQKAT69",
+   "isins": [
+    "GRS829003003"
+   ],
+   "listing": "ATHEX:EUROB",
+   "gleifName": "ΤΡΑΠΕΖΑ EUROBANK ΑΝΩΝΥΜΗ EΤΑΙΡΕΙΑ (Eurobank S.A.)",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "213800OYHR1MPQ5VJL60",
+   "isins": [
+    "GRS831003009"
+   ],
+   "listing": "ATHEX:TPEIR",
+   "gleifName": "ΤΡΑΠΕΖΑ ΠΕΙΡΑΙΩΣ ΑΝΩΝΥΜΟΣ ΕΤΑΙΡΕΙΑ (Piraeus Bank S.A.)",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "PQOH26KWDF7CG10L6792",
+   "isins": [
+    "AT0000652011"
+   ],
+   "listing": "VIE:EBS",
+   "gleifName": "ERSTE GROUP BANK AG",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "259400DZXF7UJKK2AY35",
+   "isins": [
+    "PLBRE0000012"
+   ],
+   "listing": "GPW:MBK",
+   "gleifName": "mBank Spółka Akcyjna",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "259400LGXW3K0GDAG361",
+   "isins": [
+    "PLBZ00000044"
+   ],
+   "listing": "GPW:EBP",
+   "gleifName": "ERSTE BANK POLSKA SPÓŁKA AKCYJNA",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "259400OFDZ9KPZEO8K78",
+   "isins": [
+    "PLBIG0000016"
+   ],
+   "listing": "GPW:MIL",
+   "gleifName": "BANK MILLENNIUM SPÓŁKA AKCYJNA",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "2138002M5U5K4OUMVV62",
+   "isins": [
+    "DK0060854669"
+   ],
+   "listing": "CPH:RILBA",
+   "gleifName": "RINGKJØBING LANDBOBANK. AKTIESELSKAB",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "GP5DT10VX1QRQUKVBK64",
+   "isins": [
+    "DK0010311471"
+   ],
+   "listing": "CPH:ALSYDB",
+   "gleifName": "AL Sydbank A/S",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "213800M7T3CYVZ3ZRT12",
+   "isins": [
+    "NO0006000900"
+   ],
+   "listing": "OSL:SBNOR",
+   "gleifName": "SPAREBANKEN NORGE",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-10"
+  }
+ ],
+ "pillar3OnlyMethod": "Banken ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub). ISIN zu LEI ueber GLEIF mit genau einem Treffer; die LEI muss im Hub einreichen."
 }

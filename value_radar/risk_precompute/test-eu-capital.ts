@@ -50,6 +50,19 @@ test('Pillar 3 KM1: full CET1 requirement and LCR close the bank-specific requir
  for(const bad of [{period:'2025-12-31'},{reportedRatio:20},{sourceUrl:'https://example.org/x.zip'},{method:'intl-lcr-v1'}])
   assert.equal(verifiedEuCapital(archive({...record,liquidity:{...lcr,...bad}}),row,true,now)!.liquidity,null,JSON.stringify(bad));
 });
+test('Pillar-3-only EU bank: KM1 codes accepted only with Hub source and fresh period',()=>{
+ const src={sourceUrl:'https://errp.eba.europa.eu/public-documents/CODIS/input/PQOH26KWDF7CG10L6792.CON_AT_PILLAR3020100_CODIS_2026-06-30_1.zip',sourceFileSha256:'f'.repeat(64)};
+ const p3={state:'available',scope:'eu_prudential_group',capitalSource:'eba_p3dh_km1',lei:'PQOH26KWDF7CG10L6792',inputIdentity:row,period:'2026-06-30',sourceImportedAt:'2026-11-10T00:00:00Z',identityReviewExpires:'2027-05-08',...src,
+  metrics:{cet1_ratio:{state:'available',unit:'fraction',sourceField:'P3DH:K_61.00/0050',value:.152},tier1_ratio:{state:'available',unit:'fraction',sourceField:'P3DH:K_61.00/0060',value:.17}},
+  capitalRequirement:{state:'available',method:'eba-p3dh-km1-cet1-requirement-v1',unit:'fraction',value:.117,cet1Ratio:.152,comparisonPeriod:'2026-06-30',reviewExpires:'2027-05-08',...src},
+  liquidity:{state:'available',method:'eba-p3dh-km1-lcr-v1',unit:'fraction',reportedRatio:1.48,period:'2026-06-30',...src},creditQuality:null};
+ const now2=Date.parse('2026-11-10T18:00:00Z'),arch=(r:any)=>({...archive(r),generatedAt:'2026-11-10T17:30:00Z'});
+ const v=verifiedEuCapital(arch(p3),row,true,now2)!;assert.equal(v.metrics.cet1_ratio.value,.152);assert.ok(v.capitalRequirement);assert.ok(v.liquidity);
+ assert.equal(verifiedEuCapital(arch({...p3,sourceUrl:'https://example.org/a.zip'}),row,true,now2),null);
+ assert.equal(verifiedEuCapital(arch({...p3,period:'2025-12-31'}),row,true,now2),null,'KM1-only capital older than 270 days');
+ assert.equal(verifiedEuCapital(arch({...p3,capitalSource:undefined}),row,true,now2),null,'KM1 codes are not EBA transparency codes');
+ assert.equal(verifiedEuCapital(arch({...record,metrics:{...record.metrics,cet1_ratio:{...record.metrics.cet1_ratio,sourceField:'P3DH:K_61.00/0050'}}}),row,true,now),null);
+});
 test('US holdings keep precedence and non-banks are untouched',()=>{
  assert.equal(merge({...base,profile:'corporate'},row,archive(),true,now).bankCapital,undefined);
  const us={state:'available',scope:'listed_consolidated_holding',inputIdentity:row,period:'2026-06-30',sourceImportedAt:'2026-10-19T12:00:00Z',identityReviewExpires:'2027-04-18',sourceFileSha256:'a'.repeat(64),metrics:{cet1_ratio:{state:'available',unit:'fraction',sourceField:'BHCAP793',value:.14}}};

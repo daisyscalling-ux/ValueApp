@@ -9,12 +9,16 @@ const fresh=(v:any,now:number,days:number)=>typeof v==='string'&&Number.isFinite
 const keys=['listing_symbol','ticker','isin','currency','name','name_full','security_type','share_class'];
 // EU/EWR-Banken (EBA-Transparenz, EZB-P2R): eigener Zweig mit eigenen Methoden-IDs, 730 Tage Hoechstalter (Nutzerentscheidung 09.11.2026).
 const EU_CODES:Row={cet1_ratio:'EBA:2520140',tier1_ratio:'EBA:2520141',total_capital_ratio:'EBA:2520142',leverage_ratio:'EBA:2520905'};
+// Banken ohne EBA-Transparenzdaten: Quoten ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub), nur mit Originaldatei aus dem Hub.
+const P3_CODES:Row={cet1_ratio:'P3DH:K_61.00/0050',tier1_ratio:'P3DH:K_61.00/0060',total_capital_ratio:'P3DH:K_61.00/0070',leverage_ratio:'P3DH:K_61.00/0220'};
 export function verifiedEuCapital(archive:Row|undefined|null,row:Row,identityOK:boolean,now:number):Row|null{
  const eu=archive?.euBanks,r=eu?.stocks?.[row.listing_symbol],today=new Date(now).toISOString().slice(0,10);
  if(!identityOK||archive?.schema!==1||!fresh(archive.generatedAt,now,1.5)||eu?.schema!==1||eu.source!=='eba_transparency_ecb_p2r'||eu.state!=='ready'||r?.state!=='available'||r.scope!=='eu_prudential_group')return null;
  if(!keys.every(k=>(row[k]??null)===(r.inputIdentity?.[k]??null))||!dateOnly(r.period)||!fresh(r.period,now,730)||typeof r.sourceImportedAt!=='string'||Date.parse(r.sourceImportedAt)>now||Date.parse(r.sourceImportedAt)<Date.parse(r.period))return null;
  if(!dateOnly(r.identityReviewExpires)||r.identityReviewExpires<today||!/^[0-9a-f]{64}$/.test(r.sourceFileSha256||'')||!/^[A-Z0-9]{20}$/.test(r.lei||''))return null;
- const metrics=Object.fromEntries(Object.entries(r.metrics||{}).filter(([key,v]:any)=>EU_CODES[key]===v.sourceField&&v.state==='available'&&v.unit==='fraction'&&typeof v.value==='number'&&Number.isFinite(v.value)&&v.value>=0&&v.value<=1));
+ const p3only=r.capitalSource==='eba_p3dh_km1';if(p3only&&!(typeof r.sourceUrl==='string'&&r.sourceUrl.startsWith('https://errp.eba.europa.eu/public-documents/')&&fresh(r.period,now,270)))return null;
+ const codes=p3only?P3_CODES:EU_CODES;
+ const metrics=Object.fromEntries(Object.entries(r.metrics||{}).filter(([key,v]:any)=>codes[key]===v.sourceField&&v.state==='available'&&v.unit==='fraction'&&typeof v.value==='number'&&Number.isFinite(v.value)&&v.value>=0&&v.value<=1));
  const chain=['cet1_ratio','tier1_ratio','total_capital_ratio'].map(k=>(metrics[k] as any)?.value).filter(v=>v!==undefined);
  if(!metrics.cet1_ratio||!chain.every((v,i)=>!i||chain[i-1]<=v+1e-6))return null;
  const cet1=(metrics.cet1_ratio as any).value,q=r.capitalRequirement,c=r.creditQuality;

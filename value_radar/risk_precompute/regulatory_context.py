@@ -91,17 +91,39 @@ def km1_requirement(km1,lei,now):
          'headroomPercentagePoints':(cet1-q['value'])*100,'components':q.get('components'),'derivation':q.get('derivation'),'sourceUrl':b['sourceUrl'],
          'sourceFileSha256':b['sourceFileSha256'],'reviewExpires':km1.get('mappingReviewExpires'),
          'definition':'4,5 % CET1-Mindestquote + CET1-Anteil der SREP-Zusatzanforderung (EU KM1 EU 7e) + kombinierte Kapitalpufferanforderung (Zeile 11)','scoreContribution':0}
+P3_CODES={'cet1_ratio':'P3DH:K_61.00/0050','tier1_ratio':'P3DH:K_61.00/0060','total_capital_ratio':'P3DH:K_61.00/0070','leverage_ratio':'P3DH:K_61.00/0220'}
+def pillar3_only_record(row,lei,km1,mapping,now):
+ """EU-Bank ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub)."""
+ b=_km1_bank(km1,lei,now)
+ if not b:return None
+ v=b.get('metrics') or {}
+ metrics={k:{'state':'available','value':v[k],'unit':'fraction','sourceField':code} for k,code in P3_CODES.items() if isinstance(v.get(k),(int,float)) and 0<=v[k]<=1}
+ if 'cet1_ratio' not in metrics:return None
+ return {'state':'available','scope':'eu_prudential_group','capitalSource':'eba_p3dh_km1','lei':lei,'holdingName':b.get('name'),'inputIdentity':{k:row.get(k) for k in FIELDS},
+  'period':b['period'],'exercise':'EBA Pillar 3 Data Hub (EU KM1)','sourceImportedAt':km1.get('importedAt'),'sourceUrl':b['sourceUrl'],'sourceFileSha256':b['sourceFileSha256'],
+  'identityReviewExpires':mapping.get('review_expires'),'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
+  'capitalRequirement':km1_requirement(km1,lei,now),'liquidity':km1_liquidity(km1,lei,now),'creditQuality':None,
+  'limitations':['Only Pillar 3 KM1 (no EBA transparency data): no non-performing loan ratio in this source.']}
 def build_eu(universe,capital,mapping,now,km1=None):
  """EU/EWR-Banken: EBA-Kapital und -NPL je LEI, Teilanforderung aus EZB-P2R. Gleiche Identitaetsregeln wie bei US-Holdings."""
  stocks,rejected,deferred={},{},[]
  out={'schema':1,'source':'eba_transparency_ecb_p2r','method':capital.get('method'),'stocks':stocks,'rejected':rejected,'scoreContribution':0}
  if capital.get('method')!='eu-bank-capital-v1' or not isinstance(capital.get('banks'),dict):out['state']='source_unavailable';return out
  by_isin={i:b['lei'] for b in mapping.get('banks',[]) for i in b.get('isins',[])}
+ p3only={b['lei'] for b in mapping.get('pillar3Only',[])}
+ by_isin.update({i:b['lei'] for b in mapping.get('pillar3Only',[]) for i in b.get('isins',[])})
  eba=capital['sources']['eba'];ecb=capital['sources']['ecb']
  for row in universe.get('kandidaten',[]):
   s=row.get('listing_symbol');lei=by_isin.get(row.get('isin'))
   if not s or not lei:continue
   b=capital['banks'].get(lei)
+  if not b and lei in p3only:
+   rec=pillar3_only_record(row,lei,km1,mapping,now)
+   if rec is None:rejected[s]='no_current_pillar3_km1_for_lei'
+   elif depositary_candidate(row):deferred.append((row,lei))
+   elif not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):rejected[s]='listing_identity_unverified'
+   else:stocks[s]=rec
+   continue
   if not b:rejected[s]='no_eu_capital_for_lei';continue
   if depositary_candidate(row):deferred.append((row,lei));continue
   if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):

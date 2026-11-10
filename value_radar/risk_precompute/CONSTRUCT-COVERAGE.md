@@ -53,6 +53,16 @@ Der Abschluss-Export (`export_fundamentals.py`) setzt jetzt für Stammaktien mit
 
 Betroffen sind 189 Notierungen: 134 Unternehmen, 32 Banken, 12 Versicherer, 10 Spezialfinanzierer (darunter 2 georgische Banken ohne EZB-Kurs für GEL, die offen bleiben). Die Einträge erscheinen, sobald der Export die jeweilige Datei neu schreibt (mindestens wöchentlich). Die Messung unterscheidet bis dahin „Stammaktie, Aktienbasis noch nicht in der Abschlussdatei“ von „ADR oder unklare Aktienbasis“. Echte ADRs (rund 120) brauchen weiterhin ein geprüftes Umtauschverhältnis. Wenn die App neuere Primärdaten als den Ersatzabschluss hat, nutzt sie den Ersatzabschluss nicht. Einzelne Notierungen können deshalb trotz Aktienbasis offen bleiben.
 
+## Fehlende Kurshistorien (10.11.2026)
+
+Ausgangslage: 109 Notierungen ohne verwertbare eigene Historie. 76 haben keinen Eintrag, 18 eine Historie mit längeren Lücken, 15 weniger als zwei Handelsjahre. Die meisten sind OTC-Notierungen (64), dazu Neuemissionen (CoreWeave, Nebius, Magnum Ice Cream, Metlen) und 23 Einträge ohne Börsenpräfix (Vorzugsaktien wie MS-PA, BML-PH und Ticker ohne Zuordnung).
+
+`risk_history_proxy.py` läuft in `daily-risk` direkt nach dem Kursexport. Fehlt einer Notierung die eigene vollständige Historie, hat dieselbe Aktie (gleiche ISIN) aber eine Börsennotierung (keine OTC-Notierung) mit vollständiger, frischer Historie, legt das Skript deren Risikozusammenfassung unter dem Symbol der Notierung ab. Die Stammaktie hat dabei Vorrang vor einem ADR. Der Eintrag trägt `historySource` und einen Hinweistext, den die App unter „Berechnung und Datenqualität“ zeigt. Wechselkursschwankungen zur Handelswährung sind nicht enthalten. Eigene vollständige Historien werden nie überschrieben. `export-risk.ts` behandelt Ersatzeinträge nie als frisch und versucht die eigene Historie jedes Mal neu. Ist die Heimathistorie nicht mehr verwertbar, wird der Ersatz entfernt. Das Rohdaten-Archiv vermerkt die Quelle (`price.historySource`).
+
+Probelauf: 30 Ersatzhistorien, z. B. OTC:MBFJF aus TSE:8306 (MUFG) und OTC:LLDTF aus LSE:LLOY. Expected Shortfall fehlt danach bei 35 statt 55 Unternehmen und bei 32 statt 41 Banken. Belegtes Gewicht gesamt 72,9 statt 72,3.
+
+Offen und sachlich richtig offen: Neuemissionen mit weniger als zwei Handelsjahren. Offen ohne Ersatz: OTC-Notierungen ohne Börsennotierung im Universum (vor allem chinesische Banken) und Einträge ohne Börsenpräfix. Nebenbefund: STO:INVE_B trägt im Universum die ISIN der A-Aktie (SE0015811955).
+
 ## ADR-Umtauschverhältnisse (10.11.2026)
 
 `fundamental_export/adr_basis.py` läuft nach jedem Abschluss-Export und leitet das Verhältnis eines Depositary Receipts zur Stammaktie doppelt ab:

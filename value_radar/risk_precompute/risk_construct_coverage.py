@@ -176,7 +176,11 @@ def fx_resolved(b, fx, report, quote, today=None):
         return False
     rates = fx.get('rates') or {}
     target = 'GBP' if quote in ('GBp', 'GBX') else quote
-    return (b.get('kind') in ('ADR', 'ordinary') and b.get('ordinary_shares_per_unit') == 1 and b.get('annual_eps_basis') == 'ordinary'
+    r, e = b.get('ordinary_shares_per_unit'), b.get('evidence') or {}
+    # Verhältnis ungleich 1:1 nur aus der doppelten Prüfung (wie sharesPerUnit in der App).
+    derived = (b.get('kind') == 'ADR' and b.get('method') == 'share_count_and_price_ratio_v1' and finite(r) and r > 0 and finite(e.get('byShareCount')) and finite(e.get('byPrice'))
+               and abs(e['byShareCount'] / r - 1) <= .02 and abs(e['byPrice'] / r - 1) <= .10)
+    return (b.get('kind') in ('ADR', 'ordinary') and (r == 1 or derived) and b.get('annual_eps_basis') == 'ordinary'
             and b.get('report_currency') == report and b.get('quote_currency') == quote and 0 <= age <= 180 and str(b.get('source_url', '')).startswith('https://')
             and fx.get('base') == 'EUR' and finite(rates.get(report)) and finite(rates.get(target)))
 

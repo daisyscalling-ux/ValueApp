@@ -333,6 +333,15 @@ def metrics(x):
     return out
 
 
+PREFERRED_REASON = 'Vorzugsaktie: Risikomodell gilt für Stammaktien'
+
+
+def preferred_instrument(r):
+    """Spiegel von preferredInstrument (valueapp-cf, src/lib/risk-construct.ts)."""
+    t = _text(r.get('ticker') or r.get('symbol')).upper().split(':')[-1]
+    return bool(re.fullmatch(r'[A-Z]+-P[A-Z]+', t) or re.fullmatch(r'[A-Z]+\.PR[A-Z]', t) or re.search(r'preferred|preference', _text(r.get('security_type')), re.I))
+
+
 def build(universe, shards, risk, annuals, now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     rows = {r.get('listing_symbol'): r for r in universe.get('kandidaten', []) if r.get('listing_symbol')}
@@ -362,7 +371,10 @@ def build(universe, shards, risk, annuals, now=None):
         x.quote, x.fx = quote or {}, fx or {}
         prof = per_profile[x.profile]
         prof['listings'] += 1
+        out_of_scope = preferred_instrument({**u, 'ticker': u.get('ticker') or symbol})
         for k in metrics(x):
+            if out_of_scope:
+                k = {**k, 'status': 'by_design', 'reason': PREFERRED_REASON}
             blk = prof['blocks'][k['block']]
             blk[k['status']] += k['weight']
             pm = per_metric[(x.profile, k['block'], k['name'])]

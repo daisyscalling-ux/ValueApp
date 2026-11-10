@@ -48,6 +48,8 @@ Kurshistorien (10.11.2026): Von 76 Notierungen ohne verwertbare Historie sind 57
 
 Notierungsidentität in der App (10.11.2026): `listingMatches` der App erkannte nordische Aktiengattungen (`STO:VOLV_B`) und LSE-Symbole mit Punkt (`LSE:RR.`) nicht. Dadurch fehlten 48 Notierungen in der ganzen App, auch als Peers. Korrektur in valueapp-cf; die Messung nutzt jetzt direkt `value_radar/listing_identity.py`, das mit der App identisch ist (1.411 Paare geprüft). Wirkung auf denselben Daten: gesamt 76,3 → 76,7, Peer-Stress-Lücken bei Unternehmen 144 → 102, Reverse-DCF-Lücke 90 → 56.
 
+Vorzugsaktien (10.11.2026, Nutzerentscheidung): 14 Vorzugsaktien US-amerikanischer Banken (BAC-PB, JPM-PD, WFC-PC, GS-PA, MS-PA, USB-PH …) liegen bewusst außerhalb des Modells, weil es für Stammaktien gebaut ist. Die App zeigt einen Hinweis statt eines Scores. Die Messung führt ihre Kennzahlen als `by_design` (Grund „Vorzugsaktie: Risikomodell gilt für Stammaktien“) statt als Lücke. Die Erkennung (`preferred_instrument`) entspricht `preferredInstrument` der App.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

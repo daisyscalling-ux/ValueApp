@@ -1,0 +1,31 @@
+{
+ "schema": 1,
+ "method": "reviewed-isin-profile-v1",
+ "note": "Geprüfte Korrektur des Risikoprofils, wenn die Branchenangabe des Datenanbieters einen Versicherungskonzern als Makler/Dienstleister führt. Gilt nur für genau diese ISIN, nur solange der Anbieter noch dieselbe Branche meldet und nur bis review_expires.",
+ "entries": [
+  {
+   "isin": "IT0000062072",
+   "issuer": "Assicurazioni Generali S.p.A.",
+   "vendorIndustry": "Insurance brokers/Services",
+   "profile": "insurer",
+   "evidence": "SFCR 2025 der Generali-Gruppe: Muttergesellschaft im italienischen Register der Versicherungsgruppen unter Nr. 026, Aufsicht IVASS; Gruppen-Solvenzquote nach Solvency II.",
+   "evidenceUrl": "https://www.generali.com/doc/jcr:19369502-b22b-45d2-ba6d-19fa6d1659a7/SFCR%20YE25%20ENG.pdf/lang:en/SFCR_YE25_ENG.pdf",
+   "evidencePages": "35, 113",
+   "evidenceSha256": "8432c16fd5b501c76d357cbe2404b8d22908e515a4723e5718fa51de316ffd5e",
+   "reviewed_on": "2026-11-10",
+   "review_expires": "2027-05-10"
+  },
+  {
+   "isin": "DK0060636678",
+   "issuer": "Tryg A/S",
+   "vendorIndustry": "Insurance brokers/Services",
+   "profile": "insurer",
+   "evidence": "Zwischenbericht Q1-Q3 2026: \"Tryg is a non-life insurer\"; Solvenzquote 203 % zum 30.09.2026.",
+   "evidenceUrl": "https://via.ritzau.dk/files/90446/15217238/568086/en",
+   "evidencePages": "27",
+   "evidenceSha256": "88c5afccbbbecb43096acfd3d6a872b2e56975be3d270ba22178b44115edcb05",
+   "reviewed_on": "2026-11-10",
+   "review_expires": "2027-05-10"
+  }
+ ]
+}

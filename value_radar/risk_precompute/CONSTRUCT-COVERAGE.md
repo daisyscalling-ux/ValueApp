@@ -52,6 +52,10 @@ Vorzugsaktien (10.11.2026, Nutzerentscheidung): 14 Vorzugsaktien US-amerikanisch
 
 EBITDA-Marge gegenüber Peers (10.11.2026): Die Messung zählte Firmen derselben Branche mit Marge. Die App (`competitionMetrics`) vergleicht dagegen mit den ausgewählten Peers, bis zu 8 und seit den Branchengruppen auch aus verwandten Branchen. Die Messung zählt jetzt genau diese Peers mit EBITDA-Marge, ohne die eigene Notierung. Wirkung auf denselben Daten: Lücken 90 → 29, Unternehmen 82,5 → 82,8.
 
+## Profilkorrektur für falsch eingeordnete Versicherer (10.11.2026)
+
+Generali und Tryg führt der Datenanbieter als „Insurance brokers/Services“. Eine geprüfte Korrektur je ISIN (`reviewed-profile-overrides.json`, mit Beleg, SHA-256 und Ablauf) ordnet sie dem Profil `insurer` zu. Sie gilt nur, solange der Anbieter dieselbe Branche meldet und die Prüfung gültig ist. Probelauf: Versicherer 54 → 57, Solvenzquote vorhanden 17 → 19, offen 37 → 38 (Tryg ohne zugelassenes System), Unternehmen 1.053 → 1.050, Gesamtabdeckung 78,3 → 78,2 % (Tryg-Lücke jetzt sichtbar). Details in `INSURER-SOURCES.md`.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

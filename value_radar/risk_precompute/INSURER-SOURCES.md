@@ -66,3 +66,24 @@ Die Solvenzquote gilt für den Versicherungskonzern. Ein Depositary Receipt mit 
 Ergebnis: OTC:ALIZY (Allianz), OTC:AXAHY (AXA) und OTC:MURGY (Munich Re) haben jetzt eine Solvenzquote. Damit sind 17 statt 14 Versicherer-Notierungen abgedeckt.
 
 Weiter offen: ASR Nederland und PZU haben öffentliche Berichte ohne Bot-Schutz, aber ohne direkte PDF-Links. Sie kommen in die Quartalsaufgabe.
+
+## Generali und Profilkorrektur (10. November 2026)
+
+**Generali (MIL:G, OTC:ARZGY):** Neu im Register mit zwei Beobachtungen.
+- Halbjahresbericht 2026 (PDF-Seiten 8 und 16, Fußnote 3; SHA-256 `047cf4e5…2556`): vorläufige Gruppenquote 216 % zum 30.06.2026, netto nach anteiliger Dividendenabgrenzung. Beträge werden nicht genannt. Diese Beobachtung ist der Hauptwert und erfüllt nur `jurisdiction_and_regulatory_scope`.
+- SFCR 2025 (Seite 113; SHA-256 `8432c16f…ffd5e`): 52.551 Mio. € Gruppeneigenmittel, 24.004 Mio. € SCR, 218,9 %. Sie gilt, sobald der Halbjahreswert älter als 210 Tage ist.
+
+Aufsicht IVASS und Register der Versicherungsgruppen Nr. 026: SFCR Seite 35. OTC:ARZGY übernimmt den Eintrag als Depositary Receipt (`depositaryOf`).
+
+**Profilkorrektur:** Der Datenanbieter führt Generali und Tryg als „Insurance brokers/Services“, deshalb liefen beide bisher im Profil `corporate`. `reviewed-profile-overrides.json` setzt für genau diese ISINs das Profil `insurer`, mit Beleg-URL, Seite, SHA-256 und Prüfdatum. Die Korrektur gilt nur unter drei Bedingungen:
+- Der Anbieter meldet weiterhin dieselbe Branche.
+- Die Prüfung ist nicht abgelaufen (`review_expires` 10.05.2027).
+- Das Ziel ist ein Finanzprofil.
+
+Die Ausgabe trägt `profileSource`. Die App prüft die Angaben erneut und zeigt einen Hinweis; bei ungültiger Korrektur bleibt das Profil offen. Echte Makler (Aon, Marsh, Gallagher) bleiben `corporate`.
+
+**Verzerrung:** Als `corporate` wurden Versicherer mit FCFF-Marge und Nettoschulden gemessen. Diese Kennzahlen sind für Versicherer nicht aussagekräftig und können in beide Richtungen täuschen. Die Korrektur kann ein Unternehmen nur in ein Finanzprofil mit eigenen, strengeren Nachweisen verschieben, nie hinaus.
+
+**Wirkung im Probelauf:** Versicherer-Notierungen 54 → 57. Solvenzquote vorhanden 17 → 19, offen 37 → 38: Tryg ist jetzt korrekt als Versicherer gezählt, aber Dänemark ist noch kein zugelassenes Solvenzsystem. Unternehmen 1.053 → 1.050. Gesamtabdeckung 78,3 → 78,2 %, weil die Lücke bei Tryg jetzt sichtbar ist.
+
+Offen: Tryg (Solvency II, Finanstilsynet DK, DKK) bräuchte die Freigabe von DK/DKK in `INSURER_REGIMES`, in App und Pipeline gleichzeitig.

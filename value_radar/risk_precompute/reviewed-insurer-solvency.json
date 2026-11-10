@@ -532,6 +532,55 @@
           "basisNote": "Ohne Übergangsmaßnahmen; vorgeschlagene Dividende und ausstehende Rückkäufe abgezogen. Eigenmittel und SCR dieser Variante hier nicht separat berichtet."
         }
       ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "MIL:G",
+        "ticker": "G.MI",
+        "isin": "IT0000062072",
+        "currency": "EUR",
+        "name": "Assicurazioni Generali S.p.A.",
+        "name_full": "Assicurazioni Generali S.p.A.",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Generali Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "IT",
+      "regulator": "IVASS",
+      "scopeSourceUrl": "https://www.generali.com/doc/jcr:19369502-b22b-45d2-ba6d-19fa6d1659a7/SFCR%20YE25%20ENG.pdf/lang:en/SFCR_YE25_ENG.pdf",
+      "scopeSourcePages": "35, 113",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "net_of_pro_rata_dividend_accrual",
+          "ratio": 2.16,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.generali.com/doc/jcr:8008ad07-5dcc-4b02-b0ac-2643cddc6d52/Half-Yearly%20Consolidated%20Financial%20Report%202026_Generali%20Group.pdf/lang:en/Half-Yearly_Consolidated_Financial_Report_2026_Generali_Group.pdf",
+          "sourcePages": "PDF 8 und 16 (gedruckt 6 und 14), Fußnote 3; Definition PDF 151",
+          "sourceSha256": "047cf4e51452e9deaec8d8e6c688d937ecf5360aaf87ec478808b71a1ba72556",
+          "basisNote": "Halbjahresbericht 2026: vorläufige Gruppen-Solvenzquote 216 % (Eigenmittel / Gruppen-SCR nach Solvency II), netto nach anteiliger Dividendenabgrenzung, inklusive des vollen Aktienrückkaufs über 500 Mio. €. Beträge nicht berichtet."
+        },
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "sfcr_group_after_foreseeable_dividend",
+          "ratio": 2.189,
+          "eligibleOwnFunds": 52551000000,
+          "solvencyRequirement": 24004000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.generali.com/doc/jcr:19369502-b22b-45d2-ba6d-19fa6d1659a7/SFCR%20YE25%20ENG.pdf/lang:en/SFCR_YE25_ENG.pdf",
+          "sourcePages": "113 (Tabelle Solvency ratio); Aufsicht IVASS, Register der Versicherungsgruppen Nr. 026: S. 35",
+          "sourceSha256": "8432c16fd5b501c76d357cbe2404b8d22908e515a4723e5718fa51de316ffd5e",
+          "basisNote": "SFCR 2025: Gruppeneigenmittel zur Deckung der SCR 52.551 Mio. €, SCR 24.004 Mio. €, Quote 218,9 % nach vorhersehbarer Dividende und Aktienrückkauf; von KPMG geprüft."
+        }
+      ]
     }
   ]
 }

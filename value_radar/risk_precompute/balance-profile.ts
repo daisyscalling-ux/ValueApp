@@ -1,3 +1,4 @@
+import overrides from './reviewed-profile-overrides.json';
 type Row=Record<string,any>;
 const finite=(v:any):v is number=>typeof v==='number'&&Number.isFinite(v);
 const DAY=86400000;
@@ -5,8 +6,20 @@ const recent=(v:any,now:number,days:number)=>typeof v==='string'&&Number.isFinit
 const banks=new Set(['major banks','regional banks','savings banks','banks - diversified','banks - regional']);
 const insurers=new Set(['multi-line insurance','life/health insurance','property/casualty insurance','insurance - diversified','insurance - life','insurance - property & casualty','reinsurance','insurance - reinsurance']);
 const specialist=new Set(['investment banks/brokers','capital markets','financial conglomerates','finance/rental/leasing','investment trusts','investment managers','asset management','asset management & custody banks']);
+// Gepruefte Profilkorrekturen je ISIN (reviewed-profile-overrides.json): nur bei unveraenderter Anbieterbranche und gueltiger Pruefung.
+export function profileOverride(row:Row,now:number,registry:Row=overrides){
+ const today=new Date(now).toISOString().slice(0,10),date=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
+ if(registry?.schema!==1||registry.method!=='reviewed-isin-profile-v1'||!Array.isArray(registry.entries)||typeof row.isin!=='string')return null;
+ const hits=registry.entries.filter((e:Row)=>e?.isin===row.isin);
+ const e=hits.length===1?hits[0]:null;
+ if(!e||!['bank','insurer','specialist_financial'].includes(e.profile)||String(e.vendorIndustry||'').trim().toLowerCase()!==String(row.industry||'').trim().toLowerCase()
+  ||!date(e.reviewed_on)||!date(e.review_expires)||e.reviewed_on>today||e.review_expires<today||!/^https:\/\//.test(e.evidenceUrl||'')||!/^[0-9a-f]{64}$/.test(e.evidenceSha256||''))return null;
+ return {kind:'reviewed_isin_override',profile:e.profile,vendorIndustry:row.industry,issuer:e.issuer,evidence:e.evidence,evidenceUrl:e.evidenceUrl,evidencePages:e.evidencePages,
+  evidenceSha256:e.evidenceSha256,reviewedOn:e.reviewed_on,reviewExpires:e.review_expires};
+}
 export function balanceProfile(row:Row,now:number){
  if(!row.industry||!recent(row.metadata_asof,now,90))return 'unclassified';
+ const fixed=profileOverride(row,now);if(fixed)return fixed.profile;
  const industry=String(row.industry).trim().toLowerCase();
  return banks.has(industry)?'bank':insurers.has(industry)?'insurer':specialist.has(industry)?'specialist_financial':'corporate';
 }
@@ -69,7 +82,8 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
  const expires=expirations.length?Math.min(...expirations):null;
  const refreshDue=expires!==null&&now>=expires-2*DAY;
  const state=complete?(applicable?'available':'context_only'):Object.values(metrics).some((m:any)=>m.state==='available')?'partial':'missing';
- return {state,reason:reasons.join(',')||(applicable?'annual_book_ratios':'sector_specific_assessment_pending'),profile,
+ const profileSource=profile!=='unclassified'?profileOverride(row,now):null;
+ return {state,reason:reasons.join(',')||(applicable?'annual_book_ratios':'sector_specific_assessment_pending'),profile,...(profileSource?{profileSource}:{}),
   retrievedAt:retrievedAt||null,expiresAt:expires===null?null:new Date(expires).toISOString(),refreshDue,refreshLeadDays:2,
   period:a?.end||null,currency:a?.currency||null,publicationDateConfirmed:!!a?.published_at&&recent(a.published_at,now,700),
   source:a?.source||null,sourceUrl:a?.source_url||null,

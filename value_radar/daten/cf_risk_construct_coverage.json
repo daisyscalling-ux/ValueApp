@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-10T13:36:38.087819+00:00",
+ "generatedAt": "2026-11-10T13:55:14.005600+00:00",
  "listings": 1330,
  "overallAverageWeight": {
-  "filled": 76.1,
-  "missing": 7.1,
+  "filled": 76.3,
+  "missing": 7.0,
   "app_only": 14.0,
   "by_design": 2.8
  },
@@ -14,19 +14,19 @@
   "bank": {
    "listings": 144,
    "averageWeight": {
-    "filled": 54.6,
-    "missing": 25.4,
+    "filled": 55.1,
+    "missing": 24.9,
     "app_only": 10.0,
     "by_design": 10.0
    },
    "blocks": {
     "Kursrisiko": {
      "weight": 30,
-     "filled": 23.33,
-     "missing": 6.67,
+     "filled": 23.75,
+     "missing": 6.25,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.778
+     "filledShareOfMeasurable": 0.792
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
@@ -65,19 +65,19 @@
   "corporate": {
    "listings": 1053,
    "averageWeight": {
-    "filled": 80.9,
-    "missing": 4.1,
+    "filled": 81.0,
+    "missing": 4.0,
     "app_only": 15.0,
     "by_design": 0.0
    },
    "blocks": {
     "Kursrisiko": {
      "weight": 30,
-     "filled": 28.99,
-     "missing": 1.01,
+     "filled": 29.05,
+     "missing": 0.95,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.966
+     "filledShareOfMeasurable": 0.968
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
@@ -309,12 +309,12 @@
    "block": "Kursrisiko",
    "metric": "Expected Shortfall",
    "weight": 15,
-   "missingListings": 35,
-   "filledListings": 1018,
-   "weightedGap": 525,
+   "missingListings": 33,
+   "filledListings": 1020,
+   "weightedGap": 495,
    "reasons": {
-    "Keine Kurshistorie": 18,
-    "Kurshistorie fehlerhaft": 17
+    "Kurshistorie fehlerhaft": 17,
+    "Keine Kurshistorie": 16
    }
   },
   {
@@ -322,11 +322,11 @@
    "block": "Kursrisiko",
    "metric": "Expected Shortfall",
    "weight": 15,
-   "missingListings": 32,
-   "filledListings": 112,
-   "weightedGap": 480,
+   "missingListings": 30,
+   "filledListings": 114,
+   "weightedGap": 450,
    "reasons": {
-    "Keine Kurshistorie": 28,
+    "Keine Kurshistorie": 26,
     "Kurshistorie fehlerhaft": 4
    }
   },
@@ -361,12 +361,12 @@
    "block": "Kursrisiko",
    "metric": "Volatilität",
    "weight": 10,
-   "missingListings": 36,
-   "filledListings": 1017,
-   "weightedGap": 360,
+   "missingListings": 34,
+   "filledListings": 1019,
+   "weightedGap": 340,
    "reasons": {
-    "Keine Kurshistorie": 18,
     "Kurshistorie fehlerhaft": 17,
+    "Keine Kurshistorie": 16,
     "Kennzahl in der Vorberechnung noch nicht vorhanden": 1
    }
   },
@@ -375,11 +375,11 @@
    "block": "Kursrisiko",
    "metric": "Volatilität",
    "weight": 10,
-   "missingListings": 32,
-   "filledListings": 112,
-   "weightedGap": 320,
+   "missingListings": 30,
+   "filledListings": 114,
+   "weightedGap": 300,
    "reasons": {
-    "Keine Kurshistorie": 28,
+    "Keine Kurshistorie": 26,
     "Kurshistorie fehlerhaft": 4
    }
   },
@@ -400,12 +400,12 @@
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
    "weight": 5,
-   "missingListings": 35,
-   "filledListings": 1018,
-   "weightedGap": 175,
+   "missingListings": 33,
+   "filledListings": 1020,
+   "weightedGap": 165,
    "reasons": {
-    "Keine Kurshistorie": 18,
-    "Kurshistorie fehlerhaft": 17
+    "Kurshistorie fehlerhaft": 17,
+    "Keine Kurshistorie": 16
    }
   },
   {
@@ -413,11 +413,11 @@
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
    "weight": 5,
-   "missingListings": 32,
-   "filledListings": 112,
-   "weightedGap": 160,
+   "missingListings": 30,
+   "filledListings": 114,
+   "weightedGap": 150,
    "reasons": {
-    "Keine Kurshistorie": 28,
+    "Keine Kurshistorie": 26,
     "Kurshistorie fehlerhaft": 4
    }
   },

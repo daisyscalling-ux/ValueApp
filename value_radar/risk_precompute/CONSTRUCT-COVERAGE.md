@@ -40,6 +40,8 @@ Größte Lücken (Gewicht × fehlende Notierungen):
 
 Korrektur gegenüber Methode v1: Dort galt Peer-Stress bei 736 Unternehmen als fehlend, weil der strengere vorberechnete Sektorvergleich (fünf Firmen derselben Währung) als Näherung diente. Die App rechnet den Peer-Stress aber aus den eigenen Kurshistorien der Peers ohne Währungsbeschränkung. Tatsächlich fehlt er nur bei 141 Unternehmen.
 
+FCFF-Marge: Die App liest den berichteten FCFF und den Umsatz (TTM) aus der ROIC-Bewertungszeile. Die Messung nutzte bisher eine Näherung aus dem Ersatzabschluss (operativer Cashflow, Investitionen). Seit dem Exportfeld `fcff_margin` im Universum (aus derselben ROIC-Zeile) misst sie genau das, was die App sieht. Bis zum ersten Universumsexport mit diesem Feld gilt weiter die Näherung.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

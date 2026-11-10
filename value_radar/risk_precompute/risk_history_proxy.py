@@ -7,6 +7,9 @@ dem Symbol der Notierung abgelegt. Der Eintrag traegt historySource und einen Hi
 zeigt ihn unter "Berechnung und Datenqualitaet". Wechselkursschwankungen zur Handelswaehrung der
 Notierung sind nicht enthalten. Echte eigene Historien werden nie ueberschrieben; export-risk.ts
 versucht die eigene Historie trotzdem jedes Mal neu.
+
+Steht keine Heimatnotierung im Universum, kommen Heimatnotierungen aus cf_risk.json/homeListings in Frage
+(export-home-histories.ts: genau eine Boersennotierung mit derselben ISIN laut ROIC-Ticker-Suche).
 """
 import copy
 import datetime as dt
@@ -34,6 +37,7 @@ def complete(rec, now):
 def build(risk, universe, now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     stocks = risk.setdefault('stocks', {})
+    extra = risk.get('homeListings') or {}
     rows = [r for r in universe.get('kandidaten', []) if r.get('listing_symbol') and r.get('isin')]
     by_isin = defaultdict(list)
     for r in rows:
@@ -45,6 +49,13 @@ def build(risk, universe, now=None):
         if own and not own.get('historySource') and complete(own, now):
             continue
         homes = [h for h in by_isin[r['isin']] if h['listing_symbol'] != sym and not h['listing_symbol'].startswith('OTC:') and complete(stocks.get(h['listing_symbol']), now)]
+        sources = {h['listing_symbol']: stocks[h['listing_symbol']] for h in homes}
+        if not homes:
+            # Heimatnotierung ausserhalb des Universums (export-home-histories.ts: gleiche ISIN ueber die ROIC-Suche).
+            for hs, rec in sorted(extra.items()):
+                if rec.get('isin') == r['isin'] and not hs.upper().startswith('OTC:') and complete(rec, now):
+                    homes.append({'listing_symbol': hs, 'security_type': 'stock'})
+                    sources[hs] = rec
         if not homes:
             if own and own.get('historySource'):
                 del stocks[sym]   # Heimathistorie nicht mehr verwertbar: Ersatz entfernen
@@ -53,9 +64,11 @@ def build(risk, universe, now=None):
         if own and not own.get('historySource') and own.get('statistics', {}).get('observations', 0) >= MIN_OBSERVATIONS and not own['statistics'].get('error'):
             continue   # eigene vollstaendige, nur nicht frische Historie bleibt Sache des Exports
         # Stammaktie vor Depositary Receipt, dann die laengere Historie.
-        home = max(homes, key=lambda h: (h.get('security_type') == 'stock', stocks[h['listing_symbol']]['statistics']['observations']))
-        src = stocks[home['listing_symbol']]
+        home = max(homes, key=lambda h: (h.get('security_type') == 'stock', sources[h['listing_symbol']]['statistics']['observations']))
+        src = sources[home['listing_symbol']]
         rec = copy.deepcopy(src)
+        for k in ('isin', 'homeOf', 'resolvedAt'):
+            rec.pop(k, None)
         rec['symbol'] = sym
         rec['historySource'] = {'kind': 'same_isin_home_listing', 'symbol': home['listing_symbol'], 'isin': r['isin'], 'currency': src.get('currency'),
                                 'reason': 'own_history_missing' if not own else ('own_history_error' if own.get('statistics', {}).get('error') else 'own_history_short'),

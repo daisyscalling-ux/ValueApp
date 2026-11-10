@@ -58,3 +58,11 @@ Währungen: EUR, GBP, NOK, PLN. Nicht vergleichbar und deshalb ausgeschlossen: S
 - Beazley, St. James's Place, Standard Life: Quote im Halbjahresbericht nicht gefunden.
 - PZU: Die jüngste veröffentlichte Gruppenquote ist vom 31.03.2026 und damit älter als 210 Tage.
 - Schweizer Versicherer: Die Freigabe ihrer Websites wurde abgelehnt; SST ist ohnehin ein eigenes System.
+
+## Depositary Receipts (10. November 2026)
+
+Die Solvenzquote gilt für den Versicherungskonzern. Ein Depositary Receipt mit derselben ISIN übernimmt den Eintrag einer im selben Lauf geprüften Stammaktie (`depositaryOf`) und behält dabei seine eigene Identität. Das entspricht dem Vorgehen bei Banken. Zeilen mit eigenem Registry-Eintrag, auch abgelehnte, werden nie über diesen Weg übernommen.
+
+Ergebnis: OTC:ALIZY (Allianz), OTC:AXAHY (AXA) und OTC:MURGY (Munich Re) haben jetzt eine Solvenzquote. Damit sind 17 statt 14 Versicherer-Notierungen abgedeckt.
+
+Weiter offen: ASR Nederland und PZU haben öffentliche Berichte ohne Bot-Schutz, aber ohne direkte PDF-Links. Sie kommen in die Quartalsaufgabe.

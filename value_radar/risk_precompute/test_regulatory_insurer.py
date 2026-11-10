@@ -51,3 +51,19 @@ class InsurerTests(unittest.TestCase):
     regulatory_context.main()
    result=json.loads(Path(folder,'cf_regulatory_context.json').read_text(encoding='utf-8'))
    self.assertEqual(result['state'],'source_unavailable');self.assertEqual(len(result['insurers']['stocks']),14)
+
+class InsurerDepositaryTests(unittest.TestCase):
+ def test_dr_adopts_verified_ordinary_but_never_overrides_own_entry(self):
+  import copy,datetime as dt,json
+  from pathlib import Path
+  reg=json.loads(Path(__file__).with_name('reviewed-insurer-solvency.json').read_text(encoding='utf-8'))
+  e=next(x for x in reg['entries'] if x['inputIdentity']['listing_symbol']=='XETR:ALV')
+  now=dt.datetime(2026,11,10,tzinfo=dt.timezone.utc)
+  dr={**e['inputIdentity'],'listing_symbol':'OTC:ALIZY','ticker':'ALIZY','currency':'USD','security_type':'dr'}
+  out=build_insurers({'kandidaten':[dict(e['inputIdentity']),dr]},reg,now)
+  self.assertEqual(out['stocks']['OTC:ALIZY']['depositaryOf'],'XETR:ALV');self.assertEqual(out['stocks']['OTC:ALIZY']['inputIdentity']['security_type'],'dr')
+  self.assertNotIn('depositaryOf',out['stocks']['XETR:ALV'])
+  out=build_insurers({'kandidaten':[{**dr,'isin':'DE0008430026'},dict(e['inputIdentity'])]},reg,now)
+  self.assertNotIn('OTC:ALIZY',out['stocks'],'different ISIN: no adoption')
+  out=build_insurers({'kandidaten':[dr]},reg,now)
+  self.assertNotIn('OTC:ALIZY',out['stocks'],'no verified ordinary in the same run')

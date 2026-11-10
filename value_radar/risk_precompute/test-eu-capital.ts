@@ -37,6 +37,19 @@ test('inconsistent capital hierarchy is rejected; foreign codes and mismatched r
   capitalRequirement:{...record.capitalRequirement,comparisonPeriod:'2025-03-31'},creditQuality:{...record.creditQuality,lei:'X'.repeat(20)}}),row,true,now)!;
  assert.equal(r.metrics.leverage_ratio,undefined);assert.equal(r.capitalRequirement,null);assert.equal(r.creditQuality,null);
 });
+test('Pillar 3 KM1: full CET1 requirement and LCR close the bank-specific requirements',()=>{
+ const src={sourceUrl:'https://errp.eba.europa.eu/public-documents/CODIS/input/X.zip',sourceFileSha256:'d'.repeat(64)};
+ const km1Req={state:'available',method:'eba-p3dh-km1-cet1-requirement-v1',unit:'fraction',value:.0992,cet1Ratio:.13,comparisonPeriod:'2026-06-30',reviewExpires:'2027-05-08',headroomPercentagePoints:99,...src};
+ const lcr={state:'available',method:'eba-p3dh-km1-lcr-v1',unit:'fraction',reportedRatio:1.376,nsfr:1.198,period:'2026-06-30',...src};
+ const r=merge(base,row,archive({...record,capitalRequirement:km1Req,liquidity:lcr}),true,now);
+ assert.ok(Math.abs(r.bankCapital.capitalRequirement.headroomPercentagePoints-(.13-.0992)*100)<1e-9,'headroom from KM1 CET1 of the same date, stored value ignored');
+ assert.equal(r.bankCapital.liquidity.reportedRatio,1.376);
+ assert.deepEqual(r.sectorAssessment.fulfilledRequirements,['regulatory_capital_CET1','asset_quality_nonperforming_loans','institution_specific_capital_requirement','liquidity_LCR_or_local_equivalent']);
+ for(const bad of [{comparisonPeriod:'2025-12-31'},{sourceUrl:'https://example.org/x.zip'},{sourceFileSha256:'x'},{reviewExpires:'2026-01-01'},{value:.4},{cet1Ratio:2}])
+  assert.equal(verifiedEuCapital(archive({...record,capitalRequirement:{...km1Req,...bad}}),row,true,now)!.capitalRequirement,null,JSON.stringify(bad));
+ for(const bad of [{period:'2025-12-31'},{reportedRatio:20},{sourceUrl:'https://example.org/x.zip'},{method:'intl-lcr-v1'}])
+  assert.equal(verifiedEuCapital(archive({...record,liquidity:{...lcr,...bad}}),row,true,now)!.liquidity,null,JSON.stringify(bad));
+});
 test('US holdings keep precedence and non-banks are untouched',()=>{
  assert.equal(merge({...base,profile:'corporate'},row,archive(),true,now).bankCapital,undefined);
  const us={state:'available',scope:'listed_consolidated_holding',inputIdentity:row,period:'2026-06-30',sourceImportedAt:'2026-10-19T12:00:00Z',identityReviewExpires:'2027-04-18',sourceFileSha256:'a'.repeat(64),metrics:{cet1_ratio:{state:'available',unit:'fraction',sourceField:'BHCAP793',value:.14}}};

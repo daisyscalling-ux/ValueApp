@@ -38,3 +38,27 @@ Ergebnis 09.11.2026: 33 Banken, alle mit NPL, 24 mit Teilanforderung, nichts abg
 Die EBA veröffentlicht die nächste Transparency Exercise üblicherweise im Dezember. Dann die neuen Dateien und die neue P2R-Tabelle in einen Ordner laden, in `import_eu_banks.py` `EBA_BASE` und `EXERCISE` anpassen, die Zuordnung prüfen (neue Institute, LEI-Änderungen) und so ausführen:
 
     python value_radar/regulatory_export/import_eu_banks.py ORDNER value_radar/daten/regulatory/eu-bank-capital.json
+
+## Säule 3 aus dem EBA Pillar 3 Data Hub (10. November 2026)
+
+Seit Januar 2026 veröffentlicht die EBA die Säule-3-Offenlegung großer EU-Institute zentral und unverändert, als PDF und als XBRL-CSV. Die Originaldateien liegen öffentlich unter `https://errp.eba.europa.eu/public-documents/<Modul>/input/<LEI>.<CON|IND>_<Land>_PILLAR3…_<Stichtag>_<Zeitstempel>.zip`. Für die Bewertung verwenden wir die Tabelle **EU KM1** (Modul CODIS, Taxonomie 4.2, Tabelle K_61.00, Spalte T).
+
+**Ablauf (quartalsweise, von Hand):**
+1. `node p3dh_collect.js p3dh-submissions.json` liest die öffentliche Einreichungsliste im EDAP-Portal (Power BI, ohne Anmeldung) und speichert die Adressen der CODIS-Einreichungen. Beim ersten Lauf waren es 1.999 von 7.936 Einreichungen.
+2. `python import_eu_pillar3.py p3dh-submissions.json ../daten/regulatory/eu-pillar3-km1.json` lädt je LEI aus `eu-bank-map.json` die jüngste Einreichung (konsolidiert vor Einzelinstitut, bei HTTP 404 die nächstältere) und prüft sie:
+   - Taxonomie 4.2
+   - `entityID` = LEI und Konsolidierungskreis
+   - `refPeriod` = Stichtag im Dateinamen, höchstens 270 Tage alt
+   - Kapitalkette CET1 ≤ Tier 1 ≤ Gesamtkapital
+
+   Je Bank werden Prüfsumme und Quelladresse gespeichert.
+3. `regulatory_context.py` hängt LCR (`eba-p3dh-km1-lcr-v1`) und vollständige CET1-Anforderung (`eba-p3dh-km1-cet1-requirement-v1`) an. Die bisherige EZB-Teilanforderung bleibt als Rückfall. `regulatory-context.ts` und die App (`src/lib/eu-bank.ts`) prüfen erneut: Methode, Alter, Prüfsumme, Quellhost und Wertebereich, den Puffer rechnen sie selbst nach.
+
+**CET1-Anforderung** = 4,5 % + CET1-Anteil der SREP-Zusatzanforderung (EU 7e) + kombinierte Kapitalpufferanforderung (Zeile 11). Sie wird übernommen, wenn die Gesamtanforderung (EU 11a) auf 0,05 Prozentpunkte der SREP-Gesamtanforderung (EU 7g) plus kombinierter Pufferanforderung entspricht. Fehlt EU 7e und beträgt die SREP-Gesamtanforderung genau 8 % (keine Säule-2-Zusatzanforderung), ist der CET1-Anteil 0. Das ist so gekennzeichnet (Pekao, PKO). Der Puffer wird mit der CET1-Quote desselben KM1-Stichtags berechnet.
+
+**Erster Import:** 33 von 33 Banken, Stichtage 31.03.–30.09.2026, alle mit LCR und NSFR. 32 haben eine vollständige Anforderung. Offen bleibt BBVA, weil die Werte auf ganze Prozent gerundet sind (OCR 13 % ≠ SREP 10 % + Puffer 4 %). Bei KBC war die neueste Einreichung nicht abrufbar (404), verwendet wird der 31.03.2026.
+
+**Probelauf** (Kette auf einer Kopie von main, gegen main ohne die Änderung):
+- Bank-LCR-Lücken 93 → 50
+- CET1-Puffer-Lücken 56 → 47
+- Banken 55,2 → 58,0, gesamt 77,6 → 77,9

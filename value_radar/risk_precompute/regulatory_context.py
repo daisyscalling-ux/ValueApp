@@ -68,7 +68,30 @@ def adopt_depositaries(stocks,rejected,deferred,group):
   stocks[s]={**stocks[base[0]],'inputIdentity':{k:row.get(k) for k in FIELDS},'depositaryOf':base[0],
    'limitations':[*stocks[base[0]].get('limitations',[]),'Depositary receipt: group ratios of the verified ordinary share '+base[0]+' of the same group.']}
 EU_ITEMS={'cet1_ratio':'2520140','tier1_ratio':'2520141','total_capital_ratio':'2520142','leverage_ratio':'2520905'}
-def build_eu(universe,capital,mapping,now):
+KM1_MAX_AGE_DAYS=270
+def _km1_bank(km1,lei,now):
+ """Gepruefte EU-KM1-Werte (EBA Pillar 3 Data Hub, import_eu_pillar3.py) fuer eine LEI, hoechstens 270 Tage alt."""
+ if not isinstance(km1,dict) or km1.get('schema')!=1 or km1.get('method')!='eba-p3dh-km1-v1':return None
+ b=(km1.get('banks') or {}).get(lei)
+ try:age=(now.date()-dt.date.fromisoformat(str((b or {}).get('period')))).days
+ except ValueError:return None
+ if not b or not 0<=age<=KM1_MAX_AGE_DAYS or not re.fullmatch('[0-9a-f]{64}',str(b.get('sourceFileSha256',''))) or not str(b.get('sourceUrl','')).startswith('https://errp.eba.europa.eu/public-documents/'):return None
+ return b
+def km1_liquidity(km1,lei,now):
+ b=_km1_bank(km1,lei,now)
+ if not b or not isinstance(b.get('lcr'),(int,float)) or not 0<b['lcr']<10:return None
+ return {'state':'available','method':'eba-p3dh-km1-lcr-v1','reportedRatio':b['lcr'],'nsfr':b.get('nsfr'),'period':b['period'],'unit':'fraction',
+         'sourceUrl':b['sourceUrl'],'sourceFileSha256':b['sourceFileSha256'],'definition':'EU KM1 Zeile 17: LCR (Durchschnitt), Saeule-3-Offenlegung im EBA Pillar 3 Data Hub','scoreContribution':0}
+def km1_requirement(km1,lei,now):
+ """Vollstaendige CET1-Anforderung (4,5 % + P2R-CET1 + kombinierte Puffer) mit der CET1-Quote desselben Stichtags."""
+ b=_km1_bank(km1,lei,now);q=(b or {}).get('cet1Requirement') or {}
+ cet1=((b or {}).get('metrics') or {}).get('cet1_ratio')
+ if not b or not isinstance(q.get('value'),(int,float)) or not 0<q['value']<.3 or not isinstance(cet1,(int,float)) or not 0<cet1<1:return None
+ return {'state':'available','method':'eba-p3dh-km1-cet1-requirement-v1','unit':'fraction','value':q['value'],'cet1Ratio':cet1,'comparisonPeriod':b['period'],
+         'headroomPercentagePoints':(cet1-q['value'])*100,'components':q.get('components'),'derivation':q.get('derivation'),'sourceUrl':b['sourceUrl'],
+         'sourceFileSha256':b['sourceFileSha256'],'reviewExpires':km1.get('mappingReviewExpires'),
+         'definition':'4,5 % CET1-Mindestquote + CET1-Anteil der SREP-Zusatzanforderung (EU KM1 EU 7e) + kombinierte Kapitalpufferanforderung (Zeile 11)','scoreContribution':0}
+def build_eu(universe,capital,mapping,now,km1=None):
  """EU/EWR-Banken: EBA-Kapital und -NPL je LEI, Teilanforderung aus EZB-P2R. Gleiche Identitaetsregeln wie bei US-Holdings."""
  stocks,rejected,deferred={},{},[]
  out={'schema':1,'source':'eba_transparency_ecb_p2r','method':capital.get('method'),'stocks':stocks,'rejected':rejected,'scoreContribution':0}
@@ -98,8 +121,8 @@ def build_eu(universe,capital,mapping,now):
   stocks[s]={'state':'available','scope':'eu_prudential_group','lei':lei,'holdingName':b['ebaName'],'country':b['country'],'inputIdentity':{k:row.get(k) for k in FIELDS},
    'period':b['period'],'exercise':capital.get('exercise'),'sourceImportedAt':capital['importedAt'],'sourceUrl':eba['tr_oth.csv']['url'],'sourceFileSha256':eba['tr_oth.csv']['sha256'],
    'identityReviewExpires':capital['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
-   'capitalRequirement':req,'liquidity':None,'creditQuality':credit,
-   'limitations':['EBA transparency data are published annually; the period can be up to 24 months old.','Partial CET1 requirement excludes countercyclical, systemic and O-SII/G-SII buffers.','No LCR in this source.']}
+   'capitalRequirement':km1_requirement(km1,lei,now) or req,'liquidity':km1_liquidity(km1,lei,now),'creditQuality':credit,
+   'limitations':['EBA transparency data are published annually; the period can be up to 24 months old.','Without Pillar 3 KM1: partial CET1 requirement excludes countercyclical, systemic and O-SII/G-SII buffers, and no LCR.']}
  adopt_depositaries(stocks,rejected,deferred,'lei')
  out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
@@ -139,7 +162,7 @@ def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}),liquidity_archive=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-liquidity.json',{}))
  result['insurers']=build_insurers(load(folder/'cf_universum.json',{}),load(Path(__file__).with_name('reviewed-insurer-solvency.json'),{}))
- result['euBanks']=build_eu(load(folder/'cf_universum.json',{}),load(folder/'regulatory/eu-bank-capital.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/eu-bank-map.json',{}),dt.datetime.now(dt.timezone.utc))
+ result['euBanks']=build_eu(load(folder/'cf_universum.json',{}),load(folder/'regulatory/eu-bank-capital.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/eu-bank-map.json',{}),dt.datetime.now(dt.timezone.utc),km1=load(folder/'regulatory/eu-pillar3-km1.json',{}))
  result['intlBanks']=build_intl(load(folder/'cf_universum.json',{}),load(folder/'regulatory/intl-bank-metrics.json',{}),dt.datetime.now(dt.timezone.utc))
  save(folder/'cf_regulatory_context.json',result);print(result.get('summary',{'state':result['state']}))
 if __name__=='__main__':main()

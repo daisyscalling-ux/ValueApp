@@ -31,7 +31,9 @@ export function verifiedEuCapital(archive:Row|undefined|null,row:Row,identityOK:
   ?{...q,headroomPercentagePoints:(cet1-q.value)*100}:null;
  const l=r.liquidity;
  const liquidity=l?.state==='available'&&l.method==='eba-p3dh-km1-lcr-v1'&&l.unit==='fraction'&&typeof l.reportedRatio==='number'&&l.reportedRatio>0&&l.reportedRatio<10&&dateOnly(l.period)&&fresh(l.period,now,270)&&p3dh(l)?l:null;
- const credit=c?.state==='available'&&c.method==='eba-npl-v1'&&c.unit==='fraction'&&c.period===r.period&&c.lei===r.lei&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&/^[0-9a-f]{64}$/.test(c.sourceFileSha256||'')?c:null;
+ // NPL aus EU CR1 (Pillar 3 Data Hub, FINDIS): eigener Stichtag <= 270 Tage, Hub-Quelle; sonst EBA-Transparenz-NPL desselben Stichtags.
+ const cr1=c?.state==='available'&&c.method==='eba-p3dh-cr1-npl-v1'&&c.unit==='fraction'&&c.lei===r.lei&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&dateOnly(c.period)&&fresh(c.period,now,270)&&p3dh(c)&&c.sourceUrl.includes('/public-documents/FINDIS/');
+ const credit=cr1||c?.state==='available'&&c.method==='eba-npl-v1'&&c.unit==='fraction'&&c.period===r.period&&c.lei===r.lei&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&/^[0-9a-f]{64}$/.test(c.sourceFileSha256||'')?c:null;
  return {...r,metrics,capitalRequirement:requirement,creditQuality:credit,liquidity};
 }
 // Banken ausserhalb EU/EWR/USA: veroeffentlichte Basel-Kennzahlen (APRA, spaeter KM1). Hoechstalter 270 Tage (Quartalsdaten).

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "reviewed_insurer_original_reports",
-  "reviewedOn": "2026-11-06",
+  "reviewedOn": "2026-11-10",
   "reviewExpires": "2027-02-01",
   "pointInTimeUsable": false,
   "entries": [
@@ -58,6 +58,440 @@
         "ticker": "MUV2.DE",
         "isin": "DE0008430026",
         "currency": "EUR",
+        "name": "Munchener Ruckversicherungs-Gesellschaft",
+        "name_full": "Munchener Ruckversicherungs-Gesellschaft AG",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Munich Re Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DE",
+      "regulator": "BaFin",
+      "scopeSourceUrl": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/SFCR-Munich-Re-Group-2025.pdf/_jcr_content/renditions/original./SFCR-Munich-Re-Group-2025.pdf",
+      "scopeSourcePages": "4",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "including_transitional_measures",
+          "ratio": 3.0,
+          "eligibleOwnFunds": 54660000000,
+          "solvencyRequirement": 18230000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/SFCR-Munich-Re-Group-2025.pdf/_jcr_content/renditions/original./SFCR-Munich-Re-Group-2025.pdf",
+          "sourcePages": "67, 69",
+          "basisNote": "Gesamte Gruppe einschließlich anderer Finanzsektoren und D&A. Mit Übergangsmaßnahmen; vorgeschlagene Dividende und ausstehende Rückkäufe abgezogen."
+        },
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "excluding_transitional_measures",
+          "ratio": 2.98,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/SFCR-Munich-Re-Group-2025.pdf/_jcr_content/renditions/original./SFCR-Munich-Re-Group-2025.pdf",
+          "sourcePages": "69",
+          "basisNote": "Ohne Übergangsmaßnahmen; vorgeschlagene Dividende und ausstehende Rückkäufe abgezogen. Eigenmittel und SCR dieser Variante hier nicht separat berichtet."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "HEL:SAMPO",
+        "ticker": "SAMPO.HE",
+        "isin": "FI4000552500",
+        "currency": "EUR",
+        "name": "Sampo Oyj",
+        "name_full": "Sampo Oyj",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Sampo Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "FI",
+      "regulator": "FIN-FSA",
+      "scopeSourceUrl": "https://www.sampo.com/globalassets/investors/quarterly-reporting/2026/q3/interim-statement_q3_2026.pdf",
+      "scopeSourcePages": "19",
+      "observations": [
+        {
+          "period": "2026-09-30",
+          "reportKind": "interim",
+          "basis": "net_of_distribution_accrual",
+          "ratio": 1.75,
+          "eligibleOwnFunds": 5794000000.0,
+          "solvencyRequirement": 3314000000.0,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.sampo.com/globalassets/investors/quarterly-reporting/2026/q3/interim-statement_q3_2026.pdf",
+          "sourcePages": "19",
+          "basisNote": "Interim statement Q3 2026, Group solvency: Solvency II ratio net of distribution accrual; own funds and SCR at the end of September 2026."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "EURONEXT:NN",
+        "ticker": "NN.AS",
+        "isin": "NL0010773842",
+        "currency": "EUR",
+        "name": "NN Group N.V.",
+        "name_full": "NN Group N.V.",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "NN Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "NL",
+      "regulator": "DNB",
+      "scopeSourceUrl": "https://www.nn-group.com/site/binaries/content/assets/nn-group/financial-results/2026/nn-group-financial-supplement-1h26.pdf",
+      "scopeSourcePages": "5, 13",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "partial_internal_model",
+          "ratio": 2.24,
+          "eligibleOwnFunds": 18580000000.0,
+          "solvencyRequirement": 8292000000.0,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.nn-group.com/site/binaries/content/assets/nn-group/financial-results/2026/nn-group-financial-supplement-1h26.pdf",
+          "sourcePages": "5",
+          "basisNote": "Financial supplement 1H26: eligible own funds (a) / SCR (b); partial internal model; NN Bank excluded from the group ratio from 1H26; not final until filed with the regulator."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "EURONEXT:CS",
+        "ticker": "CS.PA",
+        "isin": "FR0000120628",
+        "currency": "EUR",
+        "name": "AXA SA",
+        "name_full": "AXA SA",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "AXA Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "FR",
+      "regulator": "ACPR",
+      "scopeSourceUrl": "https://echanges.dila.gouv.fr/OPENDATA/AMF/ECO/2026/07/FCECO082856_20260731.pdf",
+      "scopeSourcePages": "23",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "group_regulatory_ratio",
+          "ratio": 2.18,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://echanges.dila.gouv.fr/OPENDATA/AMF/ECO/2026/07/FCECO082856_20260731.pdf",
+          "sourcePages": "23",
+          "basisNote": "Half Year 2026 Financial Report (AMF filing, English translation): Solvency II ratio 218 %; eligible own funds EUR 56.4 bn reported, SCR not reported separately, so the observation counts as ratio-only."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "OTC:AXAHF",
+        "ticker": "AXAHF",
+        "isin": "FR0000120628",
+        "currency": "USD",
+        "name": "AXA SA",
+        "name_full": "AXA SA",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "AXA Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "FR",
+      "regulator": "ACPR",
+      "scopeSourceUrl": "https://echanges.dila.gouv.fr/OPENDATA/AMF/ECO/2026/07/FCECO082856_20260731.pdf",
+      "scopeSourcePages": "23",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "group_regulatory_ratio",
+          "ratio": 2.18,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://echanges.dila.gouv.fr/OPENDATA/AMF/ECO/2026/07/FCECO082856_20260731.pdf",
+          "sourcePages": "23",
+          "basisNote": "Same group figure as EURONEXT:CS (ordinary shares traded OTC): Solvency II ratio 218 %, SCR not reported separately."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "XETR:TLX",
+        "ticker": "TLX.DE",
+        "isin": "DE000TLX1005",
+        "currency": "EUR",
+        "name": "Talanx AG",
+        "name_full": "Talanx AG",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "HDI Group (Talanx)",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DE",
+      "regulator": "BaFin",
+      "scopeSourceUrl": "https://www.talanx.com/media/files/investor-relations/pdf/ergebnisse/2026/q2/talanx_nr_6m2026.pdf",
+      "scopeSourcePages": "2",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "internal_model_without_transitional",
+          "ratio": 2.46,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.talanx.com/media/files/investor-relations/pdf/ergebnisse/2026/q2/talanx_nr_6m2026.pdf",
+          "sourcePages": "2",
+          "basisNote": "Press release 6M 2026: Solvency 2 ratio 246 % at 30 June 2026 for HDI Group as the regulated entity, without transitional measures; amounts not reported in the release."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "LSE:AV.",
+        "ticker": "AV.L",
+        "isin": "GB00BPQY8M80",
+        "currency": "GBP",
+        "name": "Aviva plc",
+        "name_full": "Aviva plc",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Aviva Group",
+      "scope": "insurance_group",
+      "framework": "Solvency UK",
+      "jurisdiction": "GB",
+      "regulator": "PRA",
+      "scopeSourceUrl": "https://static.aviva.io/content/dam/aviva-corporate/documents/investors/pdfs/results/2026/aviva-plc-half-year-2026-financial-results-pack.pdf",
+      "scopeSourcePages": "20",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "shareholder_view",
+          "ratio": 1.76,
+          "eligibleOwnFunds": 15721000000.0,
+          "solvencyRequirement": 8955000000.0,
+          "currency": "GBP",
+          "unit": "currency_units",
+          "sourceUrl": "https://static.aviva.io/content/dam/aviva-corporate/documents/investors/pdfs/results/2026/aviva-plc-half-year-2026-financial-results-pack.pdf",
+          "sourcePages": "20",
+          "basisNote": "Half Year 2026 financial results pack, Solvency II position (shareholder view, excludes ring-fenced with-profit funds and staff pension schemes in surplus); own funds / SCR."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "OSL:GJF",
+        "ticker": "GJF.OL",
+        "isin": "NO0010582521",
+        "currency": "NOK",
+        "name": "Gjensidige Forsikring ASA",
+        "name_full": "Gjensidige Forsikring ASA",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Gjensidige Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "NO",
+      "regulator": "Finanstilsynet",
+      "scopeSourceUrl": "https://mb.cision.com/Public/1122/4414214/967ebfead2010d69.pdf",
+      "scopeSourcePages": "37",
+      "observations": [
+        {
+          "period": "2026-09-30",
+          "reportKind": "interim",
+          "basis": "approved_partial_internal_model",
+          "ratio": 1.9,
+          "eligibleOwnFunds": 24300000000.0,
+          "solvencyRequirement": 12800000000.0,
+          "currency": "NOK",
+          "unit": "currency_units",
+          "sourceUrl": "https://mb.cision.com/Public/1122/4414214/967ebfead2010d69.pdf",
+          "sourcePages": "37",
+          "basisNote": "Q3 2026 presentation appendix: approved partial internal model (group); eligible own funds and SCR in NOK bn."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "MIL:UNI",
+        "ticker": "UNI.MI",
+        "isin": "IT0004810054",
+        "currency": "EUR",
+        "name": "UNIPOL ASSICURAZIONI SPA",
+        "name_full": "UNIPOL ASSICURAZIONI SPA",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Unipol Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "IT",
+      "regulator": "IVASS",
+      "scopeSourceUrl": "https://www.emarketstorage.it/sites/default/files/comunicati/2026-08/20260807_188079.pdf",
+      "scopeSourcePages": "6",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "consolidated_net_of_dividend_accrual",
+          "ratio": 2.59,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.emarketstorage.it/sites/default/files/comunicati/2026-08/20260807_188079.pdf",
+          "sourcePages": "6",
+          "basisNote": "Press release 1H26: consolidated solvency ratio 259 % net of accrued dividends; the separately shown insurance-group ratio of 290 % is an administrative figure and not used; amounts not reported."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "LSE:LGEN",
+        "ticker": "LGEN.L",
+        "isin": "GB0005603997",
+        "currency": "GBP",
+        "name": "Legal & General Group Plc",
+        "name_full": "Legal & General Group Plc",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Legal & General Group",
+      "scope": "insurance_group",
+      "framework": "Solvency UK",
+      "jurisdiction": "GB",
+      "regulator": "PRA",
+      "scopeSourceUrl": "https://www.rns-pdf.londonstockexchange.com/rns/2894P_1-2026-8-4.pdf",
+      "scopeSourcePages": "57",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "partial_internal_model_with_ma_tmtp",
+          "ratio": 2.01,
+          "eligibleOwnFunds": 12903000000.0,
+          "solvencyRequirement": 6422000000.0,
+          "currency": "GBP",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.rns-pdf.londonstockexchange.com/rns/2894P_1-2026-8-4.pdf",
+          "sourcePages": "57",
+          "basisNote": "Half Year Results 2026 (RNS 2894P): Solvency II own funds and SCR on partial internal model, matching adjustment and TMTP basis."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "EURONEXT:SCR",
+        "ticker": "SCR.PA",
+        "isin": "FR0010411983",
+        "currency": "EUR",
+        "name": "SCOR SE",
+        "name_full": "SCOR SE",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "SCOR Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "FR",
+      "regulator": "ACPR",
+      "scopeSourceUrl": "https://www.scor.com/en/press-release/third-quarter-2026-results",
+      "scopeSourcePages": "1",
+      "observations": [
+        {
+          "period": "2026-09-30",
+          "reportKind": "interim",
+          "basis": "estimated_after_dividend_accrual",
+          "ratio": 2.21,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.scor.com/en/press-release/third-quarter-2026-results",
+          "sourcePages": "1 (English press release PDF linked on the page, SHA-256 9ad1b504a3f82eb4ed264cf5e551acda971937703f6edaa7b87b66a167fc68ee)",
+          "basisNote": "Third quarter 2026 results: estimated group solvency ratio 221 % after nine months of dividend accrual; amounts not reported."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "OTC:ALIZF",
+        "ticker": "ALIZF",
+        "isin": "DE0008404005",
+        "currency": "USD",
+        "name": "Allianz SE",
+        "name_full": "Allianz SE",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Allianz Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DE",
+      "regulator": "BaFin",
+      "scopeSourceUrl": "https://www.allianz.com/content/dam/onemarketing/azcom/Allianz_com/investor-relations/en/results-reports/sfcr/2026/en-Allianz-Group-SFCR-2025.pdf",
+      "scopeSourcePages": "7",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "quarterly_dividend_accrual",
+          "ratio": 2.25,
+          "eligibleOwnFunds": 97000000000,
+          "solvencyRequirement": 43100000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.allianz.com/content/dam/onemarketing/azcom/Allianz_com/investor-relations/en/results/2026-2q/2q-2026-interim-report-allianz.pdf",
+          "sourcePages": "4, 15",
+          "basisNote": "Quartalsweise Dividendenabgrenzung; Volatilitätsanpassung und Zinskurvenverlängerung. Übergangsmaßnahmen im Halbjahresbericht nicht separat quantifiziert."
+        },
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "full_annual_dividend_accrual",
+          "ratio": 2.18,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.allianz.com/content/dam/onemarketing/azcom/Allianz_com/investor-relations/en/results/2026-2q/2q-2026-interim-report-allianz.pdf",
+          "sourcePages": "4, 15",
+          "basisNote": "Regulatorische Quote mit voller jährlicher Dividendenabgrenzung. Zugehörige Eigenmittel und SCR hier nicht separat berichtet."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "OTC:MURGF",
+        "ticker": "MURGF",
+        "isin": "DE0008430026",
+        "currency": "USD",
         "name": "Munchener Ruckversicherungs-Gesellschaft",
         "name_full": "Munchener Ruckversicherungs-Gesellschaft AG",
         "security_type": "stock",

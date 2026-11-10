@@ -36,3 +36,25 @@ Ratio-only variants cannot fulfill missing amounts. Both Python and TypeScript
 validate before displaying coverage. These capital inputs close only the three
 capital-data requirements, not underwriting, reserves, investment or liquidity
 risk. No score contribution or historical point-in-time eligibility is assigned.
+
+## Erweiterung auf vergleichbare europäische Systeme (10. November 2026)
+
+Zugelassen sind jetzt Gruppen-Solvenzquoten aus Systemen mit derselben Definition (anrechenbare Eigenmittel / Solvenzkapitalanforderung, 100 % = Mindestanforderung):
+
+| Rahmen | Land | Aufsicht |
+|---|---|---|
+| Solvency II | DE, FR, NL, FI, IT, NO, ES, BE, PL | BaFin, ACPR, DNB, FIN-FSA, IVASS, Finanstilsynet, DGSFP, NBB, KNF |
+| Solvency UK | GB | PRA |
+
+Währungen: EUR, GBP, NOK, PLN. Nicht vergleichbar und deshalb ausgeschlossen: Schweizer SST, japanische Solvenzmargen-Quote und ESR, US-RBC, chinesisches C-ROSS, kanadisches LICAT, Bermuda-BSCR, Hongkonger GWS.
+
+**Reine Quote:** Viele Zwischenberichte nennen nur die Quote, nicht beide Beträge. Eine solche Beobachtung zählt jetzt als Hauptwert, wenn für die neueste Periode keine Beobachtung mit Beträgen vorliegt. Sie erfüllt dann nur `jurisdiction_and_regulatory_scope`. Eigenmittel und Anforderung bleiben als Nachweis offen. Mehrere gleichrangige Varianten derselben Periode bleiben mehrdeutig und werden abgelehnt.
+
+**Neu im Register:** Sampo (30.09.2026, 175 %), NN Group (224 %), AXA (218 %, nur Quote), Talanx (246 %, nur Quote), Aviva (176 %, Shareholder View), Gjensidige (30.09.2026, 190 %), Unipol (259 %, nur Quote), Legal & General (201 %) und SCOR (30.09.2026, 221 %, geschätzt, nur Quote). Ohne Angabe gilt der Stichtag 30.06.2026. Dazu kommen die OTC-Stammaktien von Allianz, Munich Re und AXA mit den Gruppenwerten.
+
+**Offen:**
+- Hannover Rück, Admiral, Ageas, Mapfre: Die Websites sperren automatisierte Abrufe.
+- ASR: Das Dokument verweist auf einen Download, der 404 liefert.
+- Beazley, St. James's Place, Standard Life: Quote im Halbjahresbericht nicht gefunden.
+- PZU: Die jüngste veröffentlichte Gruppenquote ist vom 31.03.2026 und damit älter als 210 Tage.
+- Schweizer Versicherer: Die Freigabe ihrer Websites wurde abgelehnt; SST ist ohnehin ein eigenes System.

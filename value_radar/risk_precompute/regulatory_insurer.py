@@ -7,6 +7,10 @@ from news_identity import valid_isin
 
 FIELDS=('listing_symbol','ticker','isin','currency','name','name_full','security_type','share_class')
 SOURCE='reviewed_insurer_original_reports'
+# Vergleichbare Gruppen-Solvenzsysteme: Eigenmittel / Solvenzkapitalanforderung, 100 % = Mindestanforderung.
+REGIMES={('Solvency II','DE','BaFin'),('Solvency II','FR','ACPR'),('Solvency II','NL','DNB'),('Solvency II','FI','FIN-FSA'),('Solvency II','IT','IVASS'),
+ ('Solvency II','NO','Finanstilsynet'),('Solvency II','ES','DGSFP'),('Solvency II','BE','NBB'),('Solvency II','PL','KNF'),('Solvency UK','GB','PRA')}
+CURRENCIES={'EUR','GBP','NOK','PLN'}
 def date(value):
  try:return dt.date.fromisoformat(value) if isinstance(value,str) and len(value)==10 else None
  except ValueError:return None
@@ -18,7 +22,7 @@ def observation(o,today,reviewed):
  if not isinstance(o,dict):return None
  period=date(o.get('period'));limit={'annual':550,'interim':210}.get(o.get('reportKind'))
  if not period or limit is None or not 0<=(today-period).days<=limit or period>reviewed:return None
- if o.get('currency')!='EUR' or o.get('unit')!='currency_units' or not url(o.get('sourceUrl')):return None
+ if o.get('currency') not in CURRENCIES or o.get('unit')!='currency_units' or not url(o.get('sourceUrl')):return None
  if not all(isinstance(o.get(k),str) and o[k].strip() for k in ('sourcePages','basis','basisNote')):return None
  ratio=o.get('ratio');own=o.get('eligibleOwnFunds');scr=o.get('solvencyRequirement')
  if not number(ratio) or not 0<=ratio<=20:return None
@@ -40,13 +44,16 @@ def build_insurers(universe,registry,now=None):
   e=matching[0]
   if counts[symbol]!=1 or rowcounts[symbol]!=1 or not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common_stock','common','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch') or any(row.get(k)!=e.get('inputIdentity',{}).get(k) for k in FIELDS):
    out['rejected'][symbol]='identity_mismatch';continue
-  if e.get('scope')!='insurance_group' or e.get('framework')!='Solvency II' or e.get('jurisdiction')!='DE' or e.get('regulator')!='BaFin' or not url(e.get('scopeSourceUrl')) or not e.get('scopeSourcePages'):
+  if e.get('scope')!='insurance_group' or (e.get('framework'),e.get('jurisdiction'),e.get('regulator')) not in REGIMES or not url(e.get('scopeSourceUrl')) or not e.get('scopeSourcePages'):
    out['rejected'][symbol]='scope_unverified';continue
   valid=[v for o in e.get('observations',[]) if (v:=observation(o,today,reviewed))]
-  complete=sorted((o for o in valid if o['amountsVerified']),key=lambda o:o['period'],reverse=True)
-  if not complete or sum(o['period']==complete[0]['period'] for o in complete)>1:
-   out['rejected'][symbol]='complete_basis_unavailable_or_ambiguous';continue
-  primary=complete[0]
+  # Neueste Periode; dort Quote mit belegten Betraegen vor reiner Quote. Gleichrangige Varianten sind mehrdeutig.
+  latest=max((o['period'] for o in valid),default=None)
+  candidates=[o for o in valid if o['period']==latest]
+  best=[o for o in candidates if o['amountsVerified']] or candidates
+  if not best or len(best)>1:
+   out['rejected'][symbol]='basis_unavailable_or_ambiguous';continue
+  primary=best[0]
   out['stocks'][symbol]={**e,'state':'available','observations':valid,'primary':primary,'reviewedOn':reviewed.isoformat(),'reviewExpires':expires.isoformat(),'pointInTimeUsable':False,'scoreContribution':0}
  out['state']='ready';out['summary']={'verifiedListings':len(out['stocks']),'rejected':dict(Counter(out['rejected'].values()))}
  return out

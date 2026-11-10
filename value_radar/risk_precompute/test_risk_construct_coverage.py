@@ -118,4 +118,9 @@ class IndustryGroupTests(unittest.TestCase):
   fam={id(r):cc.peer_family(r) for r in steel};grp={id(r):cc.industry_group(r) for r in steel}
   self.assertNotIn('AL',[r['ticker'] for r in cc.select_peers(steel[0],steel,fam,groups=grp)])
 
+class ParisPeerTests(unittest.TestCase):
+ def test_paris_suffix_not_preferred(self):
+  self.assertFalse(cc._preferred({'ticker':'BNP.PA','listing_symbol':'EURONEXT:BNP'}))
+  self.assertTrue(cc._preferred({'ticker':'BAC-PB'}));self.assertTrue(cc._preferred({'ticker':'XYZ.PA'}),'no listing proof keeps the old caution')
+
 if __name__=='__main__':unittest.main()

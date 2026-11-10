@@ -127,9 +127,15 @@ def same_company(a, b):
             or bool(a.get('lei') and a.get('lei') == b.get('lei')) or bool(ca and ca == cb))
 
 
+def _bare_symbol(r):
+    # Boersenendung (SAN.PA fuer EURONEXT:SAN) ist keine Vorzugsaktien-Kennung, wenn die Notierungspruefung sie bestaetigt (wie die App).
+    t = peer_symbol(r.get('ticker'))
+    return t[:t.rfind('.')] if '.' in t and listing_matches(r.get('ticker'), r.get('listing_symbol')) else t
+
+
 def _preferred(r):
     return bool(re.search(r'preferred|preference|warrant|fund|etf|bond', _text(r.get('security_type')), re.I)
-                or re.search(r'[-.]P(?:R)?[A-Z]+$|\^|/P[A-Z]', peer_symbol(r.get('ticker')))
+                or re.search(r'[-.]P(?:R)?[A-Z]+$|\^|/P[A-Z]', _bare_symbol(r))
                 or re.search(r'preferred|depositary shares|preference shares|warrant', _text(r.get('name')), re.I))
 
 

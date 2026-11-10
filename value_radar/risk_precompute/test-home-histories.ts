@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.RISK_EXPORT_LIBRARY='1';
-const {chooseHome,targets,exportHomeHistories}=await import('./export-home-histories');
+const {chooseHome,targets,exportHomeHistories,diagnose}=await import('./export-home-histories');
 const now=Date.parse('2026-11-10T12:00:00Z');let checks=0;
 const test=async(name:string,fn:()=>any)=>{await fn();checks++;console.log('OK '+name)};
 const ok=(sym:string,obs=600)=>({format:'risk-summary',schema:1,symbol:sym,currency:'USD',adjustment:'total_return',retrievedAt:new Date(now-3600000).toISOString(),statistics:{observations:obs,first:'2024-01-02',last:'2026-11-07',error:'',es:.03,dd:.3,worst:.1,vol:.2,drawdown:.05}});
@@ -38,5 +38,24 @@ await test('export resolves, fetches and stores the home history',async()=>{
  assert.equal(out.homeResolution['AU000000CBA7'].symbol,'ASX:CBA');assert.equal(calls.filter(c=>c.includes('search')).length,1);
  const again=await exportHomeHistories({env:{ROIC_API_KEY:'x',RISK_UNIVERSE_PATH:u,RISK_OUTPUT_PATH:r},fetcher,clock:()=>now,sleep:async()=>{}});
  assert.equal(again.cachedResolution,1);assert.equal(again.fresh,1);
+});
+await test('unresolved ISINs carry a reason and the candidates seen',()=>{
+ const X=new Set(['XETR:1COV']);
+ assert.equal(diagnose('CNE000001P37',[],X).reason,'no_search_results');
+ const h=diagnose('CNE000001P37',[{symbol:'HKEX:1398',isin:'CNE1000003G1',type:'stock',is_primary:true}],X);
+ assert.equal(h.reason,'no_same_isin');assert.deepEqual(h.otherResults[0],{symbol:'HKEX:1398',isin:'CNE1000003G1',type:'stock',isPrimary:true,status:null});
+ assert.equal(diagnose('A',[{symbol:'OTC:A',isin:'A',type:'stock'}],X).reason,'otc_only');
+ assert.equal(diagnose('A',[{symbol:'SSE:A',isin:'A',type:'stock',status:'delisted'}],X).reason,'no_active_stock');
+ assert.equal(diagnose('DE0006062144',[{symbol:'XETR:1COV',isin:'DE0006062144',type:'stock',is_primary:true}],X).reason,'primary_in_universe');
+ assert.equal(diagnose('A',[{symbol:'SSE:A',isin:'A',type:'stock'}],X).reason,'no_primary_listing');
+ assert.equal(diagnose('A',[{symbol:'SSE:A',isin:'A',type:'stock',is_primary:true},{symbol:'HKEX:A',isin:'A',type:'stock',is_primary:true}],X).reason,'ambiguous_primary');
+});
+await test('old cache entries without method are resolved again',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'home-'));const u=path.join(dir,'u.json'),r=path.join(dir,'r.json');
+ fs.writeFileSync(u,JSON.stringify(uni));fs.writeFileSync(r,JSON.stringify({...risk,homeResolution:{AU000000CBA7:{at:new Date(now).toISOString(),symbol:null}}}));
+ const fetcher:any=async(url:string)=>new Response(JSON.stringify(url.includes('search')?[{symbol:'CHIA:CBA',isin:'AU000000CBA7',type:'stock'}]:[]),{status:200});
+ const rep=await exportHomeHistories({env:{ROIC_API_KEY:'x',RISK_UNIVERSE_PATH:u,RISK_OUTPUT_PATH:r},fetcher,clock:()=>now,sleep:async()=>{}});
+ assert.equal(rep.cachedResolution,0);assert.deepEqual(rep.unresolvedReasons,{no_primary_listing:1});
+ const res=JSON.parse(fs.readFileSync(r,'utf8')).homeResolution.AU000000CBA7;assert.equal(res.method,'isin-primary-v2');assert.equal(res.diagnosis.sameIsin[0].symbol,'CHIA:CBA');
 });
 console.log(checks+' checks passed');

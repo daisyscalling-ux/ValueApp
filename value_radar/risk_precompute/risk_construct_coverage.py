@@ -201,6 +201,7 @@ class Listing:
         self.conflict_reason = ('Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei' if ordinary_basis(self.u, annual, mc, 'https://placeholder')
                                 else 'Währungskonflikt: ADR oder unklare Aktienbasis')
         self.peers, self.peer_selected, self.peer_usable = peers, peer_selected, peer_usable
+        self.peer_ev_ebitda = 0
         bc = self.balance.get('bankCapital') or {}
         profile = self.balance.get('profile') or 'unclassified'
         self.bank_like = profile == 'specialist_financial' and available(bc)
@@ -277,10 +278,14 @@ def metrics(x):
                                                                    (growth is not None and abs(growth) > .5, 'Umsatzsprung über ±50 %'))))
     else:
         fcf = f['operating_cashflow'] - abs(f['capex']) if finite(f.get('operating_cashflow')) and finite(f.get('capex')) else None
-        out.append(m(V, 'Erwartungslücke Reverse DCF', 10, *first((x.currency_conflict, x.conflict_reason),
-                                                                (fcf is None, 'Cashflow oder Investitionen fehlen'),
-                                                                (fcf is not None and fcf <= 0, 'Freier Cashflow negativ oder null'),
-                                                                (growth is None, 'Umsatzwachstum fehlt'))))
+        if fcf is None or fcf <= 0:
+            # Ersatz in der App (Version 0.9): EV/EBITDA gegenüber dem Median von mindestens drei Peers.
+            own = u.get('ev_ebitda')
+            out.append(m(V, 'Erwartungslücke Reverse DCF', 10, *first((not (finite(own) and own > 0), 'Kein positiver Cashflow und kein positives EV/EBITDA'),
+                                                                    (x.peer_ev_ebitda < 3, 'Kein positiver Cashflow und weniger als drei Peers mit EV/EBITDA'))))
+        else:
+            out.append(m(V, 'Erwartungslücke Reverse DCF', 10, *first((x.currency_conflict, x.conflict_reason),
+                                                                    (growth is None, 'Umsatzwachstum fehlt'))))
     out.append(m(V, 'Abstand zum Bear-Szenario', 5, 'app_only', 'Benötigt die Szenariorechnung der App'))
     if p in ('bank', 'insurer', 'specialist_financial'):
         out += [m(W, 'Bruttomargen-Trend', 5, 'by_design', 'Für Finanzunternehmen nicht definiert'),
@@ -312,9 +317,11 @@ def build(universe, shards, risk, annuals, now=None):
         target = by_symbol.get(symbol)
         chosen = select_peers(target, pool, families) if target is not None else []
         usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
+        ev_peers = sum(1 for r in chosen if finite(r.get('ev_ebitda')) and r['ev_ebitda'] > 0)
         annual, currency, basis, fx = (tuple(annuals.get(symbol) or ()) + (None, None, None, None))[:4]
         own = 1 if finite(u.get('ebitda_margin')) else 0
         x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own, len(chosen), usable, basis, fx, now.date())
+        x.peer_ev_ebitda = ev_peers
         prof = per_profile[x.profile]
         prof['listings'] += 1
         for k in metrics(x):

@@ -25,7 +25,7 @@ class CoverageTests(unittest.TestCase):
   self.assertEqual(c['Bewertungsrisiko']['app_only'],5.0)
  def test_currency_conflict_and_missing_history_are_named(self):
   g={(x['profile'],x['metric']):x for x in self.run_build()['largestGaps']}
-  self.assertTrue(any(k.startswith('Währungskonflikt') for k in g[('corporate','Erwartungslücke Reverse DCF')]['reasons']))
+  self.assertTrue(any(k.startswith('Währungskonflikt') or k.startswith('Kein positiver Cashflow') for k in g[('corporate','Erwartungslücke Reverse DCF')]['reasons']))
   self.assertEqual(g[('corporate','Expected Shortfall')]['reasons'],{'Keine Kurshistorie':1})
   self.assertNotIn(('corporate','EBITDA-Marge gegenüber Peers'),g,'own margin plus at least three industry peers with a margin')
  def test_bank_like_specialist_counts_as_bank_and_by_design_metrics(self):
@@ -71,5 +71,17 @@ class FxResolutionTests(unittest.TestCase):
   ann={'NYSE:C1':(annual(),'USD'),'NYSE:B1':(annual(),'USD'),'OTC:ADR':(annual('JPY'),'USD',b,fx),'NYSE:GS':(annual(),'USD')}
   r=cc.build(UNI,shards(),{s:{'statistics':STATS} for s in ('NYSE:C1','NYSE:B1','NYSE:GS')},ann,dt.datetime(2026,11,10,12,tzinfo=dt.timezone.utc))
   g={(x['profile'],x['metric']):x for x in r['largestGaps']};self.assertNotIn(('corporate','Erwartungslücke Reverse DCF'),g)
+
+class EvEbitdaFallbackTests(unittest.TestCase):
+ def test_negative_fcf_uses_peer_ev_ebitda(self):
+  uni={'kandidaten':[{'listing_symbol':'NYSE:N1','ticker':'N1','name':'Neg One','industry':'Steel','currency':'USD','ev_ebitda':20},
+   *[{'listing_symbol':f'NYSE:Q{i}','ticker':f'Q{i}','name':f'Peer {i}','industry':'Steel','currency':'USD','ev_ebitda':10+i} for i in range(3)]]}
+  sh={'NYSE:N1':{'balance':{'profile':'corporate'},'market':{'state':'available'}}}
+  ann={'NYSE:N1':(annual(operating_cashflow=5,capex=10),'USD')}
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:N1':{'statistics':STATS}},ann)['largestGaps']}
+  self.assertNotIn(('corporate','Erwartungslücke Reverse DCF'),g)
+  uni['kandidaten'][0]['ev_ebitda']=-4
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:N1':{'statistics':STATS}},ann)['largestGaps']}
+  self.assertEqual(g[('corporate','Erwartungslücke Reverse DCF')]['reasons'],{'Kein positiver Cashflow und kein positives EV/EBITDA':1})
 
 if __name__=='__main__':unittest.main()

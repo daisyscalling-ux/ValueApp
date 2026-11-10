@@ -72,3 +72,7 @@ Offen und sachlich richtig offen: Neuemissionen mit weniger als zwei Handelsjahr
 Die Heimatnotierung ist die Stammaktie mit derselben ISIN im Universum. Manuelle Einträge in `share_basis.json` haben Vorrang. Ein Verhältnis, das nicht mehr bestätigt wird, wird sofort entfernt. Die App (`sharesPerUnit`) prüft Methode und Belege erneut, rechnet den Gewinn je Aktie auf die ADR-Einheit um und rechnet firmenweite Beträge nur in die Handelswährung um.
 
 Probelauf: Verhältnis für 61 ADRs gesetzt. 67 ADRs haben keine Heimatnotierung im Universum, 7 scheitern an fehlenden Daten oder an nicht übereinstimmenden Werten. In der Abdeckung sinken die ADR-Konflikte bei Unternehmen von 82 auf 41, bei Banken von 31 auf 24.
+
+## Ersatz für die Erwartungslücke ohne positiven Cashflow (10.11.2026)
+
+Seit Konstrukt-Version 0.9 gilt für Unternehmen ohne positiven freien Cashflow statt des Reverse DCF der Aufschlag des EV/EBITDA auf den Median der Peers (mindestens drei Peers mit positivem EV/EBITDA, eigenes EV/EBITDA positiv). Die Messung bildet das nach. Ergebnis mit den Daten vom 10.11.2026: Die Erwartungslücke fehlt bei 90 statt 258 Unternehmen. Davon haben 51 weniger als drei Peers mit EV/EBITDA, 34 sind ADRs ohne Aktienbasis, 5 haben ein negatives EBITDA. Belegtes Gewicht gesamt 75,8, Unternehmen 80,9.

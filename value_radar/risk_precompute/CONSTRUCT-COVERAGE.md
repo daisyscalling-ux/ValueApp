@@ -50,6 +50,8 @@ Notierungsidentität in der App (10.11.2026): `listingMatches` der App erkannte 
 
 Vorzugsaktien (10.11.2026, Nutzerentscheidung): 14 Vorzugsaktien US-amerikanischer Banken (BAC-PB, JPM-PD, WFC-PC, GS-PA, MS-PA, USB-PH …) liegen bewusst außerhalb des Modells, weil es für Stammaktien gebaut ist. Die App zeigt einen Hinweis statt eines Scores. Die Messung führt ihre Kennzahlen als `by_design` (Grund „Vorzugsaktie: Risikomodell gilt für Stammaktien“) statt als Lücke. Die Erkennung (`preferred_instrument`) entspricht `preferredInstrument` der App.
 
+EBITDA-Marge gegenüber Peers (10.11.2026): Die Messung zählte Firmen derselben Branche mit Marge. Die App (`competitionMetrics`) vergleicht dagegen mit den ausgewählten Peers, bis zu 8 und seit den Branchengruppen auch aus verwandten Branchen. Die Messung zählt jetzt genau diese Peers mit EBITDA-Marge, ohne die eigene Notierung. Wirkung auf denselben Daten: Lücken 90 → 29, Unternehmen 82,5 → 82,8.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

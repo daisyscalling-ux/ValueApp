@@ -351,10 +351,6 @@ def preferred_instrument(r):
 def build(universe, shards, risk, annuals, now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     rows = {r.get('listing_symbol'): r for r in universe.get('kandidaten', []) if r.get('listing_symbol')}
-    margins = defaultdict(int)
-    for r in rows.values():
-        if finite(r.get('ebitda_margin')) and r.get('industry'):
-            margins[r['industry']] += 1
     per_profile = defaultdict(lambda: {'listings': 0, 'blocks': defaultdict(lambda: defaultdict(float))})
     per_metric = defaultdict(lambda: {'filled': 0, 'missing': 0, 'app_only': 0, 'by_design': 0, 'weight': 0, 'reasons': defaultdict(int)})
     pool = [r for r in universe.get('kandidaten', []) if not (r.get('listing_symbol') and r.get('ticker')) or listing_matches(r['ticker'], r['listing_symbol'])]
@@ -370,9 +366,10 @@ def build(universe, shards, risk, annuals, now=None):
         chosen = select_peers(target, pool, families, groups=groups) if target is not None else []
         usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
         ev_peers = sum(1 for r in chosen if finite(r.get('ev_ebitda')) and r['ev_ebitda'] > 0)
+        # Wie competitionMetrics der App: alle ausgewaehlten Peers (bis zu 8, inkl. Branchengruppe) mit EBITDA-Marge, ohne die eigene Notierung.
+        margin_peers = sum(1 for r in chosen if finite(r.get('ebitda_margin')) and r.get('listing_symbol') != symbol)
         annual, currency, basis, fx, quote = (tuple(annuals.get(symbol) or ()) + (None, None, None, None, None))[:5]
-        own = 1 if finite(u.get('ebitda_margin')) else 0
-        x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own, len(chosen), usable, basis, fx, now.date())
+        x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margin_peers, len(chosen), usable, basis, fx, now.date())
         x.peer_ev_ebitda = ev_peers
         x.quote, x.fx = quote or {}, fx or {}
         prof = per_profile[x.profile]

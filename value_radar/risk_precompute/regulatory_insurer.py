@@ -55,5 +55,15 @@ def build_insurers(universe,registry,now=None):
    out['rejected'][symbol]='basis_unavailable_or_ambiguous';continue
   primary=best[0]
   out['stocks'][symbol]={**e,'state':'available','observations':valid,'primary':primary,'reviewedOn':reviewed.isoformat(),'reviewExpires':expires.isoformat(),'pointInTimeUsable':False,'scoreContribution':0}
+ # Depositary Receipts: Die Solvenzquote gilt fuer den Versicherungskonzern. Ein DR mit derselben ISIN uebernimmt den Eintrag einer im
+ # selben Lauf geprueften Stammaktie (wie bei Banken), mit eigener Identitaet und depositaryOf; sonst bleibt er offen.
+ for row in rows:
+  symbol=row.get('listing_symbol')
+  # Zeilen mit eigenem Registry-Eintrag (auch abgelehnte) werden nie ueber diesen Weg uebernommen.
+  if not symbol or symbol in out['stocks'] or counts[symbol] or row.get('security_type') not in ('dr','adr','gdr','depositary_receipt') or not valid_isin(row.get('isin')) \
+     or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch') or rowcounts[symbol]!=1:continue
+  base=sorted((k for k,v in out['stocks'].items() if (v.get('inputIdentity') or {}).get('isin')==row['isin'] and not v.get('depositaryOf')),key=lambda k:(k.startswith('OTC:'),k))
+  if not base:continue
+  out['stocks'][symbol]={**out['stocks'][base[0]],'inputIdentity':{k:row.get(k) for k in FIELDS},'depositaryOf':base[0]}
  out['state']='ready';out['summary']={'verifiedListings':len(out['stocks']),'rejected':dict(Counter(out['rejected'].values()))}
  return out

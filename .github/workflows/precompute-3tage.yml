@@ -14,6 +14,10 @@ on:
       - 'value_radar/export_continuity.py'
       - 'value_radar/tests/test_export_continuity.py'
       - 'value_radar/tests/test_publish_cf.py'
+      - 'value_radar/tests/test_index_continuity.py'
+      - 'value_radar/index_membership.py'
+      - 'value_radar/sp500_liste.txt'
+      - 'value_radar/roic.py'
   schedule:
     - cron: "17 1 * * *"    # daily
   workflow_dispatch: {}

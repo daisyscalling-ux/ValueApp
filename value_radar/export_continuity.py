@@ -71,8 +71,18 @@ def combine(universe, saved, fresh, rejected, observed):
 
 
 def guard(previous, incoming):
-    """Refuse broad accidental deletion; individual removals remain possible."""
-    def keys(doc):return {r.get('listing_symbol') or r.get('ticker') for r in doc.get('kandidaten',[])}-{None,''}
+    """Refuse broad accidental deletion; individual removals remain possible.
+
+    Mit vollstaendiger Indexbeschreibung (index_membership.scope_complete) zaehlen nur entfernte Zeilen,
+    deren Ticker laut neuem Export noch Indexmitglied ist. Zeilen ohne Indexzugehoerigkeit (z. B. die
+    frueheren Screener-OTC-Linien) duerfen gezielt wegfallen."""
+    from index_membership import scope_complete
+    def keys(doc):return {r.get('listing_symbol') or r.get('ticker'):r.get('ticker') for r in doc.get('kandidaten',[])}
     old,new=keys(previous),keys(incoming)
-    if len(old)>=100 and len(old-new)>max(25,len(old)*.1):
+    old.pop(None,None);old.pop('',None);new.pop(None,None);new.pop('',None)
+    removed=[k for k in old if k not in new]
+    if scope_complete(incoming):
+        members=incoming['index_scope']['members']
+        removed=[k for k in removed if members.get(old[k])]
+    if len(old)>=100 and len(removed)>max(25,len(old)*.1):
         raise ValueError('Universe coverage regression: refusing to remove more than 10% of established listings')

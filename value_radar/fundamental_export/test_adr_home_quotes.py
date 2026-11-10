@@ -28,6 +28,16 @@ class Homes(unittest.TestCase):
    out=a.run(UNI,f,{},lambda q:hits,lambda s:Q,NOW);self.assertEqual(out['report']['unresolved'],{why:1},hits)
   for q,why in [({**Q,'name':'Advanced Semiconductor Materials Lithography'},'issuer_name_mismatch'),({**Q,'shares_out':None},'price_or_shares_missing'),(None,'quote_missing')]:
    out=a.run(UNI,f,{},lambda x:[HIT],lambda s:q,NOW);self.assertEqual(out['report']['quoteFailed'],{why:1});self.assertNotIn('market',out['homes']['NL0010273215'])
+ def test_ticker_and_name_queries_and_diagnosis(self):
+  calls=[]
+  def search(q):
+   calls.append(q);return [HIT] if q=='ASML' else ([{**HIT,'is_primary':False,'symbol':'XETR:ASME'}] if q=='ASML Holding NV' else [])
+  out=a.run(UNI,self.folder(),{},search,lambda s:Q,NOW);h=out['homes']['NL0010273215']
+  self.assertEqual(calls,['NL0010273215','ASML']);self.assertEqual(h['roicSymbol'],'EURONEXT:ASML');self.assertEqual(h['diagnosis']['results'],1)
+  calls.clear();out=a.run(UNI,self.folder(),{},lambda q:(calls.append(q),[{**HIT,'is_primary':False}])[1],lambda s:Q,NOW)
+  d=out['homes']['NL0010273215']['diagnosis'];self.assertEqual(calls,['NL0010273215','ASML','ASML Holding NV']);self.assertEqual(d['sameIsin'],[{'symbol':'EURONEXT:ASML','type':'stock','isPrimary':False,'country':'NL'}])
+ def test_method_constant_matches_adr_basis(self):
+  import adr_basis;self.assertEqual(a.METHOD,adr_basis.HOME_METHOD)
  def test_short_names(self):
   self.assertTrue(a.name_matches('GSK plc','GSK plc'));self.assertTrue(a.name_matches('BAE Systems plc','BAE Systems plc'))
   self.assertFalse(a.name_matches('GSK plc','GSL Ltd'));self.assertFalse(a.name_matches('GSK plc',None))

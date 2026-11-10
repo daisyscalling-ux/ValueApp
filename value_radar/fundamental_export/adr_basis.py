@@ -66,7 +66,20 @@ def adr_basis(dr_row, dr_file, home_row, home_file, today):
     return entry, ''
 
 
-def apply(folder, universe, manual, today=None):
+def outside_home(outside, isin, today):
+    """Heimatnotierung ausserhalb des Universums (adr_home_quotes.py): nur mit frischem Kurs (hoechstens 7 Tage)."""
+    h = ((outside or {}).get('homes') or {}).get(isin) or {}
+    m = h.get('market') or {}
+    try:
+        age = (today - dt.date.fromisoformat(str(m.get('quote_at'))[:10])).days
+    except ValueError:
+        return None, None
+    if (outside or {}).get('method') != 'roic_isin_primary_yahoo_quote_v1' or not h.get('roicSymbol') or not 0 <= age <= 7:
+        return None, None
+    return {'listing_symbol': h['roicSymbol'], 'yahoo_symbol': h.get('yahooSymbol'), 'outside_universe': True}, {'market': m}
+
+
+def apply(folder, universe, manual, today=None, outside=None):
     today = today or dt.datetime.now(dt.timezone.utc).date()
     folder = pathlib.Path(folder)
     rows = universe.get('kandidaten', [])
@@ -85,10 +98,19 @@ def apply(folder, universe, manual, today=None):
         if not d:
             report['dr_file_missing'] += 1
             continue
-        if not home:
-            report['home_listing_missing'] += 1
-            continue
-        entry, reason = adr_basis(r, d, home[0], load(home[0]['listing_symbol']), today)
+        if home:
+            home_row, home_file = home[0], load(home[0]['listing_symbol'])
+        else:
+            home_row, home_file = outside_home(outside, r.get('isin'), today)
+            if not home_row:
+                report['home_listing_missing'] += 1
+                if (d.get('share_basis') or {}).get('method') == METHOD:
+                    d.pop('share_basis')   # Heimatkurs nicht mehr verfuegbar: abgeleiteten Wert nicht weiterfuehren
+                    save(folder / (s.replace(':', '_') + '.json'), d)
+                continue
+        entry, reason = adr_basis(r, d, home_row, home_file, today)
+        if entry and home_row.get('outside_universe'):
+            entry['evidence'].update(homeOutsideUniverse=True, homeYahooSymbol=home_row.get('yahoo_symbol'), homeSource='adr_home_quotes.py (ROIC ISIN, Yahoo Kurs)')
         old = d.get('share_basis')
         if not entry:
             report[reason] += 1
@@ -110,7 +132,9 @@ def main(base='.'):
     universe = json.loads((base / 'daten' / 'cf_universum.json').read_text(encoding='utf-8'))
     manual_path = base / 'fundamental_export' / 'share_basis.json'
     manual = json.loads(manual_path.read_text(encoding='utf-8')) if manual_path.exists() else {}
-    print(json.dumps(apply(base / 'daten' / 'fundamentals', universe, manual)))
+    homes_path = base / 'daten' / 'fundamentals' / 'adr_homes.json'
+    outside = json.loads(homes_path.read_text(encoding='utf-8')) if homes_path.exists() else None
+    print(json.dumps(apply(base / 'daten' / 'fundamentals', universe, manual, outside=outside)))
 
 
 if __name__ == '__main__':

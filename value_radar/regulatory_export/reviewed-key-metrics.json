@@ -339,7 +339,11 @@
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000694.pdf",
     "sha256": "29d9c4e6dfedb31456b578c1c48f81b96eeda48fe59a14b1365f9b79b271c013",
     "location": "Third Quarterly Report 2026 (HKEX), PDF pages 22-23, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter; G-SIB surcharge rises to 2.0 % from 1 January 2027"
-   }
+   },
+   "shareClassIsins": [
+    "CNE1000003G1"
+   ],
+   "shareClassSource": "HKEX List of Securities (sha256 f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9), H-Aktie desselben Konzerns"
   },
   {
    "isin": "CNE100000742",
@@ -364,7 +368,11 @@
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000860.pdf",
     "sha256": "18f535edbd2c3100907ce15b215eae48fc04c52b71155847235dea0379e4fb01",
     "location": "Capital Management Pillar III Third Quarter Report 2026 (HKEX), PDF pages 4-5, Table 1 (KM1) rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter"
-   }
+   },
+   "shareClassIsins": [
+    "CNE1000002H1"
+   ],
+   "shareClassSource": "HKEX List of Securities (sha256 f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9), H-Aktie desselben Konzerns"
   },
   {
    "isin": "CNE000001N05",
@@ -389,7 +397,11 @@
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000882.pdf",
     "sha256": "c6f2537401a7e28eb12a43ffbc8c45c3784435c48e37b6393346e1afdd73aea6",
     "location": "2026 Q3 Pillar 3 Disclosure Report (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; footnote 3 confirms the 5 % CET1 minimum; LCR = daily average of the quarter"
-   }
+   },
+   "shareClassIsins": [
+    "CNE1000001Z5"
+   ],
+   "shareClassSource": "HKEX List of Securities (sha256 f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9), H-Aktie desselben Konzerns"
   },
   {
    "isin": "CNE100000RJ0",
@@ -414,7 +426,11 @@
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001644.pdf",
     "sha256": "e52e312708746a91eb2f9a829895eb8db12a2389958618b2413a5bc4a5b07217",
     "location": "Pillar 3 Report for the Third Quarter of 2026 (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026"
-   }
+   },
+   "shareClassIsins": [
+    "CNE100000Q43"
+   ],
+   "shareClassSource": "HKEX List of Securities (sha256 f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9), H-Aktie desselben Konzerns"
   },
   {
    "isin": "CNE000001B33",
@@ -440,7 +456,11 @@
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001614.pdf",
     "sha256": "1365e20b1335c759fce1393dd3ef935b1e84dd32ca07ced70a8ab6ee40f06a02",
     "location": "Third Quarterly Report of 2026 (H Share, HKEX), PDF pages 18-19 section 4.6 (Group, advanced approach; requirement 8.25 %), PDF page 29 section 6 (average LCR of the quarter); KM1 itself not in this report, NSFR not disclosed"
-   }
+   },
+   "shareClassIsins": [
+    "CNE1000002M1"
+   ],
+   "shareClassSource": "HKEX List of Securities (sha256 f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9), H-Aktie desselben Konzerns"
   },
   {
    "isin": "CNE1000000S2",
@@ -462,7 +482,11 @@
     "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000550.pdf",
     "sha256": "fbf8a3d2b6ad1446e81c98f308c31cd208907c22aa39993ad47fe667c8818ad7",
     "location": "Results Announcement for the Third Quarter 2026 (HKEX), PDF page 8 section 4 Capital Adequacy Ratio; the separate Pillar 3 report is only on www.bankcomm.com, which this environment cannot reach, so requirement, leverage ratio and LCR are left out"
-   }
+   },
+   "shareClassIsins": [
+    "CNE100000205"
+   ],
+   "shareClassSource": "HKEX List of Securities (sha256 f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9), H-Aktie desselben Konzerns"
   },
   {
    "isin": "CH0531751755",

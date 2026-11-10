@@ -1,6 +1,519 @@
 [
- {"listing_symbol":"HEL:ORNBV","ticker":"ORNBV.HE","currency":"EUR","isin":"FI0009014377","issuer_name":"Orion Oyj","share_class":"B","accepted_input_isins":["FI0009014369","FI0009014377"],"accepted_input_names":["Orion Oyj Class A","Orion Oyj Class B","Orion Oyj"],"reviewed_at":"2026-10-21","review_until":"2027-04-21","sources":["https://attachment.news.eu.nasdaq.com/a2b9b44b33b69ce0a09b31146c317ec56"]},
- {"listing_symbol":"HEL:KESKOB","ticker":"KESKOB.HE","currency":"EUR","isin":"FI0009000202","issuer_name":"Kesko Oyj","share_class":"B","accepted_input_isins":["FI0009007900","FI0009000202"],"accepted_input_names":["Kesko Oyj Class A","Kesko Oyj Class B","Kesko Oyj"],"reviewed_at":"2026-10-21","review_until":"2027-04-21","sources":["https://www.kesko.fi/en/investor/share-information/"]},
- {"listing_symbol":"HEL:STERV","ticker":"STERV.HE","currency":"EUR","isin":"FI0009005961","issuer_name":"Stora Enso Oyj","share_class":"R","accepted_input_isins":["FI0009005953","FI0009005961"],"accepted_input_names":["Stora Enso Oyj Class A","Stora Enso Oyj Class R","Stora Enso Oyj"],"reviewed_at":"2026-10-21","review_until":"2027-04-21","sources":["https://www.storaenso.com/en/investors/shares-and-shareholders","https://view.news.eu.nasdaq.com/view?id=b296c3dc1f33278cb70402faf127b1eb7&lang=en"]}
+ {
+  "listing_symbol": "HEL:ORNBV",
+  "ticker": "ORNBV.HE",
+  "currency": "EUR",
+  "isin": "FI0009014377",
+  "issuer_name": "Orion Oyj",
+  "share_class": "B",
+  "accepted_input_isins": [
+   "FI0009014369",
+   "FI0009014377"
+  ],
+  "accepted_input_names": [
+   "Orion Oyj Class A",
+   "Orion Oyj Class B",
+   "Orion Oyj"
+  ],
+  "reviewed_at": "2026-10-21",
+  "review_until": "2027-04-21",
+  "sources": [
+   "https://attachment.news.eu.nasdaq.com/a2b9b44b33b69ce0a09b31146c317ec56"
+  ]
+ },
+ {
+  "listing_symbol": "HEL:KESKOB",
+  "ticker": "KESKOB.HE",
+  "currency": "EUR",
+  "isin": "FI0009000202",
+  "issuer_name": "Kesko Oyj",
+  "share_class": "B",
+  "accepted_input_isins": [
+   "FI0009007900",
+   "FI0009000202"
+  ],
+  "accepted_input_names": [
+   "Kesko Oyj Class A",
+   "Kesko Oyj Class B",
+   "Kesko Oyj"
+  ],
+  "reviewed_at": "2026-10-21",
+  "review_until": "2027-04-21",
+  "sources": [
+   "https://www.kesko.fi/en/investor/share-information/"
+  ]
+ },
+ {
+  "listing_symbol": "HEL:STERV",
+  "ticker": "STERV.HE",
+  "currency": "EUR",
+  "isin": "FI0009005961",
+  "issuer_name": "Stora Enso Oyj",
+  "share_class": "R",
+  "accepted_input_isins": [
+   "FI0009005953",
+   "FI0009005961"
+  ],
+  "accepted_input_names": [
+   "Stora Enso Oyj Class A",
+   "Stora Enso Oyj Class R",
+   "Stora Enso Oyj"
+  ],
+  "reviewed_at": "2026-10-21",
+  "review_until": "2027-04-21",
+  "sources": [
+   "https://www.storaenso.com/en/investors/shares-and-shareholders",
+   "https://view.news.eu.nasdaq.com/view?id=b296c3dc1f33278cb70402faf127b1eb7&lang=en"
+  ]
+ },
+ {
+  "listing_symbol": "OTC:IDCBF",
+  "ticker": "IDCBF",
+  "currency": "USD",
+  "isin": "CNE1000003G1",
+  "issuer_name": "Industrial and Commercial Bank of China Limited",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE000001P37",
+   "CNE1000003G1"
+  ],
+  "accepted_input_names": [
+   "Industrial and Commercial Bank of China Limited Class A",
+   "Industrial and Commercial Bank of China ",
+   "Industrial and Commercial Bank of China Limited"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:IDCBF",
+    "isin": "CNE1000003G1",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "01398",
+    "isin": "CNE1000003G1",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:CICHF",
+  "ticker": "CICHF",
+  "currency": "USD",
+  "isin": "CNE1000002H1",
+  "issuer_name": "China Construction Bank Corporation",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE100000742",
+   "CNE1000002H1"
+  ],
+  "accepted_input_names": [
+   "China Construction Bank Corporation Class A",
+   "China Construction Bank Corporation Clas",
+   "China Construction Bank Corporation"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:CICHF",
+    "isin": "CNE1000002H1",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "00939",
+    "isin": "CNE1000002H1",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:BACHF",
+  "ticker": "BACHF",
+  "currency": "USD",
+  "isin": "CNE1000001Z5",
+  "issuer_name": "Bank of China Limited",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE000001N05",
+   "CNE1000001Z5"
+  ],
+  "accepted_input_names": [
+   "Bank of China Limited Class A",
+   "Bank of China Limited"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:BACHF",
+    "isin": "CNE1000001Z5",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "03988",
+    "isin": "CNE1000001Z5",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:ACGBF",
+  "ticker": "ACGBF",
+  "currency": "USD",
+  "isin": "CNE100000Q43",
+  "issuer_name": "Agricultural Bank of China Limited",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE100000RJ0",
+   "CNE100000Q43"
+  ],
+  "accepted_input_names": [
+   "Agricultural Bank of China Limited Class A",
+   "Agricultural Bank of China Limited Class",
+   "Agricultural Bank of China Limited"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:ACGBF",
+    "isin": "CNE100000Q43",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "01288",
+    "isin": "CNE100000Q43",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:CIHHF",
+  "ticker": "CIHHF",
+  "currency": "USD",
+  "isin": "CNE1000002M1",
+  "issuer_name": "China Merchants Bank Co., Ltd.",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE000001B33",
+   "CNE1000002M1"
+  ],
+  "accepted_input_names": [
+   "China Merchants Bank Co., Ltd. Class A",
+   "China Merchants Bank Co., Ltd."
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:CIHHF",
+    "isin": "CNE1000002M1",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "03968",
+    "isin": "CNE1000002M1",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:PCCYF",
+  "ticker": "PCCYF",
+  "currency": "USD",
+  "isin": "CNE1000003W8",
+  "issuer_name": "PetroChina Company Limited",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE1000007Q1",
+   "CNE1000003W8"
+  ],
+  "accepted_input_names": [
+   "PetroChina Co., Ltd. Class A",
+   "PetroChina Company Limited"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:PCCYF",
+    "isin": "CNE1000003W8",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "00857",
+    "isin": "CNE1000003W8",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:PIAIF",
+  "ticker": "PIAIF",
+  "currency": "USD",
+  "isin": "CNE1000003X6",
+  "issuer_name": "Ping An Insurance (Group) Company of China, Ltd.",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE000001R84",
+   "CNE1000003X6"
+  ],
+  "accepted_input_names": [
+   "Ping An Insurance (Group) Company of China, Ltd. Class A",
+   "Ping An Insurance (Group) Company of Chi",
+   "Ping An Insurance (Group) Company of China, Ltd."
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:PIAIF",
+    "isin": "CNE1000003X6",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "02318",
+    "isin": "CNE1000003X6",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:SNPMF",
+  "ticker": "SNPMF",
+  "currency": "USD",
+  "isin": "CNE1000002Q2",
+  "issuer_name": "China Petroleum & Chemical Corporation",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE0000018G1",
+   "CNE1000002Q2"
+  ],
+  "accepted_input_names": [
+   "China Petroleum & Chemical Corporation Class A",
+   "China Petroleum & Chemical Corporation C",
+   "China Petroleum & Chemical Corporation"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:SNPMF",
+    "isin": "CNE1000002Q2",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "00386",
+    "isin": "CNE1000002Q2",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:CUAEF",
+  "ticker": "CUAEF",
+  "currency": "USD",
+  "isin": "CNE1000002R0",
+  "issuer_name": "China Shenhua Energy Company Limited",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE100000767",
+   "CNE1000002R0"
+  ],
+  "accepted_input_names": [
+   "China Shenhua Energy Co. Ltd. Class A",
+   "China Shenhua Energy Company Limited"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:CUAEF",
+    "isin": "CNE1000002R0",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "01088",
+    "isin": "CNE1000002R0",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:WUXIF",
+  "ticker": "WUXIF",
+  "currency": "USD",
+  "isin": "CNE100003F19",
+  "issuer_name": "WuXi AppTec Co., Ltd.",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE1000031K4",
+   "CNE100003F19"
+  ],
+  "accepted_input_names": [
+   "WuXi AppTec Co., Ltd. Class A",
+   "WuXi AppTec Co., Ltd."
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:WUXIF",
+    "isin": "CNE100003F19",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "02359",
+    "isin": "CNE100003F19",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:CTATF",
+  "ticker": "CTATF",
+  "currency": "USD",
+  "isin": "CNE100006WS8",
+  "issuer_name": "Contemporary Amperex Technology Co., Limited",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE100003662",
+   "CNE100006WS8"
+  ],
+  "accepted_input_names": [
+   "Contemporary Amperex Technology Co., Limited Class A",
+   "Contemporary Amperex Technology Co., Lim",
+   "Contemporary Amperex Technology Co., Limited"
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:CTATF",
+    "isin": "CNE100006WS8",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "03750",
+    "isin": "CNE100006WS8",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ },
+ {
+  "listing_symbol": "OTC:ZHILF",
+  "ticker": "ZHILF",
+  "currency": "USD",
+  "isin": "CNE100007SR6",
+  "issuer_name": "Zhongji Innolight Co., Ltd.",
+  "share_class": null,
+  "accepted_input_isins": [
+   "CNE100001CY9",
+   "CNE100007SR6"
+  ],
+  "accepted_input_names": [
+   "Zhongji Innolight Co., Ltd. Class A",
+   "Zhongji Innolight Co., Ltd."
+  ],
+  "reviewed_at": "2026-11-10",
+  "review_until": "2027-05-09",
+  "sources": [
+   "https://www.hkex.com.hk/eng/services/trading/securities/securitieslists/ListOfSecurities.xlsx"
+  ],
+  "evidence": {
+   "kind": "h_share_isin_of_otc_line",
+   "note": "Die OTC-Linie handelt die H-Aktie (Hongkong). Das Universum übernahm die Unternehmens-ISIN der A-Aktie.",
+   "providerListingIsin": {
+    "source": "ROIC v3 tickers/search, exakte Notierung OTC:ZHILF",
+    "isin": "CNE100007SR6",
+    "observedAt": "2026-11-10"
+   },
+   "exchangeList": {
+    "source": "HKEX List of Securities",
+    "stockCode": "03308",
+    "isin": "CNE100007SR6",
+    "sha256": "f872b4e396cc9c1940e412de10184afc0528a399b9f19c5ef0090fece523f4f9",
+    "retrievedAt": "2026-11-10"
+   }
+  }
+ }
 ]
-

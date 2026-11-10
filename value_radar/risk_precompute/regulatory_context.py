@@ -57,15 +57,16 @@ def depositary_candidate(row):
  """Depositary Receipt mit der ISIN der Stammaktie: Kandidat fuer die Konzernkennzahlen der geprueften Stammaktie."""
  return (row.get('security_type') in DEPOSITARY and valid_isin(row.get('isin')) and row.get('share_class') in (None,'','common','ordinary')
          and row.get('listing_reference_status') not in ('expired','input_mismatch'))
-def adopt_depositaries(stocks,rejected,deferred):
- """Kapital-, Liquiditaets- und Kreditquoten gelten fuer den Konzern, nicht fuer die Aktie. Ein DR mit derselben ISIN uebernimmt
- den Eintrag nur, wenn im selben Lauf eine Stammaktie dieser ISIN geprueft wurde; sonst bleibt er offen."""
- for row in deferred:
-  s=row['listing_symbol'];isin=row['isin']
-  base=sorted((k for k,v in stocks.items() if (v.get('inputIdentity') or {}).get('isin')==isin and (v.get('inputIdentity') or {}).get('security_type') in ORDINARY and not v.get('depositaryOf')),key=lambda k:(k.startswith('OTC:'),k))
+def adopt_depositaries(stocks,rejected,deferred,group):
+ """Kapital-, Liquiditaets- und Kreditquoten gelten fuer den Konzern, nicht fuer die Aktie. Ein DR uebernimmt den Eintrag nur,
+ wenn im selben Lauf eine Stammaktie desselben Konzerns geprueft wurde (group: LEI bzw. gepruefte Emittenten-ISIN inkl.
+ weiterer Aktiengattungen wie A/H); sonst bleibt er offen."""
+ for row,key in deferred:
+  s=row['listing_symbol']
+  base=sorted((k for k,v in stocks.items() if v.get(group)==key and (v.get('inputIdentity') or {}).get('security_type') in ORDINARY and not v.get('depositaryOf')),key=lambda k:(k.startswith('OTC:'),k))
   if not base:rejected[s]='depositary_without_verified_ordinary';continue
   stocks[s]={**stocks[base[0]],'inputIdentity':{k:row.get(k) for k in FIELDS},'depositaryOf':base[0],
-   'limitations':[*stocks[base[0]].get('limitations',[]),'Depositary receipt: group ratios of the verified ordinary share '+base[0]+' with the same ISIN.']}
+   'limitations':[*stocks[base[0]].get('limitations',[]),'Depositary receipt: group ratios of the verified ordinary share '+base[0]+' of the same group.']}
 EU_ITEMS={'cet1_ratio':'2520140','tier1_ratio':'2520141','total_capital_ratio':'2520142','leverage_ratio':'2520905'}
 def build_eu(universe,capital,mapping,now):
  """EU/EWR-Banken: EBA-Kapital und -NPL je LEI, Teilanforderung aus EZB-P2R. Gleiche Identitaetsregeln wie bei US-Holdings."""
@@ -79,7 +80,7 @@ def build_eu(universe,capital,mapping,now):
   if not s or not lei:continue
   b=capital['banks'].get(lei)
   if not b:rejected[s]='no_eu_capital_for_lei';continue
-  if depositary_candidate(row):deferred.append(row);continue
+  if depositary_candidate(row):deferred.append((row,lei));continue
   if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
    rejected[s]='listing_identity_unverified';continue
   metrics={k:{'state':'available','value':b['metrics'][k],'unit':'fraction','sourceField':'EBA:'+code} for k,code in EU_ITEMS.items() if isinstance(b['metrics'].get(k),(int,float)) and 0<=b['metrics'][k]<=1}
@@ -99,7 +100,7 @@ def build_eu(universe,capital,mapping,now):
    'identityReviewExpires':capital['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
    'capitalRequirement':req,'liquidity':None,'creditQuality':credit,
    'limitations':['EBA transparency data are published annually; the period can be up to 24 months old.','Partial CET1 requirement excludes countercyclical, systemic and O-SII/G-SII buffers.','No LCR in this source.']}
- adopt_depositaries(stocks,rejected,deferred)
+ adopt_depositaries(stocks,rejected,deferred,'lei')
  out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
 
@@ -111,7 +112,7 @@ def build_intl(universe,data,now):
  for row in universe.get('kandidaten',[]):
   s=row.get('listing_symbol');i=data['issuers'].get(row.get('isin'))
   if not s or not i:continue
-  if depositary_candidate(row):deferred.append(row);continue
+  if depositary_candidate(row):deferred.append((row,i.get('shareClassOf') or row['isin']));continue
   if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
    rejected[s]='listing_identity_unverified';continue
   src=i['source'];metrics={k:{'state':'available','value':v,'unit':'fraction','sourceField':src['type']+':'+k} for k,v in i['metrics'].items() if isinstance(v,(int,float)) and 0<=v<=1}
@@ -125,12 +126,12 @@ def build_intl(universe,data,now):
   if isinstance(i.get('defaultedLoanRatio'),(int,float)) and 0<=i['defaultedLoanRatio']<=1:
    credit={'state':'available','method':'basel-cr1-default-v1','unit':'fraction','ratio':i['defaultedLoanRatio'],'period':i['period'],
            'definition':'Defaulted / (defaulted + non-defaulted) gross carrying value of loans, Basel Pillar 3 table CR1.','scoreContribution':0}
-  stocks[s]={'state':'available','scope':'basel_key_metrics','holdingName':i['issuer'],'jurisdiction':i['jurisdiction'],'regulator':i['regulator'],'consolidation':i['scope'],
+  stocks[s]={'state':'available','scope':'basel_key_metrics','holdingName':i['issuer'],'issuerIsin':i.get('shareClassOf') or row['isin'],'jurisdiction':i['jurisdiction'],'regulator':i['regulator'],'consolidation':i['scope'],
    'inputIdentity':{k:row.get(k) for k in FIELDS},'period':i['period'],'sourceImportedAt':data['importedAt'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceType':src['type'],
    'sourceDetail':src.get('tables') or src.get('location'),'identityReviewExpires':data['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
    'capitalRequirement':req,'liquidity':liq,'creditQuality':credit,
    'limitations':['Published key metrics of the supervised consolidated group; no institution-specific requirement unless disclosed.','No harmonised non-performing loan ratio in this source.']}
- adopt_depositaries(stocks,rejected,deferred)
+ adopt_depositaries(stocks,rejected,deferred,'issuerIsin')
  out.update(state='ready',summary={'intlBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
 

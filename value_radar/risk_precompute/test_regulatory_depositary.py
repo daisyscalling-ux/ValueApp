@@ -29,4 +29,17 @@ class DepositaryTests(unittest.TestCase):
             out=build_intl({'kandidaten':[{**ADR,**change},ORD]},DATA,self.now)
             self.assertEqual(out['rejected']['OTC:CMWAY'],'listing_identity_unverified')
 
+    def test_dr_adopts_other_share_class_of_same_group(self):
+        a,h='CNE000001P37','CNE1000003G1'
+        icbc={**ISSUER,'issuer':'Industrial and Commercial Bank of China Limited'}
+        data={**DATA,'issuers':{a:icbc,h:{**icbc,'shareClassOf':a}}}
+        hline={**ORD,'listing_symbol':'OTC:IDCBF','ticker':'IDCBF','isin':h,'listing_reference_status':'applied'}
+        adr={**ADR,'listing_symbol':'OTC:IDCBY','ticker':'IDCBY','isin':a}
+        out=build_intl({'kandidaten':[adr,hline]},data,self.now)
+        self.assertEqual(out['stocks']['OTC:IDCBF']['issuerIsin'],a)
+        self.assertEqual(out['stocks']['OTC:IDCBY']['depositaryOf'],'OTC:IDCBF')
+        other={**DATA,'issuers':{a:icbc,h:{**icbc}}}   # ohne shareClassOf: zwei getrennte Emittenten
+        out=build_intl({'kandidaten':[adr,hline]},other,self.now)
+        self.assertEqual(out['rejected']['OTC:IDCBY'],'depositary_without_verified_ordinary')
+
 if __name__=='__main__':unittest.main()

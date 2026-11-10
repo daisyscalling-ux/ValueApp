@@ -87,6 +87,7 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_feature_snapshot.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_construct_coverage.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_history_proxy.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_listing_isin_audit.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
@@ -149,6 +150,12 @@ jobs:
         env:
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
         run: python value_radar/risk_precompute/recover_listing_metadata.py
+      - name: ISIN der OTC-Stammaktien gegen die exakte Notierung pruefen (nur Bericht)
+        continue-on-error: true
+        timeout-minutes: 6
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+        run: python value_radar/risk_precompute/listing_isin_audit.py value_radar/daten
       - name: Letzte veroeffentlichte Abdeckung fuer Vergleich sichern
         run: |
           if test -s value_radar/daten/cf_risk_coverage.json; then cp value_radar/daten/cf_risk_coverage.json /tmp/risk-coverage-before.json; fi
@@ -307,6 +314,7 @@ jobs:
             value_radar/daten/cf_sector_supply_plan.json
             value_radar/daten/cf_ecb_fx.json
             value_radar/daten/cf_listing_recovery.json
+            value_radar/daten/cf_listing_isin_audit.json
             value_radar/daten/cf_roic_risk_annual.json
             value_radar/daten/cf_edinet_cashflow.json
             value_radar/daten/cf_financial_supply_plan.json
@@ -336,7 +344,7 @@ jobs:
           git add value_radar/daten/cf_risk.json
           if test -s value_radar/daten/cf_risk_app_manifest.json; then git add value_radar/daten/cf_risk_app_manifest.json value_radar/daten/risk_app; fi
           if test -d value_radar/daten/risk_observations; then git add value_radar/daten/risk_observations; fi
-          for file in cf_risk_event_review.json cf_sector_review_packets.json cf_risk_observation_status.json cf_risk_run_integrity.json cf_sec_cashflow_history.json cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json cf_risk_construct_coverage.json; do
+          for file in cf_risk_event_review.json cf_sector_review_packets.json cf_risk_observation_status.json cf_risk_run_integrity.json cf_sec_cashflow_history.json cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_listing_isin_audit.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json cf_risk_construct_coverage.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done
           if test -s value_radar/daten/cf_risk_validation.json; then git add value_radar/daten/cf_risk_validation.json; fi

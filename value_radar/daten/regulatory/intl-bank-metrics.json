@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "intl-bank-metrics-v1",
- "importedAt": "2026-11-09T21:52:35.495480+00:00",
+ "importedAt": "2026-11-10T15:20:57.628395+00:00",
  "mappingReviewExpires": "2027-05-08",
  "issuers": {
   "AU000000CBA7": {
@@ -430,6 +430,36 @@
     "location": "Third Quarterly Report 2026 (HKEX), PDF pages 22-23, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter; G-SIB surcharge rises to 2.0 % from 1 January 2027"
    }
   },
+  "CNE1000003G1": {
+   "issuer": "Industrial and Commercial Bank of China Limited",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1307,
+    "tier1_ratio": 0.1427,
+    "total_capital_ratio": 0.185,
+    "leverage_ratio": 0.0716
+   },
+   "lcr": 1.3888,
+   "nsfr": 1.2851,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000694.pdf",
+    "sha256": "29d9c4e6dfedb31456b578c1c48f81b96eeda48fe59a14b1365f9b79b271c013",
+    "location": "Third Quarterly Report 2026 (HKEX), PDF pages 22-23, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter; G-SIB surcharge rises to 2.0 % from 1 January 2027"
+   },
+   "shareClassOf": "CNE000001P37"
+  },
   "CNE100000742": {
    "issuer": "China Construction Bank Corporation",
    "jurisdiction": "CN",
@@ -458,6 +488,36 @@
     "sha256": "18f535edbd2c3100907ce15b215eae48fc04c52b71155847235dea0379e4fb01",
     "location": "Capital Management Pillar III Third Quarter Report 2026 (HKEX), PDF pages 4-5, Table 1 (KM1) rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter"
    }
+  },
+  "CNE1000002H1": {
+   "issuer": "China Construction Bank Corporation",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1439,
+    "tier1_ratio": 0.1544,
+    "total_capital_ratio": 0.1955,
+    "leverage_ratio": 0.0769
+   },
+   "lcr": 1.402,
+   "nsfr": 1.2796,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000860.pdf",
+    "sha256": "18f535edbd2c3100907ce15b215eae48fc04c52b71155847235dea0379e4fb01",
+    "location": "Capital Management Pillar III Third Quarter Report 2026 (HKEX), PDF pages 4-5, Table 1 (KM1) rows 5-7, 11, 14, 17, 20, column 30 September 2026; LCR = daily average of the quarter"
+   },
+   "shareClassOf": "CNE100000742"
   },
   "CNE000001N05": {
    "issuer": "Bank of China Limited",
@@ -488,6 +548,36 @@
     "location": "2026 Q3 Pillar 3 Disclosure Report (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; footnote 3 confirms the 5 % CET1 minimum; LCR = daily average of the quarter"
    }
   },
+  "CNE1000001Z5": {
+   "issuer": "Bank of China Limited",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1204,
+    "tier1_ratio": 0.1386,
+    "total_capital_ratio": 0.1845,
+    "leverage_ratio": 0.0721
+   },
+   "lcr": 1.3478,
+   "nsfr": 1.2795,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000882.pdf",
+    "sha256": "c6f2537401a7e28eb12a43ffbc8c45c3784435c48e37b6393346e1afdd73aea6",
+    "location": "2026 Q3 Pillar 3 Disclosure Report (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026; footnote 3 confirms the 5 % CET1 minimum; LCR = daily average of the quarter"
+   },
+   "shareClassOf": "CNE000001N05"
+  },
   "CNE100000RJ0": {
    "issuer": "Agricultural Bank of China Limited",
    "jurisdiction": "CN",
@@ -516,6 +606,36 @@
     "sha256": "e52e312708746a91eb2f9a829895eb8db12a2389958618b2413a5bc4a5b07217",
     "location": "Pillar 3 Report for the Third Quarter of 2026 (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026"
    }
+  },
+  "CNE100000Q43": {
+   "issuer": "Agricultural Bank of China Limited",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.109,
+    "tier1_ratio": 0.1275,
+    "total_capital_ratio": 0.1805,
+    "leverage_ratio": 0.0616
+   },
+   "lcr": 1.31,
+   "nsfr": 1.324,
+   "cet1Requirement": 0.09,
+   "cet1RequirementDefinition": "CET1 requirement = 5 % NFRA minimum core tier 1 ratio + KM1 row 11 (capital conservation, countercyclical and G-SIB/D-SIB buffers). No institution-specific Pillar 2 requirement is published.",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "km1Row11": 0.04
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001644.pdf",
+    "sha256": "e52e312708746a91eb2f9a829895eb8db12a2389958618b2413a5bc4a5b07217",
+    "location": "Pillar 3 Report for the Third Quarter of 2026 (HKEX), PDF pages 4-5, KM1 rows 5-7, 11, 14, 17, 20, column 30 September 2026"
+   },
+   "shareClassOf": "CNE100000RJ0"
   },
   "CNE000001B33": {
    "issuer": "China Merchants Bank Co., Ltd.",
@@ -547,6 +667,37 @@
     "location": "Third Quarterly Report of 2026 (H Share, HKEX), PDF pages 18-19 section 4.6 (Group, advanced approach; requirement 8.25 %), PDF page 29 section 6 (average LCR of the quarter); KM1 itself not in this report, NSFR not disclosed"
    }
   },
+  "CNE1000002M1": {
+   "issuer": "China Merchants Bank Co., Ltd.",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1439,
+    "tier1_ratio": 0.1689,
+    "total_capital_ratio": 0.1865,
+    "leverage_ratio": 0.0823
+   },
+   "lcr": 1.803,
+   "nsfr": null,
+   "cet1Requirement": 0.0825,
+   "cet1RequirementDefinition": "CET1 requirement = 8.25 % core tier 1 ratio stated by the bank (5 % minimum + 2.5 % capital conservation buffer + 0.75 % D-SIB surcharge under the Ancillary Regulatory Provision for Systemically Important Banks).",
+   "requirementComponents": {
+    "minimum": 0.05,
+    "capitalConservationBuffer": 0.025,
+    "dsibSurcharge": 0.0075
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "bank_capital_release",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103001614.pdf",
+    "sha256": "1365e20b1335c759fce1393dd3ef935b1e84dd32ca07ced70a8ab6ee40f06a02",
+    "location": "Third Quarterly Report of 2026 (H Share, HKEX), PDF pages 18-19 section 4.6 (Group, advanced approach; requirement 8.25 %), PDF page 29 section 6 (average LCR of the quarter); KM1 itself not in this report, NSFR not disclosed"
+   },
+   "shareClassOf": "CNE000001B33"
+  },
   "CNE1000000S2": {
    "issuer": "Bank of Communications Co., Ltd.",
    "jurisdiction": "CN",
@@ -571,6 +722,32 @@
     "sha256": "fbf8a3d2b6ad1446e81c98f308c31cd208907c22aa39993ad47fe667c8818ad7",
     "location": "Results Announcement for the Third Quarter 2026 (HKEX), PDF page 8 section 4 Capital Adequacy Ratio; the separate Pillar 3 report is only on www.bankcomm.com, which this environment cannot reach, so requirement, leverage ratio and LCR are left out"
    }
+  },
+  "CNE100000205": {
+   "issuer": "Bank of Communications Co., Ltd.",
+   "jurisdiction": "CN",
+   "regulator": "NFRA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1135,
+    "tier1_ratio": 0.1255,
+    "total_capital_ratio": 0.1609
+   },
+   "lcr": null,
+   "nsfr": null,
+   "cet1Requirement": null,
+   "cet1RequirementDefinition": null,
+   "requirementComponents": null,
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "bank_capital_release",
+    "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000550.pdf",
+    "sha256": "fbf8a3d2b6ad1446e81c98f308c31cd208907c22aa39993ad47fe667c8818ad7",
+    "location": "Results Announcement for the Third Quarter 2026 (HKEX), PDF page 8 section 4 Capital Adequacy Ratio; the separate Pillar 3 report is only on www.bankcomm.com, which this environment cannot reach, so requirement, leverage ratio and LCR are left out"
+   },
+   "shareClassOf": "CNE1000000S2"
   },
   "CH0531751755": {
    "issuer": "Banque Cantonale Vaudoise",

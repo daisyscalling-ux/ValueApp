@@ -48,7 +48,8 @@ export async function exportRisk(options:any={}){
   const wait=Math.max(0,pacing.blockedUntil-clock());if(clock()+wait>=deadline)throw Error('Zeitbudget erreicht.');if(wait)await sleep(wait);
   try{return await task()}catch(e){if(!/HTTP 429/.test((e as Error).message)||attempt>=2)throw e;report.retries++}
  }};
- const fresh=(v:any)=>v?.schema===RISK_SCHEMA&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<18*3600000;
+ // Ersatzhistorien aus der Heimatnotierung (historySource) gelten nie als frisch: die eigene Historie wird jedes Mal neu versucht.
+ const fresh=(v:any)=>v?.schema===RISK_SCHEMA&&!v.historySource&&clock()-Date.parse(v.retrievedAt)>=0&&clock()-Date.parse(v.retrievedAt)<18*3600000;
  const accept=(h:any)=>{const s=compactHistory(h,clock()),v=historyStatistics(s,clock());if(!v.observations||[v.es,v.dd,v.worst,v.drawdown].every(x=>x===null))throw Error('Keine gültige Risiko-Historie: '+(v.error||'Weniger als 200 aktuelle Handelstage oder Lücken.'));return s};
  const failure=(symbol:string,e:any)=>{if(!symbol.startsWith('Markt '))data.retryState[symbol]=failureState(String(e?.message||''),data.retryState[symbol],clock());report.failed++;const category=/HTTP \d+/.exec(e?.message||'')?.[0]||(/Notierung/.test(e?.message||'')?'Notierung':'Sonstige');report.failureReasons[category]=(report.failureReasons[category]||0)+1;if(!symbol.startsWith('Markt ')&&/Kurshistorie HTTP 402/.test(e?.message||'')){historyDenied++;if(historyDenied>=3)aborted=true}if(report.errors.length<2000)report.errors.push({symbol,reason:/^(ROIC|Kurshistorie|Notierung|Markt|Keine|Zeitbudget|Eindeutige|Ungültige)/.test(e?.message||'')?e.message:'Abruf fehlgeschlagen'});};
  for(const country of MARKET_COUNTRIES){

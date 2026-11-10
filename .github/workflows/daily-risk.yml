@@ -86,6 +86,7 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_review.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_feature_snapshot.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_construct_coverage.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_history_proxy.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
@@ -188,6 +189,10 @@ jobs:
           RISK_SECTOR_ENABLED: '1'
           RISK_REQUESTS_PER_MINUTE: '240'
         run: node /tmp/risk-export.mjs
+      - name: Fehlende eigene Kurshistorien durch gekennzeichnete Heimatnotierung ersetzen
+        if: always() && !cancelled()
+        continue-on-error: true
+        run: python value_radar/risk_precompute/risk_history_proxy.py value_radar/daten
       - name: Unternehmensnachrichten universumsweit erfassen
         if: always() && !cancelled()
         timeout-minutes: 22

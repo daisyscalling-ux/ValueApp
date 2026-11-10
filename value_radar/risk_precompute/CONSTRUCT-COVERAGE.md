@@ -52,3 +52,13 @@ Korrektur gegenüber Methode v1: Dort galt Peer-Stress bei 736 Unternehmen als f
 Der Abschluss-Export (`export_fundamentals.py`) setzt jetzt für Stammaktien mit abweichender Berichtswährung automatisch die Aktienbasis 1:1 (`share_basis_rule.py`, Methode `rule_ordinary_share_isin_v1`). Bedingungen: Wertpapiertyp „stock“ ohne Sonderaktienklasse und eine Nicht-US-ISIN, also die Heimat-ISIN der Stammaktie; Depositary Receipts tragen eigene US-ISINs. Die App rechnet damit den Abschluss zum EZB-Kurs in die Handelswährung um und gibt die Bewertung frei. Manuell geprüfte Einträge in `share_basis.json` haben Vorrang.
 
 Betroffen sind 189 Notierungen: 134 Unternehmen, 32 Banken, 12 Versicherer, 10 Spezialfinanzierer (darunter 2 georgische Banken ohne EZB-Kurs für GEL, die offen bleiben). Die Einträge erscheinen, sobald der Export die jeweilige Datei neu schreibt (mindestens wöchentlich). Die Messung unterscheidet bis dahin „Stammaktie, Aktienbasis noch nicht in der Abschlussdatei“ von „ADR oder unklare Aktienbasis“. Echte ADRs (rund 120) brauchen weiterhin ein geprüftes Umtauschverhältnis. Wenn die App neuere Primärdaten als den Ersatzabschluss hat, nutzt sie den Ersatzabschluss nicht. Einzelne Notierungen können deshalb trotz Aktienbasis offen bleiben.
+
+## ADR-Umtauschverhältnisse (10.11.2026)
+
+`fundamental_export/adr_basis.py` läuft nach jedem Abschluss-Export und leitet das Verhältnis eines Depositary Receipts zur Stammaktie doppelt ab:
+1. **Aktienzahl:** Stammaktien der Heimatnotierung ÷ ADR-Einheiten. Sie muss ein Standardverhältnis (1, 2, 4, 10, 1/10 …) auf 2 % treffen.
+2. **Kurs:** ADR-Kurs ÷ Heimatkurs zum EZB-Kurs. Er muss dasselbe Verhältnis auf 10 % treffen; OTC-Kurse können einige Tage alt sein.
+
+Die Heimatnotierung ist die Stammaktie mit derselben ISIN im Universum. Manuelle Einträge in `share_basis.json` haben Vorrang. Ein Verhältnis, das nicht mehr bestätigt wird, wird sofort entfernt. Die App (`sharesPerUnit`) prüft Methode und Belege erneut, rechnet den Gewinn je Aktie auf die ADR-Einheit um und rechnet firmenweite Beträge nur in die Handelswährung um.
+
+Probelauf: Verhältnis für 61 ADRs gesetzt. 67 ADRs haben keine Heimatnotierung im Universum, 7 scheitern an fehlenden Daten oder an nicht übereinstimmenden Werten. In der Abdeckung sinken die ADR-Konflikte bei Unternehmen von 82 auf 41, bei Banken von 31 auf 24.

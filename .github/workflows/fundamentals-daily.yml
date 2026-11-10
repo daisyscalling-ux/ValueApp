@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - working-directory: value_radar/fundamental_export
-        run: python -m unittest -v test_export_fundamentals.py test_queue_policy.py test_annual_supply_status.py test_share_basis_rule.py
+        run: python -m unittest -v test_export_fundamentals.py test_queue_policy.py test_annual_supply_status.py test_share_basis_rule.py test_adr_basis.py
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_listing_identity.py
   collect:
@@ -55,6 +55,10 @@ jobs:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           REQUESTED_SYMBOLS: ${{ inputs.symbols }}
         run: python fundamental_export/export_fundamentals.py --symbols "$REQUESTED_SYMBOLS" --budget-min 120
+      - name: ADR-Verhältnisse aus Aktienzahl und Kurs prüfen
+        if: always()
+        working-directory: value_radar
+        run: python fundamental_export/adr_basis.py .
       - name: Preserve checkpoints even when some providers failed
         if: always()
         run: |

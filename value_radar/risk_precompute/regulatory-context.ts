@@ -18,10 +18,17 @@ export function verifiedEuCapital(archive:Row|undefined|null,row:Row,identityOK:
  const chain=['cet1_ratio','tier1_ratio','total_capital_ratio'].map(k=>(metrics[k] as any)?.value).filter(v=>v!==undefined);
  if(!metrics.cet1_ratio||!chain.every((v,i)=>!i||chain[i-1]<=v+1e-6))return null;
  const cet1=(metrics.cet1_ratio as any).value,q=r.capitalRequirement,c=r.creditQuality;
- const requirement=q?.state==='available'&&q.method==='ecb-p2r-partial-cet1-v1'&&q.unit==='fraction'&&typeof q.value==='number'&&q.value>0&&q.value<.3&&q.comparisonPeriod===r.period&&dateOnly(q.reviewExpires)&&q.reviewExpires>=today&&/^[0-9a-f]{64}$/.test(q.sourceSha256||'')
+ const p3dh=(x:any)=>typeof x?.sourceUrl==='string'&&x.sourceUrl.startsWith('https://errp.eba.europa.eu/public-documents/')&&/^[0-9a-f]{64}$/.test(x.sourceFileSha256||'');
+ // Vollstaendige CET1-Anforderung aus EU KM1 (EBA Pillar 3 Data Hub): eigener Stichtag, hoechstens 270 Tage; Puffer mit der CET1-Quote desselben Stichtags.
+ const full=q?.state==='available'&&q.method==='eba-p3dh-km1-cet1-requirement-v1'&&q.unit==='fraction'&&typeof q.value==='number'&&q.value>0&&q.value<.3&&typeof q.cet1Ratio==='number'&&q.cet1Ratio>0&&q.cet1Ratio<1
+  &&dateOnly(q.comparisonPeriod)&&fresh(q.comparisonPeriod,now,270)&&dateOnly(q.reviewExpires)&&q.reviewExpires>=today&&p3dh(q);
+ const requirement=full?{...q,headroomPercentagePoints:(q.cet1Ratio-q.value)*100}
+  :q?.state==='available'&&q.method==='ecb-p2r-partial-cet1-v1'&&q.unit==='fraction'&&typeof q.value==='number'&&q.value>0&&q.value<.3&&q.comparisonPeriod===r.period&&dateOnly(q.reviewExpires)&&q.reviewExpires>=today&&/^[0-9a-f]{64}$/.test(q.sourceSha256||'')
   ?{...q,headroomPercentagePoints:(cet1-q.value)*100}:null;
+ const l=r.liquidity;
+ const liquidity=l?.state==='available'&&l.method==='eba-p3dh-km1-lcr-v1'&&l.unit==='fraction'&&typeof l.reportedRatio==='number'&&l.reportedRatio>0&&l.reportedRatio<10&&dateOnly(l.period)&&fresh(l.period,now,270)&&p3dh(l)?l:null;
  const credit=c?.state==='available'&&c.method==='eba-npl-v1'&&c.unit==='fraction'&&c.period===r.period&&c.lei===r.lei&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&/^[0-9a-f]{64}$/.test(c.sourceFileSha256||'')?c:null;
- return {...r,metrics,capitalRequirement:requirement,creditQuality:credit,liquidity:null};
+ return {...r,metrics,capitalRequirement:requirement,creditQuality:credit,liquidity};
 }
 // Banken ausserhalb EU/EWR/USA: veroeffentlichte Basel-Kennzahlen (APRA, spaeter KM1). Hoechstalter 270 Tage (Quartalsdaten).
 export function verifiedIntlCapital(archive:Row|undefined|null,row:Row,identityOK:boolean,now:number):Row|null{
@@ -61,7 +68,8 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
  const fulfilled=capital&&bankLike?['regulatory_capital_CET1']:[];
  // EU: Teilanforderung ohne systemische Puffer erfuellt die bankspezifische Anforderung nicht vollstaendig; NPL schliesst die Kreditqualitaet.
  if(['eu_prudential_group','basel_key_metrics'].includes(capital?.scope)&&capital.creditQuality)fulfilled.push('asset_quality_nonperforming_loans');
- if(capital?.capitalRequirement&&capital.scope!=='eu_prudential_group'&&bankLike)fulfilled.push('institution_specific_capital_requirement');
+ // EU: nur die vollstaendige Anforderung aus KM1 erfuellt die bankspezifische Anforderung, nicht die Teilanforderung ohne Systempuffer.
+ if(capital?.capitalRequirement&&(capital.scope!=='eu_prudential_group'||capital.capitalRequirement.method==='eba-p3dh-km1-cet1-requirement-v1')&&bankLike)fulfilled.push('institution_specific_capital_requirement');
  if(capital?.liquidity&&bankLike)fulfilled.push('liquidity_LCR_or_local_equivalent');
  requirements=requirements.filter(k=>!fulfilled.includes(k));
  return {...base,sectorRequirements:requirements,bankCapital:capital,

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {assessBalance} from './balance-profile';
+import {assessBalance,balanceProfile,profileOverride} from './balance-profile';
 const now=Date.parse('2026-10-25T20:00:00Z'),at='2026-10-25T19:00:00Z';
 const row={industry:'Software',metadata_asof:at};
 const annual=()=>({source:'Yahoo annual statements',period_type:'annual',end:'2026-06-30',currency:'USD',fields:{total_assets:100,total_debt:10,cash:20,operating_cashflow:15,capex:-5,equity:40,net_income:10},field_sources:{} as any});
@@ -54,5 +54,26 @@ test('refresh starts two days before expiry without redating values',()=>{
 test('older retained field sets the earliest refresh deadline',()=>{
  const a=annual();a.field_sources.capex={retrieved_at:'2026-10-20T18:00:00Z'};const b=calc(a);
  assert.equal(b.refreshDue,true);assert.equal(b.expiresAt,'2026-10-27T18:00:00.000Z');
+});
+test('reviewed ISIN override: insurer behind a broker classification, flagged and bounded',()=>{
+ const t=Date.parse('2026-11-10T20:00:00Z'),ta='2026-11-10T19:00:00Z',g={industry:'Insurance brokers/Services',metadata_asof:ta,isin:'IT0000062072'};
+ const an=()=>({...annual(),end:'2025-12-31'}),run=(r:any)=>assessBalance(r,an(),ta,true,t);
+ assert.equal(balanceProfile(g,t),'insurer');
+ const b=run(g);assert.equal(b.profile,'insurer');assert.equal(b.profileSource.kind,'reviewed_isin_override');assert.equal(b.profileSource.vendorIndustry,'Insurance brokers/Services');
+ assert.deepEqual(b.sectorRequirements,['eligible_own_funds','solvency_requirement','jurisdiction_and_regulatory_scope']);assert.equal(b.ratios,null);
+ assert.equal(balanceProfile({...g,isin:'IT0000062071'},t),'corporate','other ISIN');
+ assert.equal(balanceProfile({...g,industry:'Multi-line insurance'},t),'insurer');assert.equal(run({...g,industry:'Multi-line insurance'}).profileSource,undefined,'vendor fixed: no override flag');
+ assert.equal(balanceProfile({...g,industry:'Software'},t),'corporate','vendor industry changed: override lapses');
+ assert.equal(balanceProfile({industry:'Insurance brokers/Services',metadata_asof:at,isin:'US3635761097'},t),'corporate','real broker stays corporate');
+ assert.equal(balanceProfile({...g,metadata_asof:'2026-01-01T00:00:00Z'},t),'unclassified','stale metadata wins');
+ const e={isin:'IT0000062072',vendorIndustry:'Insurance brokers/Services',profile:'insurer',evidenceUrl:'https://x.example/a.pdf',evidenceSha256:'a'.repeat(64),reviewed_on:'2026-11-10',review_expires:'2027-05-10'};
+ const reg=(x:any)=>({schema:1,method:'reviewed-isin-profile-v1',entries:x});
+ const late=Date.parse('2027-05-11T00:00:00Z'),early=Date.parse('2026-11-09T00:00:00Z'),mid=Date.parse('2026-12-01T00:00:00Z');
+ assert.ok(profileOverride(g,mid,reg([e])));
+ assert.equal(profileOverride(g,late,reg([e])),null,'expired review');assert.equal(profileOverride(g,early,reg([e])),null,'review in the future');
+ assert.equal(profileOverride(g,mid,reg([e,e])),null,'duplicate ISIN ambiguous');
+ assert.equal(profileOverride(g,mid,reg([{...e,profile:'corporate'}])),null,'only financial profiles');
+ assert.equal(profileOverride(g,mid,reg([{...e,evidenceSha256:''}])),null,'hash required');
+ assert.equal(profileOverride(g,mid,{...reg([e]),method:'other'}),null,'method');
 });
 console.log(count+' field-level balance checks passed');

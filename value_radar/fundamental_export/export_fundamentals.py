@@ -1,5 +1,6 @@
 """Dated supplemental observations. No calculated fair values, no credentials in output."""
 import argparse, datetime as dt, json, math, os, pathlib, re, subprocess, sys, time, urllib.request
+from share_basis_rule import ordinary_basis
 from listing_identity import listing_matches,SUFFIXES
 from reference_data import fetch_ecb,fetch_sec_listings
 from queue_policy import order_rows, due, failed as queue_failed, annual_supply_status
@@ -220,7 +221,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

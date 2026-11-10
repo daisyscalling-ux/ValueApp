@@ -46,3 +46,9 @@ Korrektur gegenüber Methode v1: Dort galt Peer-Stress bei 736 Unternehmen als f
 2. **Peer-Stress:** Er fehlt nur noch bei rund 180 Notierungen, weil keine Geschäftsfamilie oder Unterbranche zugeordnet ist oder weniger als drei Peers existieren. Abhilfe wären Unterbranchen in den Stammdaten; der Hebel ist mit 5 % Gewicht klein.
 3. **Bank-LCR:** Für EU-Banken fehlt eine Quelle. Die Säule-3-Berichte enthalten die LCR, ein KM1-Import wie bei den internationalen Banken wäre möglich.
 4. **Kurshistorie:** 55 Unternehmen und 41 Banken ohne verwertbare Historie, meist OTC-Notierungen.
+
+## Währungskonflikt bei Stammaktien (10.11.2026)
+
+Der Abschluss-Export (`export_fundamentals.py`) setzt jetzt für Stammaktien mit abweichender Berichtswährung automatisch die Aktienbasis 1:1 (`share_basis_rule.py`, Methode `rule_ordinary_share_isin_v1`). Bedingungen: Wertpapiertyp „stock“ ohne Sonderaktienklasse und eine Nicht-US-ISIN, also die Heimat-ISIN der Stammaktie; Depositary Receipts tragen eigene US-ISINs. Die App rechnet damit den Abschluss zum EZB-Kurs in die Handelswährung um und gibt die Bewertung frei. Manuell geprüfte Einträge in `share_basis.json` haben Vorrang.
+
+Betroffen sind 189 Notierungen: 134 Unternehmen, 32 Banken, 12 Versicherer, 10 Spezialfinanzierer (darunter 2 georgische Banken ohne EZB-Kurs für GEL, die offen bleiben). Die Einträge erscheinen, sobald der Export die jeweilige Datei neu schreibt (mindestens wöchentlich). Die Messung unterscheidet bis dahin „Stammaktie, Aktienbasis noch nicht in der Abschlussdatei“ von „ADR oder unklare Aktienbasis“. Echte ADRs (rund 120) brauchen weiterhin ein geprüftes Umtauschverhältnis. Wenn die App neuere Primärdaten als den Ersatzabschluss hat, nutzt sie den Ersatzabschluss nicht. Einzelne Notierungen können deshalb trotz Aktienbasis offen bleiben.

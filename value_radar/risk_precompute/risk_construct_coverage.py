@@ -19,6 +19,9 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'fundamental_export'))
+from share_basis_rule import ordinary_basis  # noqa: E402
+
 DATA = Path(os.environ.get('RISK_DATA_DIR') or Path(__file__).resolve().parents[1] / 'daten')
 BLOCKS = {'Kursrisiko': 30, 'Finanzielle Verwundbarkeit': 25, 'Umfeldstress': 15, 'Bewertungsrisiko': 15, 'Wettbewerbsanfälligkeit': 15}
 CONSTRUCT_VERSION = '0.8'
@@ -163,16 +166,36 @@ def select_peers(target, rows, families, limit=8):
     return selected
 
 
+def fx_resolved(b, fx, report, quote, today=None):
+    today = today or dt.datetime.now(dt.timezone.utc).date()
+    if not isinstance(b, dict) or not isinstance(fx, dict):
+        return False
+    try:
+        age = (today - dt.date.fromisoformat(str(b.get('reviewed_at')))).days
+    except ValueError:
+        return False
+    rates = fx.get('rates') or {}
+    target = 'GBP' if quote in ('GBp', 'GBX') else quote
+    return (b.get('kind') in ('ADR', 'ordinary') and b.get('ordinary_shares_per_unit') == 1 and b.get('annual_eps_basis') == 'ordinary'
+            and b.get('report_currency') == report and b.get('quote_currency') == quote and 0 <= age <= 180 and str(b.get('source_url', '')).startswith('https://')
+            and fx.get('base') == 'EUR' and finite(rates.get(report)) and finite(rates.get(target)))
+
+
 class Listing:
     """Offline verfuegbare Eingangsdaten einer Notierung."""
 
-    def __init__(self, symbol, domains, universe_row, stats, annual, market_currency, peers, peer_selected=0, peer_usable=0):
+    def __init__(self, symbol, domains, universe_row, stats, annual, market_currency, peers, peer_selected=0, peer_usable=0, share_basis=None, fx=None, today=None):
         self.symbol, self.domains, self.u, self.stats = symbol, domains or {}, universe_row or {}, stats or {}
         self.balance = self.domains.get('balance') or {}
         self.f = (annual or {}).get('fields') or {}
         ac, mc = (annual or {}).get('currency'), market_currency
         # Waehrungskonflikt wie in der App-Datenpruefung: Bericht und Handel verschieden (GBP/Pence gilt als gleich).
-        self.currency_conflict = bool(annual) and ac != mc and not (ac == 'GBP' and mc == 'GBp')
+        # Geprüfte Aktienbasis plus EZB-Kurse lösen den Konflikt wie verifiedFxScale in der App (Verhältnis 1:1, höchstens 180 Tage alt).
+        self.fx_resolved = fx_resolved(share_basis, fx, ac, mc, today)
+        self.currency_conflict = bool(annual) and ac != mc and not (ac == 'GBP' and mc == 'GBp') and not self.fx_resolved
+        # Grund unterscheiden: Stammaktie (Regel greift, Datei noch nicht aktualisiert) oder ADR/unklar (Umtauschverhältnis fehlt).
+        self.conflict_reason = ('Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei' if ordinary_basis(self.u, annual, mc, 'https://placeholder')
+                                else 'Währungskonflikt: ADR oder unklare Aktienbasis')
         self.peers, self.peer_selected, self.peer_usable = peers, peer_selected, peer_usable
         bc = self.balance.get('bankCapital') or {}
         profile = self.balance.get('profile') or 'unclassified'
@@ -239,18 +262,18 @@ def metrics(x):
                                           (x.peer_usable < PEER_MINIMUM, 'Weniger als drei der ersten fünf Peers mit aktueller Kurshistorie')))]
     growth = f.get('revenue_growth') if finite(f.get('revenue_growth')) else (u['revenue_growth'] / 100 if finite(u.get('revenue_growth')) else None)
     if p in ('bank', 'insurer'):
-        out.append(m(V, 'Erwartungslücke Eigenkapitalrendite', 10, *first((x.currency_conflict, 'Währungskonflikt (Bericht und Handel verschieden)'),
+        out.append(m(V, 'Erwartungslücke Eigenkapitalrendite', 10, *first((x.currency_conflict, x.conflict_reason),
                                                                         (not (finite(u.get('pb')) and .05 < u['pb'] < 15), 'KBV fehlt oder unplausibel'),
                                                                         (not finite(u.get('roe')), 'Eigenkapitalrendite fehlt'))))
     elif p == 'specialist_financial':
         ni = f.get('net_income')
-        out.append(m(V, 'Erwartungslücke Gewinnwachstum', 10, *first((x.currency_conflict, 'Währungskonflikt (Bericht und Handel verschieden)'),
+        out.append(m(V, 'Erwartungslücke Gewinnwachstum', 10, *first((x.currency_conflict, x.conflict_reason),
                                                                    (not (finite(ni) and ni > 0), 'Verlust oder Jahresergebnis fehlt'),
                                                                    (growth is None, 'Umsatzwachstum fehlt'),
                                                                    (growth is not None and abs(growth) > .5, 'Umsatzsprung über ±50 %'))))
     else:
         fcf = f['operating_cashflow'] - abs(f['capex']) if finite(f.get('operating_cashflow')) and finite(f.get('capex')) else None
-        out.append(m(V, 'Erwartungslücke Reverse DCF', 10, *first((x.currency_conflict, 'Währungskonflikt (Bericht und Handel verschieden)'),
+        out.append(m(V, 'Erwartungslücke Reverse DCF', 10, *first((x.currency_conflict, x.conflict_reason),
                                                                 (fcf is None, 'Cashflow oder Investitionen fehlen'),
                                                                 (fcf is not None and fcf <= 0, 'Freier Cashflow negativ oder null'),
                                                                 (growth is None, 'Umsatzwachstum fehlt'))))
@@ -285,9 +308,9 @@ def build(universe, shards, risk, annuals, now=None):
         target = by_symbol.get(symbol)
         chosen = select_peers(target, pool, families) if target is not None else []
         usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
-        annual, currency = annuals.get(symbol, (None, None))
+        annual, currency, basis, fx = (tuple(annuals.get(symbol) or ()) + (None, None, None, None))[:4]
         own = 1 if finite(u.get('ebitda_margin')) else 0
-        x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own, len(chosen), usable)
+        x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margins.get(u.get('industry'), 0) - own, len(chosen), usable, basis, fx, now.date())
         prof = per_profile[x.profile]
         prof['listings'] += 1
         for k in metrics(x):
@@ -328,7 +351,7 @@ def annual_records(folder):
     for f in (folder / 'fundamentals').glob('*.json'):
         d = load(f, {})
         a = d.get('annual') if isinstance(d.get('annual'), dict) else None
-        out[f.stem] = (a, (d.get('market') or {}).get('currency'))
+        out[f.stem] = (a, (d.get('market') or {}).get('currency'), d.get('share_basis'), d.get('fx'))
     return out
 
 
@@ -340,7 +363,7 @@ def main(folder=DATA):
         for s in load(folder / 'risk_app' / f'{h}.json', {}).get('stocks', []):
             shards[s['symbol']] = s.get('domains', {})
     files = annual_records(folder)
-    annuals = {sym: files.get(sym.replace(':', '_'), (None, None)) for sym in shards}
+    annuals = {sym: files.get(sym.replace(':', '_'), (None, None, None, None)) for sym in shards}
     result = build(load(folder / 'cf_universum.json', {}), shards, (load(folder / 'cf_risk.json', {}).get('stocks') or {}), annuals)
     (folder / 'cf_risk_construct_coverage.json').write_text(json.dumps(result, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     print(json.dumps({'listings': result['listings'], 'overallAverageWeight': result['overallAverageWeight'],

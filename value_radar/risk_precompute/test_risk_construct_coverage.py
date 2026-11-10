@@ -106,4 +106,16 @@ class ShortHistoryTests(unittest.TestCase):
   g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NASDAQ:Y1':{'statistics':{**short,'shortHistory':None}}},{'NASDAQ:Y1':(annual(),'USD')})['largestGaps']}
   self.assertIn(('corporate','Expected Shortfall'),g,'unflagged short values stay missing')
 
+class IndustryGroupTests(unittest.TestCase):
+ def test_group_fills_only_below_three_and_up_to_five(self):
+  mk=lambda t,i:{'listing_symbol':'NYSE:'+t,'ticker':t,'name':'Co '+t,'industry':i}
+  rows=[mk('GEN','Pharmaceuticals: generic'),mk('G2','Pharmaceuticals: generic'),*[mk('M'+str(i),'Pharmaceuticals: major') for i in range(5)],mk('BIO','Biotechnology'),mk('DRG','Drug Manufacturers - General')]
+  fam={id(r):cc.peer_family(r) for r in rows};grp={id(r):cc.industry_group(r) for r in rows}
+  p=[r['ticker'] for r in cc.select_peers(rows[0],rows,fam,groups=grp)]
+  self.assertEqual(len(p),5);self.assertEqual(p[0],'G2');self.assertNotIn('BIO',p)
+  self.assertEqual(cc.peer_family(rows[-1]),'Branche: pharmaceuticals major')
+  steel=[mk(t,'Steel') for t in 'ABCD']+[mk('AL','Aluminum')]
+  fam={id(r):cc.peer_family(r) for r in steel};grp={id(r):cc.industry_group(r) for r in steel}
+  self.assertNotIn('AL',[r['ticker'] for r in cc.select_peers(steel[0],steel,fam,groups=grp)])
+
 if __name__=='__main__':unittest.main()

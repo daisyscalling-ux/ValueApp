@@ -1,0 +1,973 @@
+{
+ "schema": 1,
+ "method": "otc-listing-isin-audit-v1",
+ "listings": {
+  "OTC:AAIGF": {
+   "state": "confirmed",
+   "providerIsin": "HK0000069689",
+   "inputIsin": "HK0000069689",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ABLZF": {
+   "state": "confirmed",
+   "providerIsin": "CH0012221716",
+   "inputIsin": "CH0012221716",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ACGBF": {
+   "state": "conflict",
+   "providerIsin": "CNE100000Q43",
+   "universeIsin": "CNE100000RJ0",
+   "name": "Agricultural Bank of China Limited Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100000RJ0",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ADTTF": {
+   "state": "confirmed",
+   "providerIsin": "JP3122400009",
+   "inputIsin": "JP3122400009",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:AIQUF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000120073",
+   "inputIsin": "FR0000120073",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ALIZF": {
+   "state": "confirmed",
+   "providerIsin": "DE0008404005",
+   "inputIsin": "DE0008404005",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:AMXOF": {
+   "state": "confirmed",
+   "providerIsin": "MX01AM050019",
+   "inputIsin": "MX01AM050019",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ANZGF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000ANZ3",
+   "inputIsin": "AU000000ANZ3",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ASMLF": {
+   "state": "confirmed",
+   "providerIsin": "NL0010273215",
+   "inputIsin": "NL0010273215",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ATLFF": {
+   "state": "conflict",
+   "providerIsin": "SE0017486897",
+   "universeIsin": "SE0017486889",
+   "name": "Atlas Copco AB Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "SE0017486889",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ATLPF": {
+   "state": "confirmed",
+   "providerIsin": "SE0017486889",
+   "inputIsin": "SE0017486889",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:AXAHF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000120628",
+   "inputIsin": "FR0000120628",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BABAF": {
+   "state": "conflict",
+   "providerIsin": "KYG017191142",
+   "universeIsin": "US01609W1027",
+   "name": "Alibaba Group Holding Limited",
+   "sameCountryPrefix": false,
+   "inputIsin": "US01609W1027",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BACHF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000001Z5",
+   "universeIsin": "CNE000001N05",
+   "name": "Bank of China Limited Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE000001N05",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BAESF": {
+   "state": "confirmed",
+   "providerIsin": "GB0002634946",
+   "inputIsin": "GB0002634946",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BBVXF": {
+   "state": "confirmed",
+   "providerIsin": "ES0113211835",
+   "inputIsin": "ES0113211835",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BCDRF": {
+   "state": "confirmed",
+   "providerIsin": "ES0113900J37",
+   "inputIsin": "ES0113900J37",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BCLYF": {
+   "state": "confirmed",
+   "providerIsin": "GB0031348658",
+   "inputIsin": "GB0031348658",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BHPLF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000BHP4",
+   "inputIsin": "AU000000BHP4",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BKFCF": {
+   "state": "conflict",
+   "providerIsin": "CNE100000205",
+   "universeIsin": "CNE1000000S2",
+   "name": "Bank of Communications Co., Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE1000000S2",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BNPQF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000131104",
+   "inputIsin": "FR0000131104",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BPAQF": {
+   "state": "confirmed",
+   "providerIsin": "GB0007980591",
+   "inputIsin": "GB0007980591",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BTAFF": {
+   "state": "confirmed",
+   "providerIsin": "GB0002875804",
+   "inputIsin": "GB0002875804",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BUDFF": {
+   "state": "confirmed",
+   "providerIsin": "BE0974293251",
+   "inputIsin": "BE0974293251",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:BYDDF": {
+   "state": "conflict",
+   "providerIsin": "CNE100000296",
+   "universeIsin": "CNE100001526",
+   "name": "BYD Company Limited Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100001526",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CBAUF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000CBA7",
+   "inputIsin": "AU000000CBA7",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CFRHF": {
+   "state": "confirmed",
+   "providerIsin": "CH0210483332",
+   "inputIsin": "CH0210483332",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CHDRF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000130403",
+   "inputIsin": "FR0000130403",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CHGCF": {
+   "state": "confirmed",
+   "providerIsin": "JP3519400000",
+   "inputIsin": "JP3519400000",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CICHF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000002H1",
+   "universeIsin": "CNE100000742",
+   "name": "China Construction Bank Corporation Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100000742",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CIHHF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000002M1",
+   "universeIsin": "CNE000001B33",
+   "name": "China Merchants Bank Co., Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE000001B33",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CILJF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000002L3",
+   "universeIsin": "CNE000001Q93",
+   "name": "China Life Insurance Co. Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE000001Q93",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CIXPF": {
+   "state": "confirmed",
+   "providerIsin": "ES0140609019",
+   "inputIsin": "ES0140609019",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CMXHF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000CSL8",
+   "inputIsin": "AU000000CSL8",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CTATF": {
+   "state": "conflict",
+   "providerIsin": "CNE100006WS8",
+   "universeIsin": "CNE100003662",
+   "name": "Contemporary Amperex Technology Co., Limited Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100003662",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:CUAEF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000002R0",
+   "universeIsin": "CNE100000767",
+   "name": "China Shenhua Energy Co. Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100000767",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:DBSDF": {
+   "state": "confirmed",
+   "providerIsin": "SG1L01001701",
+   "inputIsin": "SG1L01001701",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:DPSTF": {
+   "state": "confirmed",
+   "providerIsin": "DE0005552004",
+   "inputIsin": "DE0005552004",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:DTEGF": {
+   "state": "confirmed",
+   "providerIsin": "DE0005557508",
+   "inputIsin": "DE0005557508",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:EADSF": {
+   "state": "confirmed",
+   "providerIsin": "NL0000235190",
+   "inputIsin": "NL0000235190",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:EBBNF": {
+   "state": "conflict",
+   "providerIsin": "CA29250N7909",
+   "universeIsin": "CA29250N1050",
+   "name": "Enbridge Inc.",
+   "sameCountryPrefix": true,
+   "inputIsin": "CA29250N1050",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:EIPAF": {
+   "state": "confirmed",
+   "providerIsin": "IT0003132476",
+   "inputIsin": "IT0003132476",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ENGQF": {
+   "state": "confirmed",
+   "providerIsin": "FR0010208488",
+   "inputIsin": "FR0010208488",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ESLOF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000121667",
+   "inputIsin": "FR0000121667",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ESOCF": {
+   "state": "confirmed",
+   "providerIsin": "IT0003128367",
+   "inputIsin": "IT0003128367",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:FRCOF": {
+   "state": "confirmed",
+   "providerIsin": "JP3802300008",
+   "inputIsin": "JP3802300008",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:GLAXF": {
+   "state": "confirmed",
+   "providerIsin": "GB00BN7SWP63",
+   "inputIsin": "GB00BN7SWP63",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:GLCNF": {
+   "state": "confirmed",
+   "providerIsin": "JE00B4T3BW64",
+   "inputIsin": "JE00B4T3BW64",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:GMBXF": {
+   "state": "confirmed",
+   "providerIsin": "MXP370841019",
+   "inputIsin": "MXP370841019",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:HBCYF": {
+   "state": "confirmed",
+   "providerIsin": "GB0005405286",
+   "inputIsin": "GB0005405286",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:HESAF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000052292",
+   "inputIsin": "FR0000052292",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:HTHIF": {
+   "state": "confirmed",
+   "providerIsin": "JP3788600009",
+   "inputIsin": "JP3788600009",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IBDSF": {
+   "state": "confirmed",
+   "providerIsin": "ES0144580Y14",
+   "inputIsin": "ES0144580Y14",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IDCBF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000003G1",
+   "universeIsin": "CNE000001P37",
+   "name": "Industrial and Commercial Bank of China Limited Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE000001P37",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IDEXF": {
+   "state": "confirmed",
+   "providerIsin": "ES0148396007",
+   "inputIsin": "ES0148396007",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IFNNF": {
+   "state": "confirmed",
+   "providerIsin": "DE0006231004",
+   "inputIsin": "DE0006231004",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IITSF": {
+   "state": "confirmed",
+   "providerIsin": "IT0000072618",
+   "inputIsin": "IT0000072618",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:INGVF": {
+   "state": "confirmed",
+   "providerIsin": "NL0011821202",
+   "inputIsin": "NL0011821202",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ITOCF": {
+   "state": "confirmed",
+   "providerIsin": "JP3143600009",
+   "inputIsin": "JP3143600009",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IVSBF": {
+   "state": "conflict",
+   "providerIsin": "SE0015811963",
+   "universeIsin": "SE0015811955",
+   "name": "Investor AB Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "SE0015811955",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:IVSXF": {
+   "state": "confirmed",
+   "providerIsin": "SE0015811955",
+   "inputIsin": "SE0015811955",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:JPSTF": {
+   "state": "confirmed",
+   "providerIsin": "JP3946750001",
+   "inputIsin": "JP3946750001",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:KDDIF": {
+   "state": "confirmed",
+   "providerIsin": "JP3496400007",
+   "inputIsin": "JP3496400007",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:KXHCF": {
+   "state": "confirmed",
+   "providerIsin": "JP3236330001",
+   "inputIsin": "JP3236330001",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:KYCCF": {
+   "state": "confirmed",
+   "providerIsin": "JP3236200006",
+   "inputIsin": "JP3236200006",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:LLDTF": {
+   "state": "confirmed",
+   "providerIsin": "GB0008706128",
+   "inputIsin": "GB0008706128",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:LRLCF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000120321",
+   "inputIsin": "FR0000120321",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:LVMHF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000121014",
+   "inputIsin": "FR0000121014",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MBFJF": {
+   "state": "confirmed",
+   "providerIsin": "JP3902900004",
+   "inputIsin": "JP3902900004",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MCQEF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000MQG1",
+   "inputIsin": "AU000000MQG1",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MHVYF": {
+   "state": "confirmed",
+   "providerIsin": "JP3900000005",
+   "inputIsin": "JP3900000005",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MITSF": {
+   "state": "confirmed",
+   "providerIsin": "JP3893600001",
+   "inputIsin": "JP3893600001",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MKGAF": {
+   "state": "confirmed",
+   "providerIsin": "DE0006599905",
+   "inputIsin": "DE0006599905",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MPNGF": {
+   "state": "confirmed",
+   "providerIsin": "KYG596691041",
+   "inputIsin": "KYG596691041",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MSBHF": {
+   "state": "confirmed",
+   "providerIsin": "JP3898400001",
+   "inputIsin": "JP3898400001",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MURGF": {
+   "state": "confirmed",
+   "providerIsin": "DE0008430026",
+   "inputIsin": "DE0008430026",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:MZHOF": {
+   "state": "confirmed",
+   "providerIsin": "JP3885780001",
+   "inputIsin": "JP3885780001",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NAUBF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000NAB4",
+   "inputIsin": "AU000000NAB4",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NETTF": {
+   "state": "conflict",
+   "providerIsin": "KYG6427A1022",
+   "universeIsin": "US64110W1027",
+   "name": "NetEase, Inc.",
+   "sameCountryPrefix": false,
+   "inputIsin": "US64110W1027",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NGGTF": {
+   "state": "confirmed",
+   "providerIsin": "GB00BDR05C01",
+   "inputIsin": "GB00BDR05C01",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NONOF": {
+   "state": "confirmed",
+   "providerIsin": "DK0062498333",
+   "inputIsin": "DK0062498333",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NPPXF": {
+   "state": "confirmed",
+   "providerIsin": "JP3735400008",
+   "inputIsin": "JP3735400008",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NSRGF": {
+   "state": "confirmed",
+   "providerIsin": "CH0038863350",
+   "inputIsin": "CH0038863350",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:NVSEF": {
+   "state": "confirmed",
+   "providerIsin": "CH0012005267",
+   "inputIsin": "CH0012005267",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:OVCHF": {
+   "state": "confirmed",
+   "providerIsin": "SG1S04926220",
+   "inputIsin": "SG1S04926220",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:PCCYF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000003W8",
+   "universeIsin": "CNE1000007Q1",
+   "name": "PetroChina Co., Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE1000007Q1",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:PIAIF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000003X6",
+   "universeIsin": "CNE000001R84",
+   "name": "Ping An Insurance (Group) Company of China, Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE000001R84",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:PROSF": {
+   "state": "confirmed",
+   "providerIsin": "NL0013654783",
+   "inputIsin": "NL0013654783",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RCRRF": {
+   "state": "confirmed",
+   "providerIsin": "JP3970300004",
+   "inputIsin": "JP3970300004",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RHHBF": {
+   "state": "confirmed",
+   "providerIsin": "CH0012032113",
+   "inputIsin": "CH0012032113",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RHHVF": {
+   "state": "confirmed",
+   "providerIsin": "CH1499059983",
+   "inputIsin": "CH1499059983",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RLXXF": {
+   "state": "confirmed",
+   "providerIsin": "GB00B2B0DG97",
+   "inputIsin": "GB00B2B0DG97",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RTNTF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000RIO1",
+   "inputIsin": "AU000000RIO1",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RTPPF": {
+   "state": "confirmed",
+   "providerIsin": "GB0007188757",
+   "inputIsin": "GB0007188757",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RYCEF": {
+   "state": "confirmed",
+   "providerIsin": "GB00B63H8491",
+   "inputIsin": "GB00B63H8491",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:RYDAF": {
+   "state": "confirmed",
+   "providerIsin": "GB00BP6MXD84",
+   "inputIsin": "GB00BP6MXD84",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SAFRF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000073272",
+   "inputIsin": "FR0000073272",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SAPGF": {
+   "state": "confirmed",
+   "providerIsin": "DE0007164600",
+   "inputIsin": "DE0007164600",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SBGSF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000121972",
+   "inputIsin": "FR0000121972",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SFBQF": {
+   "state": "confirmed",
+   "providerIsin": "JP3732000009",
+   "inputIsin": "JP3732000009",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SFTBF": {
+   "state": "confirmed",
+   "providerIsin": "JP3436100006",
+   "inputIsin": "JP3436100006",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SMAWF": {
+   "state": "confirmed",
+   "providerIsin": "DE0007236101",
+   "inputIsin": "DE0007236101",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SMEGF": {
+   "state": "confirmed",
+   "providerIsin": "DE000ENER6Y0",
+   "inputIsin": "DE000ENER6Y0",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SMFNF": {
+   "state": "confirmed",
+   "providerIsin": "JP3890350006",
+   "inputIsin": "JP3890350006",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SNEJF": {
+   "state": "confirmed",
+   "providerIsin": "JP3435000009",
+   "inputIsin": "JP3435000009",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SNPMF": {
+   "state": "conflict",
+   "providerIsin": "CNE1000002Q2",
+   "universeIsin": "CNE0000018G1",
+   "name": "China Petroleum & Chemical Corporation Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE0000018G1",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:SNYNF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000120578",
+   "inputIsin": "FR0000120578",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:STOHF": {
+   "state": "confirmed",
+   "providerIsin": "NO0010096985",
+   "inputIsin": "NO0010096985",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:TCANF": {
+   "state": "conflict",
+   "providerIsin": "CA87807B6026",
+   "universeIsin": "CA87807B1076",
+   "name": "TC Energy Corporation",
+   "sameCountryPrefix": true,
+   "inputIsin": "CA87807B1076",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:TCTZF": {
+   "state": "confirmed",
+   "providerIsin": "KYG875721634",
+   "inputIsin": "KYG875721634",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:TKOMF": {
+   "state": "confirmed",
+   "providerIsin": "JP3910660004",
+   "inputIsin": "JP3910660004",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:TKPHF": {
+   "state": "confirmed",
+   "providerIsin": "JP3463000004",
+   "inputIsin": "JP3463000004",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:TOELF": {
+   "state": "confirmed",
+   "providerIsin": "JP3571400005",
+   "inputIsin": "JP3571400005",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:TOYOF": {
+   "state": "confirmed",
+   "providerIsin": "JP3633400001",
+   "inputIsin": "JP3633400001",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:UNCFF": {
+   "state": "confirmed",
+   "providerIsin": "IT0005239360",
+   "inputIsin": "IT0005239360",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:UNLYF": {
+   "state": "confirmed",
+   "providerIsin": "GB00BVZK7T90",
+   "inputIsin": "GB00BVZK7T90",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:VCISF": {
+   "state": "confirmed",
+   "providerIsin": "FR0000125486",
+   "inputIsin": "FR0000125486",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:VOLVF": {
+   "state": "conflict",
+   "providerIsin": "SE0000115446",
+   "universeIsin": "SE0000115420",
+   "name": "Volvo AB Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "SE0000115420",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:WEBNF": {
+   "state": "confirmed",
+   "providerIsin": "AU000000WBC1",
+   "inputIsin": "AU000000WBC1",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:WUXIF": {
+   "state": "conflict",
+   "providerIsin": "CNE100003F19",
+   "universeIsin": "CNE1000031K4",
+   "name": "WuXi AppTec Co., Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE1000031K4",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:XIACF": {
+   "state": "confirmed",
+   "providerIsin": "KYG9830T1067",
+   "inputIsin": "KYG9830T1067",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ZFSVF": {
+   "state": "confirmed",
+   "providerIsin": "CH0011075394",
+   "inputIsin": "CH0011075394",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ZHILF": {
+   "state": "conflict",
+   "providerIsin": "CNE100007SR6",
+   "universeIsin": "CNE100001CY9",
+   "name": "Zhongji Innolight Co., Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100001CY9",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  },
+  "OTC:ZIJMF": {
+   "state": "conflict",
+   "providerIsin": "CNE100000502",
+   "universeIsin": "CNE100000B24",
+   "name": "Zijin Mining Group Co., Ltd. Class A",
+   "sameCountryPrefix": true,
+   "inputIsin": "CNE100000B24",
+   "checkedAt": "2026-11-10T15:39:15.925153+00:00",
+   "source": "ROIC v3 tickers/search · exact listing"
+  }
+ },
+ "generatedAt": "2026-11-10T15:39:15.925153+00:00",
+ "summary": {
+  "confirmed": 101,
+  "conflict": 23
+ },
+ "openConflicts": [
+  "OTC:ACGBF",
+  "OTC:ATLFF",
+  "OTC:BABAF",
+  "OTC:BACHF",
+  "OTC:BKFCF",
+  "OTC:BYDDF",
+  "OTC:CICHF",
+  "OTC:CIHHF",
+  "OTC:CILJF",
+  "OTC:CTATF",
+  "OTC:CUAEF",
+  "OTC:EBBNF",
+  "OTC:IDCBF",
+  "OTC:IVSBF",
+  "OTC:NETTF",
+  "OTC:PCCYF",
+  "OTC:PIAIF",
+  "OTC:SNPMF",
+  "OTC:TCANF",
+  "OTC:VOLVF",
+  "OTC:WUXIF",
+  "OTC:ZHILF",
+  "OTC:ZIJMF"
+ ]
+}

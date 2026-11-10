@@ -1,18 +1,18 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-11-10T14:51:09.638893+00:00",
+  "generatedAt": "2026-11-10T15:44:27.454361+00:00",
   "inputSha256": "f1a6b2a12922abacae33852368ec2e34fb4826d45317fdf3079ad6e2153a7dbb",
   "summary": {
     "inputListings": 1330,
     "classifiedListings": 1309,
-    "uniqueIssuers": 1116,
-    "collapsedAdditionalListings": 193,
+    "uniqueIssuers": 1117,
+    "collapsedAdditionalListings": 192,
     "excludedListings": 21,
     "reviewListings": 0,
     "groups": 177,
     "levels": {
-      "industry_context": 83,
+      "industry_context": 84,
       "provider_subindustry": 1021,
       "reviewed_business_model": 12
     },
@@ -24857,7 +24857,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:ACGBF": {
-      "issuerId": "issuer:27ba15b503be75fae57e",
+      "issuerId": "issuer:6568cfdd1c53883a7251",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -24887,7 +24887,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:ACGBY": {
-      "issuerId": "issuer:27ba15b503be75fae57e",
+      "issuerId": "issuer:6568cfdd1c53883a7251",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -25514,7 +25514,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:BACHF": {
-      "issuerId": "issuer:c18658c65bad66451c2b",
+      "issuerId": "issuer:4eaa8f65d855eaedaade",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -25544,7 +25544,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:BACHY": {
-      "issuerId": "issuer:c18658c65bad66451c2b",
+      "issuerId": "issuer:4eaa8f65d855eaedaade",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -26512,7 +26512,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:CICHF": {
-      "issuerId": "issuer:5eedce235158961b28f5",
+      "issuerId": "issuer:b2d8b317eebdf2c4fb9a",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -26542,7 +26542,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:CICHY": {
-      "issuerId": "issuer:5eedce235158961b28f5",
+      "issuerId": "issuer:b2d8b317eebdf2c4fb9a",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -26572,7 +26572,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:CIHHF": {
-      "issuerId": "issuer:f4fabb9b914fd85bff4c",
+      "issuerId": "issuer:a019d7c1dd1285b70b36",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -26602,7 +26602,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:CIHKY": {
-      "issuerId": "issuer:f4fabb9b914fd85bff4c",
+      "issuerId": "issuer:a019d7c1dd1285b70b36",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -26847,7 +26847,7 @@
     "OTC:CSUAY": {
       "issuerId": "issuer:e2b198215249130443ab",
       "group": "industry:coal",
-      "sameCurrencyPeerIssuerCount": 0,
+      "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "CNE100000767",
@@ -26858,14 +26858,16 @@
         "security_type": "dr"
       },
       "level": "industry_context",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
+      "peerIssuerCount": 1,
+      "peerSymbols": [
+        "OTC:CUAEF"
+      ],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
       "directCompetitorsVerified": false
     },
     "OTC:CTATF": {
-      "issuerId": "issuer:99a19b1f8eeccbcfc256",
+      "issuerId": "issuer:8eba59be6aca9be3cf8b",
       "group": "industry:electrical products",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -26887,9 +26889,9 @@
       "directCompetitorsVerified": false
     },
     "OTC:CUAEF": {
-      "issuerId": "issuer:e2b198215249130443ab",
+      "issuerId": "issuer:8da3f9b29e930faa5de7",
       "group": "industry:coal",
-      "sameCurrencyPeerIssuerCount": 0,
+      "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "CNE100000767",
@@ -26900,14 +26902,16 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
+      "peerIssuerCount": 1,
+      "peerSymbols": [
+        "OTC:CSUAY"
+      ],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
       "directCompetitorsVerified": false
     },
     "OTC:CYATY": {
-      "issuerId": "issuer:99a19b1f8eeccbcfc256",
+      "issuerId": "issuer:8eba59be6aca9be3cf8b",
       "group": "industry:electrical products",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -28035,7 +28039,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:IDCBF": {
-      "issuerId": "issuer:ffa54518e697a00605e9",
+      "issuerId": "issuer:57a53c27741c2e2e6aa4",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -28065,7 +28069,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:IDCBY": {
-      "issuerId": "issuer:ffa54518e697a00605e9",
+      "issuerId": "issuer:57a53c27741c2e2e6aa4",
       "group": "industry:major banks",
       "sameCurrencyPeerIssuerCount": 6,
       "groupSizeReason": "enough_issuers_before_history_check",
@@ -30343,7 +30347,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:PCCYF": {
-      "issuerId": "issuer:7ebc1a89532f30ed5a39",
+      "issuerId": "issuer:2c61b7d4b451d60a8d49",
       "group": "industry:integrated oil",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -30365,7 +30369,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:PIAIF": {
-      "issuerId": "issuer:94664dd658d46de9dbdb",
+      "issuerId": "issuer:75523a6aeccd9673d790",
       "group": "industry:multi-line insurance",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -30387,7 +30391,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:PNGAY": {
-      "issuerId": "issuer:94664dd658d46de9dbdb",
+      "issuerId": "issuer:75523a6aeccd9673d790",
       "group": "industry:multi-line insurance",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -31731,7 +31735,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:SNPMF": {
-      "issuerId": "issuer:e15c3a03efda1f1360b9",
+      "issuerId": "issuer:1bc710578615db3d4b67",
       "group": "industry:oil refining/marketing",
       "sameCurrencyPeerIssuerCount": 0,
       "groupSizeReason": "small_business_group",
@@ -32574,7 +32578,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:WUXAY": {
-      "issuerId": "issuer:2b846e1ad886e0cf6ea5",
+      "issuerId": "issuer:a30d880d2029868955b9",
       "group": "industry:pharmaceuticals: major",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -32598,7 +32602,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:WUXIF": {
-      "issuerId": "issuer:2b846e1ad886e0cf6ea5",
+      "issuerId": "issuer:a30d880d2029868955b9",
       "group": "industry:pharmaceuticals: major",
       "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
@@ -32702,7 +32706,7 @@
       "directCompetitorsVerified": false
     },
     "OTC:ZHILF": {
-      "issuerId": "issuer:7c9e83efef652cd6948a",
+      "issuerId": "issuer:d327e9b37a373bc29550",
       "group": "industry:semiconductors",
       "sameCurrencyPeerIssuerCount": 0,
       "groupSizeReason": "small_business_group",
@@ -50249,6 +50253,31 @@
       ]
     },
     {
+      "id": "issuer:1bc710578615db3d4b67",
+      "representative": "OTC:SNPMF",
+      "name": "China Petroleum & Chemical Corporation",
+      "listings": [
+        "OTC:SNPMF"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:oil refining/marketing",
+        "label": "oil refining/marketing",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T11:38:15.154519+00:00"
+      ]
+    },
+    {
       "id": "issuer:1bc9706ac0c1b332a1cb",
       "representative": "HEL:KCR",
       "name": "Konecranes Oyj",
@@ -51524,33 +51553,6 @@
       ]
     },
     {
-      "id": "issuer:27ba15b503be75fae57e",
-      "representative": "OTC:ACGBF",
-      "name": "Agricultural Bank of China Limited Class A",
-      "listings": [
-        "OTC:ACGBF",
-        "OTC:ACGBY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:major banks",
-        "label": "major banks",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T09:51:04.102758+00:00",
-        "2026-11-10T10:20:44.715358+00:00"
-      ]
-    },
-    {
       "id": "issuer:27fdd88df80c48d6402f",
       "representative": "EURONEXT:INGA",
       "name": "ING Groep N.V.",
@@ -52001,33 +52003,6 @@
       ]
     },
     {
-      "id": "issuer:2b846e1ad886e0cf6ea5",
-      "representative": "OTC:WUXIF",
-      "name": "WuXi AppTec Co., Ltd. Class A",
-      "listings": [
-        "OTC:WUXAY",
-        "OTC:WUXIF"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:pharmaceuticals: major",
-        "label": "pharmaceuticals: major",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T11:53:13.452104+00:00",
-        "2026-11-10T11:53:17.884057+00:00"
-      ]
-    },
-    {
       "id": "issuer:2b862353f47ba629350c",
       "representative": "NASDAQ:CDNS",
       "name": "Cadence Design Systems, Inc.",
@@ -52135,6 +52110,31 @@
       ],
       "metadataDates": [
         "2026-11-10T11:17:11.655760+00:00"
+      ]
+    },
+    {
+      "id": "issuer:2c61b7d4b451d60a8d49",
+      "representative": "OTC:PCCYF",
+      "name": "PetroChina Company Limited",
+      "listings": [
+        "OTC:PCCYF"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:integrated oil",
+        "label": "integrated oil",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T11:23:17.370377+00:00"
       ]
     },
     {
@@ -56049,6 +56049,33 @@
       ]
     },
     {
+      "id": "issuer:4eaa8f65d855eaedaade",
+      "representative": "OTC:BACHF",
+      "name": "Bank of China Limited",
+      "listings": [
+        "OTC:BACHF",
+        "OTC:BACHY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:major banks",
+        "label": "major banks",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T10:30:00.438853+00:00",
+        "2026-11-10T10:30:07.063562+00:00"
+      ]
+    },
+    {
       "id": "issuer:4ee1be6623d6495e2640",
       "representative": "EURONEXT:NN",
       "name": "NN Group N.V.",
@@ -57040,6 +57067,33 @@
       ]
     },
     {
+      "id": "issuer:57a53c27741c2e2e6aa4",
+      "representative": "OTC:IDCBF",
+      "name": "Industrial and Commercial Bank of China Limited",
+      "listings": [
+        "OTC:IDCBF",
+        "OTC:IDCBY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:major banks",
+        "label": "major banks",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T11:01:52.225140+00:00",
+        "2026-11-10T11:01:56.974010+00:00"
+      ]
+    },
+    {
       "id": "issuer:58de29be67ec801a4505",
       "representative": "NYSE:TTE",
       "name": "TotalEnergies SE",
@@ -57694,33 +57748,6 @@
       ],
       "metadataDates": [
         "2026-11-10T09:58:29.821851+00:00"
-      ]
-    },
-    {
-      "id": "issuer:5eedce235158961b28f5",
-      "representative": "OTC:CICHF",
-      "name": "China Construction Bank Corporation Class A",
-      "listings": [
-        "OTC:CICHF",
-        "OTC:CICHY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:major banks",
-        "label": "major banks",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T10:39:28.501597+00:00",
-        "2026-11-10T10:39:32.759819+00:00"
       ]
     },
     {
@@ -58559,6 +58586,33 @@
       ],
       "metadataDates": [
         "2026-11-10T09:57:49.415376+00:00"
+      ]
+    },
+    {
+      "id": "issuer:6568cfdd1c53883a7251",
+      "representative": "OTC:ACGBF",
+      "name": "Agricultural Bank of China Limited",
+      "listings": [
+        "OTC:ACGBF",
+        "OTC:ACGBY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:major banks",
+        "label": "major banks",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T09:51:04.102758+00:00",
+        "2026-11-10T10:20:44.715358+00:00"
       ]
     },
     {
@@ -60766,6 +60820,33 @@
       ]
     },
     {
+      "id": "issuer:75523a6aeccd9673d790",
+      "representative": "OTC:PIAIF",
+      "name": "Ping An Insurance (Group) Company of China, Ltd.",
+      "listings": [
+        "OTC:PIAIF",
+        "OTC:PNGAY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:multi-line insurance",
+        "label": "multi-line insurance",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T11:24:14.007876+00:00",
+        "2026-11-10T11:25:07.719737+00:00"
+      ]
+    },
+    {
       "id": "issuer:75a63da7ce7b5047af61",
       "representative": "LSE:PSON",
       "name": "Pearson PLC",
@@ -61341,31 +61422,6 @@
       ]
     },
     {
-      "id": "issuer:7c9e83efef652cd6948a",
-      "representative": "OTC:ZHILF",
-      "name": "Zhongji Innolight Co., Ltd. Class A",
-      "listings": [
-        "OTC:ZHILF"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:semiconductors",
-        "label": "semiconductors",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T11:54:20.356679+00:00"
-      ]
-    },
-    {
       "id": "issuer:7d1c0c6fe8b12839b4c9",
       "representative": "LSE:ZEG",
       "name": "Zegona Communications Plc",
@@ -61525,31 +61581,6 @@
       ],
       "metadataDates": [
         "2026-11-10T09:59:59.707962+00:00"
-      ]
-    },
-    {
-      "id": "issuer:7ebc1a89532f30ed5a39",
-      "representative": "OTC:PCCYF",
-      "name": "PetroChina Co., Ltd. Class A",
-      "listings": [
-        "OTC:PCCYF"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:integrated oil",
-        "label": "integrated oil",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T11:23:17.370377+00:00"
       ]
     },
     {
@@ -64042,6 +64073,31 @@
       ]
     },
     {
+      "id": "issuer:8da3f9b29e930faa5de7",
+      "representative": "OTC:CUAEF",
+      "name": "China Shenhua Energy Company Limited",
+      "listings": [
+        "OTC:CUAEF"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:coal",
+        "label": "coal",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T10:42:59.667292+00:00"
+      ]
+    },
+    {
       "id": "issuer:8db8a5a10e97749a7835",
       "representative": "EURONEXT:SOI",
       "name": "Soitec SA",
@@ -64169,6 +64225,33 @@
       ],
       "metadataDates": [
         "2026-11-10T10:58:16.493375+00:00"
+      ]
+    },
+    {
+      "id": "issuer:8eba59be6aca9be3cf8b",
+      "representative": "OTC:CTATF",
+      "name": "Contemporary Amperex Technology Co., Limited",
+      "listings": [
+        "OTC:CTATF",
+        "OTC:CYATY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:electrical products",
+        "label": "electrical products",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T10:42:49.749747+00:00",
+        "2026-11-10T10:43:28.959446+00:00"
       ]
     },
     {
@@ -64886,33 +64969,6 @@
       ]
     },
     {
-      "id": "issuer:94664dd658d46de9dbdb",
-      "representative": "OTC:PIAIF",
-      "name": "Ping An Insurance (Group) Company of China, Ltd. Class A",
-      "listings": [
-        "OTC:PIAIF",
-        "OTC:PNGAY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:multi-line insurance",
-        "label": "multi-line insurance",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T11:24:14.007876+00:00",
-        "2026-11-10T11:25:07.719737+00:00"
-      ]
-    },
-    {
       "id": "issuer:948cc1bb6651a85f294f",
       "representative": "HEL:WRT1V",
       "name": "Wartsila Oyj Abp",
@@ -65545,33 +65601,6 @@
       ]
     },
     {
-      "id": "issuer:99a19b1f8eeccbcfc256",
-      "representative": "OTC:CTATF",
-      "name": "Contemporary Amperex Technology Co., Limited Class A",
-      "listings": [
-        "OTC:CTATF",
-        "OTC:CYATY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:electrical products",
-        "label": "electrical products",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T10:42:49.749747+00:00",
-        "2026-11-10T10:43:28.959446+00:00"
-      ]
-    },
-    {
       "id": "issuer:9a70d530c17731b76024",
       "representative": "NYSE:URI",
       "name": "United Rentals, Inc.",
@@ -66048,6 +66077,33 @@
       ]
     },
     {
+      "id": "issuer:a019d7c1dd1285b70b36",
+      "representative": "OTC:CIHHF",
+      "name": "China Merchants Bank Co., Ltd.",
+      "listings": [
+        "OTC:CIHHF",
+        "OTC:CIHKY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:major banks",
+        "label": "major banks",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T10:39:37.027355+00:00",
+        "2026-11-10T10:39:41.213911+00:00"
+      ]
+    },
+    {
       "id": "issuer:a0461109881a525f8b87",
       "representative": "STO:LOOMIS",
       "name": "Loomis AB",
@@ -66492,6 +66548,33 @@
         "2026-11-10T10:31:08.593891+00:00",
         "2026-11-10T10:36:20.913055+00:00",
         "2026-11-10T10:36:26.365328+00:00"
+      ]
+    },
+    {
+      "id": "issuer:a30d880d2029868955b9",
+      "representative": "OTC:WUXIF",
+      "name": "WuXi AppTec Co., Ltd.",
+      "listings": [
+        "OTC:WUXAY",
+        "OTC:WUXIF"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:pharmaceuticals: major",
+        "label": "pharmaceuticals: major",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T11:53:13.452104+00:00",
+        "2026-11-10T11:53:17.884057+00:00"
       ]
     },
     {
@@ -67797,6 +67880,33 @@
       ],
       "metadataDates": [
         "2026-11-10T10:00:11.360143+00:00"
+      ]
+    },
+    {
+      "id": "issuer:b2d8b317eebdf2c4fb9a",
+      "representative": "OTC:CICHF",
+      "name": "China Construction Bank Corporation",
+      "listings": [
+        "OTC:CICHF",
+        "OTC:CICHY"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:major banks",
+        "label": "major banks",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T10:39:28.501597+00:00",
+        "2026-11-10T10:39:32.759819+00:00"
       ]
     },
     {
@@ -69223,33 +69333,6 @@
       ],
       "metadataDates": [
         "2026-11-10T11:49:14.514822+00:00"
-      ]
-    },
-    {
-      "id": "issuer:c18658c65bad66451c2b",
-      "representative": "OTC:BACHF",
-      "name": "Bank of China Limited Class A",
-      "listings": [
-        "OTC:BACHF",
-        "OTC:BACHY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:major banks",
-        "label": "major banks",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T10:30:00.438853+00:00",
-        "2026-11-10T10:30:07.063562+00:00"
       ]
     },
     {
@@ -71570,6 +71653,31 @@
       ]
     },
     {
+      "id": "issuer:d327e9b37a373bc29550",
+      "representative": "OTC:ZHILF",
+      "name": "Zhongji Innolight Co., Ltd.",
+      "listings": [
+        "OTC:ZHILF"
+      ],
+      "classification": {
+        "state": "classified",
+        "group": "industry:semiconductors",
+        "label": "semiconductors",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
+      },
+      "currencies": [
+        "USD"
+      ],
+      "countries": [
+        "US"
+      ],
+      "metadataDates": [
+        "2026-11-10T11:54:20.356679+00:00"
+      ]
+    },
+    {
       "id": "issuer:d34bb29abc232215693a",
       "representative": "XETR:DHL",
       "name": "DHL AG",
@@ -73367,31 +73475,6 @@
       ]
     },
     {
-      "id": "issuer:e15c3a03efda1f1360b9",
-      "representative": "OTC:SNPMF",
-      "name": "China Petroleum & Chemical Corporation Class A",
-      "listings": [
-        "OTC:SNPMF"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:oil refining/marketing",
-        "label": "oil refining/marketing",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T11:38:15.154519+00:00"
-      ]
-    },
-    {
       "id": "issuer:e1d05ac8b3b6d2d3f83f",
       "representative": "LSE:HLN",
       "name": "Haleon PLC",
@@ -73607,11 +73690,10 @@
     },
     {
       "id": "issuer:e2b198215249130443ab",
-      "representative": "OTC:CUAEF",
+      "representative": "OTC:CSUAY",
       "name": "China Shenhua Energy Co. Ltd. Class A",
       "listings": [
-        "OTC:CSUAY",
-        "OTC:CUAEF"
+        "OTC:CSUAY"
       ],
       "classification": {
         "state": "classified",
@@ -73628,8 +73710,7 @@
         "US"
       ],
       "metadataDates": [
-        "2026-11-10T10:42:36.470478+00:00",
-        "2026-11-10T10:42:59.667292+00:00"
+        "2026-11-10T10:42:36.470478+00:00"
       ]
     },
     {
@@ -75281,33 +75362,6 @@
       ]
     },
     {
-      "id": "issuer:f4fabb9b914fd85bff4c",
-      "representative": "OTC:CIHHF",
-      "name": "China Merchants Bank Co., Ltd. Class A",
-      "listings": [
-        "OTC:CIHHF",
-        "OTC:CIHKY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:major banks",
-        "label": "major banks",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T10:39:37.027355+00:00",
-        "2026-11-10T10:39:41.213911+00:00"
-      ]
-    },
-    {
       "id": "issuer:f5451acc7313b2aacfe0",
       "representative": "BME:ANA",
       "name": "Acciona SA",
@@ -76556,33 +76610,6 @@
       ],
       "metadataDates": [
         "2026-11-10T10:25:28.398656+00:00"
-      ]
-    },
-    {
-      "id": "issuer:ffa54518e697a00605e9",
-      "representative": "OTC:IDCBF",
-      "name": "Industrial and Commercial Bank of China Limited Class A",
-      "listings": [
-        "OTC:IDCBF",
-        "OTC:IDCBY"
-      ],
-      "classification": {
-        "state": "classified",
-        "group": "industry:major banks",
-        "label": "major banks",
-        "level": "industry_context",
-        "source": "ROIC profile/listing",
-        "reason": "broad_industry_requires_business_model_review"
-      },
-      "currencies": [
-        "USD"
-      ],
-      "countries": [
-        "US"
-      ],
-      "metadataDates": [
-        "2026-11-10T11:01:52.225140+00:00",
-        "2026-11-10T11:01:56.974010+00:00"
       ]
     },
     {

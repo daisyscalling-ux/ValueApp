@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-10T15:47:07.191242+00:00",
+ "generatedAt": "2026-11-10T17:26:22.648956+00:00",
  "listings": 1330,
  "overallAverageWeight": {
-  "filled": 76.3,
-  "missing": 7.0,
+  "filled": 77.6,
+  "missing": 5.6,
   "app_only": 14.0,
   "by_design": 2.8
  },
@@ -14,8 +14,8 @@
   "bank": {
    "listings": 144,
    "averageWeight": {
-    "filled": 55.0,
-    "missing": 25.0,
+    "filled": 55.2,
+    "missing": 24.8,
     "app_only": 10.0,
     "by_design": 10.0
    },
@@ -38,19 +38,19 @@
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 14.2,
-     "missing": 0.8,
+     "filled": 14.31,
+     "missing": 0.69,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.947
+     "filledShareOfMeasurable": 0.954
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 6.81,
-     "missing": 3.19,
+     "filled": 6.88,
+     "missing": 3.12,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.681
+     "filledShareOfMeasurable": 0.688
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -65,8 +65,8 @@
   "corporate": {
    "listings": 1053,
    "averageWeight": {
-    "filled": 81.0,
-    "missing": 4.0,
+    "filled": 82.5,
+    "missing": 2.5,
     "app_only": 15.0,
     "by_design": 0.0
    },
@@ -81,27 +81,27 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 23.96,
-     "missing": 1.04,
+     "filled": 24.27,
+     "missing": 0.73,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.958
+     "filledShareOfMeasurable": 0.971
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 14.28,
-     "missing": 0.72,
+     "filled": 14.9,
+     "missing": 0.1,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.952
+     "filledShareOfMeasurable": 0.993
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 9.15,
-     "missing": 0.85,
+     "filled": 9.66,
+     "missing": 0.34,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.915
+     "filledShareOfMeasurable": 0.966
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -116,8 +116,8 @@
   "insurer": {
    "listings": 54,
    "averageWeight": {
-    "filled": 55.7,
-    "missing": 14.3,
+    "filled": 56.7,
+    "missing": 13.3,
     "app_only": 10.0,
     "by_design": 20.0
    },
@@ -140,19 +140,19 @@
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 14.26,
-     "missing": 0.74,
+     "filled": 15.0,
+     "missing": 0.0,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.951
+     "filledShareOfMeasurable": 1.0
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 9.26,
-     "missing": 0.74,
+     "filled": 9.44,
+     "missing": 0.56,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.926
+     "filledShareOfMeasurable": 0.944
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -167,8 +167,8 @@
   "specialist_financial": {
    "listings": 79,
    "averageWeight": {
-    "filled": 65.8,
-    "missing": 8.7,
+    "filled": 67.9,
+    "missing": 6.6,
     "app_only": 10.0,
     "by_design": 15.5
    },
@@ -183,27 +183,27 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 16.14,
-     "missing": 3.35,
+     "filled": 17.41,
+     "missing": 2.09,
      "app_only": 0.0,
      "by_design": 5.51,
-     "filledShareOfMeasurable": 0.828
+     "filledShareOfMeasurable": 0.893
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 13.86,
-     "missing": 1.14,
+     "filled": 14.3,
+     "missing": 0.7,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.924
+     "filledShareOfMeasurable": 0.954
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 8.1,
-     "missing": 1.9,
+     "filled": 8.48,
+     "missing": 1.52,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.81
+     "filledShareOfMeasurable": 0.848
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -218,32 +218,6 @@
  },
  "largestGaps": [
   {
-   "profile": "corporate",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "FCFF-Marge",
-   "weight": 10,
-   "missingListings": 108,
-   "filledListings": 945,
-   "weightedGap": 1080,
-   "reasons": {
-    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 108
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Bewertungsrisiko",
-   "metric": "Erwartungslücke Reverse DCF",
-   "weight": 10,
-   "missingListings": 90,
-   "filledListings": 963,
-   "weightedGap": 900,
-   "reasons": {
-    "Kein positiver Cashflow und weniger als drei Peers mit EV/EBITDA": 51,
-    "Währungskonflikt: ADR oder unklare Aktienbasis": 34,
-    "Kein positiver Cashflow und kein positives EV/EBITDA": 5
-   }
-  },
-  {
    "profile": "bank",
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Liquiditätsdeckung (LCR)",
@@ -257,15 +231,14 @@
   },
   {
    "profile": "corporate",
-   "block": "Umfeldstress",
-   "metric": "Peer-Stress",
-   "weight": 5,
-   "missingListings": 144,
-   "filledListings": 909,
-   "weightedGap": 720,
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "FCFF-Marge",
+   "weight": 10,
+   "missingListings": 75,
+   "filledListings": 978,
+   "weightedGap": 750,
    "reasons": {
-    "Weniger als drei Peers ausgewählt": 75,
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 69
+    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 75
    }
   },
   {
@@ -319,20 +292,6 @@
   },
   {
    "profile": "bank",
-   "block": "Bewertungsrisiko",
-   "metric": "Erwartungslücke Eigenkapitalrendite",
-   "weight": 10,
-   "missingListings": 46,
-   "filledListings": 98,
-   "weightedGap": 460,
-   "reasons": {
-    "Währungskonflikt: ADR oder unklare Aktienbasis": 24,
-    "KBV fehlt oder unplausibel": 19,
-    "Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei": 3
-   }
-  },
-  {
-   "profile": "bank",
    "block": "Kursrisiko",
    "metric": "Expected Shortfall",
    "weight": 15,
@@ -345,6 +304,20 @@
    }
   },
   {
+   "profile": "bank",
+   "block": "Bewertungsrisiko",
+   "metric": "Erwartungslücke Eigenkapitalrendite",
+   "weight": 10,
+   "missingListings": 45,
+   "filledListings": 99,
+   "weightedGap": 450,
+   "reasons": {
+    "Währungskonflikt: ADR oder unklare Aktienbasis": 24,
+    "KBV fehlt oder unplausibel": 19,
+    "Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei": 2
+   }
+  },
+  {
    "profile": "corporate",
    "block": "Wettbewerbsanfälligkeit",
    "metric": "EBITDA-Marge gegenüber Peers",
@@ -354,6 +327,19 @@
    "weightedGap": 450,
    "reasons": {
     "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 90
+   }
+  },
+  {
+   "profile": "corporate",
+   "block": "Bewertungsrisiko",
+   "metric": "Erwartungslücke Reverse DCF",
+   "weight": 10,
+   "missingListings": 36,
+   "filledListings": 1017,
+   "weightedGap": 360,
+   "reasons": {
+    "Währungskonflikt: ADR oder unklare Aktienbasis": 31,
+    "Kein positiver Cashflow und kein positives EV/EBITDA": 5
    }
   },
   {
@@ -384,18 +370,6 @@
    }
   },
   {
-   "profile": "specialist_financial",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Nettofinanzschulden / Eigenkapital",
-   "weight": 15,
-   "missingListings": 13,
-   "filledListings": 37,
-   "weightedGap": 195,
-   "reasons": {
-    "Eigenkapital, Schulden, Kasse oder Bilanzsumme fehlen oder Währungskonflikt": 13
-   }
-  },
-  {
    "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
@@ -423,15 +397,27 @@
   },
   {
    "profile": "specialist_financial",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Nettofinanzschulden / Eigenkapital",
+   "weight": 15,
+   "missingListings": 9,
+   "filledListings": 41,
+   "weightedGap": 135,
+   "reasons": {
+    "Eigenkapital, Schulden, Kasse oder Bilanzsumme fehlen oder Währungskonflikt": 9
+   }
+  },
+  {
+   "profile": "specialist_financial",
    "block": "Bewertungsrisiko",
    "metric": "Erwartungslücke Gewinnwachstum",
    "weight": 10,
-   "missingListings": 15,
-   "filledListings": 64,
-   "weightedGap": 150,
+   "missingListings": 12,
+   "filledListings": 67,
+   "weightedGap": 120,
    "reasons": {
-    "Verlust oder Jahresergebnis fehlt": 9,
-    "Umsatzsprung über ±50 %": 3,
+    "Verlust oder Jahresergebnis fehlt": 5,
+    "Umsatzsprung über ±50 %": 4,
     "Währungskonflikt: ADR oder unklare Aktienbasis": 2,
     "Umsatzwachstum fehlt": 1
    }
@@ -441,11 +427,11 @@
    "block": "Umfeldstress",
    "metric": "Peer-Stress",
    "weight": 5,
-   "missingListings": 21,
-   "filledListings": 123,
-   "weightedGap": 105,
+   "missingListings": 18,
+   "filledListings": 126,
+   "weightedGap": 90,
    "reasons": {
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 17,
+    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 14,
     "Weniger als drei Peers ausgewählt": 4
    }
   },
@@ -463,29 +449,16 @@
    }
   },
   {
-   "profile": "specialist_financial",
+   "profile": "corporate",
    "block": "Umfeldstress",
    "metric": "Peer-Stress",
    "weight": 5,
-   "missingListings": 18,
-   "filledListings": 61,
-   "weightedGap": 90,
-   "reasons": {
-    "Weniger als drei Peers ausgewählt": 11,
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 6,
-    "Weniger als drei der ersten fünf Peers mit aktueller Kurshistorie": 1
-   }
-  },
-  {
-   "profile": "specialist_financial",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Eigenkapitalrendite",
-   "weight": 10,
-   "missingListings": 7,
-   "filledListings": 72,
+   "missingListings": 14,
+   "filledListings": 1039,
    "weightedGap": 70,
    "reasons": {
-    "Jahresergebnis oder Eigenkapital fehlt": 7
+    "Weniger als drei Peers ausgewählt": 8,
+    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 6
    }
   },
   {
@@ -499,6 +472,20 @@
    "reasons": {
     "Keine Kurshistorie": 5,
     "Kurshistorie fehlerhaft": 1
+   }
+  },
+  {
+   "profile": "specialist_financial",
+   "block": "Umfeldstress",
+   "metric": "Peer-Stress",
+   "weight": 5,
+   "missingListings": 11,
+   "filledListings": 68,
+   "weightedGap": 55,
+   "reasons": {
+    "Weniger als drei Peers ausgewählt": 8,
+    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 2,
+    "Weniger als drei der ersten fünf Peers mit aktueller Kurshistorie": 1
    }
   },
   {
@@ -527,16 +514,28 @@
    }
   },
   {
-   "profile": "insurer",
-   "block": "Umfeldstress",
-   "metric": "Peer-Stress",
+   "profile": "specialist_financial",
+   "block": "Kursrisiko",
+   "metric": "Größter Rückgang",
    "weight": 5,
-   "missingListings": 8,
-   "filledListings": 46,
-   "weightedGap": 40,
+   "missingListings": 6,
+   "filledListings": 73,
+   "weightedGap": 30,
    "reasons": {
-    "Weniger als drei Peers ausgewählt": 7,
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 1
+    "Keine Kurshistorie": 5,
+    "Kurshistorie fehlerhaft": 1
+   }
+  },
+  {
+   "profile": "specialist_financial",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Eigenkapitalrendite",
+   "weight": 10,
+   "missingListings": 3,
+   "filledListings": 76,
+   "weightedGap": 30,
+   "reasons": {
+    "Jahresergebnis oder Eigenkapital fehlt": 3
    }
   }
  ],

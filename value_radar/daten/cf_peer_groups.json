@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-11-09T22:39:13.963944+00:00",
+  "generatedAt": "2026-11-10T07:02:20.239424+00:00",
   "inputSha256": "93786fac15eaf76d3cef06410e8f98f7abfb9f66353b35eb64bb0d20fe3c9bcf",
   "summary": {
     "inputListings": 1332,
@@ -68048,7 +68048,7 @@
         "label": "Drug Manufacturers - General",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/RHHBF/profile/",
-        "observedAt": "2026-11-04T11:43:31.403414+00:00",
+        "observedAt": "2026-11-10T07:02:17.023566+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -70211,7 +70211,7 @@
         "label": "Telecom Services",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/KDDIF/profile/",
-        "observedAt": "2026-11-08T11:33:27.588792+00:00",
+        "observedAt": "2026-11-10T07:02:18.653480+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -75615,7 +75615,7 @@
         "label": "Asset Management",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/ROSE.L/profile/",
-        "observedAt": "2026-11-08T11:33:07.294177+00:00",
+        "observedAt": "2026-11-10T07:02:15.253098+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [

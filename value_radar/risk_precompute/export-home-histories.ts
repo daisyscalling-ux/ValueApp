@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 import {riskHistory} from './worker/risk-data';
 import {compactHistory,historyStatistics,RISK_SCHEMA} from './src/lib/risk-statistics';
 type Row=Record<string,any>;
-const MIN_OBSERVATIONS=505,DAY=86400000,RESOLVE_DAYS=7,FRESH_HOURS=18;
+const MIN_OBSERVATIONS=505,DAY=86400000,RESOLVE_DAYS=7,FRESH_HOURS=18,RESOLUTION_METHOD='isin-primary-v2';
 const ISIN=/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 const read=(file:string)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return null}};
 const usable=(h:any,now:number)=>{const s=h?.statistics||{};const age=now-Date.parse(h?.retrievedAt);
@@ -37,6 +37,18 @@ export function chooseHome(isin:string,candidates:Row[],exclude:Set<string>){
  return primary.length===1?primary[0]:null;
 }
 
+// Warum keine Heimatnotierung gewaehlt wurde, mit den Kandidaten derselben ISIN und einer Stichprobe aller Treffer.
+export function diagnose(isin:string,all:Row[],exclude:Set<string>){
+ const brief=(c:Row)=>({symbol:c.symbol,isin:c.isin??null,type:c.type??null,isPrimary:c.is_primary===true,status:c.status??null});
+ const same=[...new Map(all.filter(c=>c?.isin===isin&&typeof c.symbol==='string').map(c=>[c.symbol,c])).values()];
+ const exchange=same.filter(c=>!c.symbol.toUpperCase().startsWith('OTC:'));
+ const stock=exchange.filter(c=>c.type==='stock'&&c.status!=='delisted');
+ const outside=stock.filter(c=>!exclude.has(c.symbol)),primary=outside.filter(c=>c.is_primary===true);
+ const reason=!all.length?'no_search_results':!same.length?'no_same_isin':!exchange.length?'otc_only':!stock.length?'no_active_stock':!outside.length?'primary_in_universe':!primary.length?'no_primary_listing':primary.length>1?'ambiguous_primary':'resolved';
+ const others=[...new Map(all.filter(c=>c?.isin!==isin&&typeof c?.symbol==='string').map(c=>[c.symbol,c])).values()].slice(0,8);
+ return {reason,sameIsin:same.slice(0,8).map(brief),otherResults:others.map(brief)};
+}
+
 async function search(query:string,key:string,fetcher:typeof fetch){
  const r=await fetcher('https://api.roic.ai/v3.0.0/tickers/search?query='+encodeURIComponent(query),{headers:{Authorization:'Bearer '+key},signal:AbortSignal.timeout(12000),redirect:'error'});
  if(!r.ok)throw Error('ROIC-Symbolsuche HTTP '+r.status);
@@ -58,14 +70,15 @@ export async function exportHomeHistories(options:Row={}){
  for(const t of list){
   if(clock()>deadline){report.budgetReached=true;break}
   let res=risk.homeResolution[t.isin];
-  if(!(res&&now-Date.parse(res.at)>=0&&now-Date.parse(res.at)<RESOLVE_DAYS*DAY)){
-   let home:Row|null=null;const queries=[t.isin,...t.tickers,String(t.name||'').split(/[,.(]/)[0].trim()].filter(q=>q&&q.length>=2);
-   try{for(const q of queries){const c=await search(q,env.ROIC_API_KEY,fetcher);await sleep(gap);home=chooseHome(t.isin,c,universeSymbols);if(home)break}
-    res={at:new Date(now).toISOString(),symbol:home?.symbol||null,exchange:home?.exchange||null,isPrimary:home?.is_primary===true,queries:queries.length,source:'ROIC v3 tickers/search · exact ISIN'};
+  if(!(res&&res.method===RESOLUTION_METHOD&&now-Date.parse(res.at)>=0&&now-Date.parse(res.at)<RESOLVE_DAYS*DAY)){
+   let home:Row|null=null;const queries=[t.isin,...t.tickers,String(t.name||'').split(/[,.(]/)[0].trim()].filter(q=>q&&q.length>=2);const seen:Row[]=[];
+   try{for(const q of queries){const c=await search(q,env.ROIC_API_KEY,fetcher);seen.push(...c);await sleep(gap);home=chooseHome(t.isin,c,universeSymbols);if(home)break}
+    res={at:new Date(now).toISOString(),method:RESOLUTION_METHOD,symbol:home?.symbol||null,exchange:home?.exchange||null,isPrimary:home?.is_primary===true,queries:queries.length,source:'ROIC v3 tickers/search · exact ISIN',
+     ...(home?{}:{diagnosis:diagnose(t.isin,seen,universeSymbols)})};
     risk.homeResolution[t.isin]=res;
    }catch(e){report.failed++;report.errors.push(t.isin+': '+String((e as Error).message).slice(0,80));continue}
   }else report.cachedResolution++;
-  if(!res.symbol){report.unresolved++;continue}
+  if(!res.symbol){report.unresolved++;const why=res.diagnosis?.reason||'unknown';report.unresolvedReasons=report.unresolvedReasons||{};report.unresolvedReasons[why]=(report.unresolvedReasons[why]||0)+1;continue}
   report.resolved++;wanted.add(res.symbol);
   const old=risk.homeListings[res.symbol];
   if(old&&old.isin===t.isin&&now-Date.parse(old.retrievedAt)>=0&&now-Date.parse(old.retrievedAt)<FRESH_HOURS*3600000){old.homeOf=t.listings;report.fresh++;continue}

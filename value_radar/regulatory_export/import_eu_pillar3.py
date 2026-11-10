@@ -111,6 +111,8 @@ def requirement(v):
 
 def build(submissions, mapping, fetch, now):
     leis = {b['lei']: b for b in mapping.get('banks', [])}
+    # Banken ohne EBA-Transparenzdaten (nur Saeule 3): gleiche Pruefung, Name aus GLEIF.
+    leis.update({b['lei']: {**b, 'ebaName': b.get('gleifName')} for b in mapping.get('pillar3Only', [])})
     banks, rejected = {}, {}
     for lei, cands in candidates(submissions.get('urls', []), leis).items():
         reasons = []

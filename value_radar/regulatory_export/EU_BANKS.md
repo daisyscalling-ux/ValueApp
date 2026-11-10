@@ -62,3 +62,20 @@ Seit Januar 2026 veröffentlicht die EBA die Säule-3-Offenlegung großer EU-Ins
 - Bank-LCR-Lücken 93 → 50
 - CET1-Puffer-Lücken 56 → 47
 - Banken 55,2 → 58,0, gesamt 77,6 → 77,9
+
+## Banken nur aus der Säule 3 (10. November 2026)
+
+Elf EU-Banken des Universums stehen nicht in der EBA-Transparenzübung (`open`). Zehn davon reichen unter einer eindeutigen LEI im Pillar 3 Data Hub ein. Die LEI stammt aus GLEIF (`filter[isin]`, genau ein Treffer). Diese zehn stehen jetzt unter `pillar3Only` in `eu-bank-map.json`: Crédit Agricole S.A., Eurobank, Piraeus, Erste Group, mBank, Erste Bank Polska, Bank Millennium, Ringkjøbing Landbobank, Sydbank und Sparebanken Norge. Eurobank und Piraeus reichen bereits unter der LEI der börsennotierten Nachfolgegesellschaft ein. Offen bleiben Bank of Ireland (keine eindeutige LEI über die ISIN) und Storebrand (Versicherungskonzern).
+
+Für diese Banken kommen CET1-, Tier-1-, Gesamtkapital- und Leverage-Quote, Anforderung und LCR **ausschließlich aus EU KM1** (`capitalSource: eba_p3dh_km1`, Feldcodes `P3DH:K_61.00/<Zeile>`), mit derselben Prüfung wie oben. Die Daten dürfen höchstens 270 Tage alt sein, und die Quelle muss die Originaldatei im Hub sein. Eine NPL-Quote gibt es dafür noch nicht: Die Kreditqualitätstabellen der Säule 3 sind noch nicht ausgewertet.
+
+**Ergebnis:**
+- 9 von 10 Banken übernommen.
+- Bank Millennium ist abgelehnt: Ihre letzte Einreichung vom 31.12.2025 ist über 270 Tage alt.
+- Bei Crédit Agricole S.A. bleibt die Anforderung offen: Sie meldet den CET1-Anteil der Säule-2-Anforderung als 0,9281 statt 0,009281, also in Prozent statt als Anteil. Er wird nicht stillschweigend umgerechnet.
+- Bei Sydbank bleibt die Anforderung ebenfalls offen, weil die SREP-Zeilen fehlen.
+
+**Probelauf:**
+- Bank-LCR-Lücken 50 → 41
+- CET1-Puffer 47 → 40
+- Banken 58,0 → 59,0

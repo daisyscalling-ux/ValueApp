@@ -25,4 +25,17 @@ class AdrBasis(unittest.TestCase):
    self.assertEqual(apply(d,uni,{'NYSE:SHEL':{}},D),{},'manual entries take precedence')
    bad=json.loads((d/'NYSE_SHEL.json').read_text());bad['market']['fields']['price']=999;(d/'NYSE_SHEL.json').write_text(json.dumps(bad))
    apply(d,uni,{},D);self.assertNotIn('share_basis',json.loads((d/'NYSE_SHEL.json').read_text()),'unconfirmed ratio withdrawn')
+ def test_outside_universe_home_used_only_with_fresh_quote_and_marked(self):
+  with tempfile.TemporaryDirectory() as d:
+   d=Path(d);adr,home=files()
+   (d/'NYSE_SHEL.json').write_text(json.dumps(adr))
+   out={'method':'roic_isin_primary_yahoo_quote_v1','homes':{'GB00BP6MXD84':{'roicSymbol':'EURONEXT:SHELL','yahooSymbol':'SHELL.AS','market':home['market']}}}
+   self.assertEqual(apply(d,{'kandidaten':[DR]},{},D,outside=out)['ratio_set'],1)
+   ev=json.loads((d/'NYSE_SHEL.json').read_text())['share_basis']['evidence']
+   self.assertEqual((ev['homeListing'],ev['homeOutsideUniverse'],ev['homeYahooSymbol']),('EURONEXT:SHELL',True,'SHELL.AS'))
+   stale={**out,'homes':{'GB00BP6MXD84':{**out['homes']['GB00BP6MXD84'],'market':{**home['market'],'quote_at':'2026-10-01'}}}}
+   self.assertEqual(apply(d,{'kandidaten':[DR]},{},D,outside=stale),{'home_listing_missing':1})
+   self.assertNotIn('share_basis',json.loads((d/'NYSE_SHEL.json').read_text()),'withdrawn when no longer confirmed')
+   self.assertEqual(apply(d,{'kandidaten':[DR]},{},D,outside={**out,'method':'other'}),{'home_listing_missing':1})
+
 if __name__=='__main__':unittest.main()

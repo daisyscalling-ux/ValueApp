@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - working-directory: value_radar/fundamental_export
-        run: python -m unittest -v test_export_fundamentals.py test_queue_policy.py test_annual_supply_status.py test_share_basis_rule.py test_adr_basis.py
+        run: python -m unittest -v test_export_fundamentals.py test_queue_policy.py test_annual_supply_status.py test_share_basis_rule.py test_adr_basis.py test_adr_home_quotes.py
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_listing_identity.py
   collect:
@@ -55,6 +55,14 @@ jobs:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           REQUESTED_SYMBOLS: ${{ inputs.symbols }}
         run: python fundamental_export/export_fundamentals.py --symbols "$REQUESTED_SYMBOLS" --budget-min 120
+      - name: Heimatnotierungen von ADRs ausserhalb des Universums (ROIC-ISIN, Yahoo-Kurs)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 15
+        working-directory: value_radar
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+        run: python fundamental_export/adr_home_quotes.py .
       - name: ADR-Verhältnisse aus Aktienzahl und Kurs prüfen
         if: always()
         working-directory: value_radar

@@ -46,6 +46,8 @@ Bankdaten (10.11.2026): 21 Bank-ADRs übernehmen die geprüften Konzernquoten ih
 
 Kurshistorien (10.11.2026): Von 76 Notierungen ohne verwertbare Historie sind 57 (52 ISINs) Kandidaten für eine Heimatnotierung außerhalb des Universums, vor allem rund 35 OTC-Linien australischer, chinesischer und anderer ausländischer Werte (ASX, HKEX, SSE …). `export-home-histories.ts` sucht diese über die ROIC-Ticker-Suche (exakt gleiche ISIN, Hauptnotierung, keine OTC-Linie, Aktie, eindeutig) und lädt ihre Historie nach `cf_risk.json/homeListings`; `risk_history_proxy.py` nutzt sie wie eine Heimatnotierung aus dem Universum. Nicht lösbar auf diesem Weg: 15 Notierungen mit weniger als zwei Handelsjahren (Börsengänge und Abspaltungen) und 21 Universumszeilen ohne geprüfte Notierung (u. a. Vorzugsaktien).
 
+Notierungsidentität in der App (10.11.2026): `listingMatches` der App erkannte nordische Aktiengattungen (`STO:VOLV_B`) und LSE-Symbole mit Punkt (`LSE:RR.`) nicht. Dadurch fehlten 48 Notierungen in der ganzen App, auch als Peers. Korrektur in valueapp-cf; die Messung nutzt jetzt direkt `value_radar/listing_identity.py`, das mit der App identisch ist (1.411 Paare geprüft). Wirkung auf denselben Daten: gesamt 76,3 → 76,7, Peer-Stress-Lücken bei Unternehmen 144 → 102, Reverse-DCF-Lücke 90 → 56.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

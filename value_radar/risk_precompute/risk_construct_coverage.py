@@ -21,6 +21,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'fundamental_export'))
 from share_basis_rule import ordinary_basis  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from listing_identity import listing_matches as _shared_listing_matches  # noqa: E402
 
 DATA = Path(os.environ.get('RISK_DATA_DIR') or Path(__file__).resolve().parents[1] / 'daten')
 BLOCKS = {'Kursrisiko': 30, 'Finanzielle Verwundbarkeit': 25, 'Umfeldstress': 15, 'Bewertungsrisiko': 15, 'Wettbewerbsanfälligkeit': 15}
@@ -67,26 +69,9 @@ def available(d):
     return isinstance(d, dict) and d.get('state') == 'available'
 
 
-VENUES = {"DE": ["XETR"], "F": ["FRA"], "L": ["LSE"], "IL": ["LSE"], "PA": ["EPA", "EURONEXT"], "AS": ["AMS", "EURONEXT"], "BR": ["EBR", "EURONEXT"],
-          "IR": ["ISE", "DUB", "EURONEXT"], "LS": ["ELI", "EURONEXT"], "MI": ["MIL"], "MC": ["BME"], "WA": ["GPW"], "AT": ["ATHEX"], "SW": ["SIX"], "VX": ["SIX"],
-          "ST": ["STO"], "HE": ["HEL"], "OL": ["OSL"], "CO": ["CPH"], "VI": ["VIE"], "T": ["TSE", "TYO", "JPX"], "HK": ["HKEX", "HKG"], "TO": ["TSX"], "AX": ["ASX"],
-          "BK": ["SET"], "KL": ["MYX"], "MU": ["MUN"], "BE": ["BER"], "SG": ["STU"], "DU": ["DUS"], "HM": ["HAM"], "HA": ["HAN"]}
-
-
 def listing_matches(ticker, listing):
-    """Spiegel von listingMatches (valueapp-cf, src/lib/listing-identity.ts)."""
-    q, s = _text(ticker).upper(), _text(listing).upper()
-    if not q or ':' not in s:
-        return False
-    if ':' in q:
-        return q == s
-    ex, base = s.split(':', 1)
-    if q in ('BRK.A', 'BRK.B'):
-        q = q.replace('.', '-')
-    if '.' in q:
-        at = q.rfind('.')
-        return ex in VENUES.get(q[at + 1:], []) and base == q[:at]
-    return ex in ('NASDAQ', 'NYSE', 'NYSEAMERICAN', 'AMEX', 'OTC') and base.replace('.', '-') == q
+    """Spiegel von listingMatches (valueapp-cf, src/lib/listing-identity.ts); seit 10.11.2026 identisch mit value_radar/listing_identity.py."""
+    return _shared_listing_matches(ticker, listing)
 
 
 def _text(x):

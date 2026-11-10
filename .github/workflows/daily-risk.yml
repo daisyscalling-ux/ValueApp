@@ -109,6 +109,8 @@ jobs:
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-universe.ts --bundle --platform=node --format=esm --outfile=/tmp/test-universe.mjs
           node /tmp/test-universe.mjs
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-home-histories.ts --bundle --platform=node --format=esm --outfile=/tmp/test-home-histories.mjs
+          node /tmp/test-home-histories.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-edinet.ts --bundle --platform=node --format=esm --outfile=/tmp/test-edinet.mjs
           node /tmp/test-edinet.mjs
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-balance-fields.ts --bundle --platform=node --format=esm --outfile=/tmp/test-balance-fields.mjs
@@ -189,6 +191,15 @@ jobs:
           RISK_SECTOR_ENABLED: '1'
           RISK_REQUESTS_PER_MINUTE: '240'
         run: node /tmp/risk-export.mjs
+      - name: Heimatnotierungen ausserhalb des Universums fuer fehlende Kurshistorien laden
+        if: always() && !cancelled()
+        continue-on-error: true
+        timeout-minutes: 12
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+        run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/export-home-histories.ts --bundle --platform=node --format=esm --outfile=/tmp/home-histories.mjs
+          node /tmp/home-histories.mjs
       - name: Fehlende eigene Kurshistorien durch gekennzeichnete Heimatnotierung ersetzen
         if: always() && !cancelled()
         continue-on-error: true

@@ -19,4 +19,11 @@ class Proxy(unittest.TestCase):
   r={'stocks':{'XETR:ALV':rec('XETR:ALV')}};build(r,UNI,NOW);self.assertIn('OTC:ALIZF',r['stocks'])
   r['stocks']['XETR:ALV']=rec('XETR:ALV',when='2026-11-01T00:00:00Z');rep=build(r,UNI,NOW)
   self.assertNotIn('OTC:ALIZF',r['stocks']);self.assertEqual(rep['withdrawn'],2)
+ def test_home_listing_outside_universe(self):
+  ext=dict(rec('ASX:CBA',cur='AUD'),isin='XX0000000001',homeOf=['OTC:X'],resolvedAt='2026-11-10T07:00:00Z')
+  r={'stocks':{},'homeListings':{'ASX:CBA':ext}};build(r,UNI,NOW)
+  p=r['stocks']['OTC:X'];self.assertEqual((p['historySource']['symbol'],p['historySource']['isin'],p['currency']),('ASX:CBA','XX0000000001','AUD'))
+  self.assertNotIn('homeOf',p);self.assertNotIn('isin',p)
+  r['homeListings']['ASX:CBA']['isin']='XX0000000002';build(r,UNI,NOW);self.assertNotIn('OTC:X',r['stocks'])
+  r['homeListings']={'OTC:CBAUF':dict(ext)};build(r,UNI,NOW);self.assertNotIn('OTC:X',r['stocks'])
 if __name__=='__main__':unittest.main()

@@ -72,4 +72,14 @@ class FxResolutionTests(unittest.TestCase):
   r=cc.build(UNI,shards(),{s:{'statistics':STATS} for s in ('NYSE:C1','NYSE:B1','NYSE:GS')},ann,dt.datetime(2026,11,10,12,tzinfo=dt.timezone.utc))
   g={(x['profile'],x['metric']):x for x in r['largestGaps']};self.assertNotIn(('corporate','Erwartungslücke Reverse DCF'),g)
 
+class FcffMarginTests(unittest.TestCase):
+ def test_universe_fcff_margin_preferred_over_proxy(self):
+  uni={'kandidaten':[{'listing_symbol':'NYSE:F1','ticker':'F1','name':'F One','industry':'Steel','fcff_margin':None}]}
+  sh={'NYSE:F1':{'balance':{'profile':'corporate'},'market':{'state':'available'}}}
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:F1':{'statistics':STATS}},{'NYSE:F1':(annual(),'USD')})['largestGaps']}
+  self.assertEqual(g[('corporate','FCFF-Marge')]['reasons'],{'ROIC liefert keinen FCFF oder Umsatz (TTM)':1},'export field present but empty wins over the annual proxy')
+  uni['kandidaten'][0]['fcff_margin']=8.5
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:F1':{'statistics':STATS}},{'NYSE:F1':(annual(operating_cashflow=None),'USD')})['largestGaps']}
+  self.assertNotIn(('corporate','FCFF-Marge'),g)
+
 if __name__=='__main__':unittest.main()

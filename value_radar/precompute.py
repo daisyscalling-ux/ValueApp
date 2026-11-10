@@ -335,6 +335,10 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
                and f.get("price") else None),
         "ev_ebitda": (round(f["ev_ebitda"], 1)
                       if f.get("ev_ebitda") is not None else None),
+        # FCFF / Umsatz aus derselben ROIC-Zeile wie in der App (Cashflow-Puffer im Risikoscore), in Prozent.
+        "fcff_margin": (round(f["free_cashflow"] / f["revenue"] * 100, 1)
+                        if isinstance(f.get("free_cashflow"), (int, float)) and isinstance(f.get("revenue"), (int, float))
+                        and f["revenue"] > 0 else None),
         "roe": (round(f["roe"] * 100, 1) if f.get("roe") is not None else None),
         "ebitda_margin": (round(f["ebitda"] / f["revenue"] * 100, 1)
                           if f.get("ebitda") and f.get("revenue")

@@ -259,7 +259,9 @@ def metrics(x):
     else:
         ebitda = f.get('ebitda')
         out += [m(F, 'Nettoschulden / EBITDA', 15, *yes((finite(ebitda) and ebitda > 0 and finite(f.get('total_debt')) and finite(f.get('cash'))) or finite(u.get('net_debt_ebitda')), 'EBITDA, Schulden oder Kasse fehlen')),
-                m(F, 'FCFF-Marge', 10, *yes(finite(f.get('operating_cashflow')) and finite(f.get('capex')) and finite(f.get('revenue')) and f['revenue'] > 0, 'Cashflow, Investitionen oder Umsatz fehlen'))]
+                # Die App nimmt FCFF und Umsatz aus der ROIC-Zeile; seit dem Universumsexport mit fcff_margin genau messbar, sonst Näherung über den Ersatzabschluss.
+                (m(F, 'FCFF-Marge', 10, *yes(finite(u.get('fcff_margin')), 'ROIC liefert keinen FCFF oder Umsatz (TTM)')) if 'fcff_margin' in u else
+                 m(F, 'FCFF-Marge', 10, *yes(finite(f.get('operating_cashflow')) and finite(f.get('capex')) and finite(f.get('revenue')) and f['revenue'] > 0, 'Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)')))]
     out += [m(U, 'Markt-ETF', 10, *yes(available(x.domains.get('market')), 'Kein Markt-ETF zugeordnet')),
             m(U, 'Peer-Stress', 5, *first((x.peer_selected == 0, 'Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)'),
                                           (x.peer_selected < PEER_MINIMUM, 'Weniger als drei Peers ausgewählt'),

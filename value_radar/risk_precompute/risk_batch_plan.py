@@ -26,7 +26,7 @@ def plan(rows,batches):
    if kind=='sector':
     context=any(domains.get('sector',{}).get(k,{}).get('state')=='available' for k in ('industryContext','broaderContext','currencyAdjustedContext'))
     category='strict_peer_extension_context_already_present' if context else 'sector_context_gap'
-   elif kind=='historical' and 'Weniger als zwei Handelsjahre' in reason:category='insufficient_listing_history'
+   elif kind=='historical' and ('Weniger als zwei Handelsjahre' in reason or 'Weniger als ein Handelsjahr' in reason):category='insufficient_listing_history'
    elif kind=='sector_framework':category='sector_original_disclosure_batch'
    elif kind=='source_reconciliation':category='definition_or_period_reconciliation'
    elif kind=='financial_fields':category='financial_statement_field_batch'

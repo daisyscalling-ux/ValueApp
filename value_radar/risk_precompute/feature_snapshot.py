@@ -60,6 +60,8 @@ def price_block(summary):
     s = summary.get('statistics') or {}
     out = {k: (s.get(k) if k in ('first', 'last', 'error') else finite(s.get(k))) for k in PRICE_FIELDS}
     out.update(retrievedAt=summary.get('retrievedAt'), adjustment=summary.get('adjustment'), currency=summary.get('currency'))
+    if s.get('shortHistory') is True:
+        out['shortHistory'] = True
     # Ersatzhistorie aus der Heimatnotierung bleibt im Archiv erkennbar.
     if isinstance(summary.get('historySource'), dict):
         out['historySource'] = summary['historySource'].get('symbol')

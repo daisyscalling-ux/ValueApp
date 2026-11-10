@@ -82,3 +82,5 @@ Probelauf: Verhältnis für 61 ADRs gesetzt. 67 ADRs haben keine Heimatnotierung
 ## Ersatz für die Erwartungslücke ohne positiven Cashflow (10.11.2026)
 
 Seit Konstrukt-Version 0.9 gilt für Unternehmen ohne positiven freien Cashflow statt des Reverse DCF der Aufschlag des EV/EBITDA auf den Median der Peers (mindestens drei Peers mit positivem EV/EBITDA, eigenes EV/EBITDA positiv). Die Messung bildet das nach. Ergebnis mit den Daten vom 10.11.2026: Die Erwartungslücke fehlt bei 90 statt 258 Unternehmen. Davon haben 51 weniger als drei Peers mit EV/EBITDA, 34 sind ADRs ohne Aktienbasis, 5 haben ein negatives EBITDA. Belegtes Gewicht gesamt 75,8, Unternehmen 80,9.
+
+Verkürzte Historie (10.11.2026): Notierungen mit 253 bis 504 Kurspunkten (`shortHistory`) zählen bei Expected Shortfall und Volatilität als gefüllt; der größte Rückgang bleibt mit dem Grund „Verkürzte Historie“ offen (Methode in `RISIKOSCORE.md` der App). Betrifft vor allem die 15 jungen Notierungen aus der Kurshistorien-Analyse; unter 253 Kurspunkten bleibt alles offen.

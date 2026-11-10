@@ -99,17 +99,7 @@
    "drs": [
     "OTC:ANZGY"
    ],
-   "market": {
-    "currency": "AUD",
-    "quote_at": "2026-11-10T05:20:38+00:00",
-    "source": "Yahoo Finance",
-    "source_url": "https://finance.yahoo.com/quote/ANZ.AX/",
-    "name": "ANZ Group Holdings Limited",
-    "fields": {
-     "price": 39.44,
-     "shares_out": 3011030332
-    }
-   }
+   "quoteProblem": "price_or_shares_missing"
   },
   "NL0010273215": {
    "isin": "NL0010273215",
@@ -760,12 +750,12 @@
    ],
    "market": {
     "currency": "BRL",
-    "quote_at": "2026-11-10T18:03:57+00:00",
+    "quote_at": "2026-11-10T21:05:55+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/ITUB3.SA/",
     "name": "Itaú Unibanco Holding S.A.",
     "fields": {
-     "price": 45.37,
+     "price": 45.46,
      "shares_out": 5617742977
     }
    }
@@ -1594,7 +1584,7 @@
    ]
   }
  },
- "generatedAt": "2026-11-10T18:18:50.242639+00:00",
+ "generatedAt": "2026-11-10T22:55:53.248262+00:00",
  "report": {
   "targets": 50,
   "resolved": 15,
@@ -1602,7 +1592,9 @@
    "no_unique_primary_listing": 34,
    "yahoo_mapping_unclear": 1
   },
-  "quoted": 15,
-  "quoteFailed": {}
+  "quoted": 14,
+  "quoteFailed": {
+   "price_or_shares_missing": 1
+  }
  }
 }

@@ -1,0 +1,578 @@
+{
+ "schema": 1,
+ "method": "roic_isin_primary_yahoo_quote_v1",
+ "homes": {
+  "CNE100000RJ0": {
+   "isin": "CNE100000RJ0",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:ACGBY"
+   ]
+  },
+  "MX01AM050019": {
+   "isin": "MX01AM050019",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:AMX"
+   ]
+  },
+  "AU000000ANZ3": {
+   "isin": "AU000000ANZ3",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:ANZGY"
+   ]
+  },
+  "NL0010273215": {
+   "isin": "NL0010273215",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NASDAQ:ASML"
+   ]
+  },
+  "TW0003711008": {
+   "isin": "TW0003711008",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:ASX"
+   ]
+  },
+  "CNE000001N05": {
+   "isin": "CNE000001N05",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:BACHY"
+   ]
+  },
+  "GB0002634946": {
+   "isin": "GB0002634946",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:BAESY"
+   ]
+  },
+  "ES0113211835": {
+   "isin": "ES0113211835",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:BBVA"
+   ]
+  },
+  "CNE1000000S2": {
+   "isin": "CNE1000000S2",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:BCMXY"
+   ]
+  },
+  "HK2388011192": {
+   "isin": "HK2388011192",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:BHKLY"
+   ]
+  },
+  "CNE100001526": {
+   "isin": "CNE100001526",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:BYDDY"
+   ]
+  },
+  "CNE100002FG7": {
+   "isin": "CNE100002FG7",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CGXYY"
+   ]
+  },
+  "FR0000130403": {
+   "isin": "FR0000130403",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CHDRY"
+   ]
+  },
+  "CNE100000742": {
+   "isin": "CNE100000742",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CICHY"
+   ]
+  },
+  "CNE000001B33": {
+   "isin": "CNE000001B33",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CIHKY"
+   ]
+  },
+  "AU000000CBA7": {
+   "isin": "AU000000CBA7",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CMWAY"
+   ]
+  },
+  "CNE100000767": {
+   "isin": "CNE100000767",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CSUAY"
+   ]
+  },
+  "CNE100003662": {
+   "isin": "CNE100003662",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:CYATY"
+   ]
+  },
+  "SG1L01001701": {
+   "isin": "SG1L01001701",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:DBSDY"
+   ]
+  },
+  "GB00BN7SWP63": {
+   "isin": "GB00BN7SWP63",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:GSK"
+   ]
+  },
+  "INE040A01034": {
+   "isin": "INE040A01034",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:HDB"
+   ]
+  },
+  "TW0002317005": {
+   "isin": "TW0002317005",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:HNHPF"
+   ]
+  },
+  "INE090A01021": {
+   "isin": "INE090A01021",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:IBN"
+   ]
+  },
+  "CNE000001P37": {
+   "isin": "CNE000001P37",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:IDCBY"
+   ]
+  },
+  "BRITUBACNOR4": {
+   "isin": "BRITUBACNOR4",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:ITUB"
+   ]
+  },
+  "JP3946750001": {
+   "isin": "JP3946750001",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:JPPTY"
+   ]
+  },
+  "CNE100001QQ5": {
+   "isin": "CNE100001QQ5",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:MGCLY"
+   ]
+  },
+  "DE0006599905": {
+   "isin": "DE0006599905",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:MKKGY"
+   ]
+  },
+  "AU000000MQG1": {
+   "isin": "AU000000MQG1",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:MQBKY"
+   ]
+  },
+  "AU000000NAB4": {
+   "isin": "AU000000NAB4",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:NABZY"
+   ]
+  },
+  "SG1S04926220": {
+   "isin": "SG1S04926220",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:OVCHY"
+   ]
+  },
+  "BRPETRACNOR9": {
+   "isin": "BRPETRACNOR9",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:PBR",
+    "NYSE:PBR.A"
+   ]
+  },
+  "CNE000001R84": {
+   "isin": "CNE000001R84",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:PNGAY"
+   ]
+  },
+  "CNE100003PZ4": {
+   "isin": "CNE100003PZ4",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:PSTVY"
+   ]
+  },
+  "ES0113900J37": {
+   "isin": "ES0113900J37",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:SAN"
+   ]
+  },
+  "DE0007164600": {
+   "isin": "DE0007164600",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:SAP"
+   ]
+  },
+  "FR0000121972": {
+   "isin": "FR0000121972",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:SBGSY"
+   ]
+  },
+  "INE062A01020": {
+   "isin": "INE062A01020",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:SBKFF"
+   ]
+  },
+  "KR7000660001": {
+   "isin": "KR7000660001",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": "KRX:000660",
+   "yahooSymbol": "000660.KS",
+   "reason": "",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NASDAQ:SKHY"
+   ],
+   "market": {
+    "currency": "KRW",
+    "quote_at": "2026-11-10T06:30:28+00:00",
+    "source": "Yahoo Finance",
+    "source_url": "https://finance.yahoo.com/quote/000660.KS/",
+    "name": "SK hynix Inc.",
+    "fields": {
+     "price": 1212000.0,
+     "shares_out": 705173324
+    }
+   }
+  },
+  "CNE000001F70": {
+   "isin": "CNE000001F70",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:SNHIY"
+   ]
+  },
+  "FR0000120578": {
+   "isin": "FR0000120578",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NASDAQ:SNY"
+   ]
+  },
+  "KYG875721634": {
+   "isin": "KYG875721634",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:TCEHY"
+   ]
+  },
+  "TW0002330008": {
+   "isin": "TW0002330008",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:TSM"
+   ]
+  },
+  "GB00BVZK7T90": {
+   "isin": "GB00BVZK7T90",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:UL"
+   ]
+  },
+  "GB00BH4HKS39": {
+   "isin": "GB00BH4HKS39",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NASDAQ:VOD"
+   ]
+  },
+  "AU000000WBC1": {
+   "isin": "AU000000WBC1",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:WBKCY"
+   ]
+  },
+  "JE00B8KF9B49": {
+   "isin": "JE00B8KF9B49",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "NYSE:WPP"
+   ]
+  },
+  "CNE1000031K4": {
+   "isin": "CNE1000031K4",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:WUXAY"
+   ]
+  },
+  "KYG9830T1067": {
+   "isin": "KYG9830T1067",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:XIACY"
+   ]
+  },
+  "CNE100000B24": {
+   "isin": "CNE100000B24",
+   "resolvedAt": "2026-11-10T17:15:29.859204+00:00",
+   "roicSymbol": null,
+   "yahooSymbol": null,
+   "reason": "no_unique_primary_listing",
+   "source": "ROIC v3 tickers/search · exact ISIN",
+   "drs": [
+    "OTC:ZIJMY"
+   ]
+  }
+ },
+ "generatedAt": "2026-11-10T17:15:29.859204+00:00",
+ "report": {
+  "targets": 50,
+  "resolved": 1,
+  "unresolved": {
+   "no_unique_primary_listing": 49
+  },
+  "quoted": 1,
+  "quoteFailed": {}
+ }
+}

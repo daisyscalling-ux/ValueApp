@@ -942,17 +942,13 @@ def sp500_tickers():
         return _SP500_CACHE["list"]
     out = []
     try:
-        import pandas as _pd
-        tabs = _pd.read_html(
-            "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
-        for t in tabs:
-            if "Symbol" in t.columns:
-                out = [str(s).strip().upper().replace(".", "-")
-                       for s in t["Symbol"].tolist()]
-                break
+        # Wikipedia mit beschreibendem User-Agent, sonst feste Liste (index_membership); ohne User-Agent
+        # liefert Wikipedia HTTP 403, und der Screener-Rueckfall verfaelschte das Universum.
+        import index_membership as _im
+        out, _quelle = _im.sp500_members()
     except Exception:
         out = []
-    if not out:                                   # Rueckfall
+    if not out:                                   # Rueckfall (nur fuer Nebenfunktionen, nie fuer den Export)
         try:
             import market_screener as _ms
             out, _src = _ms.get_universe(["us"], 5e9, 500)

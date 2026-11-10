@@ -81,13 +81,28 @@ def main() -> int:
     # kaputte Symbole in yfinance-404 mit 30s-Timeout - genau der Grund, warum
     # der erste Lauf nur 28 von 1390 schaffte.
     try:
+        # Zusammenfassen nur im selben Land (index_membership.collapse_same_market); das boersenuebergreifende
+        # precompute.collapse_listings verdraengte gleichnamige Indexwerte (DTE.DE durch DTE, MRK.DE durch MRK).
+        from index_membership import collapse_same_market
+        prio = getattr(precompute, "_SUFFIX_PRIORITY", None)
         universum = precompute.filter_boersen(
-            precompute.collapse_listings(
-                precompute.ersetze_pence_durch_adr(universum)))
+            collapse_same_market(precompute.ersetze_pence_durch_adr(universum), prio if isinstance(prio, dict) else {}))
         _melde(f"[export] Universum aufbereitet: {len(universum)} Titel "
                f"(ADR-ersetzt, Zweitnotierungen entfernt).")
     except Exception as e:
         _melde(f"[export] Aufbereitung fehlgeschlagen (nutze roh): {e}")
+
+    # Indexzugehoerigkeit je Ticker in Export-Schreibweise (Pence-Titel laufen als ADR).
+    try:
+        scope = roic.export_scope()
+    except Exception:
+        scope = {}
+    scope = scope if isinstance(scope, dict) else {}
+    mitglied = {k: list(v) for k, v in (scope.get("members") or {}).items()}
+    pence = getattr(precompute, "PENCE_ZU_ADR", None)
+    for orig, adr in (pence.items() if isinstance(pence, dict) else ()):
+        if orig in mitglied and isinstance(adr, str):
+            mitglied.setdefault(adr, list(mitglied[orig]))
 
     if not roic.enabled():
         _melde("[export] ROIC NICHT AKTIV - Abbruch (kein Schluessel?).")
@@ -135,6 +150,8 @@ def main() -> int:
     refreshed = len(ergebnisse)
     observed = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     ergebnisse = combine(universum, saved, ergebnisse, {r["ticker"] for r in identity_rejected}, observed)
+    for r in ergebnisse:
+        r["index_membership"] = mitglied.get(r["ticker"], [])
 
     # JSON schreiben
     AUSGABE.parent.mkdir(parents=True, exist_ok=True)
@@ -147,6 +164,8 @@ def main() -> int:
         "identity_rejected": identity_rejected,
         "peer_schema_version": 1,
         "peer_metadata_coverage": coverage(ergebnisse),
+        "index_scope": {**{k: v for k, v in scope.items() if k != "members"},
+                        "members": {t: mitglied[t] for t in dict.fromkeys(universum) if mitglied.get(t)}},
     }
     AUSGABE.write_text(json.dumps(ausgabe, ensure_ascii=False), encoding="utf-8")
 

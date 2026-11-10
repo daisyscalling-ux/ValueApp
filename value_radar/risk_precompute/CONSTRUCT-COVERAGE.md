@@ -56,6 +56,10 @@ EBITDA-Marge gegenüber Peers (10.11.2026): Die Messung zählte Firmen derselben
 
 Generali und Tryg führt der Datenanbieter als „Insurance brokers/Services“. Eine geprüfte Korrektur je ISIN (`reviewed-profile-overrides.json`, mit Beleg, SHA-256 und Ablauf) ordnet sie dem Profil `insurer` zu. Sie gilt nur, solange der Anbieter dieselbe Branche meldet und die Prüfung gültig ist. Probelauf: Versicherer 54 → 57, Solvenzquote vorhanden 17 → 19, offen 37 → 38 (Tryg ohne zugelassenes System), Unternehmen 1.053 → 1.050, Gesamtabdeckung 78,3 → 78,2 % (Tryg-Lücke jetzt sichtbar). Details in `INSURER-SOURCES.md`.
 
+## Universum = Indexmitglieder (10.11.2026)
+
+Durch einen still fehlgeschlagenen Wikipedia-Abruf (HTTP 403) fehlten 274 S&P-500-Mitglieder; ein Screener-Rückfall füllte das Universum mit 215 OTC-Linien und rund 60 ausländischen ADRs. Zusätzlich verdrängten gleichnamige US-Ticker europäische Indexwerte (DTE.DE, MRK.DE, AIR.PA). Neu: S&P 500 mit beschreibendem User-Agent oder datierter fester Liste, Zusammenfassung nur im selben Land, `index_membership` je Zeile. Universum 1.330 → 1.345: 310 Indexwerte hinzu, 295 Nicht-Mitglieder entfernt. Vor der Korrektur war im Segment der OTC-Linien 9,8 % des Gewichts offen, bei den US-Hauptnotierungen 2,8 %. Bis die neuen Titel Daten haben, sinkt die Abdeckung vorübergehend. Details in `value_radar/UNIVERSUM.md`.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

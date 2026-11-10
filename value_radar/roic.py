@@ -1503,6 +1503,11 @@ def _liste_aus_datei(dateiname: str) -> list:
     return out
 
 
+def export_scope() -> dict:
+    """Indexzugehoerigkeit des zuletzt geladenen Export-Universums (leer, wenn noch nicht geladen)."""
+    return _EXPORT_CACHE.get("scope") or {}
+
+
 def export_universum() -> list:
     """Grosses Universum fuer den Cloudflare-Export:
     S&P 500 + NASDAQ-100 + STOXX Europe 600 + Nikkei 225, entdoppelt.
@@ -1538,31 +1543,37 @@ def export_universum() -> list:
     _log(f"[universum] Nikkei 225: {len(nk)} Titel "
          f"{'(feste Liste)' if nk else '(keine Liste hinterlegt)'}")
 
-    # US: S&P 500 (ueber regime, mit eigenem Rueckfall)
-    try:
-        import regime as _rg
-        sp = _rg.sp500_tickers() or []
-        tk.extend(sp)
-        _log(f"[universum] S&P 500: {len(sp)} Titel")
-    except Exception as e:
-        _log(f"[universum] S&P 500 FEHLER: {e}")
+    # US: S&P 500 - Wikipedia mit beschreibendem User-Agent, sonst feste Liste; nie ein Screener
+    # (frueher fiel regime.sp500_tickers bei HTTP 403 still auf die groessten US-gehandelten Titel zurueck).
+    import index_membership as _im
+    sp, sp_quelle = _im.sp500_members()
+    tk.extend(sp)
+    _log(f"[universum] S&P 500: {len(sp)} Titel ({sp_quelle.get('kind')}"
+         f"{', ' + sp_quelle['wikipediaFailure'] if sp_quelle.get('wikipediaFailure') else ''})")
 
     # US: NASDAQ-100
-    nd = _wiki_tickers([
+    nd = [_im.normalize_us(t) for t in _wiki_tickers([
         "https://www.slickcharts.com/nasdaq100",
         "https://en.wikipedia.org/wiki/Nasdaq-100",
-    ], ("Symbol", "Ticker"))
+    ], ("Symbol", "Ticker"))]
     tk.extend(nd)
     _log(f"[universum] NASDAQ-100: {len(nd)} Titel")
 
     # DAX (groesstenteils schon in STOXX, als Sicherheitsnetz)
-    tk.extend(t if "." in t else t + ".DE" for t in DAX40)
+    dax = [t if "." in t else t + ".DE" for t in DAX40]
+    tk.extend(dax)
 
     def _ist_ticker(t):
         return bool(t) and " " not in t and 0 < len(t) <= 14
 
     liste = [t for t in dict.fromkeys(tk) if _ist_ticker(t)]
     _log(f"[universum] GESAMT entdoppelt: {len(liste)} Titel")
+    _EXPORT_CACHE["scope"] = _im.scope(
+        {"SP500": sp, "NDX": nd, "STOXX600": st, "NIKKEI225": nk, "DAX": dax},
+        {"SP500": sp_quelle, "NDX": {"kind": "slickcharts_or_wikipedia", "count": len(nd)},
+         "STOXX600": {"kind": "fixed_list", "file": "stoxx600_liste.txt", "count": len(st)},
+         "NIKKEI225": {"kind": "fixed_list", "file": "nikkei225_liste.txt", "count": len(nk)},
+         "DAX": {"kind": "code_constant", "count": len(dax)}})
     _EXPORT_CACHE["liste"] = liste
     return liste
 

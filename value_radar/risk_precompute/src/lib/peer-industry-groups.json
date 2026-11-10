@@ -1,0 +1,195 @@
+{
+ "schema": 1,
+ "reviewed_on": "2026-11-10",
+ "method": "peer-industry-groups-v1",
+ "rule": "Peers zuerst aus der exakten Branche. Sind es weniger als drei, füllen Firmen aus einer Gruppe eng verwandter Branchen bis höchstens fünf auf (so viele Kurshistorien lädt die App). Sektor allein begründet nie Vergleichbarkeit. Jeder Peer trägt den Grund (Branche oder Branchengruppe).",
+ "crosswalk": {
+  "banks diversified": "major banks",
+  "banks regional": "regional banks",
+  "capital markets": "investment banks brokers",
+  "drug manufacturers general": "pharmaceuticals major",
+  "telecom services": "major telecommunications",
+  "electrical equipment parts": "electrical products",
+  "software application": "packaged software",
+  "consumer electronics": "electronics appliances",
+  "other industrial metals mining": "other metals minerals"
+ },
+ "groups": {
+  "Pharma": [
+   "pharmaceuticals major",
+   "pharmaceuticals other",
+   "pharmaceuticals generic"
+  ],
+  "Nahrungsmittel": [
+   "food major diversified",
+   "food specialty candy",
+   "food meat fish dairy"
+  ],
+  "Großhandel": [
+   "wholesale distributors",
+   "food distributors",
+   "medical distributors"
+  ],
+  "Einzelhandel": [
+   "specialty stores",
+   "department stores",
+   "discount stores",
+   "home improvement chains",
+   "drugstore chains",
+   "apparel footwear retail",
+   "food retail"
+  ],
+  "Versicherer": [
+   "multi line insurance",
+   "property casualty insurance",
+   "life health insurance"
+  ],
+  "Telekommunikation": [
+   "major telecommunications",
+   "wireless telecommunications",
+   "specialty telecommunications",
+   "cable satellite tv"
+  ],
+  "Software und IT-Dienste": [
+   "packaged software",
+   "internet software services",
+   "information technology services",
+   "data processing services"
+  ],
+  "Hardware und Elektronik": [
+   "computer peripherals",
+   "computer processing hardware",
+   "electronic equipment instruments",
+   "electronic components",
+   "telecommunications equipment",
+   "office equipment supplies",
+   "electronics appliances"
+  ],
+  "Maschinen und Industrie": [
+   "industrial machinery",
+   "trucks construction farm machinery",
+   "metal fabrication",
+   "tools hardware",
+   "industrial specialties",
+   "miscellaneous manufacturing",
+   "industrial conglomerates"
+  ],
+  "Bau": [
+   "building products",
+   "construction materials",
+   "homebuilding"
+  ],
+  "Chemie": [
+   "chemicals specialty",
+   "chemicals major diversified",
+   "chemicals agricultural"
+  ],
+  "Metalle und Bergbau": [
+   "steel",
+   "aluminum",
+   "other metals minerals",
+   "precious metals",
+   "coal"
+  ],
+  "Öl und Gas": [
+   "integrated oil",
+   "oil refining marketing",
+   "oil gas production"
+  ],
+  "Energiedienstleister": [
+   "contract drilling",
+   "oilfield services equipment"
+  ],
+  "Transport": [
+   "railroads",
+   "trucking",
+   "air freight couriers",
+   "marine shipping",
+   "other transportation"
+  ],
+  "Versorger": [
+   "electric utilities",
+   "gas distributors",
+   "water utilities",
+   "alternative power generation"
+  ],
+  "Konsumgüter": [
+   "household personal care",
+   "consumer sundries",
+   "other consumer specialties"
+  ],
+  "Freizeit und Wohnen": [
+   "recreational products",
+   "home furnishings"
+  ],
+  "Bekleidung": [
+   "apparel footwear",
+   "textiles"
+  ],
+  "Medien und Werbung": [
+   "movies entertainment",
+   "advertising marketing services",
+   "publishing books magazines"
+  ],
+  "Unternehmensdienste": [
+   "miscellaneous commercial services",
+   "personnel services",
+   "commercial printing forms",
+   "environmental services"
+  ],
+  "Freizeitbetriebe": [
+   "hotels resorts cruise lines",
+   "casinos gaming",
+   "restaurants",
+   "other consumer services"
+  ],
+  "Gesundheitsdienste": [
+   "managed health care",
+   "medical nursing services",
+   "hospital nursing management"
+  ],
+  "Banken": [
+   "regional banks",
+   "savings banks"
+  ],
+  "Kapitalmarkt": [
+   "investment banks brokers",
+   "investment managers",
+   "financial publishing services"
+  ]
+ },
+ "ungrouped": [
+  "biotechnology",
+  "semiconductors",
+  "electronic production equipment",
+  "real estate investment trusts",
+  "real estate development",
+  "airlines",
+  "insurance brokers services",
+  "financial conglomerates",
+  "finance rental leasing",
+  "investment trusts",
+  "major banks",
+  "medical specialties",
+  "aerospace defense",
+  "electrical products",
+  "engineering construction",
+  "motor vehicles",
+  "auto parts oem",
+  "automotive aftermarket",
+  "beverages alcoholic",
+  "beverages non alcoholic",
+  "tobacco",
+  "oil gas pipelines",
+  "internet retail",
+  "containers packaging",
+  "pulp paper",
+  "agricultural commodities milling"
+ ],
+ "notes": {
+  "Großhandel": "Distributoren mit ähnlichem Geschäftsmodell (Marge, Umschlag), unabhängig vom Sortiment.",
+  "Banken": "Sparkassen mit Regionalbanken; Großbanken bleiben eigene Familie.",
+  "Metalle und Bergbau": "Kohle mit Metallen (Rohstoffpreisrisiko, Förderung), nicht mit Öl und Gas.",
+  "Kapitalmarkt": "Broker, Vermögensverwalter und Finanzinformationsdienste: gebührenbasiert, marktabhängig."
+ }
+}

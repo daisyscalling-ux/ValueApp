@@ -88,6 +88,21 @@ def _company(x):
     return re.sub(r'[\W_]', '', s)
 
 
+# Gepruefte Branchengruppen, identische Kopie von valueapp-cf/src/lib/peer-industry-groups.json.
+_GROUPS = json.loads((Path(__file__).resolve().parent / 'src' / 'lib' / 'peer-industry-groups.json').read_text(encoding='utf-8'))
+_GROUP_OF = {i: g for g, items in _GROUPS['groups'].items() for i in items}
+PEER_MINIMUM_SELECTION, GROUP_FILL = 3, 5
+
+
+def _industry(r):
+    raw = re.sub(r'[^a-z0-9]+', ' ', _text(r.get('industry')).lower()).strip()
+    return _GROUPS['crosswalk'].get(raw, raw)
+
+
+def industry_group(r):
+    return _GROUP_OF.get(_industry(r), '') if peer_family(r).startswith('Branche: ') else ''
+
+
 def peer_family(r):
     sub_ = _text(r.get('sub_industry')).lower()
     if sub_ and not re.fullmatch(r'unknown|other|n/a', sub_):
@@ -96,7 +111,7 @@ def peer_family(r):
     for family, rx in FAMILIES:
         if re.search(rx, name):
             return family
-    ind = re.sub(r'[^a-z0-9]+', ' ', _text(r.get('industry')).lower()).strip()
+    ind = _industry(r)
     if re.fullmatch(r'major banks|banks diversified|diversified banks|money center banks', ind):
         return 'Universalbanken'
     if re.fullmatch(r'regional banks|banks regional', ind):
@@ -118,7 +133,7 @@ def _preferred(r):
                 or re.search(r'preferred|depositary shares|preference shares|warrant', _text(r.get('name')), re.I))
 
 
-def select_peers(target, rows, families, limit=8):
+def select_peers(target, rows, families, limit=8, groups=None):
     """Peer-Auswahl wie /api/peers: gleiche Familie, Primaernotierung zuerst, dann Groesse in gleicher Waehrung, dann kurzes Symbol."""
     group = families.get(id(target))
     if not group:
@@ -149,6 +164,16 @@ def select_peers(target, rows, families, limit=8):
             selected.append(r)
         if len(selected) == limit:
             break
+    # Weniger als drei Peers der exakten Branche: verwandte Branchen der geprueften Gruppe fuellen bis GROUP_FILL auf (wie die App).
+    related = groups.get(id(target)) if groups is not None else industry_group(target)
+    if len(selected) < PEER_MINIMUM_SELECTION and related:
+        extra = [r for r in rows if _text(r.get('ticker')) and families.get(id(r)) != group and not _preferred(r) and not same_company(target, r)
+                 and (groups.get(id(r)) if groups is not None else industry_group(r)) == related]
+        for r in sorted(extra, key=functools.cmp_to_key(compare)):
+            if len(selected) >= min(limit, GROUP_FILL):
+                break
+            if not any(same_company(p, r) for p in selected):
+                selected.append(r)
     return selected
 
 
@@ -299,6 +324,7 @@ def build(universe, shards, risk, annuals, now=None):
     per_metric = defaultdict(lambda: {'filled': 0, 'missing': 0, 'app_only': 0, 'by_design': 0, 'weight': 0, 'reasons': defaultdict(int)})
     pool = [r for r in universe.get('kandidaten', []) if not (r.get('listing_symbol') and r.get('ticker')) or listing_matches(r['ticker'], r['listing_symbol'])]
     families = {id(r): peer_family(r) for r in pool}
+    groups = {id(r): industry_group(r) for r in pool}
     by_symbol = {r.get('listing_symbol'): r for r in pool}
     def drawdown_ok(r):
         s = (risk.get(r.get('listing_symbol')) or {}).get('statistics') or {}
@@ -306,7 +332,7 @@ def build(universe, shards, risk, annuals, now=None):
     for symbol, domains in shards.items():
         u = rows.get(symbol, {})
         target = by_symbol.get(symbol)
-        chosen = select_peers(target, pool, families) if target is not None else []
+        chosen = select_peers(target, pool, families, groups=groups) if target is not None else []
         usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
         ev_peers = sum(1 for r in chosen if finite(r.get('ev_ebitda')) and r['ev_ebitda'] > 0)
         annual, currency, basis, fx = (tuple(annuals.get(symbol) or ()) + (None, None, None, None))[:4]

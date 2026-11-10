@@ -36,18 +36,21 @@ DATAPOINTS = {'cet1_ratio': 'dp85151', 'tier1_ratio': 'dp85152', 'total_capital_
 ROWS = {'cet1_ratio': '0050 (5)', 'tier1_ratio': '0060 (6)', 'total_capital_ratio': '0070 (7)', 'srep_additional': '0080 (EU 7d)',
         'srep_additional_cet1': '0090 (EU 7e)', 'srep_total': '0110 (EU 7g)', 'combined_buffer': '0180 (11)',
         'overall_requirement': '0190 (EU 11a)', 'leverage_ratio': '0220 (14)', 'lcr': '0320 (17)', 'nsfr': '0350 (20)'}
-URL = re.compile(r'^https://errp\.eba\.europa\.eu/public-documents/CODIS/input/([A-Z0-9]{20})\.(CON|IND)_([A-Z]{2})_PILLAR3(\d+)_CODIS_(\d{4}-\d{2}-\d{2})_(\d+)\.zip$')
+URL = re.compile(r'^https://errp\.eba\.europa\.eu/public-documents/(CODIS|FINDIS)/input/([A-Z0-9]{20})\.(CON|IND)_([A-Z]{2})_PILLAR3(\d+)_(CODIS|FINDIS)_(\d{4}-\d{2}-\d{2})_(\d+)\.zip$')
+# EU CR1 (Modul FINDIS, Tabelle K_21.01.a), Zeile 010 "Loans and advances": Bruttobuchwert nicht notleidend (Spalte a) und notleidend (Spalte d).
+FINDIS_TAXONOMY = 'http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/pillar3/4.2/mod/findis.json'
+CR1_TABLE, CR1_PERFORMING, CR1_NON_PERFORMING = 'k_21.01.a.csv', 'dp3528599', 'dp3528855'
 MAX_AGE_DAYS = 270
 CONSISTENCY = 5e-4
 
 
-def candidates(urls, leis):
-    """Je LEI die CODIS-Einreichungen, juengster Stichtag zuerst; konsolidiert vor Einzelinstitut, spaetere Einreichung zuerst."""
+def candidates(urls, leis, module='CODIS'):
+    """Je LEI die Einreichungen eines Moduls, juengster Stichtag zuerst; konsolidiert vor Einzelinstitut, spaetere Einreichung zuerst."""
     out = {}
     for u in urls:
         m = URL.match(u)
-        if m and m.group(1) in leis:
-            lei, scope, cc, ver, date, ts = m.groups()
+        if m and m.group(1) == module and m.group(6) == module and m.group(2) in leis:
+            _, lei, scope, cc, ver, _, date, ts = m.groups()
             out.setdefault(lei, []).append({'url': u, 'scope': scope, 'country': cc, 'date': date, 'ts': ts})
     for lei in out:
         out[lei].sort(key=lambda c: (c['date'], c['scope'] == 'CON', c['ts']), reverse=True)
@@ -62,8 +65,8 @@ def number(v):
     return x if x == x and abs(x) != float('inf') else None
 
 
-def parse(raw, cand, lei):
-    """KM1-Werte aus einer Einreichung oder (None, Grund)."""
+def open_package(raw, cand, lei, taxonomy):
+    """Leser fuer reports/<datei> und Parameter, nach Pruefung von Taxonomie, Institut und Stichtag; sonst (None, Grund)."""
     try:
         z = zipfile.ZipFile(io.BytesIO(raw))
     except zipfile.BadZipFile:
@@ -75,10 +78,19 @@ def parse(raw, cand, lei):
         report, params = json.loads(read('report.json')), dict(list(csv.reader(io.StringIO(read('parameters.csv'))))[1:])
     except (KeyError, ValueError):
         return None, 'package_incomplete'
-    if (report.get('documentInfo') or {}).get('extends') != [TAXONOMY]:
+    if (report.get('documentInfo') or {}).get('extends') != [taxonomy]:
         return None, 'taxonomy_not_4_2'
     if params.get('entityID') != 'rs:' + lei + '.' + cand['scope'] or params.get('refPeriod') != cand['date']:
         return None, 'identity_or_period_mismatch'
+    return (read, params), ''
+
+
+def parse(raw, cand, lei):
+    """KM1-Werte aus einer Einreichung oder (None, Grund)."""
+    pkg, why = open_package(raw, cand, lei, TAXONOMY)
+    if not pkg:
+        return None, why
+    read, params = pkg
     try:
         rows = dict(list(csv.reader(io.StringIO(read(TABLE))))[1:])
     except KeyError:
@@ -88,6 +100,22 @@ def parse(raw, cand, lei):
     if any(v is None or not 0 < v < 1 for v in chain) or not chain[0] <= chain[1] + 1e-6 <= chain[2] + 2e-6:
         return None, 'capital_ratios_missing_or_inconsistent'
     return {'values': vals, 'currency': params.get('baseCurrency'), 'decimalsPercentage': params.get('decimalsPercentage')}, ''
+
+
+def parse_npl(raw, cand, lei):
+    """NPL-Quote der Kredite und Darlehen aus EU CR1 oder (None, Grund)."""
+    pkg, why = open_package(raw, cand, lei, FINDIS_TAXONOMY)
+    if not pkg:
+        return None, why
+    read, params = pkg
+    try:
+        rows = dict(list(csv.reader(io.StringIO(read(CR1_TABLE))))[1:])
+    except KeyError:
+        return None, 'cr1_missing'
+    perf, np_ = number(rows.get(CR1_PERFORMING)), number(rows.get(CR1_NON_PERFORMING))
+    if perf is None or np_ is None or perf < 0 or np_ < 0 or perf + np_ <= 0:
+        return None, 'cr1_loans_missing'
+    return {'ratio': np_ / (perf + np_), 'performing': perf, 'nonPerforming': np_, 'currency': params.get('baseCurrency')}, ''
 
 
 def requirement(v):
@@ -140,12 +168,35 @@ def build(submissions, mapping, fetch, now):
             break
         if lei not in banks:
             rejected[lei] = reasons or ['no_submission']
+    findis = candidates(submissions.get('urls', []), leis, 'FINDIS')
+    for lei, bank in banks.items():
+        reasons = []
+        for c in findis.get(lei, []):
+            age = (now.date() - dt.date.fromisoformat(c['date'])).days
+            if not 0 <= age <= MAX_AGE_DAYS:
+                reasons.append(c['date'] + ':too_old')
+                break
+            try:
+                raw = fetch(c['url'])
+            except (urllib.error.URLError, OSError) as e:
+                reasons.append(c['date'] + ':' + str(getattr(e, 'code', 'download_failed')))
+                continue
+            npl, why = parse_npl(raw, c, lei)
+            if not npl:
+                reasons.append(c['date'] + ':' + why)
+                continue
+            bank['npl'] = {**npl, 'period': c['date'], 'scope': 'consolidated' if c['scope'] == 'CON' else 'individual', 'sourceUrl': c['url'],
+                           'sourceFileSha256': hashlib.sha256(raw).hexdigest()}
+            break
+        if 'npl' not in bank:
+            bank['npl'], bank['nplOpen'] = None, reasons or ['no_findis_submission_listed']
     for lei in leis:
         if lei not in banks and lei not in rejected:
             rejected[lei] = ['no_codis_submission_listed']
     return {'schema': 1, 'method': METHOD, 'importedAt': now.isoformat(), 'mappingReviewExpires': mapping.get('review_expires'),
             'source': {'name': 'EBA Pillar 3 data hub (P3DH), Originaldateien', 'listUrl': 'https://edap-public.eba.europa.eu/Report/index/MTE1',
-                       'listRetrievedAt': submissions.get('retrievedAt'), 'taxonomy': TAXONOMY, 'table': 'K_61.00 EU KM1, Spalte T', 'rows': ROWS},
+                       'listRetrievedAt': submissions.get('retrievedAt'), 'taxonomy': TAXONOMY, 'table': 'K_61.00 EU KM1, Spalte T', 'rows': ROWS,
+                       'creditTable': 'K_21.01.a EU CR1, Zeile 010 Loans and advances, Spalten a (nicht notleidend) und d (notleidend)', 'findisTaxonomy': FINDIS_TAXONOMY},
             'banks': banks, 'rejected': rejected, 'scoreContribution': 0}
 
 
@@ -164,7 +215,8 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     print(json.dumps({'banks': len(result['banks']), 'withRequirement': sum(1 for b in result['banks'].values() if b['cet1Requirement']),
-                      'withLcr': sum(1 for b in result['banks'].values() if b['lcr'] is not None), 'rejected': result['rejected']}, ensure_ascii=False))
+                      'withLcr': sum(1 for b in result['banks'].values() if b['lcr'] is not None),
+                      'withNpl': sum(1 for b in result['banks'].values() if b.get('npl')), 'rejected': result['rejected']}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

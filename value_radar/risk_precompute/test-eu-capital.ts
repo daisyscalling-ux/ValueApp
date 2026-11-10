@@ -63,6 +63,13 @@ test('Pillar-3-only EU bank: KM1 codes accepted only with Hub source and fresh p
  assert.equal(verifiedEuCapital(arch({...p3,capitalSource:undefined}),row,true,now2),null,'KM1 codes are not EBA transparency codes');
  assert.equal(verifiedEuCapital(arch({...record,metrics:{...record.metrics,cet1_ratio:{...record.metrics.cet1_ratio,sourceField:'P3DH:K_61.00/0050'}}}),row,true,now),null);
 });
+test('EU CR1 NPL from the Pillar 3 Data Hub replaces the older EBA NPL; checks on source, LEI and age',()=>{
+ const cr1={state:'available',method:'eba-p3dh-cr1-npl-v1',unit:'fraction',ratio:.0169,period:'2026-06-30',lei:'2W8N8UU78PMDQKZENC08',
+  sourceUrl:'https://errp.eba.europa.eu/public-documents/FINDIS/input/2W8N8UU78PMDQKZENC08.CON_IT_PILLAR3020100_FINDIS_2026-06-30_1.zip',sourceFileSha256:'9'.repeat(64)};
+ assert.equal(verifiedEuCapital(archive({...record,creditQuality:cr1}),row,true,now)!.creditQuality.ratio,.0169);
+ for(const bad of [{lei:'X'.repeat(20)},{period:'2025-06-30'},{sourceUrl:'https://errp.eba.europa.eu/public-documents/CODIS/input/x.zip'},{sourceUrl:'https://example.org/FINDIS/x.zip'},{ratio:1.5}])
+  assert.equal(verifiedEuCapital(archive({...record,creditQuality:{...cr1,...bad}}),row,true,now)!.creditQuality,null,JSON.stringify(bad));
+});
 test('US holdings keep precedence and non-banks are untouched',()=>{
  assert.equal(merge({...base,profile:'corporate'},row,archive(),true,now).bankCapital,undefined);
  const us={state:'available',scope:'listed_consolidated_holding',inputIdentity:row,period:'2026-06-30',sourceImportedAt:'2026-10-19T12:00:00Z',identityReviewExpires:'2027-04-18',sourceFileSha256:'a'.repeat(64),metrics:{cet1_ratio:{state:'available',unit:'fraction',sourceField:'BHCAP793',value:.14}}};

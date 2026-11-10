@@ -91,6 +91,15 @@ def km1_requirement(km1,lei,now):
          'headroomPercentagePoints':(cet1-q['value'])*100,'components':q.get('components'),'derivation':q.get('derivation'),'sourceUrl':b['sourceUrl'],
          'sourceFileSha256':b['sourceFileSha256'],'reviewExpires':km1.get('mappingReviewExpires'),
          'definition':'4,5 % CET1-Mindestquote + CET1-Anteil der SREP-Zusatzanforderung (EU KM1 EU 7e) + kombinierte Kapitalpufferanforderung (Zeile 11)','scoreContribution':0}
+def km1_credit(km1,lei,now):
+ """NPL-Quote aus EU CR1 (EBA Pillar 3 Data Hub, Modul FINDIS): notleidende / gesamte Kredite und Darlehen, brutto, hoechstens 270 Tage alt."""
+ b=_km1_bank(km1,lei,now);n=(b or {}).get('npl') or {}
+ try:age=(now.date()-dt.date.fromisoformat(str(n.get('period')))).days
+ except ValueError:return None
+ if not b or not isinstance(n.get('ratio'),(int,float)) or not 0<=n['ratio']<=1 or not 0<=age<=KM1_MAX_AGE_DAYS \
+    or not re.fullmatch('[0-9a-f]{64}',str(n.get('sourceFileSha256',''))) or not str(n.get('sourceUrl','')).startswith('https://errp.eba.europa.eu/public-documents/FINDIS/'):return None
+ return {'state':'available','method':'eba-p3dh-cr1-npl-v1','unit':'fraction','ratio':n['ratio'],'period':n['period'],'lei':lei,'nonPerforming':n.get('nonPerforming'),'performing':n.get('performing'),
+         'sourceUrl':n['sourceUrl'],'sourceFileSha256':n['sourceFileSha256'],'definition':'EU CR1 Zeile 010: notleidende / (nicht notleidende + notleidende) Kredite und Darlehen, Bruttobuchwert','scoreContribution':0}
 P3_CODES={'cet1_ratio':'P3DH:K_61.00/0050','tier1_ratio':'P3DH:K_61.00/0060','total_capital_ratio':'P3DH:K_61.00/0070','leverage_ratio':'P3DH:K_61.00/0220'}
 def pillar3_only_record(row,lei,km1,mapping,now):
  """EU-Bank ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub)."""
@@ -102,8 +111,8 @@ def pillar3_only_record(row,lei,km1,mapping,now):
  return {'state':'available','scope':'eu_prudential_group','capitalSource':'eba_p3dh_km1','lei':lei,'holdingName':b.get('name'),'inputIdentity':{k:row.get(k) for k in FIELDS},
   'period':b['period'],'exercise':'EBA Pillar 3 Data Hub (EU KM1)','sourceImportedAt':km1.get('importedAt'),'sourceUrl':b['sourceUrl'],'sourceFileSha256':b['sourceFileSha256'],
   'identityReviewExpires':mapping.get('review_expires'),'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
-  'capitalRequirement':km1_requirement(km1,lei,now),'liquidity':km1_liquidity(km1,lei,now),'creditQuality':None,
-  'limitations':['Only Pillar 3 KM1 (no EBA transparency data): no non-performing loan ratio in this source.']}
+  'capitalRequirement':km1_requirement(km1,lei,now),'liquidity':km1_liquidity(km1,lei,now),'creditQuality':km1_credit(km1,lei,now),
+  'limitations':['Only Pillar 3 (no EBA transparency data): capital, requirement and LCR from EU KM1, non-performing loans from EU CR1.']}
 def build_eu(universe,capital,mapping,now,km1=None):
  """EU/EWR-Banken: EBA-Kapital und -NPL je LEI, Teilanforderung aus EZB-P2R. Gleiche Identitaetsregeln wie bei US-Holdings."""
  stocks,rejected,deferred={},{},[]
@@ -143,7 +152,7 @@ def build_eu(universe,capital,mapping,now,km1=None):
   stocks[s]={'state':'available','scope':'eu_prudential_group','lei':lei,'holdingName':b['ebaName'],'country':b['country'],'inputIdentity':{k:row.get(k) for k in FIELDS},
    'period':b['period'],'exercise':capital.get('exercise'),'sourceImportedAt':capital['importedAt'],'sourceUrl':eba['tr_oth.csv']['url'],'sourceFileSha256':eba['tr_oth.csv']['sha256'],
    'identityReviewExpires':capital['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
-   'capitalRequirement':km1_requirement(km1,lei,now) or req,'liquidity':km1_liquidity(km1,lei,now),'creditQuality':credit,
+   'capitalRequirement':km1_requirement(km1,lei,now) or req,'liquidity':km1_liquidity(km1,lei,now),'creditQuality':km1_credit(km1,lei,now) or credit,
    'limitations':['EBA transparency data are published annually; the period can be up to 24 months old.','Without Pillar 3 KM1: partial CET1 requirement excludes countercyclical, systemic and O-SII/G-SII buffers, and no LCR.']}
  adopt_depositaries(stocks,rejected,deferred,'lei')
  out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})

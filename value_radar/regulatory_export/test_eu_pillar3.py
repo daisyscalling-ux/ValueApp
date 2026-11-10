@@ -39,4 +39,18 @@ class EuPillar3(unittest.TestCase):
  def test_old_and_foreign_urls_ignored(self):
   r=run({url('2025-12-31'):pkg('2025-12-31')},[url('2025-12-31').replace('errp.eba','evil.example'),url('2025-12-31')])
   self.assertEqual(r['rejected'][LEI],['2025-12-31:too_old'])
+
+class Cr1Npl(unittest.TestCase):
+ def findis(self,perf=980.0,np_=20.0,ext=p.FINDIS_TAXONOMY,date='2026-06-30'):
+  b=io.BytesIO();z=zipfile.ZipFile(b,'w');base='X/reports/'
+  z.writestr(base+'report.json',json.dumps({'documentInfo':{'extends':[ext]}}))
+  z.writestr(base+'parameters.csv','name,value\nentityID,rs:%s.CON\nrefPeriod,%s\nbaseCurrency,iso4217:EUR\n'%(LEI,date))
+  if perf is not None:z.writestr(base+'k_21.01.a.csv','datapoint,factValue\n%s,%s\n%s,%s\n'%(p.CR1_PERFORMING,perf,p.CR1_NON_PERFORMING,np_))
+  z.close();return b.getvalue()
+ def test_npl_ratio_and_checks(self):
+  f=url().replace('/CODIS/','/FINDIS/').replace('_CODIS_','_FINDIS_')
+  b=run({url():pkg(),f:self.findis()},[url(),f])['banks'][LEI];self.assertAlmostEqual(b['npl']['ratio'],.02);self.assertEqual(b['npl']['sourceUrl'],f)
+  for bad,why in [(self.findis(ext=p.TAXONOMY),'taxonomy_not_4_2'),(self.findis(perf=None),'cr1_missing'),(self.findis(perf=-1),'cr1_loans_missing'),(self.findis(date='2026-03-31'),'identity_or_period_mismatch')]:
+   b=run({url():pkg(),f:bad},[url(),f])['banks'][LEI];self.assertIsNone(b['npl']);self.assertTrue(b['nplOpen'][0].endswith(why),b['nplOpen'])
+  self.assertEqual(run({url():pkg()},[url()])['banks'][LEI]['nplOpen'],['no_findis_submission_listed'])
 if __name__=='__main__':unittest.main()

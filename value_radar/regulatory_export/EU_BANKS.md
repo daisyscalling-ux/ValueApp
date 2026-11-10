@@ -19,7 +19,7 @@ Die Rohdateien (rund 140 MB) werden nicht eingecheckt. `daten/regulatory/eu-bank
 - Bank of Ireland (keine eindeutige GLEIF-Zuordnung);
 - Erste Group, mBank, Bank Millennium, Erste Bank Polska, Sydbank, Ringkjøbing, Sparebanken Norge, Storebrand (nicht in der EBA-Stichprobe 2025).
 
-Depositary Receipts (z. B. NYSE:SAN, NYSE:ING, ABN-AMRO-Zertifikate) werden wie bei US-Banken nicht der Aktie gleichgesetzt.
+Depositary Receipts (z. B. NYSE:SAN, NYSE:ING) übernehmen seit 10.11.2026 den Eintrag der im selben Lauf geprüften Stammaktie mit derselben ISIN (`depositaryOf`); die Quoten gelten für den Konzern. Ohne geprüfte Stammaktie (ABN-AMRO-Zertifikate) bleiben sie offen.
 
 ## Berechnung (`import_eu_banks.py`)
 

@@ -2,7 +2,7 @@
  "schema": 1,
  "reviewed_on": "2026-11-09",
  "review_expires": "2027-05-08",
- "method": "Listed ordinary share (ISIN) mapped to the supervised consolidated group whose figures are published. Only when the listed company itself is that group; depositary receipts and non-operating holding companies stay open.",
+ "method": "Listed ordinary share (ISIN) mapped to the supervised consolidated group whose figures are published. Only when the listed company itself is that group; non-operating holding companies stay open. Depositary receipts with the same ISIN adopt the record of a verified ordinary share from the same run (group-level ratios).",
  "issuers": [
   {"isin": "AU000000CBA7", "issuer": "Commonwealth Bank of Australia", "jurisdiction": "AU", "regulator": "APRA", "source": "apra_adi_centralised_publication", "sourceEntity": "Commonwealth Bank of Australia"},
   {"isin": "AU000000NAB4", "issuer": "National Australia Bank Limited", "jurisdiction": "AU", "regulator": "APRA", "source": "apra_adi_centralised_publication", "sourceEntity": "National Australia Bank Limited"},

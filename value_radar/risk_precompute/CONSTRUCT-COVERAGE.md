@@ -42,6 +42,8 @@ Korrektur gegenüber Methode v1: Dort galt Peer-Stress bei 736 Unternehmen als f
 
 FCFF-Marge: Die App liest den berichteten FCFF und den Umsatz (TTM) aus der ROIC-Bewertungszeile. Die Messung nutzte bisher eine Näherung aus dem Ersatzabschluss (operativer Cashflow, Investitionen). Seit dem Exportfeld `fcff_margin` im Universum (aus derselben ROIC-Zeile) misst sie genau das, was die App sieht. Bis zum ersten Universumsexport mit diesem Feld gilt weiter die Näherung.
 
+Bankdaten (10.11.2026): 21 Bank-ADRs übernehmen die geprüften Konzernquoten ihrer Stammaktie. Außerdem verwarf `auditUniverse` seit der Ersatzhistorie aus der Heimatnotierung 21 Notierungen als Identitätskonflikt, weil die Historie die Heimatwährung trägt; gleiche ISIN gilt jetzt als Identitätsnachweis. Probelauf: CET1-Puffer 90 → 68 fehlend, LCR 121 → 105, Kreditqualität 97 → 88; Banken im Mittel 51,8 → 54,6 gefüllte Gewichtspunkte.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

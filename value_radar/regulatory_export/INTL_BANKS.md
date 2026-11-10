@@ -19,12 +19,12 @@ Stand 09.11.2026. Gemeinsames Format `intl-bank-metrics-v1` für veröffentlicht
 
 ## Zuordnung (`intl-bank-map.json`)
 
-Eine notierte Stammaktie (ISIN) wird nur dem Konzern zugeordnet, dessen Zahlen veröffentlicht werden, und nur, wenn die notierte Gesellschaft selbst dieser Konzern ist. Depositary Receipts und Holdings ohne Banklizenz bleiben offen.
+Eine notierte Stammaktie (ISIN) wird nur dem Konzern zugeordnet, dessen Zahlen veröffentlicht werden, und nur, wenn die notierte Gesellschaft selbst dieser Konzern ist. Holdings ohne Banklizenz bleiben offen. Depositary Receipts mit derselben ISIN übernehmen ab 10.11.2026 den Eintrag einer im selben Lauf geprüften Stammaktie, weil Kapital-, Liquiditäts- und Kreditquoten den Konzern beschreiben, nicht die Aktie (`depositaryOf`). Ohne geprüfte Stammaktie bleibt das DR offen.
 
 - Zugeordnet: Commonwealth Bank of Australia, National Australia Bank, Westpac.
 - Offen: ANZ Group Holdings (Holding ohne Banklizenz; APRA veröffentlicht die Banktochter).
 
-Im Universum sind nur US-OTC-Notierungen dieser Banken. Die drei Stammaktien (OTC:CBAUF, OTC:NAUBF, OTC:WEBNF) werden übernommen, die ADRs nicht.
+Im Universum sind nur US-OTC-Notierungen dieser Banken. Die drei Stammaktien (OTC:CBAUF, OTC:NAUBF, OTC:WEBNF) werden übernommen, die ADRs über `depositaryOf` ebenfalls.
 
 ## Ablauf
 
@@ -32,7 +32,7 @@ Im Universum sind nur US-OTC-Notierungen dieser Banken. Die drei Stammaktien (OT
 
 Bewertet werden der Abstand der CET1-Quote zur Anforderung (wo offengelegt), die LCR und die Quote ausgefallener Kredite (CR1). Die APRA veröffentlicht keine bankspezifische Anforderung, deshalb bleibt der Kapitalpuffer bei den australischen Banken offen.
 
-Probelauf 09.11.2026: 31 internationale Notierungen mit Kapitaldaten (8 Japan, 6 China, 3 Schweiz, 1 Singapur, dazu BMO und zwei Lloyds-Notierungen), insgesamt 75 von 142 Banken. Depositary Receipts werden abgelehnt.
+Probelauf 09.11.2026: 31 internationale Notierungen mit Kapitaldaten (8 Japan, 6 China, 3 Schweiz, 1 Singapur, dazu BMO und zwei Lloyds-Notierungen), insgesamt 75 von 142 Banken. Depositary Receipts wurden damals abgelehnt; seit 10.11.2026 kommen 15 ADRs über ihre Stammaktie hinzu.
 
 Eine Anforderung ist nur bei offengelegten Bestandteilen gesetzt; Einträge ohne Anforderung (z. B. Shizuoka) liefern nur die Kapitalquoten.
 

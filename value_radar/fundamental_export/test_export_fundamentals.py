@@ -18,6 +18,13 @@ class Tests(unittest.TestCase):
   self.assertFalse(corrected_london_retry(row,{'reason':'timeout'}))
   self.assertFalse(corrected_london_retry({'listing_symbol':'NASDAQ:MSFT'},failure))
   self.assertFalse(corrected_london_retry({'listing_symbol':'LSE:INVALID/.'},failure))
+ def test_nordic_share_class_mapping_and_immediate_retry_after_fix(self):
+  for listing,expected in [('STO:ATCO_A','ATCO-A.ST'),('STO:VOLV_B','VOLV-B.ST'),('CPH:NOVO_B','NOVO-B.CO'),('STO:INDU_C','INDU-C.ST'),('HEL:UPM','UPM.HE'),('HEL:ORNBV','ORNBV.HE')]:
+   self.assertEqual(yahoo_symbol({'listing_symbol':listing}),expected)
+  failure={'reason':'provider_or_identity','mapped_symbol':'ATCO_A.ST'}
+  self.assertTrue(corrected_london_retry({'listing_symbol':'STO:ATCO_A'},failure))
+  self.assertFalse(corrected_london_retry({'listing_symbol':'STO:ATCO_A'},{**failure,'mapped_symbol':'ATCO-A.ST'}))
+  self.assertFalse(corrected_london_retry({'listing_symbol':'STO:ATCO_A'},{**failure,'reason':'timeout'}))
  def test_london_terminal_dot_is_not_doubled_and_classes_remain(self):
   for listing,expected in [('LSE:RR.','RR.L'),('LSE:NG.','NG.L'),('LSE:AV.','AV.L'),('LSE:TW.','TW.L'),('NYSE:BRK.B','BRK-B')]:
    self.assertEqual(yahoo_symbol({'listing_symbol':listing}),expected)

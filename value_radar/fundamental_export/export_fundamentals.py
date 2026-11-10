@@ -57,15 +57,19 @@ def yahoo_symbol(row):
  if ex not in suffix: raise ValueError('unsupported exchange mapping')
  # London commonly publishes RR., NG., etc.; Yahoo uses RR.L, not RR..L.
  if ex=='LSE':t=t.rstrip('.')
+ # Nordische Aktiengattungen: STO:ATCO_A / CPH:NOVO_B heissen bei Yahoo ATCO-A.ST / NOVO-B.CO.
+ if ex in ('STO','CPH','HEL'):t=re.sub(r'[_ ]([A-Z])$',r'-\1',t)
  return t.replace('.','-') if ex in ('NASDAQ','NYSE','AMEX','OTC') else t+suffix[ex]
 
 def corrected_london_retry(row,failure):
  symbol=str(row.get('listing_symbol') or row.get('ticker') or '')
  try:mapped=yahoo_symbol(row)
  except ValueError:return False
- return bool(symbol.startswith('LSE:') and symbol.endswith('.') and failure
-             and failure.get('reason') in ('mapping','provider_or_identity')
-             and failure.get('mapped_symbol')!=mapped)
+ # Sofort neu versuchen, wenn sich die Yahoo-Zuordnung seit dem Fehlschlag geaendert hat (z. B. LSE RR..L -> RR.L,
+ # nordische Gattungen ATCO_A.ST -> ATCO-A.ST). Aeltere LSE-Fehlschlaege ohne gespeicherte Zuordnung gelten als geaendert.
+ if not failure or failure.get('reason') not in ('mapping','provider_or_identity'):return False
+ if failure.get('mapped_symbol') is not None:return failure['mapped_symbol']!=mapped
+ return symbol.startswith('LSE:') and symbol.endswith('.')
 FIELDS={'revenue':'Total Revenue','net_income':'Net Income','eps_trailing':'Diluted EPS','gross_profit':'Gross Profit','ebit':'Operating Income','ebitda':'EBITDA','weighted_shares':'Diluted Average Shares','operating_cashflow':'Operating Cash Flow','capex':'Capital Expenditure','total_debt':'Total Debt','cash':'Cash And Cash Equivalents','total_assets':'Total Assets','equity':'Stockholders Equity','total_liabilities':'Total Liabilities Net Minority Interest','interest_expense':'Interest Expense','net_interest_income':'Net Interest Income'}
 def yahoo_annual(frames,info,now=None):
  now=now or dt.datetime.now(UTC).date()

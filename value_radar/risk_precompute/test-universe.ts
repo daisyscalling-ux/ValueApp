@@ -121,6 +121,16 @@ test('mixed financial periods blocked',()=>{const f:any=fund();f.annual.field_so
 test('stale retrieval hides current history',()=>{const r=risk();r.stocks[row.listing_symbol].retrievedAt='2026-10-01';assert.equal(audit([row],fund(),r).stocks[0].domains.price.state,'stale_or_invalid')});
 test('listing currency conflict quarantined',()=>assert.equal(audit([row,{...row,currency:'EUR'}]).stocks[0].domains.identity.state,'blocked'));
 test('pence and pounds not mistaken for different listings',()=>{const r=risk();r.stocks[row.listing_symbol].currency='GBP';assert.equal(audit([{...row,currency:'GBp'}],fund(),r).stocks[0].domains.identity.state,'available')});
+test('home-listing history proxy keeps identity when ISIN matches',()=>{
+ const x={...row,isin:'IT0000072618'},r:any=risk();
+ r.stocks[row.listing_symbol]={...summary(),currency:'EUR',historySource:{kind:'same_isin_home_listing',symbol:'MIL:ISP',isin:'IT0000072618',currency:'EUR'}};
+ assert.equal(audit([x],fund(),r).stocks[0].domains.identity.state,'available');
+ assert.equal(audit([x],fund(),r).stocks[0].domains.balance.state,'available');
+ r.stocks[row.listing_symbol].historySource.isin='IT0005239360';
+ assert.equal(audit([x],fund(),r).stocks[0].domains.balance.state,'missing');
+ delete r.stocks[row.listing_symbol].historySource;
+ assert.equal(audit([x],fund(),r).stocks[0].domains.balance.state,'missing');
+});
 test('general news never means company news covered',()=>assert.equal(audit().stocks[0].domains.news.state,'not_assessed'));
 test('all reviewed countries and aliases match',()=>{for(const r of registry)for(const a of [r.country,...r.aliases])assert.equal(marketProxy(a.toLowerCase()),r.proxy);assert.equal(new Set(registry.map(r=>r.country)).size,registry.length)});
 test('unsupported market explicit',()=>assert.equal(audit([{...row,country:'PT'}]).stocks[0].domains.market.state,'unsupported'));

@@ -36,7 +36,9 @@ export function auditUniverse(universe:Row,risk:Row,fundamentals:Record<string,R
   const conflict=currencies.size>1;
   const canonical=key.includes(':')?key:risk.aliases?.[key];
   const h=risk.stocks?.[canonical||key];
-  const identityOK=!conflict&&!!canonical&&(!h||h.symbol===canonical)&&(!h?.currency||!r.currency||currency(h.currency)===currency(r.currency));
+  // Ersatzhistorie der Heimatnotierung (risk_history_proxy) traegt deren Waehrung; gleiche ISIN statt gleicher Waehrung beweist die Identitaet.
+  const hs=h?.historySource,proxied=hs?.kind==='same_isin_home_listing'&&typeof r.isin==='string'&&!!r.isin&&hs.isin===r.isin&&currency(hs.currency)===currency(h.currency);
+  const identityOK=!conflict&&!!canonical&&(!h||h.symbol===canonical)&&(!h?.currency||!r.currency||proxied||currency(h.currency)===currency(r.currency));
   const s=identityOK?historyStatistics(h,now):historyStatistics(null,now);
   const retrieved=recent(h?.retrievedAt,now,1.5);
   const context=identityOK&&retrieved&&s.drawdown!==null;

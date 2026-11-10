@@ -4,6 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 from listing_identity import listing_matches
+from listing_reference import apply_reference
 
 
 def stamp(value):
@@ -36,6 +37,9 @@ def baseline(universe, documents, now):
     wanted=set(universe); saved={}; conflicts=set()
     for doc in documents:
         for row in doc.get('kandidaten',[]):
+            # Gepruefte Notierungskorrekturen (z. B. H- statt A-ISIN) auch auf alte Snapshots anwenden,
+            # sonst gilt die Korrektur selbst als Identitaetswechsel und die Notierung faellt heraus.
+            row=apply_reference(dict(row),now.date())
             ticker=row.get('ticker')
             if ticker not in wanted or not row.get('isin') or not listing_matches(ticker,row.get('listing_symbol')):
                 continue

@@ -82,6 +82,10 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
                               'requirementComponents': e.get('requirementComponents'), 'requirementSourceUrl': e.get('requirementSourceUrl'),
                               'defaultedLoanRatio': dl / (dl + nd) if isinstance(dl, (int, float)) and isinstance(nd, (int, float)) and dl >= 0 and nd > 0 else None,
                               'source': e['source']}
+        # Weitere Aktiengattungen desselben Konzerns (z. B. H-Aktie neben der A-Aktie): gleiche Konzernquoten, Verweis auf die Haupt-ISIN.
+        for alt in e.get('shareClassIsins') or []:
+            if re.fullmatch(r'[A-Z]{2}[A-Z0-9]{9}[0-9]', str(alt)) and alt != e['isin'] and alt not in issuers:
+                issuers[alt] = {**issuers[e['isin']], 'shareClassOf': e['isin']}
     return {'schema': 1, 'method': 'intl-bank-metrics-v1', 'importedAt': now.isoformat(),
             'mappingReviewExpires': min(mapping['review_expires'], (reviewed or {}).get('review_expires', mapping['review_expires'])),
             'issuers': issuers, 'rejected': rejected, 'open': {**mapping.get('open', {}), **(reviewed or {}).get('open', {})}, 'scoreContribution': 0}

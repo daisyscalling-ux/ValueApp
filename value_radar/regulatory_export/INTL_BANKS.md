@@ -41,3 +41,7 @@ Eine Anforderung ist nur bei offengelegten Bestandteilen gesetzt; Einträge ohne
 Die APRA veröffentlicht vierteljährlich. Die neue Datei herunterladen und den Import erneut ausführen. Der Dateiname enthält den Zeitraum, siehe die Seite oben.
 
 KM1-Werte müssen je Quartal neu gelesen werden: neue Werte, Fundstelle und SHA-256 in `reviewed-key-metrics.json` eintragen. Werte älter als 270 Tage zählen nicht mehr.
+
+## Aktiengattungen desselben Konzerns (10. November 2026)
+
+Chinesische Banken notieren A-Aktien (Shanghai) und H-Aktien (Hongkong). Die Kennzahlen gelten für den Konzern. Geprüfte Einträge in `reviewed-key-metrics.json` können deshalb weitere ISINs desselben Konzerns unter `shareClassIsins` führen (Quelle: HKEX List of Securities). Der Import legt sie mit `shareClassOf` (Haupt-ISIN) ab. In `regulatory_context.py` trägt jeder Eintrag `issuerIsin`. Depositary Receipts übernehmen die Quoten einer im selben Lauf geprüften Stammaktie desselben Konzerns: bei EU-Banken über die LEI, bei internationalen über `issuerIsin`. Betroffen sind ICBC, CCB, Bank of China, ABC, China Merchants Bank und Bank of Communications.

@@ -48,6 +48,16 @@ class ContinuityTests(unittest.TestCase):
         saved=baseline(['A','B'],[doc(rows,'2026-11-02 12:00 UTC')],NOW)
         self.assertEqual(scan_order(['A','B','C'],saved),['C','B','A'])
 
+    def test_reviewed_isin_correction_is_not_an_identity_change(self):
+        a={'ticker':'IDCBF','listing_symbol':'OTC:IDCBF','isin':'CNE000001P37','currency':'USD','name':'Industrial and Commercial Bank of China ',
+           'name_full':'Industrial and Commercial Bank of China Limited Class A','export_observed_at':'2026-11-09 12:00 UTC'}
+        old=doc([a],'2026-11-09 12:00 UTC')
+        new=doc([{**a,'isin':'CNE1000003G1','listing_reference_status':'applied','export_observed_at':'2026-11-10 06:00 UTC'}],'2026-11-10 06:00 UTC')
+        later=dt.datetime(2026,11,11,12,tzinfo=dt.timezone.utc)
+        saved=baseline(['IDCBF'],[new,old],later)
+        self.assertEqual(saved['IDCBF']['isin'],'CNE1000003G1')
+        self.assertEqual(baseline(['IDCBF'],[old],later)['IDCBF']['isin'],'CNE1000003G1','old snapshot gets the reviewed correction')
+
     def test_old_future_wrong_listing_and_conflicting_identity_excluded(self):
         for date in ('2026-10-01 12:00 UTC','2026-11-03 12:00 UTC','invalid'):
             self.assertFalse(baseline(['A'],[doc([row('A')],date)],NOW))

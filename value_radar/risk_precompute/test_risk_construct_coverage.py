@@ -44,7 +44,8 @@ class CoverageTests(unittest.TestCase):
 
 class PeerSelectionTests(unittest.TestCase):
  def test_listing_matches_like_app(self):
-  for t,l,ok in [('ALV.DE','XETR:ALV',True),('AAPL','NASDAQ:AAPL',True),('BRK.B','NYSE:BRK-B',True),('ALV.DE','LSE:ALV',False),('XETR:ALV','XETR:ALV',True),('SAP','XETR:SAP',False)]:
+  for t,l,ok in [('ALV.DE','XETR:ALV',True),('AAPL','NASDAQ:AAPL',True),('BRK.B','NYSE:BRK-B',True),('ALV.DE','LSE:ALV',False),('XETR:ALV','XETR:ALV',True),('SAP','XETR:SAP',False),
+                 ('VOLV-B.ST','STO:VOLV_B',True),('VOLV-B.ST','STO:VOLV_A',False),('NOVO-B.CO','CPH:NOVO_B',True),('RR.L','LSE:RR.',True),('RR.L','LSE:RRX.',False)]:
    self.assertEqual(cc.listing_matches(t,l),ok,(t,l))
  def test_family_and_selection(self):
   rows=[{'listing_symbol':'NYSE:JPM','ticker':'JPM','name':'JPMorgan Chase','currency':'USD','market_cap':500,'is_primary':True},

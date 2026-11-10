@@ -62,3 +62,13 @@ Ausgangslage: 109 Notierungen ohne verwertbare eigene Historie. 76 haben keinen 
 Probelauf: 30 Ersatzhistorien, z. B. OTC:MBFJF aus TSE:8306 (MUFG) und OTC:LLDTF aus LSE:LLOY. Expected Shortfall fehlt danach bei 35 statt 55 Unternehmen und bei 32 statt 41 Banken. Belegtes Gewicht gesamt 72,9 statt 72,3.
 
 Offen und sachlich richtig offen: Neuemissionen mit weniger als zwei Handelsjahren. Offen ohne Ersatz: OTC-Notierungen ohne Börsennotierung im Universum (vor allem chinesische Banken) und Einträge ohne Börsenpräfix. Nebenbefund: STO:INVE_B trägt im Universum die ISIN der A-Aktie (SE0015811955).
+
+## ADR-Umtauschverhältnisse (10.11.2026)
+
+`fundamental_export/adr_basis.py` läuft nach jedem Abschluss-Export und leitet das Verhältnis eines Depositary Receipts zur Stammaktie doppelt ab:
+1. **Aktienzahl:** Stammaktien der Heimatnotierung ÷ ADR-Einheiten. Sie muss ein Standardverhältnis (1, 2, 4, 10, 1/10 …) auf 2 % treffen.
+2. **Kurs:** ADR-Kurs ÷ Heimatkurs zum EZB-Kurs. Er muss dasselbe Verhältnis auf 10 % treffen; OTC-Kurse können einige Tage alt sein.
+
+Die Heimatnotierung ist die Stammaktie mit derselben ISIN im Universum. Manuelle Einträge in `share_basis.json` haben Vorrang. Ein Verhältnis, das nicht mehr bestätigt wird, wird sofort entfernt. Die App (`sharesPerUnit`) prüft Methode und Belege erneut, rechnet den Gewinn je Aktie auf die ADR-Einheit um und rechnet firmenweite Beträge nur in die Handelswährung um.
+
+Probelauf: Verhältnis für 61 ADRs gesetzt. 67 ADRs haben keine Heimatnotierung im Universum, 7 scheitern an fehlenden Daten oder an nicht übereinstimmenden Werten. In der Abdeckung sinken die ADR-Konflikte bei Unternehmen von 82 auf 41, bei Banken von 31 auf 24.

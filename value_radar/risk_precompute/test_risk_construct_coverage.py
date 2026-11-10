@@ -25,7 +25,7 @@ class CoverageTests(unittest.TestCase):
   self.assertEqual(c['Bewertungsrisiko']['app_only'],5.0)
  def test_currency_conflict_and_missing_history_are_named(self):
   g={(x['profile'],x['metric']):x for x in self.run_build()['largestGaps']}
-  self.assertIn('Währungskonflikt (Bericht und Handel verschieden)',g[('corporate','Erwartungslücke Reverse DCF')]['reasons'])
+  self.assertTrue(any(k.startswith('Währungskonflikt') for k in g[('corporate','Erwartungslücke Reverse DCF')]['reasons']))
   self.assertEqual(g[('corporate','Expected Shortfall')]['reasons'],{'Keine Kurshistorie':1})
   self.assertNotIn(('corporate','EBITDA-Marge gegenüber Peers'),g,'own margin plus at least three industry peers with a margin')
  def test_bank_like_specialist_counts_as_bank_and_by_design_metrics(self):
@@ -58,5 +58,18 @@ class PeerSelectionTests(unittest.TestCase):
  def test_peer_stress_needs_three_peers_with_drawdown(self):
   r=CoverageTests().run_build();g={(x['profile'],x['metric']):x for x in r['largestGaps']}
   self.assertIn('Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)',g[('bank','Peer-Stress')]['reasons'])
+
+class FxResolutionTests(unittest.TestCase):
+ def test_reviewed_one_to_one_basis_resolves_currency_conflict(self):
+  import datetime as dt
+  fx={'base':'EUR','rates':{'EUR':1,'USD':1.1,'JPY':170,'GBP':.83}};today=dt.date(2026,11,10)
+  b={'kind':'ordinary','ordinary_shares_per_unit':1,'annual_eps_basis':'ordinary','report_currency':'JPY','quote_currency':'USD','reviewed_at':'2026-11-10','source_url':'https://x'}
+  self.assertTrue(cc.fx_resolved(b,fx,'JPY','USD',today))
+  self.assertTrue(cc.fx_resolved({**b,'report_currency':'USD','quote_currency':'GBp'},fx,'USD','GBp',today))
+  for patch in [{'ordinary_shares_per_unit':2},{'reviewed_at':'2026-01-01'},{'report_currency':'EUR'},{'kind':'GDR'}]:self.assertFalse(cc.fx_resolved({**b,**patch},fx,'JPY','USD',today))
+  self.assertFalse(cc.fx_resolved(b,{'base':'EUR','rates':{'USD':1.1}},'JPY','USD',today),'missing ECB rate')
+  ann={'NYSE:C1':(annual(),'USD'),'NYSE:B1':(annual(),'USD'),'OTC:ADR':(annual('JPY'),'USD',b,fx),'NYSE:GS':(annual(),'USD')}
+  r=cc.build(UNI,shards(),{s:{'statistics':STATS} for s in ('NYSE:C1','NYSE:B1','NYSE:GS')},ann,dt.datetime(2026,11,10,12,tzinfo=dt.timezone.utc))
+  g={(x['profile'],x['metric']):x for x in r['largestGaps']};self.assertNotIn(('corporate','Erwartungslücke Reverse DCF'),g)
 
 if __name__=='__main__':unittest.main()

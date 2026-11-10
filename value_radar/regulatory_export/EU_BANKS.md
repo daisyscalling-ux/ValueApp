@@ -79,3 +79,15 @@ Für diese Banken kommen CET1-, Tier-1-, Gesamtkapital- und Leverage-Quote, Anfo
 - Bank-LCR-Lücken 50 → 41
 - CET1-Puffer 47 → 40
 - Banken 58,0 → 59,0
+
+## Notleidende Kredite aus EU CR1 (10. November 2026)
+
+Zusätzlich zum Modul CODIS (KM1) importiert `import_eu_pillar3.py` jetzt das Modul **FINDIS** und daraus die Tabelle EU CR1 (K_21.01.a). Gelesen wird Zeile 010 „Loans and advances“, Bruttobuchwert, Spalte a (nicht notleidend) und Spalte d (notleidend). Daraus ergibt sich NPL = d / (a + d), dieselbe Abgrenzung wie die NPL-Quote der EBA-Transparenzübung. Barguthaben bei Zentralbanken stehen in einer eigenen Zeile und sind nicht enthalten.
+
+Es gelten dieselben Prüfungen wie bei KM1: Taxonomie 4.2, Institut und Stichtag, höchstens 270 Tage alt, Prüfsumme. Die CR1-Quote hat Vorrang vor der älteren EBA-Quote, die als Rückfall bleibt.
+
+**Kontrolle gegen die EBA-Quote:** Bei 32 Banken mit beiden Quellen beträgt die mittlere Abweichung 0,2 Prozentpunkte, obwohl ein Jahr zwischen den Stichtagen liegt. Am weitesten liegt Monte dei Paschi auseinander (1,35 Prozentpunkte, sinkender NPL-Bestand).
+
+**Ergebnis:** 40 von 42 Banken haben eine NPL-Quote. Bei ABN AMRO fehlt die CR1-Tabelle, bei Ringkjøbing gibt es keine aktuelle Einreichung.
+
+**Probelauf** gegen den Stand „Banken nur aus der Säule 3“: Bank-Kreditqualitätslücken 76 → 68, Banken 59,0 → 59,4.

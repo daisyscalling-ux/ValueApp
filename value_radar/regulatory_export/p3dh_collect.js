@@ -23,8 +23,9 @@ const {chromium}=require('playwright');const fs=require('fs');
   await p.waitForTimeout(700);
   if(step%50===0)console.log('step',step,'links',seen.size);
  }
- const codis=[...seen].filter(u=>u.includes('/public-documents/CODIS/')).sort();
- fs.writeFileSync(process.argv[2]||'p3dh-submissions.json',JSON.stringify({schema:1,source:'EBA Pillar 3 data hub, EDAP Submissions list',listUrl:'https://edap-public.eba.europa.eu/Report/index/MTE1',retrievedAt:new Date().toISOString(),allSubmissions:seen.size,urls:codis},null,1)+'\n');
+ // CODIS (EU KM1: Kapital, Anforderung, LCR) und FINDIS (EU CR1: notleidende Kredite).
+ const codis=[...seen].filter(u=>u.includes('/public-documents/CODIS/')||u.includes('/public-documents/FINDIS/')).sort();
+ fs.writeFileSync(process.argv[2]||'p3dh-submissions.json',JSON.stringify({schema:1,source:'EBA Pillar 3 data hub, EDAP Submissions list',listUrl:'https://edap-public.eba.europa.eu/Report/index/MTE1',retrievedAt:new Date().toISOString(),allSubmissions:seen.size,modules:['CODIS','FINDIS'],urls:codis},null,1)+'\n');
  console.log('total',seen.size);
  await b.close();
 })();

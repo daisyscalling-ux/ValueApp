@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "eba-p3dh-km1-v1",
- "importedAt": "2026-11-10T19:31:32.611218+00:00",
+ "importedAt": "2026-11-10T19:41:08.454681+00:00",
  "mappingReviewExpires": "2027-05-08",
  "source": {
   "name": "EBA Pillar 3 data hub (P3DH), Originaldateien",
@@ -21,7 +21,9 @@
    "leverage_ratio": "0220 (14)",
    "lcr": "0320 (17)",
    "nsfr": "0350 (20)"
-  }
+  },
+  "creditTable": "K_21.01.a EU CR1, Zeile 010 Loans and advances, Spalten a (nicht notleidend) und d (notleidend)",
+  "findisTaxonomy": "http://www.eba.europa.eu/eu/fr/xbrl/crr/fws/pillar3/4.2/mod/findis.json"
  },
  "banks": {
   "2138002M5U5K4OUMVV62": {
@@ -60,7 +62,11 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": null,
+   "nplOpen": [
+    "2025-12-31:too_old"
+   ]
   },
   "213800DBQIB6VBNU5C64": {
    "name": "Alpha Bank S.A.",
@@ -98,7 +104,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.042098380348445937,
+    "performing": 46962880987.0,
+    "nonPerforming": 2063950186.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/213800DBQIB6VBNU5C64.CON_GR_PILLAR3020100_FINDIS_2026-06-30_20261023153816000.zip",
+    "sourceFileSha256": "6b26a8534843d7ff67e56861048d01763dbb821b9c97436b70483ab7645af702"
+   }
   },
   "213800KGF4EFNUQKAT69": {
    "name": "ΤΡΑΠΕΖΑ EUROBANK ΑΝΩΝΥΜΗ EΤΑΙΡΕΙΑ (Eurobank S.A.)",
@@ -136,7 +152,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.02423285963988313,
+    "performing": 58070382476.0,
+    "nonPerforming": 1442159066.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/213800KGF4EFNUQKAT69.CON_GR_PILLAR3020100_FINDIS_2026-06-30_20261021095100000.zip",
+    "sourceFileSha256": "b1be026cdeea4669557c60d218104d79834e321ac5e2f51bc4c700041dc30157"
+   }
   },
   "213800M7T3CYVZ3ZRT12": {
    "name": "SPAREBANKEN NORGE",
@@ -174,7 +200,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.008911061212962342,
+    "performing": 500414821266.51,
+    "nonPerforming": 4499320827.49,
+    "currency": "iso4217:NOK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/213800M7T3CYVZ3ZRT12.CON_NO_PILLAR3020100_FINDIS_2026-06-30_20261020085949841.zip",
+    "sourceFileSha256": "ac526351ab7e0795bb63f2b7b5e8337c065544a76df505dfd5899278b2b5874f"
+   }
   },
   "213800OYHR1MPQ5VJL60": {
    "name": "ΤΡΑΠΕΖΑ ΠΕΙΡΑΙΩΣ ΑΝΩΝΥΜΟΣ ΕΤΑΙΡΕΙΑ (Piraeus Bank S.A.)",
@@ -212,7 +248,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.026970192037732165,
+    "performing": 49425257302.98,
+    "nonPerforming": 1369956675.6,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/213800OYHR1MPQ5VJL60.CON_GR_PILLAR3020100_FINDIS_2026-06-30_20260925124932001.zip",
+    "sourceFileSha256": "0d4d586231606ea36b32d37c778770994916c2346ee26820759e25fbfc910d41"
+   }
   },
   "213800X3Q9LSAKRUWY91": {
    "name": "KBC Groupe",
@@ -250,7 +296,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.015834846180763914,
+    "performing": 256182824399.0,
+    "nonPerforming": 4121885034.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/213800X3Q9LSAKRUWY91.CON_BE_PILLAR3020100_FINDIS_2026-06-30_20260831093820000.zip",
+    "sourceFileSha256": "fd795e33f5389aaca6c15da477020a6487bbe9cd993d9f8dd00c18e88a74a1f0"
+   }
   },
   "259400DZXF7UJKK2AY35": {
    "name": "mBank Spółka Akcyjna",
@@ -288,7 +344,17 @@
     },
     "derivation": "p2r_cet1_zero_because_total_srep_equals_pillar1_8pct"
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.027480787813810276,
+    "performing": 171301740913.0,
+    "nonPerforming": 4840528326.0,
+    "currency": "iso4217:PLN",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/259400DZXF7UJKK2AY35.CON_PL_PILLAR3020100_FINDIS_2026-06-30_20260812112203788.zip",
+    "sourceFileSha256": "f5e03aff96dcb00648609c8f80e4185ebefde0c63c0982b56fd9a8b99fcb92e5"
+   }
   },
   "259400LGXW3K0GDAG361": {
    "name": "ERSTE BANK POLSKA SPÓŁKA AKCYJNA",
@@ -326,7 +392,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.03183879806137742,
+    "performing": 186730314360.0,
+    "nonPerforming": 6140783951.0,
+    "currency": "iso4217:PLN",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/259400LGXW3K0GDAG361.CON_PL_PILLAR3020100_FINDIS_2026-06-30_20260728172117961.zip",
+    "sourceFileSha256": "259bebd3f49a9c2042c0e565c492172f805ec4441fbdcbef6d1762c8cf6ca932"
+   }
   },
   "2W8N8UU78PMDQKZENC08": {
    "name": "Intesa Sanpaolo S.p.A.",
@@ -364,7 +440,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.01691840733686424,
+    "performing": 466078000000.0,
+    "nonPerforming": 8021000000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/2W8N8UU78PMDQKZENC08.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20260813100054138.zip",
+    "sourceFileSha256": "b7acbeac0badfa1b2027d020c294a7792c95c6207f8f52c4cd89791d91f8bd88"
+   }
   },
   "3M5E1GQGKL17HI6CPN30": {
    "name": "Jyske Bank A/S",
@@ -402,7 +488,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.010410799940312148,
+    "performing": 584778798082.0,
+    "nonPerforming": 6152062973.0,
+    "currency": "iso4217:DKK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/3M5E1GQGKL17HI6CPN30.CON_DK_PILLAR3020100_FINDIS_2026-06-30_20260812073148272.zip",
+    "sourceFileSha256": "fccb6915e4b8e22d14a11273680c7326cc71f4c31781286ea917dba9ceec5ce9"
+   }
   },
   "529900S9YO2JHTIIDG38": {
    "name": "BAWAG Group AG",
@@ -440,7 +536,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.017210893266476148,
+    "performing": 51363773359.51,
+    "nonPerforming": 899497577.86,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/529900S9YO2JHTIIDG38.CON_AT_PILLAR3020100_FINDIS_2026-06-30_20261001101040111.zip",
+    "sourceFileSha256": "fedf3bb209e7b4adbe85cb59eae024f891981bab4a6f7d45c490217847684d7f"
+   }
   },
   "5493000LKS7B3UTF7H35": {
    "name": "Bank Polska Kasa Opieki S.A.",
@@ -478,7 +584,17 @@
     },
     "derivation": "p2r_cet1_zero_because_total_srep_equals_pillar1_8pct"
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.045958217280301264,
+    "performing": 196195544391.0,
+    "nonPerforming": 9451155727.0,
+    "currency": "iso4217:PLN",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/5493000LKS7B3UTF7H35.CON_PL_PILLAR3020100_FINDIS_2026-06-30_20260724170046243.zip",
+    "sourceFileSha256": "ed013e779c3fe2f47fc80db71a860de2d2b52e33fca1d3b7b2c6a308fd18f632"
+   }
   },
   "5493006QMFDDMYWIAM13": {
    "name": "Banco Santander, S.A.",
@@ -516,7 +632,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.03279408421928558,
+    "performing": 1175366822000.0,
+    "nonPerforming": 39851988000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/5493006QMFDDMYWIAM13.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20260825050322737.zip",
+    "sourceFileSha256": "67a765332389b360798d54b400c224915bf4dc74186d3d07d97bad05d29a34bf"
+   }
   },
   "549300GKFG0RYRRQ1414": {
    "name": "DNB BANK ASA",
@@ -554,7 +680,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.009300622499269393,
+    "performing": 2622851638685.46,
+    "nonPerforming": 24623163713.44,
+    "currency": "iso4217:NOK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/549300GKFG0RYRRQ1414.CON_NO_PILLAR3020100_FINDIS_2026-06-30_20260825090000000.zip",
+    "sourceFileSha256": "4dcbee834d3a05034ea9883c049025a05a695cca7173b6159a3a25345af883e2"
+   }
   },
   "549300L7YCATGO57ZE10": {
    "name": "FINECOBANK S.P.A.",
@@ -592,7 +728,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.004566544336672226,
+    "performing": 6551080263.0,
+    "nonPerforming": 30053037.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/549300L7YCATGO57ZE10.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20260806164510019.zip",
+    "sourceFileSha256": "4ef6e96fb008d7c9fed5490004ac717dda5c7b1dd1819bfa3257a831e48054ac"
+   }
   },
   "549300NYKK9MWM7GGW15": {
    "name": "ING Groep N.V.",
@@ -630,7 +776,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.015128168738046482,
+    "performing": 874383000000.0,
+    "nonPerforming": 13431000000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/549300NYKK9MWM7GGW15.CON_NL_PILLAR3020100_FINDIS_2026-06-30_20260903135408647.zip",
+    "sourceFileSha256": "296472c950e1d578f557dbbef6391f7ee045ef206874f1343198863529ed9ad5"
+   }
   },
   "549300Q3OIWRHQUQM052": {
    "name": "SpareBank 1 Sør-Norge",
@@ -668,7 +824,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.005327658523554965,
+    "performing": 476346171999.0,
+    "nonPerforming": 2551402746.0,
+    "currency": "iso4217:NOK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/549300Q3OIWRHQUQM052.CON_NO_PILLAR3020100_FINDIS_2026-06-30_20260817121302000.zip",
+    "sourceFileSha256": "b6cd7f65792c335522518381c5370f9779d2fe83fa31a4bcbf062b95ca6331a6"
+   }
   },
   "549300TRUWO2CD2G5692": {
    "name": "UNICREDIT, SOCIETA' PER AZIONI",
@@ -706,7 +872,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.0227203851381193,
+    "performing": 517599842971.0,
+    "nonPerforming": 12033472919.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/549300TRUWO2CD2G5692.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20260903151536320.zip",
+    "sourceFileSha256": "513f7621f3f3a5daf88ea90f50cce3eaf1e3e7121d2cfcfb38f57298b93f5310"
+   }
   },
   "5UMCZOEYKCVFAW8ZLO05": {
    "name": "National Bank of Greece, S.A.",
@@ -744,7 +920,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.026869287523400506,
+    "performing": 44185000000.0,
+    "nonPerforming": 1220000000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/5UMCZOEYKCVFAW8ZLO05.CON_GR_PILLAR3020100_FINDIS_2026-06-30_20261030144555946.zip",
+    "sourceFileSha256": "895b793e96b384eb66ac359de97f9a3784537a51356f31c7c0a067b03dc6e7b7"
+   }
   },
   "635400AKJBGNS5WNQL34": {
    "name": "AIB Group plc",
@@ -782,7 +968,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.02085876932243158,
+    "performing": 82374033787.25012,
+    "nonPerforming": 1754824447.2734764,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/635400AKJBGNS5WNQL34.CON_IE_PILLAR3020100_FINDIS_2026-06-30_20260928153658000.zip",
+    "sourceFileSha256": "759b8e4cfb9c059cad977251a06f7ee290294e5b25c7300312281d32de843757"
+   }
   },
   "7CUNS533WID6K7DGFI87": {
    "name": "CaixaBank, S.A.",
@@ -820,7 +1016,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.017666932942881478,
+    "performing": 412429825000.0,
+    "nonPerforming": 7417413000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/7CUNS533WID6K7DGFI87.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20260827122447964.zip",
+    "sourceFileSha256": "50bdbfe9c886b47560cfbe2f254363a9fe12712f1b53c06d75bdb33bffae0b88"
+   }
   },
   "7LVZJ6XRIE7VNZ4UBX81": {
    "name": "BANCA MEDIOLANUM S.P.A.",
@@ -858,7 +1064,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.014335728143338274,
+    "performing": 20574042170.0,
+    "nonPerforming": 299233607.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/7LVZJ6XRIE7VNZ4UBX81.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20260928142310131.zip",
+    "sourceFileSha256": "de98014e6dbeebf219c2dbaf737fd44790b3ec2bf9d8f54b3fe3dbe194c1a482"
+   }
   },
   "815600E4E6DCD2D25E30": {
    "name": "BANCO BPM SOCIETA' PER AZIONI",
@@ -896,7 +1112,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.019951899678274765,
+    "performing": 104057592000.0,
+    "nonPerforming": 2118413000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/815600E4E6DCD2D25E30.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20260902093903823.zip",
+    "sourceFileSha256": "bfc6692c15a4c61296c55779609cf63343347edff7ff59a0bcd73109e9fb0bb6"
+   }
   },
   "851WYGNLUQLFZBSYGB56": {
    "name": "COMMERZBANK Aktiengesellschaft",
@@ -934,7 +1160,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.014118993497091743,
+    "performing": 390899375030.37,
+    "nonPerforming": 5598145919.91,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/851WYGNLUQLFZBSYGB56.CON_DE_PILLAR3020100_FINDIS_2026-06-30_20260908140000000.zip",
+    "sourceFileSha256": "0e9f991770fa54db0b3cc16233e8a5f63a9b82fa2756e1e979a01ff2e6582b7e"
+   }
   },
   "969500TJ5KRTCJQWXH05": {
    "name": "CREDIT AGRICOLE SA",
@@ -960,7 +1196,17 @@
    "lcr": 1.4129,
    "nsfr": 1.1525,
    "cet1Requirement": null,
-   "cet1RequirementOpen": "requirement_out_of_range"
+   "cet1RequirementOpen": "requirement_out_of_range",
+   "npl": {
+    "ratio": 0.013446458749074618,
+    "performing": 1130343060301.3,
+    "nonPerforming": 15406271121.76,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/969500TJ5KRTCJQWXH05.CON_FR_PILLAR3020100_FINDIS_2026-06-30_20261015104402881.zip",
+    "sourceFileSha256": "7a07b8710511c83003943b854a33927a11b68d2f459282e4c984e367bbd7e745"
+   }
   },
   "9ZHRYM6F437SQJ6OUG95": {
    "name": "Raiffeisen Bank International AG",
@@ -998,7 +1244,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.024145454785558924,
+    "performing": 133559480220.46999,
+    "nonPerforming": 3304646585.56,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/9ZHRYM6F437SQJ6OUG95.CON_AT_PILLAR3020100_FINDIS_2026-06-30_20260924100938153.zip",
+    "sourceFileSha256": "2ce92c9aabbcbcc96071542bf66df5fd7c11db20e6ca58b7c97b47f9bc4e26ed"
+   }
   },
   "BFXS5XCH7N0Y05NIXW11": {
    "name": "ABN AMRO Bank N.V.",
@@ -1036,7 +1292,12 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": null,
+   "nplOpen": [
+    "2026-06-30:cr1_missing",
+    "2025-12-31:too_old"
+   ]
   },
   "F3JS33DEI6XQ4ZBPTN86": {
    "name": "Skandinaviska Enskilda Banken - gruppen",
@@ -1074,7 +1335,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.006277357987319841,
+    "performing": 2235305721075.845,
+    "nonPerforming": 14120453363.0,
+    "currency": "iso4217:SEK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/F3JS33DEI6XQ4ZBPTN86.CON_SE_PILLAR3020100_FINDIS_2026-06-30_20260716110756388.zip",
+    "sourceFileSha256": "ffe649f4e4fd1b3d6e6252243f3796ac741e29c4fdc1a41f3ba4229cf3626656"
+   }
   },
   "GP5DT10VX1QRQUKVBK64": {
    "name": "AL Sydbank A/S",
@@ -1100,7 +1371,17 @@
    "lcr": 2.71,
    "nsfr": 1.44,
    "cet1Requirement": null,
-   "cet1RequirementOpen": "p2r_cet1_or_buffer_missing"
+   "cet1RequirementOpen": "p2r_cet1_or_buffer_missing",
+   "npl": {
+    "ratio": 0.022652713634173524,
+    "performing": 166137558328.0,
+    "nonPerforming": 3850695229.0,
+    "currency": "iso4217:DKK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/GP5DT10VX1QRQUKVBK64.CON_DK_PILLAR3020100_FINDIS_2026-06-30_20260824131321995.zip",
+    "sourceFileSha256": "b6eacd9fc67933170a398476d6f58b47ac3f0b89f8b310060485b0727ec34eda"
+   }
   },
   "J4CP7MHCXR8DAQMKIL78": {
    "name": "Banca Monte dei Paschi di Siena S.p.A.",
@@ -1138,7 +1419,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.022951705397764314,
+    "performing": 154122855877.0,
+    "nonPerforming": 3620478540.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/J4CP7MHCXR8DAQMKIL78.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20260916100223188.zip",
+    "sourceFileSha256": "92d9a75cedc1305febfb19d86c639c56c84f9b7b7561084181cc59487cd86d64"
+   }
   },
   "JU1U6S0DG9YLT7N8ZV32": {
    "name": "Banco Comercial Português, SA",
@@ -1176,7 +1467,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.02272278189856931,
+    "performing": 60559250545.41,
+    "nonPerforming": 1408069907.49,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/JU1U6S0DG9YLT7N8ZV32.CON_PT_PILLAR3020100_FINDIS_2026-06-30_20261013170303053.zip",
+    "sourceFileSha256": "bf9a5a576dd16f693d76f584e9adae8811ff4b74e3760f9bbfaf15944c5f70f0"
+   }
   },
   "K8MS7FD7N5Z2WQ51AZ71": {
    "name": "Banco Bilbao Vizcaya Argentaria, S.A.",
@@ -1202,7 +1503,17 @@
    "lcr": 1.42,
    "nsfr": 1.25,
    "cet1Requirement": null,
-   "cet1RequirementOpen": "overall_requirement_inconsistent_or_rounded"
+   "cet1RequirementOpen": "overall_requirement_inconsistent_or_rounded",
+   "npl": {
+    "ratio": 0.027195132465421046,
+    "performing": 552881000000.0,
+    "nonPerforming": 15456000000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/K8MS7FD7N5Z2WQ51AZ71.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20260925105500000.zip",
+    "sourceFileSha256": "b9548f7e34b3c345d0a004d0bb49bcd369fea1b0a976670f9244ff0409ff3bd9"
+   }
   },
   "M312WZV08Y7LYUC71685": {
    "name": "Swedbank - Grupp",
@@ -1240,7 +1551,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.004035831543763769,
+    "performing": 1967827000000.0,
+    "nonPerforming": 7974000000.0,
+    "currency": "iso4217:SEK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/M312WZV08Y7LYUC71685.CON_SE_PILLAR3020100_FINDIS_2026-06-30_20260821110920371.zip",
+    "sourceFileSha256": "31d007c96094033c8db891f950509236c2ac7bcd49ec8f1f557754be9402b1fe"
+   }
   },
   "MAES062Z21O4RZ2U7M96": {
    "name": "Danske Bank A/S",
@@ -1278,7 +1599,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.01224123274252471,
+    "performing": 2175385749204.1511,
+    "nonPerforming": 26959419793.0699,
+    "currency": "iso4217:DKK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/MAES062Z21O4RZ2U7M96.CON_DK_PILLAR3020100_FINDIS_2026-06-30_20260720084012345.zip",
+    "sourceFileSha256": "76efbf7e7b8af3c6053314a7f3045db7385a36e84c642886020edbc47979a800"
+   }
   },
   "N747OI7JINV7RUUH6190": {
    "name": "BPER Banca S.p.A.",
@@ -1316,7 +1647,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.02213935861744059,
+    "performing": 131961707200.0,
+    "nonPerforming": 2987693170.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/N747OI7JINV7RUUH6190.CON_IT_PILLAR3020100_FINDIS_2026-06-30_20261005142338849.zip",
+    "sourceFileSha256": "5e94084c4d6fb078c50d2decfa2b7b10f7d4863f7e7488956b992e2c527a7f05"
+   }
   },
   "NHBDILHZTYCNBV5UYZ31": {
    "name": "Svenska Handelsbanken - gruppen",
@@ -1354,7 +1695,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.002917206805308084,
+    "performing": 2406734338258.0,
+    "nonPerforming": 7041483253.0,
+    "currency": "iso4217:SEK",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/NHBDILHZTYCNBV5UYZ31.CON_SE_PILLAR3020100_FINDIS_2026-06-30_20260715120704666.zip",
+    "sourceFileSha256": "96a0d5c8efbe8385a0b40543e3863ebc24680ca4d0fb388469f1045f68735cca"
+   }
   },
   "O2RNE8IBXP4R0TD8PU41": {
    "name": "Société générale S.A.",
@@ -1392,7 +1743,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.027033438042057253,
+    "performing": 508210187120.0,
+    "nonPerforming": 14120391330.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/O2RNE8IBXP4R0TD8PU41.CON_FR_PILLAR3020100_FINDIS_2026-06-30_20260910112512048.zip",
+    "sourceFileSha256": "3584d5699526d36a7c3cba2755ae3d0bf12373f72c27c96ca3ddbb6dcd738532"
+   }
   },
   "P4GTT6GF1W40CVIMFR43": {
    "name": "Powszechna Kasa Oszczednosci Bank Polski S.A.",
@@ -1430,7 +1791,17 @@
     },
     "derivation": "p2r_cet1_zero_because_total_srep_equals_pillar1_8pct"
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.035941322584671934,
+    "performing": 320660307074.0,
+    "nonPerforming": 11954620405.0,
+    "currency": "iso4217:PLN",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/P4GTT6GF1W40CVIMFR43.CON_PL_PILLAR3020100_FINDIS_2026-06-30_20260813130637616.zip",
+    "sourceFileSha256": "84d50eeb500d7640112d982e11b24b6c97a2faeb21480eb20e6abd1e5db91fd6"
+   }
   },
   "PQOH26KWDF7CG10L6792": {
    "name": "ERSTE GROUP BANK AG",
@@ -1468,7 +1839,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.02119059079293597,
+    "performing": 308482630257.97,
+    "nonPerforming": 6678449474.47,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/PQOH26KWDF7CG10L6792.CON_AT_PILLAR3020100_FINDIS_2026-06-30_20260928040909575.zip",
+    "sourceFileSha256": "c57d36a4340ddd8eeb3ed729295c99e5448802170cc6d6735d47bb9dd115b5ea"
+   }
   },
   "R0MUWSFPU8MPRO8K5P83": {
    "name": "BNP Paribas",
@@ -1506,7 +1887,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.02872548206589713,
+    "performing": 973858947637.0,
+    "nonPerforming": 28801916676.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/R0MUWSFPU8MPRO8K5P83.CON_FR_PILLAR3020100_FINDIS_2026-06-30_20260806092931667.zip",
+    "sourceFileSha256": "46a017bb61bf81a4d8ff4f2621cfc052ae11c12581555ff158193292003bfb03"
+   }
   },
   "SI5RG2M0WQQLZCXKRM20": {
    "name": "Banco de Sabadell, S.A.",
@@ -1544,7 +1935,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.023781240953213906,
+    "performing": 140270020000.0,
+    "nonPerforming": 3417057000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/SI5RG2M0WQQLZCXKRM20.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20260923010950328.zip",
+    "sourceFileSha256": "8dbe8125f9bcdc3cbd71fa625bd6412a6bd420c3f2e1bf272d267e36c781bd56"
+   }
   },
   "VWMYAEQSTOPNV0SUGU82": {
    "name": "Bankinter, S.A.",
@@ -1582,7 +1983,17 @@
     },
     "derivation": null
    },
-   "cet1RequirementOpen": null
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.020805835668881806,
+    "performing": 100681320246.0,
+    "nonPerforming": 2139268268.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/VWMYAEQSTOPNV0SUGU82.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20261001012410159.zip",
+    "sourceFileSha256": "6a88439a8e8d97cd4014f41ce772b175057ddc16fd3555d01eb8c1b1973387ee"
+   }
   }
  },
  "rejected": {

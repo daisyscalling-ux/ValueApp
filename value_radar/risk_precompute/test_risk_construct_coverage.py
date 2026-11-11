@@ -124,6 +124,15 @@ class ParisPeerTests(unittest.TestCase):
   self.assertFalse(cc._preferred({'ticker':'BNP.PA','listing_symbol':'EURONEXT:BNP'}))
   self.assertTrue(cc._preferred({'ticker':'BAC-PB'}));self.assertTrue(cc._preferred({'ticker':'XYZ.PA'}),'no listing proof keeps the old caution')
 
+class InsurerScopeTests(unittest.TestCase):
+ def test_same_cases_as_app(self):
+  import risk_construct_coverage as rc
+  for isin in ['US1713401024','JP3910660004','CH0011075394','BMG4593F1389','GB0007099541']:
+   self.assertFalse(rc.insurer_solvency_comparable({'isin':isin}),isin)
+  for isin in ['DE0008404005','DK0060636678','GB00BPQY8M80','NO0010582521','kaputt',None]:
+   self.assertTrue(rc.insurer_solvency_comparable({'isin':isin}),isin)
+
+
 class EbitdaPeerTests(unittest.TestCase):
  def test_selected_peers_with_margin_like_app(self):
   mk=lambda t,ind,m=None:{'listing_symbol':'NYSE:'+t,'ticker':t,'name':'Co '+t,'industry':ind,**({'ebitda_margin':m} if m is not None else {})}

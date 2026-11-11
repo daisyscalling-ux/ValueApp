@@ -71,6 +71,10 @@ Durch einen still fehlgeschlagenen Wikipedia-Abruf (HTTP 403) fehlten 274 S&P-50
 3. **Bank-LCR:** Für EU-Banken fehlt eine Quelle. Die Säule-3-Berichte enthalten die LCR, ein KM1-Import wie bei den internationalen Banken wäre möglich.
 4. **Kurshistorie:** 55 Unternehmen und 41 Banken ohne verwertbare Historie, meist OTC-Notierungen.
 
+## Versicherer außerhalb von Solvency II/UK (11.11.2026)
+
+Entscheidung des Nutzers: Die Solvenzquote wird nur für Gruppen unter Solvency II (EWR) oder Solvency UK verglichen. Maßgeblich ist das ISIN-Land; geprüfte Ausnahme ist Prudential plc (Gruppenaufsicht Hongkong). Andere Länder (USA, Japan, Schweiz, Bermuda) zählen als `by_design` mit Grund. Spiegel von `insurerSolvencyScope` (valueapp-cf). Messung: Solvenzquote fehlend 41 → 10, 31 bewusst außerhalb, 12 vorhanden; S&P 500 offen 2,16 → 1,62 %, Nikkei 225 1,60 → 1,20 %.
+
 ## Währungskonflikt bei Stammaktien (10.11.2026)
 
 Der Abschluss-Export (`export_fundamentals.py`) setzt jetzt für Stammaktien mit abweichender Berichtswährung automatisch die Aktienbasis 1:1 (`share_basis_rule.py`, Methode `rule_ordinary_share_isin_v1`). Bedingungen: Wertpapiertyp „stock“ ohne Sonderaktienklasse und eine Nicht-US-ISIN, also die Heimat-ISIN der Stammaktie; Depositary Receipts tragen eigene US-ISINs. Die App rechnet damit den Abschluss zum EZB-Kurs in die Handelswährung um und gibt die Bewertung frei. Manuell geprüfte Einträge in `share_basis.json` haben Vorrang.

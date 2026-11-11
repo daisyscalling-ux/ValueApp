@@ -87,3 +87,7 @@ Die Ausgabe trägt `profileSource`. Die App prüft die Angaben erneut und zeigt 
 **Wirkung im Probelauf:** Versicherer-Notierungen 54 → 57. Solvenzquote vorhanden 17 → 19, offen 37 → 38: Tryg ist jetzt korrekt als Versicherer gezählt, aber Dänemark ist noch kein zugelassenes Solvenzsystem. Unternehmen 1.053 → 1.050. Gesamtabdeckung 78,3 → 78,2 %, weil die Lücke bei Tryg jetzt sichtbar ist.
 
 Offen: Tryg (Solvency II, Finanstilsynet DK, DKK) bräuchte die Freigabe von DK/DKK in `INSURER_REGIMES`, in App und Pipeline gleichzeitig.
+
+## Versicherer außerhalb von Solvency II/UK (11. November 2026)
+
+Die Solvenzquote ist nur für Gruppen unter Solvency II (EWR) oder Solvency UK vergleichbar. Bei ISIN-Ländern außerhalb davon (USA, Japan, Schweiz, Bermuda) und bei Prudential plc (Gruppenaufsicht Hongkong GWS, Beleg Halbjahresbericht 2026) wird sie bewusst nicht geführt. App und Messung nennen den Grund; in der Messung zählt sie als `by_design`. Weiter zu füllen bleiben 10 Gruppen: Hannover Rück, Mapfre, Ageas, ASR, PZU, Tryg (DK fehlt noch in `INSURER_REGIMES`), Admiral, Beazley, Standard Life und St. James's Place.

@@ -265,6 +265,21 @@ def bank_pb(x):
     return x.u.get('pb')
 
 
+# Spiegel von insurerSolvencyScope (valueapp-cf, src/lib/risk-construct.ts): vergleichbare Gruppen-Solvenzquote nur
+# unter Solvency II (EWR) und Solvency UK; andere Systeme bewusst ausserhalb (Entscheidung 11.11.2026).
+SOLVENCY_COUNTRIES = {'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'LV', 'LI', 'LT', 'LU',
+                      'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'GB'}
+SOLVENCY_EXCEPTIONS = {'GB0007099541': 'Hongkong GWS (Insurance Authority als Gruppenaufsicht)'}   # Prudential plc, HY26-Bericht
+SOLVENCY_SCOPE_REASON = 'Kein vergleichbares Gruppen-Solvenzsystem (außerhalb Solvency II/UK)'
+
+
+def insurer_solvency_comparable(row):
+    isin = _text((row or {}).get('isin')).upper()
+    if not re.fullmatch(r'[A-Z]{2}[A-Z0-9]{9}[0-9]', isin):
+        return True
+    return isin not in SOLVENCY_EXCEPTIONS and isin[:2] in SOLVENCY_COUNTRIES
+
+
 def metrics(x):
     """Kennzahlen des Konstrukts mit Status filled / missing / app_only / by_design."""
     out = []
@@ -286,7 +301,10 @@ def metrics(x):
                 m(F, 'Liquiditätsdeckung (LCR)', 7.5, *yes(available(c) and available(c.get('liquidity')), 'Geprüfte LCR fehlt')),
                 m(F, 'Kreditqualität', 7.5, *yes(available(c) and credit, 'Geprüfte Kreditqualität fehlt'))]
     elif p == 'insurer':
-        out += [m(F, 'Solvenzquote', 15, *yes(available(b.get('insurerSolvency')), 'Geprüfte Solvenzquote fehlt')),
+        solvency = available(b.get('insurerSolvency'))
+        out += [m(F, 'Solvenzquote', 15, 'filled') if solvency else
+                m(F, 'Solvenzquote', 15, 'by_design', SOLVENCY_SCOPE_REASON) if not insurer_solvency_comparable(x.u) else
+                m(F, 'Solvenzquote', 15, 'missing', 'Geprüfte Solvenzquote fehlt'),
                 m(F, 'Reserve- und Kapitalanlagerisiko', 10, 'by_design', 'Für Versicherer noch nicht umgesetzt')]
     elif p == 'specialist_financial':
         eq, ta = f.get('equity'), f.get('total_assets')

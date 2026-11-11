@@ -64,6 +64,10 @@ Durch einen still fehlgeschlagenen Wikipedia-Abruf (HTTP 403) fehlten 274 S&P-50
 
 13 weitere US-Bankholdings sind dem FR-Y-9C-Bestand und den Fed-Anforderungen zugeordnet; nun 22 statt 9. Probelauf: S&P 500 gefüllt 80,69 → 80,95 %, offen 3,24 → 3,01 %. Offen bleiben je Bank LCR und Kreditqualität. Details in `regulatory_export/BHCF.md`.
 
+## Peers: Auffüllung aus derselben Branche (11.11.2026)
+
+Mit dem Index-Universum wurden kuratierte Familien zu dünn: Micron stand allein in „Speicherchips“, Meta und Alphabet hatten nur sich gegenseitig, und Monster fand keine Getränke-Peers. Neue Regel (identisch in `valueapp-cf/src/lib/peer-selection.ts`): Unter drei Peers füllen zuerst Firmen derselben Branche aus anderen Familien bis fünf auf (nicht für Unterbranchen), danach wie bisher die geprüfte Gruppe. Die Gruppen sind um Elektronikmärkte, Dienste für das Gesundheitswesen, Rundfunk, Zeitungsverlage und Pipelines ergänzt. Messung: Peer-Stress offen 26 → 9, EBITDA-Vergleich 35 → 22, S&P 500 offen 2,16 → 1,86 %. App und Pipeline wählen bei 1.335 von 1.339 Titeln identische Peers. Bei 4 Titeln (AJG, AON, C, WFC) weicht nur die Reihenfolge ab; das bestand schon vorher, die ersten fünf Peers sind gleich.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

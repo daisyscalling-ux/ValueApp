@@ -56,7 +56,7 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
     raw = Path(apra_path).read_bytes()
     entities = [i['sourceEntity'] for i in mapping['issuers'] if i['source'] == 'apra_adi_centralised_publication']
     values = apra(apra_path, entities)
-    issuers, rejected = {}, {}
+    issuers, rejected, credit_rejected = {}, {}, {}
     for i in mapping['issuers']:
         v = values.get(i['sourceEntity'])
         m = (v or {}).get('metrics') or {}
@@ -75,20 +75,29 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
             rejected[e.get('isin', '?')] = reason
             continue
         dl, nd = e.get('defaultedLoans'), e.get('nonDefaultedLoans')
+        credit, credit_reason = e.get('credit'), credit_problem(e, now)
+        if credit_reason:
+            credit_rejected[e['isin']] = credit_reason
+        separate = isinstance(credit, dict) and not credit_reason
+        if separate:
+            dl, nd = credit['defaultedLoans'], credit['nonDefaultedLoans']
         issuers[e['isin']] = {'issuer': e['issuer'], 'jurisdiction': e['jurisdiction'], 'regulator': e['regulator'], 'scope': 'consolidated_group',
                               'period': e['period'], 'metrics': {k: e[k] for k in ('cet1_ratio', 'tier1_ratio', 'total_capital_ratio', 'leverage_ratio') if fraction(e.get(k)) is not None},
                               'lcr': fraction(e.get('lcr')), 'nsfr': fraction(e.get('nsfr')),
                               'cet1Requirement': e.get('cet1Requirement'), 'cet1RequirementDefinition': e.get('cet1RequirementDefinition'),
                               'requirementComponents': e.get('requirementComponents'), 'requirementSourceUrl': e.get('requirementSourceUrl'),
-                              'defaultedLoanRatio': dl / (dl + nd) if isinstance(dl, (int, float)) and isinstance(nd, (int, float)) and dl >= 0 and nd > 0 else None,
+                              'defaultedLoanRatio': None if credit_reason else dl / (dl + nd) if isinstance(dl, (int, float)) and isinstance(nd, (int, float)) and dl >= 0 and nd > 0 else None,
                               'source': e['source']}
+        if separate:
+            # CR1 mit eigenem Stichtag (z. B. Japan: CR1 nur im Jahres-/Halbjahresbericht, KM1 vierteljaehrlich).
+            issuers[e['isin']].update(creditPeriod=credit['period'], creditSource={k: credit[k] for k in ('type', 'url', 'sha256', 'location')})
         # Weitere Aktiengattungen desselben Konzerns (z. B. H-Aktie neben der A-Aktie): gleiche Konzernquoten, Verweis auf die Haupt-ISIN.
         for alt in e.get('shareClassIsins') or []:
             if re.fullmatch(r'[A-Z]{2}[A-Z0-9]{9}[0-9]', str(alt)) and alt != e['isin'] and alt not in issuers:
                 issuers[alt] = {**issuers[e['isin']], 'shareClassOf': e['isin']}
     return {'schema': 1, 'method': 'intl-bank-metrics-v1', 'importedAt': now.isoformat(),
             'mappingReviewExpires': min(mapping['review_expires'], (reviewed or {}).get('review_expires', mapping['review_expires'])),
-            'issuers': issuers, 'rejected': rejected, 'open': {**mapping.get('open', {}), **(reviewed or {}).get('open', {})}, 'scoreContribution': 0}
+            'issuers': issuers, 'rejected': rejected, 'creditRejected': credit_rejected, 'open': {**mapping.get('open', {}), **(reviewed or {}).get('open', {})}, 'scoreContribution': 0}
 
 
 # KM1-Tabelle der Säule-3-Offenlegung oder, wo zum Stichtag keine vorliegt, Kapitalangaben aus dem Zwischen-/Quartalsbericht.
@@ -108,6 +117,31 @@ def reviewed_problem(e):
             return 'requirement_components_mismatch'
     if e['source'].get('type') not in REVIEWED_SOURCE_TYPES or not re.fullmatch(r'[0-9a-f]{64}', e['source'].get('sha256', '')) or not str(e['source'].get('url', '')).startswith('https://'):
         return 'source_unverified'
+    return ''
+
+
+CREDIT_SOURCE_TYPE = 'basel_pillar3_cr1'
+CREDIT_MAX_AGE_DAYS = 270   # wie Bankquartal; aeltere CR1-Werte bleiben offen
+CREDIT_MAX_RATIO = .5       # Plausibilitaet: mehr als die Haelfte ausgefallener Kredite gilt als Lesefehler
+
+
+def credit_problem(e, now):
+    """CR1-Block mit eigenem Stichtag ('credit'). Leer = gueltig oder nicht vorhanden. Ein Fehler verwirft nur die Kreditqualitaet."""
+    c = e.get('credit')
+    if c is None:
+        return ''
+    if not isinstance(c, dict) or e.get('defaultedLoans') is not None or e.get('nonDefaultedLoans') is not None:
+        return 'credit_period_ambiguous'
+    period = str(c.get('period', ''))
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', period) or period > str(e['period']):
+        return 'credit_period_invalid'
+    if not 0 <= (now.date() - dt.date.fromisoformat(period)).days <= CREDIT_MAX_AGE_DAYS:
+        return 'credit_period_stale'
+    dl, nd = c.get('defaultedLoans'), c.get('nonDefaultedLoans')
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in (dl, nd)) or dl < 0 or nd <= 0 or dl / (dl + nd) > CREDIT_MAX_RATIO or not c.get('loanUnit'):
+        return 'credit_values_invalid'
+    if c.get('type') != CREDIT_SOURCE_TYPE or not re.fullmatch(r'[0-9a-f]{64}', str(c.get('sha256', ''))) or not str(c.get('url', '')).startswith('https://') or not str(c.get('location', '')).strip():
+        return 'credit_source_unverified'
     return ''
 
 

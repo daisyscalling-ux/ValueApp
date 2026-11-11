@@ -18,6 +18,8 @@ on:
       - 'value_radar/daten/regulatory/eu-bank-capital.json'
       - 'value_radar/daten/regulatory/eu-pillar3-km1.json'
       - 'value_radar/regulatory_export/intl-bank-map.json'
+      - 'value_radar/regulatory_export/import_intl_banks.py'
+      - 'value_radar/regulatory_export/reviewed-key-metrics.json'
       - 'value_radar/daten/regulatory/intl-bank-metrics.json'
       - 'value_radar/daten/regulatory/bhcf-credit-quality.json'
       - 'value_radar/fundamental_export/queue_policy.py'
@@ -93,6 +95,8 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_listing_isin_audit.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_credit_quality.py'
       - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_eu_pillar3.py'
+      - run: python -m unittest discover -s value_radar/regulatory_export -p 'test_intl_banks.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_intl_credit_period.py'
       - run: |
           npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-regulatory-context.ts --bundle --platform=node --format=esm --outfile=/tmp/test-regulatory-context.mjs
           node /tmp/test-regulatory-context.mjs

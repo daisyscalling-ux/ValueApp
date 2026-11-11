@@ -2,7 +2,7 @@
  "schema": 1,
  "reviewed_on": "2026-11-09",
  "review_expires": "2027-05-08",
- "method": "Values read from the original Basel Pillar 3 KM1 and CR1 tables of each bank and checked against the source; where a bank publishes no current KM1 (Cembra, China Merchants Bank, Bank of Communications, Shizuoka) the capital ratios come from its interim or quarterly report (source type bank_capital_release) and the location says so; ratios as fractions.",
+ "method": "Values read from the original Basel Pillar 3 KM1 and CR1 tables of each bank and checked against the source; where a bank publishes no current KM1 (Cembra, China Merchants Bank, Bank of Communications, Shizuoka) the capital ratios come from its interim or quarterly report (source type bank_capital_release) and the location says so; ratios as fractions. Where CR1 is only published annually or semi-annually (Japan), the entry carries a separate 'credit' block with its own reporting date, source and SHA-256.",
  "open": {
   "JP3946750001": "Japan Post Bank reports under the Japanese domestic standard (Core Capital ratio, see https://www.jp-bank.japanpost.jp/en/ir/financial/pdf/en2027_ccd_q1_c.pdf, sha256 59645295843a032ef15bb20e1aded76b6f0c3361c850d10c979417f5939eeb57); not comparable with CET1.",
   "JP3500610005": "Resona Holdings: website refuses automated requests (Akamai, HTTP 403); domestic capital standard expected, which is not comparable with CET1.",
@@ -233,6 +233,16 @@
     "url": "https://www.mufg.jp/dam/ir/report/basel3/2027-1q/pdf/mufg2606_09_en.pdf",
     "sha256": "401a5dbb5c91fc6578b39a656a5631ce78db0f9fe73f554324851ae3b35b0e31",
     "location": "KM1 (Mitsubishi UFJ Financial Group) rows 5-7, 11, 14, 17, 20, column a June 30, 2026"
+   },
+   "credit": {
+    "period": "2026-03-31",
+    "defaultedLoans": 1315526,
+    "nonDefaultedLoans": 122176641,
+    "loanUnit": "JPY_million",
+    "type": "basel_pillar3_cr1",
+    "url": "https://www.mufg.jp/dam/ir/report/annual_report/pdf/baseliii26_en.pdf",
+    "sha256": "084c102b3e324c0216dbe27296ec1270ff2e4395e937da36f0c19daa762b1239",
+    "location": "MUFG Basel III disclosure FY2025 (consolidated), PDF page 30, CR1 Credit quality of assets as of March 31, 2026, row 1 Loans, columns a (defaulted) and b (non-defaulted), millions of yen"
    }
   },
   {
@@ -262,6 +272,16 @@
      "url": "https://www.smfg.co.jp/english/investor/library/basel_3/2027/2027_fgq1_e_km102.pdf",
      "sha256": "5621dbea37bd1ef2dd9a550a6ad9abda8746da91d313fccea2d75a57e8b352ab"
     }
+   },
+   "credit": {
+    "period": "2026-03-31",
+    "defaultedLoans": 1379454,
+    "nonDefaultedLoans": 110071947,
+    "loanUnit": "JPY_million",
+    "type": "basel_pillar3_cr1",
+    "url": "https://www.smfg.co.jp/english/investor/library/annual/fy2025e_f02_pdf/fy2025e_f02_24.pdf",
+    "sha256": "2e63b8253c57e7ae2280ae93b02afe26775153c31d6d25aae6ed42641b3a771c",
+    "location": "SMBC Group Annual Report 2026, Basel III Information Sumitomo Mitsui Financial Group (consolidated), PDF page 6 (printed page 62), CR1 Credit quality of assets as of March 31, 2026, row 1 Loans, columns a and b, millions of yen"
    }
   },
   {
@@ -292,6 +312,16 @@
      "url": "https://library.mizuhogroup.com/asset/b3a751e0-8f01-4ea5-abea-9b4318516854/fg-data26_1q_3.pdf",
      "sha256": "d4649dedcd27ad9bd2fd0c62a839e9e634274bff8b6ea297c607cac8432620ce"
     }
+   },
+   "credit": {
+    "period": "2026-03-31",
+    "defaultedLoans": 905598,
+    "nonDefaultedLoans": 91108974,
+    "loanUnit": "JPY_million",
+    "type": "basel_pillar3_cr1",
+    "url": "https://library.mizuhogroup.com/asset/c856b66f-c1a8-4410-a787-a55052ddd053/fg-investors-financial-information-annual_data26d_shiryo_all.pdf",
+    "sha256": "2752c74469d78cb8b14f079b3449901a106d68ae67d59f08bdd63f6c96a64331",
+    "location": "Mizuho Integrated Report Annual Review 2026 (Appendix), Basel Regulatory Disclosures, Status of Mizuho Financial Group's Consolidated Capital Adequacy, PDF page 67, (A) CR1 as of March 31, 2026, row 1 Loans, columns a and b, millions of yen"
    }
   },
   {
@@ -614,6 +644,16 @@
      "url": "https://www.smtg.jp/english/-/media/tg/english/investors/basel/2606/e2606_tg_km02.pdf",
      "sha256": "c777509f5211050d4064122f774303f0d2a45f36e325cd5dff12a11679a3d175"
     }
+   },
+   "credit": {
+    "period": "2026-03-31",
+    "defaultedLoans": 77231,
+    "nonDefaultedLoans": 31904850,
+    "loanUnit": "JPY_million",
+    "type": "basel_pillar3_cr1",
+    "url": "https://links.sgx.com/FileOpen/2026AnnualReport%20FinancialData.ashx?App=Announcement&FileID=904886",
+    "sha256": "43c855c96705221454578b50b2691dc06b6092f35e4409d2e11a192a2c489f32",
+    "location": "Sumitomo Mitsui Trust Group 2026 Annual Report, Financial Data Section (filed with SGX; not yet posted on www.smtg.jp), Quantitative Disclosure Data: Sumitomo Mitsui Trust Group, Inc. (consolidated), PDF page 277, CR1 March 31, 2026, row 1 Loans and Bills Discounted, columns a and b, millions of yen"
    }
   },
   {

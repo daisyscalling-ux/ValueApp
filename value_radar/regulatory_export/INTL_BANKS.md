@@ -17,6 +17,37 @@ Stand 09.11.2026. Gemeinsames Format `intl-bank-metrics-v1` für veröffentlicht
   - Singapur, Stichtag 30.09.2026: DBS (KM1, CET1-Anforderung = 6,5 % MAS-Mindestquote + Zeile 11; LCR, NSFR). OCBC offen: Website (Incapsula) und SGX-Mitteilungen (Akamai) sperren automatisierte Abrufe, eine SEC-Einreichung gibt es nicht.
   - Quellenart: `basel_pillar3_km1` für KM1-Tabellen, `bank_capital_release` für Kapitalangaben aus dem Zwischen- oder Quartalsbericht, wenn zum Stichtag keine KM1-Tabelle vorliegt (Cembra, China Merchants Bank, Bank of Communications, Shizuoka). Die App beschriftet beide getrennt und zeigt die Fundstelle an (ab valueapp-cf mit dem Quellen-Nachtrag; ältere App-Versionen lehnen `bank_capital_release` ab).
 
+## Kreditqualität mit eigenem CR1-Stichtag (11. November 2026)
+
+Japanische Banken veröffentlichen KM1 vierteljährlich, die Tabelle CR1 (Kreditqualität) aber nur im Jahres- und Halbjahresbericht. Bisher zählte CR1 nur, wenn ihr Stichtag dem KM1-Stichtag entsprach; bei den japanischen Großbanken blieb die Kreditqualität deshalb offen.
+
+Regel: Ein Eintrag in `reviewed-key-metrics.json` kann einen Block `credit` mit eigenem Stichtag tragen (`period`, `defaultedLoans`, `nonDefaultedLoans`, `loanUnit`, `type` = `basel_pillar3_cr1`, `url`, `sha256`, `location`).
+
+| Prüfung | Stelle | Folge bei Verstoß |
+|---|---|---|
+| Stichtag gültig und nicht nach dem KM1-Stichtag | Import, Kontext, Vorberechnung, App | Kreditqualität offen |
+| Höchstalter 270 Tage (wie Bankquartal) | Import, Kontext, Vorberechnung, App | Kreditqualität offen |
+| Quelle `basel_pillar3_cr1`, https, SHA-256, Fundstelle | Import, Kontext, Vorberechnung, App | Kreditqualität offen |
+| Ausgefallene ≤ 50 % der Kredite, nicht ausgefallene > 0 | Import | Kreditqualität offen |
+| Nicht zugleich `defaultedLoans` am Eintrag (Doppelangabe) | Import | Kreditqualität offen |
+
+Ein fehlerhafter CR1-Block verwirft nur die Kreditqualität, nicht die Kapitalquoten (`creditRejected` im Import). Die App zeigt den abweichenden Stichtag und die Fundstelle unter „Berechnung und Datenqualität“ und im Quellenblock.
+
+Werte (Kredite, Zeile 1 der CR1, Millionen Yen, Konzern, Stichtag 31.03.2026):
+
+| Bank | Ausgefallen | Nicht ausgefallen | Quote | Fundstelle |
+|---|---:|---:|---:|---|
+| MUFG | 1.315.526 | 122.176.641 | 1,07 % | Basel III Disclosure FY2025, PDF-Seite 30 |
+| SMFG | 1.379.454 | 110.071.947 | 1,24 % | SMBC Group Annual Report 2026, Basel-Teil, PDF-Seite 6 (gedruckt 62) |
+| Mizuho | 905.598 | 91.108.974 | 0,98 % | Integrated Report 2026 (Appendix), PDF-Seite 67 |
+| Sumitomo Mitsui Trust | 77.231 | 31.904.850 | 0,24 % | Annual Report 2026 Financial Data Section, PDF-Seite 277 |
+
+Der Bericht von Sumitomo Mitsui Trust stammt aus der Einreichung bei der Singapurer Börse (SGX), weil www.smtg.jp den Jahresbericht 2026 noch nicht bereitstellt. Die quartalsweisen Basel-Dateien auf www.smtg.jp enthalten keine CR1.
+
+Verzerrung: Die CR1-Quote ist bis zu neun Monate älter als die Kapitalquoten. In einer Phase steigender Ausfälle wirkt die Bank dadurch zu gut. Das Höchstalter von 270 Tagen begrenzt den Abstand. Der Stichtag ist in der App sichtbar. Die Halbjahreswerte zum 30.09.2026 erscheinen etwa im Dezember und werden dann eingetragen. Ohne Aktualisierung laufen die Märzwerte am 26.12.2026 ab und die Kreditqualität ist wieder offen.
+
+Probelauf 11.11.2026: Kreditqualität bei 4 Notierungen neu gefüllt (TSE:8306, 8316, 8411, 8309), sonst keine Änderung. Shizuoka bleibt offen, weil keine CR1 erhoben wurde (Quelle `bank_capital_release`). Die Banken nach Inlandsstandard (Japan Post Bank, Resona, Chiba, Fukuoka, Yokohama FG) sind noch nicht bearbeitet.
+
 ## Zuordnung (`intl-bank-map.json`)
 
 Eine notierte Stammaktie (ISIN) wird nur dem Konzern zugeordnet, dessen Zahlen veröffentlicht werden, und nur, wenn die notierte Gesellschaft selbst dieser Konzern ist. Holdings ohne Banklizenz bleiben offen. Depositary Receipts mit derselben ISIN übernehmen ab 10.11.2026 den Eintrag einer im selben Lauf geprüften Stammaktie, weil Kapital-, Liquiditäts- und Kreditquoten den Konzern beschreiben, nicht die Aktie (`depositaryOf`). Ohne geprüfte Stammaktie bleibt das DR offen.

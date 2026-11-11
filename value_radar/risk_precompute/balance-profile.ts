@@ -75,6 +75,12 @@ export function assessBalance(row:Row,a:Row|undefined,retrievedAt:any,identityOK
   for(const [name,key] of [['operatingCashflowAssets','operating_cashflow'],['cashAssets','cash'],['bookEquityAssets','equity'],['netIncomeEndingAssets','net_income']]){
    metric(name,[key],()=>fields[key]/fields.total_assets,key!=='cash'||fields.cash>=0);supplemental[name]=metrics[name];delete metrics[name];
   }
+  // Ersatz fuer die FCFF-Marge der App (nur genutzt, wenn ROIC keinen TTM-FCFF liefert): Jahres-FCF / Umsatz aus demselben
+  // datierten Abschluss; alle drei Felder muessen denselben Zeitraum abdecken (Entscheidung 11.11.2026).
+  const fs=a?.field_sources||{},starts=['operating_cashflow','capex','revenue'].map(k=>fs[k]?.start).filter(Boolean);
+  metric('fcfRevenue',['operating_cashflow','capex','revenue'],()=>(fields.operating_cashflow-capex)/fields.revenue,
+   finite(capex)&&capex>=0&&finite(fields.revenue)&&fields.revenue>0&&new Set(starts).size<=1);
+  supplemental.fcfRevenue=metrics.fcfRevenue;delete metrics.fcfRevenue;
  }
  const expirations=[Date.parse(retrievedAt)+maxRetrievalAgeDays*DAY,Date.parse(a?.end)+maxAnnualAgeDays*DAY,
   ...required.flatMap(k=>{const f=a?.field_sources?.[k];return [f?.retrieved_at?Date.parse(f.retrieved_at)+maxRetrievalAgeDays*DAY:NaN,f?.published_at?Date.parse(f.published_at)+700*DAY:NaN]}),

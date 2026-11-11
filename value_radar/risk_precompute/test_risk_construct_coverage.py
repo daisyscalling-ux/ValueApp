@@ -119,6 +119,16 @@ class IndustryGroupTests(unittest.TestCase):
   fam={id(r):cc.peer_family(r) for r in steel};grp={id(r):cc.industry_group(r) for r in steel}
   self.assertNotIn('AL',[r['ticker'] for r in cc.select_peers(steel[0],steel,fam,groups=grp)])
 
+class FcffSubstituteTests(unittest.TestCase):
+ def test_roic_first_then_flagged_annual_substitute(self):
+  import risk_construct_coverage as rc
+  ok={'supplementalMetrics':{'fcfRevenue':{'state':'available','value':.08}}}
+  self.assertEqual(rc.fcff_metric({},{'fcff_margin':5.0},ok)['status'],'filled')
+  m=rc.fcff_metric({},{'fcff_margin':None},ok);self.assertEqual((m['status'],m['reason']),('filled','Ersatz: Jahres-FCF / Umsatz'))
+  m=rc.fcff_metric({},{'fcff_margin':None},{'supplementalMetrics':{'fcfRevenue':{'state':'missing'}}});self.assertEqual(m['status'],'missing')
+  self.assertEqual(rc.fcff_metric({},{'fcff_margin':None},None)['status'],'missing')
+
+
 class ParisPeerTests(unittest.TestCase):
  def test_paris_suffix_not_preferred(self):
   self.assertFalse(cc._preferred({'ticker':'BNP.PA','listing_symbol':'EURONEXT:BNP'}))

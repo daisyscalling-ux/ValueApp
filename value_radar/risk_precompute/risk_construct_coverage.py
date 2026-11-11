@@ -293,6 +293,21 @@ def insurer_solvency_comparable(row):
     return isin not in SOLVENCY_EXCEPTIONS and isin[:2] in SOLVENCY_COUNTRIES
 
 
+def fcff_metric(f, u, b):
+    """FCFF-Marge wie die App: ROIC-FCFF aus der Universumszeile, sonst gekennzeichneter Ersatz Jahres-FCF / Umsatz
+    (fcfSubstitute in valueapp-cf/src/lib/risk-construct.ts, Entscheidung 11.11.2026). Ohne fcff_margin-Feld (alte
+    Universumsdateien) bleibt die fruehere Naeherung ueber den Ersatzabschluss."""
+    F = 'Finanzielle Verwundbarkeit'
+    if 'fcff_margin' not in u:
+        return m(F, 'FCFF-Marge', 10, *yes(finite(f.get('operating_cashflow')) and finite(f.get('capex')) and finite(f.get('revenue')) and f['revenue'] > 0,
+                                           'Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)'))
+    if finite(u.get('fcff_margin')):
+        return m(F, 'FCFF-Marge', 10, 'filled')
+    if available(((b or {}).get('supplementalMetrics') or {}).get('fcfRevenue')):
+        return m(F, 'FCFF-Marge', 10, 'filled', 'Ersatz: Jahres-FCF / Umsatz')
+    return m(F, 'FCFF-Marge', 10, 'missing', 'ROIC liefert keinen FCFF oder Umsatz (TTM)')
+
+
 def metrics(x):
     """Kennzahlen des Konstrukts mit Status filled / missing / app_only / by_design."""
     out = []
@@ -332,8 +347,7 @@ def metrics(x):
         ebitda = f.get('ebitda')
         out += [m(F, 'Nettoschulden / EBITDA', 15, *yes((finite(ebitda) and ebitda > 0 and finite(f.get('total_debt')) and finite(f.get('cash'))) or finite(u.get('net_debt_ebitda')), 'EBITDA, Schulden oder Kasse fehlen')),
                 # Die App nimmt FCFF und Umsatz aus der ROIC-Zeile; seit dem Universumsexport mit fcff_margin genau messbar, sonst Näherung über den Ersatzabschluss.
-                (m(F, 'FCFF-Marge', 10, *yes(finite(u.get('fcff_margin')), 'ROIC liefert keinen FCFF oder Umsatz (TTM)')) if 'fcff_margin' in u else
-                 m(F, 'FCFF-Marge', 10, *yes(finite(f.get('operating_cashflow')) and finite(f.get('capex')) and finite(f.get('revenue')) and f['revenue'] > 0, 'Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)')))]
+                fcff_metric(f, u, b)]
     out += [m(U, 'Markt-ETF', 10, *yes(available(x.domains.get('market')), 'Kein Markt-ETF zugeordnet')),
             m(U, 'Peer-Stress', 5, *first((x.peer_selected == 0, 'Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)'),
                                           (x.peer_selected < PEER_MINIMUM, 'Weniger als drei Peers ausgewählt'),

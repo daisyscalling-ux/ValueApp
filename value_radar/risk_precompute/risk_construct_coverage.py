@@ -326,7 +326,9 @@ def metrics(x):
         c = b.get('bankCapital') or {}
         credit = available(c.get('creditQuality')) or available((x.domains.get('reviewedRisk') or {}).get('bankCredit'))
         out += [m(F, 'Kernkapital-Puffer (CET1)', 10, *yes(available(c) and available(c.get('capitalRequirement')), 'Geprüfte Kapitalquote mit Anforderung fehlt')),
-                m(F, 'Liquiditätsdeckung (LCR)', 7.5, *yes(available(c) and available(c.get('liquidity')), 'Geprüfte LCR fehlt')),
+                (m(F, 'Liquiditätsdeckung (LCR)', 7.5, 'by_design', 'Keine LCR-Pflicht (US-Kategorie IV, belegt)')
+                 if available(c) and not available(c.get('liquidity')) and (c.get('liquidityExemption') or {}).get('state') == 'not_applicable' else
+                 m(F, 'Liquiditätsdeckung (LCR)', 7.5, *yes(available(c) and available(c.get('liquidity')), 'Geprüfte LCR fehlt'))),
                 m(F, 'Kreditqualität', 7.5, *yes(available(c) and credit, 'Geprüfte Kreditqualität fehlt'))]
     elif p == 'insurer':
         solvency = available(b.get('insurerSolvency'))

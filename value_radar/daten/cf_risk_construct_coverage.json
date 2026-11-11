@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-11T13:58:22.840164+00:00",
+ "generatedAt": "2026-11-11T15:28:19.174801+00:00",
  "listings": 1340,
  "overallAverageWeight": {
   "filled": 81.7,
@@ -81,11 +81,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 24.89,
-     "missing": 0.11,
+     "filled": 24.88,
+     "missing": 0.12,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.996
+     "filledShareOfMeasurable": 0.995
     },
     "Umfeldstress": {
      "weight": 15,
@@ -292,6 +292,19 @@
    }
   },
   {
+   "profile": "corporate",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "FCFF-Marge",
+   "weight": 10,
+   "missingListings": 12,
+   "filledListings": 1114,
+   "weightedGap": 120,
+   "reasons": {
+    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 11,
+    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
+   }
+  },
+  {
    "profile": "specialist_financial",
    "block": "Bewertungsrisiko",
    "metric": "Erwartungslücke Gewinnwachstum",
@@ -315,19 +328,6 @@
    "weightedGap": 115,
    "reasons": {
     "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 23
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "FCFF-Marge",
-   "weight": 10,
-   "missingListings": 11,
-   "filledListings": 1115,
-   "weightedGap": 110,
-   "reasons": {
-    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 10,
-    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {

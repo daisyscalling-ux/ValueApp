@@ -159,6 +159,16 @@ def build_eu(universe,capital,mapping,now,km1=None):
  out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
 
+INTL_CREDIT_MAX_AGE_DAYS=270
+def intl_credit_source(i,now):
+ """CR1 mit eigenem Stichtag (Japan: nur Jahres-/Halbjahresbericht). None = gleicher Stichtag wie KM1, False = ungueltig, sonst Zusatzfelder."""
+ p,src=i.get('creditPeriod'),i.get('creditSource')
+ if p is None and src is None:return None
+ if not isinstance(src,dict) or not isinstance(p,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',p) or p>str(i.get('period')):return False
+ if not 0<=(now.date()-dt.date.fromisoformat(p)).days<=INTL_CREDIT_MAX_AGE_DAYS:return False
+ if src.get('type')!='basel_pillar3_cr1' or not re.fullmatch(r'[0-9a-f]{64}',str(src.get('sha256',''))) or not str(src.get('url','')).startswith('https://') or not str(src.get('location','')).strip():return False
+ return {'period':p,'periodBasis':'separate_cr1','sourceType':src['type'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceDetail':src['location']}
+
 def build_intl(universe,data,now):
  """Banken ausserhalb EU/EWR/USA (APRA, spaeter Basel-KM1): Kapitalquoten, LCR, NSFR je Konzern. Gleiche Identitaetsregeln."""
  stocks,rejected,deferred={},{},[]
@@ -181,6 +191,9 @@ def build_intl(universe,data,now):
   if isinstance(i.get('defaultedLoanRatio'),(int,float)) and 0<=i['defaultedLoanRatio']<=1:
    credit={'state':'available','method':'basel-cr1-default-v1','unit':'fraction','ratio':i['defaultedLoanRatio'],'period':i['period'],
            'definition':'Defaulted / (defaulted + non-defaulted) gross carrying value of loans, Basel Pillar 3 table CR1.','scoreContribution':0}
+   sep=intl_credit_source(i,now)
+   if sep is False:credit=None
+   elif sep:credit.update(sep)
   stocks[s]={'state':'available','scope':'basel_key_metrics','holdingName':i['issuer'],'issuerIsin':i.get('shareClassOf') or row['isin'],'jurisdiction':i['jurisdiction'],'regulator':i['regulator'],'consolidation':i['scope'],
    'inputIdentity':{k:row.get(k) for k in FIELDS},'period':i['period'],'sourceImportedAt':data['importedAt'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceType':src['type'],
    'sourceDetail':src.get('tables') or src.get('location'),'identityReviewExpires':data['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,

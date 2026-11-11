@@ -53,6 +53,40 @@ class IntlBankImportTests(unittest.TestCase):
         self.assertEqual(r['mappingReviewExpires'], '2027-01-01')
         self.assertIn('X', r['open'])
 
+    def test_separate_cr1_period(self):
+        """Japan: CR1 nur jaehrlich; eigener Stichtag, eigene Quelle, Fehler verwerfen nur die Kreditqualitaet."""
+        credit = {'period': '2026-03-31', 'defaultedLoans': 1315526, 'nonDefaultedLoans': 122176641, 'loanUnit': 'JPY_million', 'type': 'basel_pillar3_cr1',
+                  'url': 'https://example.org/b3.pdf', 'sha256': 'c' * 64, 'location': 'PDF page 30, CR1 row 1'}
+        e = {'isin': 'JP3902900004', 'issuer': 'MUFG', 'jurisdiction': 'JP', 'regulator': 'JFSA', 'period': '2026-06-30', 'cet1_ratio': .14, 'tier1_ratio': .15,
+             'total_capital_ratio': .17, 'lcr': 1.5, 'credit': credit, 'source': {'type': 'basel_pillar3_km1', 'url': 'https://example.org/km1.pdf', 'sha256': 'b' * 64}}
+        bad = {'credit_period_stale': {'period': '2026-01-30'}, 'credit_period_invalid': {'period': '2026-09-30'},
+               'credit_values_invalid': {'defaultedLoans': 900, 'nonDefaultedLoans': 100}, 'credit_source_unverified': {'type': 'basel_pillar3_km1'}}
+        cases = [e] + [{**e, 'isin': f'JP000000000{n}', 'credit': {**credit, **v}} for n, v in enumerate(bad.values())]
+        cases.append({**e, 'isin': 'JP0000000009', 'defaultedLoans': 1, 'nonDefaultedLoans': 99})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'apra.xlsx'
+            path.write_bytes(b'x')
+            with mock.patch.object(intl, 'apra', return_value={}):
+                r = intl.build(path, {**MAPPING, 'issuers': []}, NOW, reviewed={'review_expires': '2027-01-01', 'entries': cases})
+        i = r['issuers']['JP3902900004']
+        self.assertAlmostEqual(i['defaultedLoanRatio'], 1315526 / (1315526 + 122176641))
+        self.assertEqual((i['period'], i['creditPeriod'], i['creditSource']['location']), ('2026-06-30', '2026-03-31', 'PDF page 30, CR1 row 1'))
+        expected = {f'JP000000000{n}': k for n, k in enumerate(bad)}
+        expected['JP0000000009'] = 'credit_period_ambiguous'
+        self.assertEqual(r['creditRejected'], expected)
+        for isin in expected:
+            self.assertIsNone(r['issuers'][isin]['defaultedLoanRatio'], isin)
+            self.assertEqual(r['issuers'][isin]['metrics']['cet1_ratio'], .14, 'capital stays')
+            self.assertNotIn('creditPeriod', r['issuers'][isin])
+        self.assertEqual(r['rejected'], {})
+
+    def test_repository_japan_cr1_blocks_are_valid(self):
+        data = json.loads((intl.ROOT / 'reviewed-key-metrics.json').read_text(encoding='utf-8'))
+        jp = [e for e in data['entries'] if e.get('credit')]
+        self.assertEqual({e['isin'] for e in jp}, {'JP3902900004', 'JP3890350006', 'JP3885780001', 'JP3892100003'})
+        for e in jp:
+            self.assertEqual(intl.credit_problem(e, dt.datetime(2026, 11, 11, tzinfo=dt.timezone.utc)), '', e['isin'])
+
     def test_entry_without_disclosed_requirement_keeps_capital_only(self):
         e = {'isin': 'JP3351500008', 'issuer': 'Shizuoka Financial Group, Inc.', 'jurisdiction': 'JP', 'regulator': 'JFSA', 'period': '2026-06-30',
              'cet1_ratio': .1624, 'tier1_ratio': .1624, 'total_capital_ratio': .1624, 'cet1Requirement': None, 'lcr': None,

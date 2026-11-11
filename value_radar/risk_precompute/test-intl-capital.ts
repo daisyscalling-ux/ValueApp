@@ -36,4 +36,15 @@ test('Basel CR1 defaulted-loan ratio passes only with matching method and period
  assert.equal(verifiedIntlCapital(archive({...record,creditQuality:{...credit,period:'2026-03-31'}}),row,true,now)!.creditQuality,null);
  assert.equal(verifiedIntlCapital(archive({...record,creditQuality:{...credit,method:'eba-npl-v1'}}),row,true,now)!.creditQuality,null);
 });
+test('Basel CR1 with its own reporting date (Japan) needs source, SHA-256 and age <= 270 days',()=>{
+ const credit={state:'available',method:'basel-cr1-default-v1',unit:'fraction',ratio:.0107,period:'2026-03-31',periodBasis:'separate_cr1',sourceType:'basel_pillar3_cr1',sourceUrl:'https://example.org/b3.pdf',sourceFileSha256:'d'.repeat(64),sourceDetail:'PDF page 30, CR1 row 1'};
+ const ok=(c:any)=>verifiedIntlCapital(archive({...record,creditQuality:c}),row,true,now)!.creditQuality;
+ assert.equal(ok(credit).ratio,.0107);
+ assert.equal(ok({...credit,periodBasis:undefined}),null,'without the flag the period must match');
+ assert.equal(ok({...credit,sourceFileSha256:'x'}),null);
+ assert.equal(ok({...credit,sourceType:'basel_pillar3_km1'}),null);
+ assert.equal(ok({...credit,sourceDetail:''}),null);
+ assert.equal(ok({...credit,period:'2026-09-30'}),null,'not after the KM1 date');
+ assert.equal(ok({...credit,period:'2026-02-10'}),null,'older than 270 days');
+});
 console.log(checks+' international capital checks passed');

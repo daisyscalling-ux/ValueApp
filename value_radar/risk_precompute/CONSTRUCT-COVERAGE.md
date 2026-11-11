@@ -64,6 +64,10 @@ Durch einen still fehlgeschlagenen Wikipedia-Abruf (HTTP 403) fehlten 274 S&P-50
 
 13 weitere US-Bankholdings sind dem FR-Y-9C-Bestand und den Fed-Anforderungen zugeordnet; nun 22 statt 9. Probelauf: S&P 500 gefüllt 80,69 → 80,95 %, offen 3,24 → 3,01 %. Offen bleiben je Bank LCR und Kreditqualität. Details in `regulatory_export/BHCF.md`.
 
+## Versicherer außerhalb von Solvency II/UK (11.11.2026)
+
+Entscheidung des Nutzers: Die Solvenzquote wird nur für Gruppen unter Solvency II (EWR) oder Solvency UK verglichen. Maßgeblich ist das ISIN-Land; geprüfte Ausnahme ist Prudential plc (Gruppenaufsicht Hongkong). Andere Länder (USA, Japan, Schweiz, Bermuda) zählen als `by_design` mit Grund. Spiegel von `insurerSolvencyScope` (valueapp-cf). Messung: Solvenzquote fehlend 41 → 10, 31 bewusst außerhalb, 12 vorhanden; S&P 500 offen 2,16 → 1,62 %, Nikkei 225 1,60 → 1,20 %.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

@@ -138,3 +138,12 @@ class EbitdaPeerTests(unittest.TestCase):
   self.assertIn(('corporate','EBITDA-Marge gegenüber Peers'),g)
 
 if __name__=='__main__':unittest.main()
+
+
+class InsurerScopeTests(unittest.TestCase):
+ def test_same_cases_as_app(self):
+  import risk_construct_coverage as rc
+  for isin in ['US1713401024','JP3910660004','CH0011075394','BMG4593F1389','GB0007099541']:
+   self.assertFalse(rc.insurer_solvency_comparable({'isin':isin}),isin)
+  for isin in ['DE0008404005','DK0060636678','GB00BPQY8M80','NO0010582521','kaputt',None]:
+   self.assertTrue(rc.insurer_solvency_comparable({'isin':isin}),isin)

@@ -449,6 +449,28 @@
    "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (10.11.2026)",
    "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
    "reviewed_on": "2026-11-10"
+  },
+  {
+   "lei": "259400YLRTOBISHBVX41",
+   "isins": [
+    "PLBSK0000017"
+   ],
+   "listing": "GPW:ING",
+   "gleifName": "ING BANK ŚLĄSKI SPÓŁKA AKCYJNA",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (11.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-11"
+  },
+  {
+   "lei": "5493007SJLLCTM6J6M37",
+   "isins": [
+    "ES0180907000"
+   ],
+   "listing": "BME:UNI",
+   "gleifName": "UNICAJA BANCO SA",
+   "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (11.11.2026)",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
+   "reviewed_on": "2026-11-11"
   }
  ],
  "pillar3OnlyMethod": "Banken ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub). ISIN zu LEI ueber GLEIF mit genau einem Treffer; die LEI muss im Hub einreichen."

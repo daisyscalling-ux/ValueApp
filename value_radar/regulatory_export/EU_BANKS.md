@@ -91,3 +91,14 @@ Es gelten dieselben Prüfungen wie bei KM1: Taxonomie 4.2, Institut und Stichtag
 **Ergebnis:** 40 von 42 Banken haben eine NPL-Quote. Bei ABN AMRO fehlt die CR1-Tabelle, bei Ringkjøbing gibt es keine aktuelle Einreichung.
 
 **Probelauf** gegen den Stand „Banken nur aus der Säule 3“: Bank-Kreditqualitätslücken 76 → 68, Banken 59,0 → 59,4.
+
+### Nachtrag: ING Bank Śląski und Unicaja (11. November 2026)
+
+Mit dem Index-Universum kamen zwei EU-Banken ohne Zuordnung hinzu. Beide haben eine eindeutige LEI per ISIN bei GLEIF und Einreichungen im Pillar 3 Data Hub. Sie stehen jetzt unter `pillar3Only`:
+- **Unicaja Banco** (5493007SJLLCTM6J6M37), Stichtag 30.06.2026: CET1 15,8 %, CET1-Anforderung 8,65 %, LCR 295 %, NPL (CR1) 1,8 %.
+- **ING Bank Śląski** (259400YLRTOBISHBVX41) bleibt offen. In den Einreichungen zu Q2 und Q3 2026 fehlt die KM1-Tabelle (`km1_missing`), die Q1-Quoten sind unvollständig oder nicht stimmig, Q4 2025 ist zu alt. Die Zuordnung bleibt, damit eine spätere vollständige Einreichung automatisch greift.
+- **Bank of Ireland:** GLEIF liefert zur ISIN keine LEI. Eine Namenssuche ist kein Identitätsnachweis, deshalb bleibt sie offen.
+
+Import nur der beiden neuen Banken (`build` mit eingeschränkter Zuordnung), in die bestehende `eu-pillar3-km1.json` eingefügt. Der Eintrag `additions` dokumentiert das; die übrigen Banken sind unverändert.
+
+**Probelauf:** Unicaja erhält CET1-Puffer, LCR und Kreditqualität. Kein Titel schlechter.

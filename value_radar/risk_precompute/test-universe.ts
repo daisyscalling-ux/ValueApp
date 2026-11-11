@@ -136,6 +136,7 @@ test('all reviewed countries and aliases match',()=>{for(const r of registry)for
 test('unsupported market explicit',()=>assert.equal(audit([{...row,country:'PT'}]).stocks[0].domains.market.state,'unsupported'));
 test('new unresolved listing scheduled for resolution',()=>assert(auditUniverse({kandidaten:[{ticker:'NEW.DE'}]}, {}, {},now).jobs.some(j=>j.kind==='history'&&j.state==='queued')));
 test('backoff bounded and expired retry allowed',()=>{const s=failureState('HTTP 503',undefined,now);assert(!retryDue(s,now));assert(retryDue(s,now+3*3600000));assert(retryDue({nextAttemptAt:'2099-01-01'},now))});
+test('retry state keeps a safe plain-text reason',()=>{assert.equal(failureState('Keine gültige Risiko-Historie: Kurshistorie enthält längere Lücken.',undefined,now).reason,'Keine gültige Risiko-Historie: Kurshistorie enthält längere Lücken.');assert.equal(failureState('fetch failed for https://api.roic.ai/x?apikey=SECRET',undefined,now).reason,'Abruf fehlgeschlagen');assert.ok(!failureState('ROIC-Kurshistorie HTTP 500 https://api.roic.ai/v3?k=1',undefined,now).reason.includes('roic.ai'))});
 test('subscription failure cools down rather than repeated requests',()=>assert(!retryDue(failureState('HTTP 402',undefined,now),now+86400000)));
 
 const folder=fs.mkdtempSync(path.join(os.tmpdir(),'risk-universe-test-'));

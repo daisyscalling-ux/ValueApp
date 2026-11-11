@@ -301,6 +301,10 @@ def aufloesen(t: str) -> dict | None:
     from listing_identity import select_listing
     beste = select_listing(t, treffer)
     if beste is None:
+        # Diagnose: welche Notierungen ROIC angeboten hat (nur Symbol, Boerse, Art, ISIN-Land); keine Daten uebernommen.
+        kand = [f"{x.get('symbol')}|{x.get('type')}|{'P' if x.get('is_primary') else '-'}|{str(x.get('isin') or '')[:2]}" for x in treffer[:8]]
+        import sys as _sys
+        print(f"[identitaet] {t}: keine eindeutige Notierung; ROIC-Kandidaten: {', '.join(kand) or 'keine'}", file=_sys.stderr, flush=True)
         _RESOLVE_CACHE[schluessel] = None
         return None
     erg = {

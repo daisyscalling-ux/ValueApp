@@ -279,7 +279,7 @@ SKA-B.ST
 COLO-B.CO
 MOWI.OL
 PNDORA.CO
-BEZ.L
+# entfernt 2026-11-11: BEZ.L – Beazley: Übernahme durch Zurich wirksam 01.10.2026, LSE-Notierung beendet 02.10.2026 (https://www.reinsurancene.ws/zurich-completes-8-1bn-beazley-takeover-ahead-of-lse-delisting/)
 WISE.L
 MNG.L
 ORSTED.CO
@@ -328,7 +328,7 @@ SECU-B.ST
 MRO.L
 KCR.HE
 SRT3.DE
-SDR.L
+# entfernt 2026-11-11: SDR.L – Schroders: Übernahme durch Nuveen wirksam 01.10.2026, LSE-Notierung beendet 02.10.2026 (https://www.thetradenews.com/nuveen-completes-10-billion-schroders-acquisition/)
 ELI.BR
 DHER.DE
 YAR.OL

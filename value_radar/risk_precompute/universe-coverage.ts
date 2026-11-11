@@ -17,7 +17,9 @@ export function failureState(message:string,old:Row|undefined,now:number){
  const category=/401|403/.test(message)?'access':/402/.test(message)?'subscription':/429/.test(message)?'rate_limit':/Notierung|Währung|eindeutig/.test(message)?'identity':/200|zwei Handelsjahre|Lücken|nicht aktuell|Zukunft/.test(message)?'history_quality':'provider';
  const count=Math.min(20,(old?.category===category&&Number.isInteger(old.count)&&old.count>=0?old.count:0)+1);
  const hours=category==='identity'?168:category==='subscription'?168:category==='access'?24:category==='history_quality'?24:Math.min(24,2**count);
- return {category,count,at:new Date(now).toISOString(),nextAttemptAt:new Date(now+hours*3600000).toISOString()};
+ // Klartextgrund nur fuer bekannte, unbedenkliche Meldungen (keine URLs oder Schluessel), damit Ursachen pruefbar bleiben.
+ const reason=/^(ROIC|Kurshistorie|Notierung|Markt|Keine|Zeitbudget|Eindeutige|Ungültige)/.test(message)?message.replace(/https?:\/\/\S+/g,'[URL]').slice(0,200):'Abruf fehlgeschlagen';
+ return {category,count,at:new Date(now).toISOString(),nextAttemptAt:new Date(now+hours*3600000).toISOString(),reason};
 }
 export function retryDue(state:Row|undefined,now:number){
  // Invalid or implausibly remote dates must not permanently suppress a listing.

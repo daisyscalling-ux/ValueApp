@@ -46,3 +46,20 @@ Neu hinzu kommen in Europa unter anderem SAP.DE, TTE.PA, AIR.PA, SAN.MC, BBVA.MC
 - Für die entfernten Zeilen gemachte Sonderprüfungen werden nicht mehr gebraucht: H-Aktien-ISIN in `reviewed_listing_reference.json`, Heimatkurse für ADRs, Versicherer- und Bank-DRs. Sie bleiben vorerst als Daten liegen.
 - Die Indexlisten sind nicht zeitpunktgenau: Für historische Auswertungen gilt das heutige Universum nicht rückwirkend (Survivorship).
 - Offen: Der NASDAQ-100-Abruf (`roic._html_tabellen`) gibt sich als Chrome-Browser aus. Das widerspricht dem Arbeitsstandard und sollte auf einen beschreibenden User-Agent umgestellt werden. Die STOXX-Liste enthält einzelne veraltete Kürzel (z. B. DPW.DE statt DHL.DE, BT.A); sie wird bei der nächsten Listenpflege geprüft.
+
+## Kurshistorien der Indexwerte (11.11.2026)
+
+19 Notierungen hatten keine verwertbare Kurshistorie. Nach Ursache getrennt:
+
+| Ursache | Titel | Behandlung |
+|---|---|---|
+| echte Neulinge (unter einem Handelsjahr oder noch ohne Historie) | Sydbank-Fusion, CSG, Magnum Ice Cream, Helvetia Baloise, Honeywell Aerospace, SpaceX, FedEx Freight, Vivmark, Vylor | bleiben offen; ab 253 Handelstagen greift die verkürzte Historie |
+| übernommen und von der Börse genommen | Beazley (Zurich, 02.10.2026), Schroders (Nuveen, 02.10.2026) | aus `stoxx600_liste.txt` entfernt, mit Quelle im Kommentar |
+| Übernahme ohne belegtes Wirksamkeitsdatum | Covestro (Squeeze-out durch XRG beschlossen) | bleibt, bis das Ende der Notierung belegt ist |
+| ROIC-Reihe fehlerhaft, Yahoo-Reihe vollständig (nur Diagnose) | Rosebank, ARCHION, Zegona | Ursache wird geklärt; der Nutzer hat am 11.11.2026 gegen Yahoo als Ersatz entschieden |
+| echte Handelsaussetzung | Nebius (2022–2024) | bleibt offen |
+| keine eindeutige Notierung bei ROIC | Cboe Global Markets, Nordea, Octave | Diagnose im Export-Log |
+
+Diagnose ab dem nächsten Lauf:
+- `retryState` in `cf_risk.json` speichert den Klartextgrund. Gespeichert wird nur bei bekannten, unbedenklichen Meldungen, ohne URLs.
+- Findet `roic.py` keine eindeutige Notierung, schreibt es die angebotenen Kandidaten ins Export-Log: Symbol, Art, Hauptnotierung, ISIN-Land. Daraus wird nichts übernommen.

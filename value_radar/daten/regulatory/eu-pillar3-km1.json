@@ -1994,12 +1994,76 @@
     "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/VWMYAEQSTOPNV0SUGU82.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20261001012410159.zip",
     "sourceFileSha256": "6a88439a8e8d97cd4014f41ce772b175057ddc16fd3555d01eb8c1b1973387ee"
    }
+  },
+  "5493007SJLLCTM6J6M37": {
+   "name": "UNICAJA BANCO SA",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/5493007SJLLCTM6J6M37.CON_ES_PILLAR3020100_CODIS_2026-06-30_20260928012807769.zip",
+   "sourceFileSha256": "8f24e3ac70b9ba29548b06b30dc648cb7e67c440ae3e9698febc28368b685dd5",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.1581,
+    "tier1_ratio": 0.1759,
+    "total_capital_ratio": 0.1956,
+    "srep_total": 0.1,
+    "srep_additional": 0.02,
+    "srep_additional_cet1": 0.0113,
+    "combined_buffer": 0.0302,
+    "overall_requirement": 0.1302,
+    "leverage_ratio": 0.056,
+    "lcr": 2.9485,
+    "nsfr": 1.521
+   },
+   "lcr": 2.9485,
+   "nsfr": 1.521,
+   "cet1Requirement": {
+    "value": 0.0865,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.0113,
+     "combined_buffer": 0.0302
+    },
+    "check": {
+     "overall_requirement": 0.1302,
+     "srep_total": 0.1
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.017729323895477357,
+    "performing": 55868512000.0,
+    "nonPerforming": 1008389000.0,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/5493007SJLLCTM6J6M37.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20260924092453089.zip",
+    "sourceFileSha256": "0c9b45c48beec5c6d6e635dca4daa3835212dc4a0184bbd7f3ec2bfa732861a8"
+   }
   }
  },
  "rejected": {
   "259400OFDZ9KPZEO8K78": [
    "2025-12-31:too_old"
+  ],
+  "259400YLRTOBISHBVX41": [
+   "2026-09-30:km1_missing",
+   "2026-06-30:km1_missing",
+   "2026-03-31:capital_ratios_missing_or_inconsistent",
+   "2025-12-31:too_old"
   ]
  },
- "scoreContribution": 0
+ "scoreContribution": 0,
+ "additions": [
+  {
+   "importedAt": "2026-11-11T12:07:34.144140+00:00",
+   "leis": [
+    "259400YLRTOBISHBVX41",
+    "5493007SJLLCTM6J6M37"
+   ],
+   "note": "Nachtrag ING Bank Śląski und Unicaja (pillar3Only, 11.11.2026); übrige Banken unverändert vom Import 2026-11-10T19:41:08.454681+00:00"
+  }
+ ]
 }

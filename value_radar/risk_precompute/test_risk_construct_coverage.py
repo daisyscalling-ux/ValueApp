@@ -138,3 +138,21 @@ class EbitdaPeerTests(unittest.TestCase):
   self.assertIn(('corporate','EBITDA-Marge gegenüber Peers'),g)
 
 if __name__=='__main__':unittest.main()
+
+
+class IndustryFillTests(unittest.TestCase):
+ def test_thin_family_filled_from_same_industry_not_subindustry(self):
+  import risk_construct_coverage as rc
+  semis=[{'ticker':'S'+str(i),'name':n,'industry':'Semiconductors'} for i,n in enumerate(['NVIDIA Corporation','Broadcom Inc.','QUALCOMM Incorporated','Intel Corporation','Texas Instruments Incorporated'])]
+  mu={'ticker':'MU','name':'Micron Technology, Inc.','industry':'Semiconductors'}
+  rows=[mu,*semis]
+  fam={id(r):rc.peer_family(r) for r in rows}
+  self.assertEqual(len(rc.select_peers(mu,rows,fam)),5)
+  bev=[{'ticker':t,'name':n,'industry':'Beverages: non-alcoholic'} for t,n in [('KO','Coca-Cola Company (The)'),('PEP','PepsiCo, Inc.'),('KDP','Keurig Dr Pepper Inc.')]]
+  mn={'ticker':'MNST','name':'Monster Beverage Corporation','industry':'Beverages: non-alcoholic'}
+  rows=[mn,*bev];fam={id(r):rc.peer_family(r) for r in rows}
+  self.assertEqual(sorted(p['ticker'] for p in rc.select_peers(mn,rows,fam)),['KDP','KO','PEP'])
+  life={'ticker':'L','name':'Life One','industry':'Insurance','sub_industry':'Life Insurance'};prop={'ticker':'P','name':'Prop','industry':'Insurance','sub_industry':'Property Insurance'}
+  rows=[life,prop];fam={id(r):rc.peer_family(r) for r in rows}
+  self.assertEqual(rc.select_peers(life,rows,fam),[])
+  self.assertEqual(rc.industry_group({'name':'X','industry':'Oil & Gas Pipelines'}),'Öl und Gas')

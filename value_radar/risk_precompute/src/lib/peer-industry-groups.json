@@ -1,8 +1,8 @@
 {
  "schema": 1,
- "reviewed_on": "2026-11-10",
+ "reviewed_on": "2026-11-11",
  "method": "peer-industry-groups-v1",
- "rule": "Peers zuerst aus der exakten Branche. Sind es weniger als drei, füllen Firmen aus einer Gruppe eng verwandter Branchen bis höchstens fünf auf (so viele Kurshistorien lädt die App). Sektor allein begründet nie Vergleichbarkeit. Jeder Peer trägt den Grund (Branche oder Branchengruppe).",
+ "rule": "Peers zuerst aus der Geschäftsfamilie. Sind es weniger als drei, füllen zuerst Firmen derselben Branche aus anderen Familien auf, dann Firmen aus einer Gruppe eng verwandter Branchen, jeweils bis höchstens fünf (so viele Kurshistorien lädt die App). Sektor allein begründet nie Vergleichbarkeit. Jeder Peer trägt den Grund (Branche oder Branchengruppe).",
  "crosswalk": {
   "banks diversified": "major banks",
   "banks regional": "regional banks",
@@ -37,7 +37,8 @@
    "home improvement chains",
    "drugstore chains",
    "apparel footwear retail",
-   "food retail"
+   "food retail",
+   "electronics appliance stores"
   ],
   "Versicherer": [
    "multi line insurance",
@@ -94,7 +95,8 @@
   "Öl und Gas": [
    "integrated oil",
    "oil refining marketing",
-   "oil gas production"
+   "oil gas production",
+   "oil gas pipelines"
   ],
   "Energiedienstleister": [
    "contract drilling",
@@ -129,7 +131,9 @@
   "Medien und Werbung": [
    "movies entertainment",
    "advertising marketing services",
-   "publishing books magazines"
+   "publishing books magazines",
+   "broadcasting",
+   "publishing newspapers"
   ],
   "Unternehmensdienste": [
    "miscellaneous commercial services",
@@ -146,7 +150,8 @@
   "Gesundheitsdienste": [
    "managed health care",
    "medical nursing services",
-   "hospital nursing management"
+   "hospital nursing management",
+   "services to the health industry"
   ],
   "Banken": [
    "regional banks",

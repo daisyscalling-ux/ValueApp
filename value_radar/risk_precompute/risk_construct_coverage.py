@@ -103,6 +103,12 @@ def industry_group(r):
     return _GROUP_OF.get(_industry(r), '') if peer_family(r).startswith('Branche: ') else ''
 
 
+def peer_industry(r):
+    """Spiegel von peerIndustry (peer-selection.ts): Branche fuer die Ergaenzung, ohne Sammelbegriffe."""
+    i = _industry(r)
+    return i if i and not re.fullmatch(r'finance|financial services|technology|industrials|other|unknown', i) else ''
+
+
 def peer_family(r):
     sub_ = _text(r.get('sub_industry')).lower()
     if sub_ and not re.fullmatch(r'unknown|other|n/a', sub_):
@@ -170,16 +176,23 @@ def select_peers(target, rows, families, limit=8, groups=None):
             selected.append(r)
         if len(selected) == limit:
             break
-    # Weniger als drei Peers der exakten Branche: verwandte Branchen der geprueften Gruppe fuellen bis GROUP_FILL auf (wie die App).
+    # Weniger als drei Peers der Familie (wie die App, seit 11.11.2026): zuerst dieselbe Branche aus anderen Familien
+    # (nicht fuer Unterbranchen), dann bei reinen Branchenfamilien verwandte Branchen der geprueften Gruppe, jeweils bis GROUP_FILL.
+    industry = '' if group.startswith('Unterbranche: ') else peer_industry(target)
     related = groups.get(id(target)) if groups is not None else industry_group(target)
-    if len(selected) < PEER_MINIMUM_SELECTION and related:
-        extra = [r for r in rows if _text(r.get('ticker')) and families.get(id(r)) != group and not _preferred(r) and not same_company(target, r)
-                 and (groups.get(id(r)) if groups is not None else industry_group(r)) == related]
-        for r in sorted(extra, key=functools.cmp_to_key(compare)):
+    group_of = (lambda r: groups.get(id(r))) if groups is not None else industry_group
+
+    def fill(candidates):
+        for r in sorted(candidates, key=functools.cmp_to_key(compare)):
             if len(selected) >= min(limit, GROUP_FILL):
                 break
             if not any(same_company(p, r) for p in selected):
                 selected.append(r)
+    usable = lambda r: _text(r.get('ticker')) and families.get(id(r)) != group and not _preferred(r) and not same_company(target, r)
+    if len(selected) < PEER_MINIMUM_SELECTION and industry:
+        fill([r for r in rows if usable(r) and peer_industry(r) == industry])
+    if len(selected) < PEER_MINIMUM_SELECTION and related:
+        fill([r for r in rows if usable(r) and peer_industry(r) != industry and group_of(r) == related])
     return selected
 
 

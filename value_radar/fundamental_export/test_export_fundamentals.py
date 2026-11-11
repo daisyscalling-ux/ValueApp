@@ -196,6 +196,18 @@ class ReferenceTests(unittest.TestCase):
   self.assertAlmostEqual(result['rates']['GBP']/result['rates']['USD'],2/3)
   for bad in [xml.replace('2026-10-15','2027-10-15'),xml.replace('2026-10-15','2025-10-15'),xml.replace('1.2','NaN'),xml.replace('1.2','-1')]:
    with self.assertRaises(ValueError):parse_ecb(bad,NOW)
+ def test_sec_total_revenue_before_contract_revenue(self):
+  # Leasing-/Mietgeschaeft: ASC-606-Umsatz ist nur ein Teil des Gesamtumsatzes (United Rentals 2025: 3.695 vs. 16.099 Mio. USD).
+  now=dt.date(2026,11,11)
+  fact=lambda v:{'val':v,'end':'2025-12-31','start':'2025-01-01','filed':'2026-01-29','form':'10-K','accn':'0001067701-26-000010'}
+  g={'Revenues':{'units':{'USD':[fact(16099e6)]}},'RevenueFromContractWithCustomerExcludingAssessedTax':{'units':{'USD':[fact(3695e6)]}},
+     'EarningsPerShareDiluted':{'units':{'USD/shares':[fact(38.69)]}},'NetIncomeLoss':{'units':{'USD':[fact(2494e6)]}}}
+  r=sec_annual({'cik':1067701,'facts':{'us-gaap':g}},'1067701',now)
+  self.assertEqual(r['fields']['revenue'],16099e6)
+  del g['Revenues']
+  r=sec_annual({'cik':1067701,'facts':{'us-gaap':g}},'1067701',now)
+  self.assertEqual(r['fields']['revenue'],3695e6,'contract revenue only when no total is reported')
+
  def test_sec_mapping_exact_exchange_and_ambiguous_identity(self):
   from reference_data import sec_listing_map
   m=sec_listing_map({'fields':['cik','ticker','exchange'],'data':[[1,'ABC','Nasdaq'],[2,'ABC','NYSE'],[3,'BAD','NYSE'],[4,'BAD','NYSE']]})

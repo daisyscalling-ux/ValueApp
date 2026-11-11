@@ -72,6 +72,10 @@ Mit dem Index-Universum wurden kuratierte Familien zu dünn: Micron stand allein
 
 Die LCR laut 10-Q zählt jetzt auch ohne Nettoabflüsse (`ratio_only`, gekennzeichnet). Banken der Kategorie IV ohne LCR-Pflicht zählen mit wörtlichem Beleg als `by_design`. US-LCR vorhanden 4 → 13, bewusst außerhalb 4, offen 19 → 6; S&P 500 offen 1,18 → 0,99 %. Details in `regulatory_export/BHCF.md`.
 
+## SEC-Umsatz: Gesamtumsatz vor ASC-606-Feld (11.11.2026)
+
+Der Jahresumsatz aus SEC companyfacts kam zuerst aus dem ASC-606-Feld, ohne Miet-, Leasing-, Zins- und Prämienerträge (United Rentals 3.695 statt 16.099 Mio. USD). 29 von 385 SEC-Abschlüssen wichen um mehr als 5 % von Yahoo ab. Dadurch scheiterte auch die Übernahme von Schulden und Kasse aus Yahoo. Jetzt zuerst `Revenues`: Von 47 geprüften abweichenden Titeln stimmen 27 jetzt auf 0,1 %, keiner wird schlechter. Details in `fundamental_export/SEC_UMSATZ.md`.
+
 ## Folgerungen
 
 1. **Währungskonflikt:** Bei 218 Unternehmen und 63 Banken unterscheiden sich Berichts- und Handelswährung. Das sind meist ADRs und OTC-Notierungen. Eine geprüfte Umrechnung, wie sie die App für einzelne Notierungen schon kann, würde den Bewertungsblock breit füllen.

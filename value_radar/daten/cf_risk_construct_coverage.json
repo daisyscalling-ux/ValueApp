@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-11T02:19:57.389695+00:00",
+ "generatedAt": "2026-11-11T02:29:41.626417+00:00",
  "listings": 1342,
  "overallAverageWeight": {
   "filled": 80.8,

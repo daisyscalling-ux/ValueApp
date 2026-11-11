@@ -2,20 +2,20 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-11T08:00:38.512981+00:00",
+ "generatedAt": "2026-11-11T09:35:35.470161+00:00",
  "listings": 1342,
  "overallAverageWeight": {
-  "filled": 81.3,
-  "missing": 2.3,
+  "filled": 81.6,
+  "missing": 1.7,
   "app_only": 14.2,
-  "by_design": 2.3
+  "by_design": 2.6
  },
  "profiles": {
   "bank": {
    "listings": 88,
    "averageWeight": {
-    "filled": 70.0,
-    "missing": 10.0,
+    "filled": 70.1,
+    "missing": 9.9,
     "app_only": 10.0,
     "by_design": 10.0
    },
@@ -38,11 +38,11 @@
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 14.55,
-     "missing": 0.45,
+     "filled": 14.66,
+     "missing": 0.34,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.97
+     "filledShareOfMeasurable": 0.977
     },
     "Bewertungsrisiko": {
      "weight": 15,
@@ -65,8 +65,8 @@
   "corporate": {
    "listings": 1126,
    "averageWeight": {
-    "filled": 84.0,
-    "missing": 1.0,
+    "filled": 84.3,
+    "missing": 0.7,
     "app_only": 15.0,
     "by_design": 0.0
    },
@@ -81,19 +81,19 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 24.73,
-     "missing": 0.27,
+     "filled": 24.88,
+     "missing": 0.12,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.989
+     "filledShareOfMeasurable": 0.995
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 14.9,
-     "missing": 0.1,
+     "filled": 14.96,
+     "missing": 0.04,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.993
+     "filledShareOfMeasurable": 0.997
     },
     "Bewertungsrisiko": {
      "weight": 15,
@@ -105,11 +105,11 @@
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
-     "filled": 4.84,
-     "missing": 0.16,
+     "filled": 4.9,
+     "missing": 0.1,
      "app_only": 10.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.969
+     "filledShareOfMeasurable": 0.98
     }
    }
   },
@@ -117,9 +117,9 @@
    "listings": 53,
    "averageWeight": {
     "filled": 57.3,
-    "missing": 12.7,
+    "missing": 4.0,
     "app_only": 10.0,
-    "by_design": 20.0
+    "by_design": 28.8
    },
    "blocks": {
     "Kursrisiko": {
@@ -133,10 +133,10 @@
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
      "filled": 3.4,
-     "missing": 11.6,
+     "missing": 2.83,
      "app_only": 0.0,
-     "by_design": 10.0,
-     "filledShareOfMeasurable": 0.226
+     "by_design": 18.77,
+     "filledShareOfMeasurable": 0.545
     },
     "Umfeldstress": {
      "weight": 15,
@@ -167,8 +167,8 @@
   "specialist_financial": {
    "listings": 75,
    "averageWeight": {
-    "filled": 70.7,
-    "missing": 4.9,
+    "filled": 70.9,
+    "missing": 4.7,
     "app_only": 10.0,
     "by_design": 14.4
    },
@@ -191,11 +191,11 @@
     },
     "Umfeldstress": {
      "weight": 15,
-     "filled": 14.67,
-     "missing": 0.33,
+     "filled": 14.8,
+     "missing": 0.2,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.978
+     "filledShareOfMeasurable": 0.987
     },
     "Bewertungsrisiko": {
      "weight": 15,
@@ -218,18 +218,6 @@
  },
  "largestGaps": [
   {
-   "profile": "insurer",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Solvenzquote",
-   "weight": 15,
-   "missingListings": 41,
-   "filledListings": 12,
-   "weightedGap": 615,
-   "reasons": {
-    "Geprüfte Solvenzquote fehlt": 41
-   }
-  },
-  {
    "profile": "bank",
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Kreditqualität",
@@ -239,19 +227,6 @@
    "weightedGap": 292.5,
    "reasons": {
     "Geprüfte Kreditqualität fehlt": 39
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "FCFF-Marge",
-   "weight": 10,
-   "missingListings": 29,
-   "filledListings": 1097,
-   "weightedGap": 290,
-   "reasons": {
-    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 28,
-    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {
@@ -292,15 +267,15 @@
    }
   },
   {
-   "profile": "corporate",
-   "block": "Wettbewerbsanfälligkeit",
-   "metric": "EBITDA-Marge gegenüber Peers",
-   "weight": 5,
-   "missingListings": 35,
-   "filledListings": 1091,
-   "weightedGap": 175,
+   "profile": "insurer",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Solvenzquote",
+   "weight": 15,
+   "missingListings": 10,
+   "filledListings": 12,
+   "weightedGap": 150,
    "reasons": {
-    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 35
+    "Geprüfte Solvenzquote fehlt": 10
    }
   },
   {
@@ -314,6 +289,19 @@
    "reasons": {
     "Keine Kurshistorie": 10,
     "Kurshistorie fehlerhaft": 3
+   }
+  },
+  {
+   "profile": "corporate",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "FCFF-Marge",
+   "weight": 10,
+   "missingListings": 12,
+   "filledListings": 1114,
+   "weightedGap": 120,
+   "reasons": {
+    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 11,
+    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {
@@ -344,6 +332,18 @@
   },
   {
    "profile": "corporate",
+   "block": "Wettbewerbsanfälligkeit",
+   "metric": "EBITDA-Marge gegenüber Peers",
+   "weight": 5,
+   "missingListings": 22,
+   "filledListings": 1104,
+   "weightedGap": 110,
+   "reasons": {
+    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 22
+   }
+  },
+  {
+   "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
    "weight": 5,
@@ -354,19 +354,6 @@
     "Keine Kurshistorie": 10,
     "Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren": 8,
     "Kurshistorie fehlerhaft": 3
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Umfeldstress",
-   "metric": "Peer-Stress",
-   "weight": 5,
-   "missingListings": 15,
-   "filledListings": 1111,
-   "weightedGap": 75,
-   "reasons": {
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 10,
-    "Weniger als drei Peers ausgewählt": 5
    }
   },
   {
@@ -421,19 +408,6 @@
   },
   {
    "profile": "bank",
-   "block": "Umfeldstress",
-   "metric": "Peer-Stress",
-   "weight": 5,
-   "missingListings": 6,
-   "filledListings": 82,
-   "weightedGap": 30,
-   "reasons": {
-    "Weniger als drei Peers ausgewählt": 5,
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 1
-   }
-  },
-  {
-   "profile": "bank",
    "block": "Bewertungsrisiko",
    "metric": "Erwartungslücke Eigenkapitalrendite",
    "weight": 10,
@@ -472,18 +446,6 @@
    }
   },
   {
-   "profile": "specialist_financial",
-   "block": "Umfeldstress",
-   "metric": "Peer-Stress",
-   "weight": 5,
-   "missingListings": 5,
-   "filledListings": 70,
-   "weightedGap": 25,
-   "reasons": {
-    "Weniger als drei Peers ausgewählt": 5
-   }
-  },
-  {
    "profile": "bank",
    "block": "Kursrisiko",
    "metric": "Volatilität",
@@ -494,6 +456,19 @@
    "reasons": {
     "Keine Kurshistorie": 1,
     "Kurshistorie fehlerhaft": 1
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Umfeldstress",
+   "metric": "Peer-Stress",
+   "weight": 5,
+   "missingListings": 4,
+   "filledListings": 84,
+   "weightedGap": 20,
+   "reasons": {
+    "Weniger als drei Peers ausgewählt": 3,
+    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 1
    }
   },
   {
@@ -534,6 +509,30 @@
     "Keine Kurshistorie": 1,
     "Kurshistorie fehlerhaft": 1,
     "Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren": 1
+   }
+  },
+  {
+   "profile": "corporate",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Nettoschulden / EBITDA",
+   "weight": 15,
+   "missingListings": 1,
+   "filledListings": 1125,
+   "weightedGap": 15,
+   "reasons": {
+    "EBITDA, Schulden oder Kasse fehlen": 1
+   }
+  },
+  {
+   "profile": "specialist_financial",
+   "block": "Umfeldstress",
+   "metric": "Peer-Stress",
+   "weight": 5,
+   "missingListings": 3,
+   "filledListings": 72,
+   "weightedGap": 15,
+   "reasons": {
+    "Weniger als drei Peers ausgewählt": 3
    }
   }
  ],

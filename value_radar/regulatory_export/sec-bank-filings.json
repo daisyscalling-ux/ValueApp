@@ -1,5 +1,5 @@
 {
- "note": "SEC-Einreichungen auslaendischer Banken, deren Websites automatisierte Abrufe sperren. Zugangsnummern aus data.sec.gov/submissions.",
+ "note": "SEC-Einreichungen: auslaendische Banken, deren Websites automatisierte Abrufe sperren, und US-10-Q (LCR, Tailoring-Kategorie). Zugangsnummern aus data.sec.gov/submissions.",
  "filings": [
   {
    "label": "bmo_q3_2026_release",
@@ -50,6 +50,96 @@
    "label": "schw_q2_2026_10q",
    "cik": "0000316709",
    "accession": "0000316709-26-000031"
+  },
+  {
+   "label": "key_q3_2026_10q",
+   "cik": "0000091576",
+   "accession": "0000091576-26-000023"
+  },
+  {
+   "label": "hban_q3_2026_10q",
+   "cik": "0000049196",
+   "accession": "0000049196-26-000090"
+  },
+  {
+   "label": "rf_q3_2026_10q",
+   "cik": "0001281761",
+   "accession": "0001281761-26-000073"
+  },
+  {
+   "label": "mtb_q3_2026_10q",
+   "cik": "0000036270",
+   "accession": "0000036270-26-000060"
+  },
+  {
+   "label": "fitb_q3_2026_10q",
+   "cik": "0000035527",
+   "accession": "0000035527-26-000243"
+  },
+  {
+   "label": "cfg_q3_2026_10q",
+   "cik": "0000759944",
+   "accession": "0000759944-26-000213"
+  },
+  {
+   "label": "tfc_q3_2026_10q",
+   "cik": "0000092230",
+   "accession": "0000092230-26-000129"
+  },
+  {
+   "label": "ntrs_q3_2026_10q",
+   "cik": "0000073124",
+   "accession": "0000073124-26-000066"
+  },
+  {
+   "label": "stt_q3_2026_10q",
+   "cik": "0000093751",
+   "accession": "0000093751-26-000600"
+  },
+  {
+   "label": "bny_q3_2026_10q",
+   "cik": "0001390777",
+   "accession": "0001390777-26-000120"
+  },
+  {
+   "label": "ms_q3_2026_10q",
+   "cik": "0000895421",
+   "accession": "0000895421-26-000293"
+  },
+  {
+   "label": "axp_q3_2026_10q",
+   "cik": "0000004962",
+   "accession": "0000004962-26-000409"
+  },
+  {
+   "label": "syf_q3_2026_10q",
+   "cik": "0001601712",
+   "accession": "0001601712-26-000043"
+  },
+  {
+   "label": "bac_q3_2026_10q",
+   "cik": "0000070858",
+   "accession": "0000070858-26-000548"
+  },
+  {
+   "label": "wfc_q3_2026_10q",
+   "cik": "0000072971",
+   "accession": "0000072971-26-000327"
+  },
+  {
+   "label": "pnc_q3_2026_10q",
+   "cik": "0000713676",
+   "accession": "0001628280-26-069377"
+  },
+  {
+   "label": "usb_q3_2026_10q",
+   "cik": "0000036104",
+   "accession": "0000036104-26-000058"
+  },
+  {
+   "label": "cof_q3_2026_10q",
+   "cik": "0000927628",
+   "accession": "0000927628-26-000152"
   }
  ]
 }

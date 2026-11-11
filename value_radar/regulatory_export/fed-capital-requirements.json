@@ -79,6 +79,116 @@
       "stressBufferBps": 250,
       "gsibBps": 0,
       "totalBps": 700
+    },
+    {
+      "rssdId": "1068025",
+      "holdingName": "KEYCORP",
+      "minimumBps": 450,
+      "stressBufferBps": 320,
+      "gsibBps": 0,
+      "totalBps": 770,
+      "note": "SCB aus dem Stresstest 2024 (Fußnote †, keine Teilnahme 2025)"
+    },
+    {
+      "rssdId": "1068191",
+      "holdingName": "HUNTINGTON BANCSHARES INCORPORATED",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 0,
+      "totalBps": 700,
+      "note": "SCB aus dem Stresstest 2024 (Fußnote †, keine Teilnahme 2025)"
+    },
+    {
+      "rssdId": "3242838",
+      "holdingName": "REGIONS FINANCIAL CORPORATION",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 0,
+      "totalBps": 700,
+      "note": "SCB aus dem Stresstest 2024 (Fußnote †, keine Teilnahme 2025)"
+    },
+    {
+      "rssdId": "1037003",
+      "holdingName": "M&T BANK CORPORATION",
+      "minimumBps": 450,
+      "stressBufferBps": 270,
+      "gsibBps": 0,
+      "totalBps": 720
+    },
+    {
+      "rssdId": "1070345",
+      "holdingName": "FIFTH THIRD BANCORP",
+      "minimumBps": 450,
+      "stressBufferBps": 320,
+      "gsibBps": 0,
+      "totalBps": 770,
+      "note": "SCB aus dem Stresstest 2024 (Fußnote †, keine Teilnahme 2025)"
+    },
+    {
+      "rssdId": "1132449",
+      "holdingName": "CITIZENS FINANCIAL GROUP, INC.",
+      "minimumBps": 450,
+      "stressBufferBps": 450,
+      "gsibBps": 0,
+      "totalBps": 900,
+      "note": "SCB aus dem Stresstest 2024 (Fußnote †, keine Teilnahme 2025)"
+    },
+    {
+      "rssdId": "1074156",
+      "holdingName": "TRUIST FINANCIAL CORPORATION",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 0,
+      "totalBps": 700
+    },
+    {
+      "rssdId": "1199611",
+      "holdingName": "NORTHERN TRUST CORPORATION",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 0,
+      "totalBps": 700
+    },
+    {
+      "rssdId": "1111435",
+      "holdingName": "STATE STREET CORPORATION",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 100,
+      "totalBps": 800
+    },
+    {
+      "rssdId": "3587146",
+      "holdingName": "BANK OF NEW YORK MELLON CORPORATION, THE",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 150,
+      "totalBps": 850
+    },
+    {
+      "rssdId": "2162966",
+      "holdingName": "MORGAN STANLEY",
+      "minimumBps": 450,
+      "stressBufferBps": 430,
+      "gsibBps": 300,
+      "totalBps": 1180
+    },
+    {
+      "rssdId": "1275216",
+      "holdingName": "AMERICAN EXPRESS COMPANY",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 0,
+      "totalBps": 700
+    },
+    {
+      "rssdId": "4504654",
+      "holdingName": "SYNCHRONY FINANCIAL",
+      "minimumBps": 450,
+      "stressBufferBps": 250,
+      "gsibBps": 0,
+      "totalBps": 700,
+      "note": "SCB von 2,5 % angenommen, noch keine stresstestbasierte SCB (Fußnote ^)"
     }
   ]
 }

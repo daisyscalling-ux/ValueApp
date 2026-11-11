@@ -61,3 +61,34 @@ Goldman Sachs und Charles Schwab ordnet der Datenanbieter als „Investment Bank
 - `reviewed-liquidity.json` enthält ihre Konzern-LCR aus dem 10-Q zum 30.06.2026: GS 126 % aus berücksichtigungsfähigen HQLA, Schwab 135 %. Beide Dokumente lädt der Workflow `sec-bank-filings`.
 
 Andere Spezialfinanzierer bleiben unverändert.
+
+## S&P-500-Banken (11. November 2026)
+
+Mit dem vollständigen S&P 500 kamen 13 weitere US-Bankholdings ins Universum: KeyCorp, Huntington, Regions, M&T, Fifth Third, Citizens, Truist, Northern Trust, State Street, BNY, Morgan Stanley, American Express und Synchrony.
+
+- **Zuordnung** (`holding-stock-map.json`): Alle 13 stehen im vorhandenen FR-Y-9C-Bestand vom 30.06.2026 (gleiche Archivprüfsumme). Je Eintrag:
+  - RSSD-ID und Name exakt wie im FR Y-9C.
+  - Stammaktie mit Ticker und Börse laut SEC EDGAR (`data.sec.gov/submissions`, abgerufen 11.11.2026); Vorzugsaktien mit eigenem Kürzel ausgeschlossen.
+  - ISIN aus dem Universum.
+  - Für fünf Emittenten sperren die IR-Seiten automatisierte Abrufe. Deshalb dient einheitlich der SEC-Eintrag als Notierungsbeleg.
+- **Anforderung** (`fed-capital-requirements.json`): Werte aus Tabelle 1 derselben Fed-Veröffentlichung vom 24.06.2026 (gleiche Prüfsumme). Fußnoten werden als `note` mitgeführt:
+  - † bei KeyCorp, Huntington, Regions, Fifth Third und Citizens: SCB stammt aus dem Stresstest 2024.
+  - ^ bei Synchrony: SCB von 2,5 % angenommen, noch keine stresstestbasierte SCB.
+  - Raymond James reicht FR Y-9C ein, steht aber nicht in der Fed-Tabelle und bleibt deshalb ohne Zuordnung.
+- **Spezialfinanzierer:** Northern Trust, State Street, BNY, Morgan Stanley, American Express und Synchrony werden mit geprüftem Holdingkapital als Bank bewertet (Regel vom 09.11.2026, wie Goldman Sachs und Schwab).
+- **Test:** `RegistryFileTests` prüft jeden Eintrag gegen den FR-Y-9C-Bestand und die Fed-Tabelle.
+
+**Probelauf** (Kopie von main, coverage.json offline neu gebaut):
+
+| | vorher | nachher |
+|---|---|---|
+| geprüfte Holdings | 9 | 22 |
+| S&P 500 gefüllt / offen | 80,69 % / 3,24 % | 80,95 % / 3,01 % |
+| je neue Bank gefülltes Gewicht | 45–65 | 60–65 |
+
+Kein Titel verschlechtert sich.
+
+**Offen:**
+- LCR: Die 10-Q-Berichte Q3 2026 von 18 Banken stehen in `sec-bank-filings.json`, folgt in einem eigenen PR. Banken der Kategorie IV veröffentlichen keine LCR; das wird je Bank aus dem 10-Q belegt.
+- Kreditqualität: braucht das FFIEC-BHCF-Archiv lokal (Download nur interaktiv).
+- Der FR-Y-9C-Bestand vom 30.06.2026 gilt nur bis 180 Tage nach Stichtag. Bis Ende Dezember muss das Q3-Archiv importiert werden, sonst verlieren alle 22 Holdings ihre Kapitaldaten.

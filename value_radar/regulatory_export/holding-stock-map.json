@@ -155,6 +155,253 @@
       "name_aliases": [
         "PNC FINANCIAL SERVICES GROUP, INC. (THE)"
       ]
+    },
+    {
+      "symbol": "NYSE:KEY",
+      "rssd_id": "1068025",
+      "holding_name": "KEYCORP",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000091576.json",
+      "listing_evidence": "SEC EDGAR: KEYCORP /NEW/, Stammaktie KEY an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US4932671088; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "KeyCorp"
+      ]
+    },
+    {
+      "symbol": "NASDAQ:HBAN",
+      "rssd_id": "1068191",
+      "holding_name": "HUNTINGTON BANCSHARES INCORPORATED",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000049196.json",
+      "listing_evidence": "SEC EDGAR: HUNTINGTON BANCSHARES INC /MD/, Stammaktie HBAN an Nasdaq (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US4461501045; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Huntington Bancshares Incorporated"
+      ]
+    },
+    {
+      "symbol": "NYSE:RF",
+      "rssd_id": "3242838",
+      "holding_name": "REGIONS FINANCIAL CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0001281761.json",
+      "listing_evidence": "SEC EDGAR: REGIONS FINANCIAL CORP, Stammaktie RF an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US7591EP1005; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Regions Financial Corporation"
+      ]
+    },
+    {
+      "symbol": "NYSE:MTB",
+      "rssd_id": "1037003",
+      "holding_name": "M&T BANK CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000036270.json",
+      "listing_evidence": "SEC EDGAR: M&T BANK CORP, Stammaktie MTB an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US55261F1049; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "M&T Bank Corporation"
+      ]
+    },
+    {
+      "symbol": "NYSE:FITB",
+      "rssd_id": "1070345",
+      "holding_name": "FIFTH THIRD BANCORP",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000035527.json",
+      "listing_evidence": "SEC EDGAR: FIFTH THIRD BANCORP, Stammaktie FITB an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US3167731005; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Fifth Third Bancorp"
+      ]
+    },
+    {
+      "symbol": "NYSE:CFG",
+      "rssd_id": "1132449",
+      "holding_name": "CITIZENS FINANCIAL GROUP, INC.",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000759944.json",
+      "listing_evidence": "SEC EDGAR: CITIZENS FINANCIAL GROUP INC/RI, Stammaktie CFG an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US1746101054; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Citizens Financial Group, Inc."
+      ]
+    },
+    {
+      "symbol": "NYSE:TFC",
+      "rssd_id": "1074156",
+      "holding_name": "TRUIST FINANCIAL CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000092230.json",
+      "listing_evidence": "SEC EDGAR: TRUIST FINANCIAL CORP, Stammaktie TFC an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US89832Q1094; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Truist Financial Corporation"
+      ]
+    },
+    {
+      "symbol": "NASDAQ:NTRS",
+      "rssd_id": "1199611",
+      "holding_name": "NORTHERN TRUST CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000073124.json",
+      "listing_evidence": "SEC EDGAR: NORTHERN TRUST CORP, Stammaktie NTRS an Nasdaq (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US6658591044; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Northern Trust Corporation"
+      ]
+    },
+    {
+      "symbol": "NYSE:STT",
+      "rssd_id": "1111435",
+      "holding_name": "STATE STREET CORPORATION",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000093751.json",
+      "listing_evidence": "SEC EDGAR: STATE STREET CORP, Stammaktie STT an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US8574771031; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "State Street Corporation"
+      ]
+    },
+    {
+      "symbol": "NYSE:BNY",
+      "rssd_id": "3587146",
+      "holding_name": "BANK OF NEW YORK MELLON CORPORATION, THE",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0001390777.json",
+      "listing_evidence": "SEC EDGAR: Bank of New York Mellon Corp, Stammaktie BNY an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US0640581007; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "The Bank of New York Mellon Corporation"
+      ]
+    },
+    {
+      "symbol": "NYSE:MS",
+      "rssd_id": "2162966",
+      "holding_name": "MORGAN STANLEY",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000895421.json",
+      "listing_evidence": "SEC EDGAR: MORGAN STANLEY, Stammaktie MS an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US6174464486; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Morgan Stanley"
+      ]
+    },
+    {
+      "symbol": "NYSE:AXP",
+      "rssd_id": "1275216",
+      "holding_name": "AMERICAN EXPRESS COMPANY",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0000004962.json",
+      "listing_evidence": "SEC EDGAR: AMERICAN EXPRESS CO, Stammaktie AXP an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US0258161092; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "American Express Company"
+      ]
+    },
+    {
+      "symbol": "NYSE:SYF",
+      "rssd_id": "4504654",
+      "holding_name": "SYNCHRONY FINANCIAL",
+      "security_type": "common_stock",
+      "scope": "listed_consolidated_holding",
+      "listing_source_url": "https://data.sec.gov/submissions/CIK0001601712.json",
+      "listing_evidence": "SEC EDGAR: Synchrony Financial, Stammaktie SYF an NYSE (Vorzugsaktien mit eigenem Kürzel ausgeschlossen); ISIN US87165B1035; abgerufen 2026-11-11",
+      "reviewed_on": "2026-11-11",
+      "holding_evidence": {
+        "file": "bhcf-import.json",
+        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "rssd_field": "RSSD9001",
+        "name_field": "RSSD9017"
+      },
+      "name_aliases": [
+        "Synchrony Financial"
+      ]
     }
   ]
 }

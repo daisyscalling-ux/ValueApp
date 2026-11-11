@@ -39,3 +39,34 @@ class HoldingStockTests(unittest.TestCase):
     def test_duplicate_registry_rejected(self):
         self.reg['entries'].append(copy.deepcopy(self.entry))
         with self.assertRaises(ValueError): self.run_case()
+
+
+class RegistryFileTests(unittest.TestCase):
+    """Die geprüften Registerdateien gegen die Originaldaten: RSSD und Name aus FR Y-9C, Fed-Anforderung je Holding."""
+
+    def test_map_matches_bhcf_and_fed_table(self):
+        import json
+        from pathlib import Path
+        here = Path(__file__).resolve().parent
+        reg = json.loads((here / 'holding-stock-map.json').read_text(encoding='utf-8'))
+        fed = json.loads((here / 'fed-capital-requirements.json').read_text(encoding='utf-8'))
+        bhcf = json.loads((here.parent / 'daten/regulatory/bhcf-import.json').read_text(encoding='utf-8'))
+        fed_by = {e['rssdId']: e for e in fed['entries']}
+        self.assertEqual(len(reg['entries']), 22)
+        for e in reg['entries']:
+            ent = bhcf['entities'].get(e['rssd_id'])
+            self.assertIsNotNone(ent, e['symbol'])
+            self.assertEqual(ent['name'], e['holding_name'], e['symbol'])
+            self.assertEqual((e['security_type'], e['scope']), ('common_stock', 'listed_consolidated_holding'))
+            self.assertTrue(e['listing_source_url'].startswith('https://'), e['symbol'])
+            archive = [f['sha256'] for f in bhcf['files'] if f['name'].upper().startswith('BHCF')]
+            self.assertEqual([e['holding_evidence']['source_file_sha256']], archive, e['symbol'])
+            f = fed_by.get(e['rssd_id'])
+            self.assertIsNotNone(f, e['symbol'])
+            self.assertEqual(f['holdingName'], e['holding_name'])
+            self.assertEqual(f['minimumBps'] + f['stressBufferBps'] + f['gsibBps'], f['totalBps'])
+        # Werte aus Tabelle 1 der Fed vom 24.06.2026 (Gesamtanforderung in Basispunkten)
+        expected = {'1068025': 770, '1068191': 700, '3242838': 700, '1037003': 720, '1070345': 770, '1132449': 900, '1074156': 700,
+                    '1199611': 700, '1111435': 800, '3587146': 850, '2162966': 1180, '1275216': 700, '4504654': 700}
+        for rssd, total in expected.items():
+            self.assertEqual(fed_by[rssd]['totalBps'], total, rssd)

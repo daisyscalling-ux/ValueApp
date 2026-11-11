@@ -85,6 +85,10 @@ Der Abschluss-Export (`export_fundamentals.py`) setzt jetzt für Stammaktien mit
 
 Betroffen sind 189 Notierungen: 134 Unternehmen, 32 Banken, 12 Versicherer, 10 Spezialfinanzierer (darunter 2 georgische Banken ohne EZB-Kurs für GEL, die offen bleiben). Die Einträge erscheinen, sobald der Export die jeweilige Datei neu schreibt (mindestens wöchentlich). Die Messung unterscheidet bis dahin „Stammaktie, Aktienbasis noch nicht in der Abschlussdatei“ von „ADR oder unklare Aktienbasis“. Echte ADRs (rund 120) brauchen weiterhin ein geprüftes Umtauschverhältnis. Wenn die App neuere Primärdaten als den Ersatzabschluss hat, nutzt sie den Ersatzabschluss nicht. Einzelne Notierungen können deshalb trotz Aktienbasis offen bleiben.
 
+## FCFF-Marge: Ersatz aus dem Jahresabschluss (11.11.2026)
+
+Entscheidung des Nutzers: Liefert ROIC keinen TTM-FCFF, nimmt die App gekennzeichnet die Jahres-FCF-Marge, also (operativer Cashflow − Investitionen) / Umsatz aus demselben datierten Abschluss (`balance.supplementalMetrics.fcfRevenue` aus `balance-profile.ts`; Prüfung in `fcfSubstitute`, valueapp-cf). Die Messung zählt das als gefüllt, Grund „Ersatz: Jahres-FCF / Umsatz“. Probelauf: FCFF offen 29 → 12 (17 ersetzt); S&P 500 offen 1,32 → 1,18 %, DAX 1,54 → 1,28 %; kein Titel schlechter. Offen bleiben Abschlüsse, die unvollständig, zu alt oder ohne Umsatz sind.
+
 ## Fehlende Kurshistorien (10.11.2026)
 
 Ausgangslage: 109 Notierungen ohne verwertbare eigene Historie. 76 haben keinen Eintrag, 18 eine Historie mit längeren Lücken, 15 weniger als zwei Handelsjahre. Die meisten sind OTC-Notierungen (64), dazu Neuemissionen (CoreWeave, Nebius, Magnum Ice Cream, Metlen) und 23 Einträge ohne Börsenpräfix (Vorzugsaktien wie MS-PA, BML-PH und Ticker ohne Zuordnung).

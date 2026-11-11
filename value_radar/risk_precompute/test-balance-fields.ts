@@ -76,4 +76,16 @@ test('reviewed ISIN override: insurer behind a broker classification, flagged an
  assert.equal(profileOverride(g,mid,reg([{...e,evidenceSha256:''}])),null,'hash required');
  assert.equal(profileOverride(g,mid,{...reg([e]),method:'other'}),null,'method');
 });
+test('FCF / revenue substitute from the same dated annual record (11.11.2026)',()=>{
+ const a:any=annual();a.fields.revenue=200;const b=calc(a);
+ assert.equal(b.supplementalMetrics.fcfRevenue.state,'available');assert.equal(b.supplementalMetrics.fcfRevenue.value,(15-5)/200);
+ assert.ok(b.supplementalMetrics.fcfRevenue.basis.fields.revenue,'revenue provenance kept');
+ assert.equal(b.metrics.fcfRevenue,undefined,'never a main metric');
+ const mismatch:any=annual();mismatch.fields.revenue=200;mismatch.field_sources={operating_cashflow:{start:'2025-07-01'},capex:{start:'2025-07-01'},revenue:{start:'2025-01-01'}};
+ assert.equal(calc(mismatch).supplementalMetrics.fcfRevenue.state,'missing','different periods');
+ for(const rev of [0,-5,undefined]){const x:any=annual();x.fields.revenue=rev;assert.equal(calc(x).supplementalMetrics.fcfRevenue.state,'missing',String(rev))}
+ const old:any=annual();old.fields.revenue=200;old.end='2024-01-31';assert.equal(calc(old).supplementalMetrics.fcfRevenue.state,'missing','stale annual');
+ const fin=assessBalance({industry:'Major Banks',metadata_asof:at},{...annual(),fields:{...annual().fields,revenue:200}},at,true,now);
+ assert.equal(fin.supplementalMetrics.fcfRevenue,undefined,'financials never get it');
+});
 console.log(count+' field-level balance checks passed');

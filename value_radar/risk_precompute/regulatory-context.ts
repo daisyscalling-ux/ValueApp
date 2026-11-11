@@ -1,4 +1,4 @@
-import {verifiedLiquidity} from './holding-liquidity';
+import {verifiedLiquidity,verifiedLiquidityExemption} from './holding-liquidity';
 import {verifiedCapitalRequirement} from './capital-requirement';
 import {verifiedCreditQuality} from './regulatory-credit';
 import {withInsurerSolvency} from './insurer-solvency';
@@ -65,7 +65,7 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
   const metrics=Object.fromEntries(Object.entries(r.metrics||{}).filter(([key,v]:any)=>metricCodes[key]===v.sourceField&&v.state==='available'&&v.unit==='fraction'&&typeof v.value==='number'&&Number.isFinite(v.value)&&v.value>=0&&v.value<=1));
   const values=['cet1_ratio','tier1_ratio','total_capital_ratio'].map(k=>(metrics[k] as any)?.value).filter(v=>v!==undefined);
   const consistent=values.every((v,i)=>!i||values[i-1]<=v+1e-6);
-  if(consistent&&m?.state==='available'&&m.unit==='fraction'&&m.sourceField==='BHCAP793'&&typeof m.value==='number'&&Number.isFinite(m.value)&&m.value>=0&&m.value<=1)capital={...r,metrics,liquidity:verifiedLiquidity(r.liquidity,r,now),creditQuality:verifiedCreditQuality(r.creditQuality,r,now),capitalRequirement:verifiedCapitalRequirement(r.capitalRequirement,{...r,metrics},now)};
+  if(consistent&&m?.state==='available'&&m.unit==='fraction'&&m.sourceField==='BHCAP793'&&typeof m.value==='number'&&Number.isFinite(m.value)&&m.value>=0&&m.value<=1)capital={...r,metrics,liquidity:verifiedLiquidity(r.liquidity,r,now),liquidityExemption:verifiedLiquidity(r.liquidity,r,now)?null:verifiedLiquidityExemption(r.liquidityExemption,r,now),creditQuality:verifiedCreditQuality(r.creditQuality,r,now),capitalRequirement:verifiedCapitalRequirement(r.capitalRequirement,{...r,metrics},now)};
  }
  if(!capital&&base.profile==='bank')capital=verifiedEuCapital(archive,row,identityOK,now);
  if(!capital&&base.profile==='bank')capital=verifiedIntlCapital(archive,row,identityOK,now);

@@ -92,3 +92,31 @@ Kein Titel verschlechtert sich.
 - LCR: Die 10-Q-Berichte Q3 2026 von 18 Banken stehen in `sec-bank-filings.json`, folgt in einem eigenen PR. Banken der Kategorie IV veröffentlichen keine LCR; das wird je Bank aus dem 10-Q belegt.
 - Kreditqualität: braucht das FFIEC-BHCF-Archiv lokal (Download nur interaktiv).
 - Der FR-Y-9C-Bestand vom 30.06.2026 gilt nur bis 180 Tage nach Stichtag. Bis Ende Dezember muss das Q3-Archiv importiert werden, sonst verlieren alle 22 Holdings ihre Kapitaldaten.
+
+## LCR der US-Banken zum 30.06.2026 (11. November 2026)
+
+Die Konzern-LCR muss denselben Stichtag haben wie das FR-Y-9C-Kapital, also den 30.06.2026. Quelle sind die 10-Q-Berichte Q2 2026. Sie werden über `sec-bank-filings.json` und den Workflow `sec-bank-filings` mit `SEC_USER_AGENT` geladen. Für die Ausnahmen kommen die 10-K-Berichte 2025 hinzu.
+
+- **Mit Beträgen** (HQLA / Nettoabflüsse, gegengeprüft):
+  - American Express 18.922 / 9.626 Mio. USD = 197 %
+  - Morgan Stanley 319.165 / 246.717 = 129 %
+  - Wells Fargo 414.240 / 347.085 = 119 %
+- **Nur Quote** (`basis: ratio_only`, Entscheidung des Nutzers):
+  - Bank of America 112 % (HQLA 684 Mrd.)
+  - State Street 107 % (111,55 Mrd.)
+  - BNY 111 % (198 Mrd. Durchschnitt)
+  - Truist 113 % (92,8 Mrd.)
+  - U.S. Bancorp 107,6 %
+  - Capital One 165 %
+- **Ausnahme Kategorie IV** (`exemptions`, wörtliches Zitat): M&T (10-Q), KeyCorp, Regions, Citizens (je 10-K 2025, Kategorie IV im 10-Q Q2 bestätigt).
+- **Offen:**
+  - PNC, Northern Trust: keine LCR-Zahl im 10-Q; Beträge stehen in separaten LCR-Offenlegungen.
+  - Fifth Third: 10-K nennt nur „calibrated LCR requirements“, ab Q3 2026 Kategorie III.
+  - Huntington: im 10-K ausgenommen, zum 30.06. nicht belegt, ab Q3 Kategorie III.
+  - Synchrony: kein Beleg gefunden.
+
+Prüfung in `holding_liquidity.py` und `holding-liquidity.ts` (identisch mit valueapp-cf). Die Fundstelle ist jetzt Pflichtfeld.
+
+Mit dem FR-Y-9C-Import für Q3 werden alle Einträge auf den 30.09.2026 umgestellt; die Q3-10-Q liegen bereits in `sec-bank-filings.json`.
+
+**Probelauf** gegen main: US-LCR vorhanden 4 → 13, bewusst außerhalb 4, offen 19 → 6. S&P 500 offen 1,18 → 0,99 %. Kein Titel schlechter.

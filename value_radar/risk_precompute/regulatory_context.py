@@ -8,7 +8,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'regulatory_export'))
 from holding_stocks import enrich
 from regulatory_credit import credit_context
 from fed_capital_requirements import requirement_for
-from holding_liquidity import liquidity_for
+from holding_liquidity import liquidity_for,exemption_for
 from regulatory_insurer import build_insurers
 FIELDS=('listing_symbol','ticker','isin','currency','name','name_full','security_type','share_class')
 CODES={'BHCAP793':'cet1_ratio','BHCA7206':'tier1_ratio','BHCA7205':'total_capital_ratio','BHCA7204':'tier1_leverage_ratio'}
@@ -47,6 +47,7 @@ def build(universe,holdings,registry,now=None,credit_archive=None,requirements_a
    'limitations':['Reported capital ratios; institution-specific requirement and buffer not verified.','No holding liquidity or asset-quality inference from subsidiary FDIC ratios.']}
   stocks[s]['capitalRequirement']=requirement_for(stocks[s],requirements_archive or {},now)
   stocks[s]['liquidity']=liquidity_for(stocks[s],liquidity_archive or {},now)
+  stocks[s]['liquidityExemption']=exemption_for(stocks[s],liquidity_archive or {},now) if not stocks[s]['liquidity'] else None
   stocks[s]['creditQuality']=credit_context(credit_archive or {},stocks[s],now)
  out.update(state='ready',summary={'verifiedHoldings':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out

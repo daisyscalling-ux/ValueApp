@@ -15,6 +15,15 @@ class Tests(unittest.TestCase):
  def test_mismatch_arithmetic_dates_and_units(self):
   for patch in [{'rssdId':'other'},{'holdingName':'CITIBANK N.A.'},{'period':'2026-03-31'},{'scope':'subsidiary'},{'unit':'percent'},{'reportedRatio':113},{'reportedRatio':True},{'netOutflows':0},{'hqla':1},{'averaging':'year_end'},{'reviewedOn':'2027-01-01'},{'reviewExpires':'2026-10-31'},{'sourceUrl':'https://example.com'},{'ratioRoundingTolerance':1}]:
    a=copy.deepcopy(self.a);a['records'][0].update(patch);self.assertIsNone(liquidity_for(self.p,a,self.now))
+ def test_pnc_public_lcr_disclosure(self):
+  # Gesetzliche LCR-Offenlegung der Bank (12 CFR 249 Subpart J), 12.11.2026
+  p={'rssdId':'1069778','holdingName':'PNC FINANCIAL SERVICES GROUP, INC., THE','period':'2026-09-30'}
+  r=liquidity_for(p,self.a,self.now);self.assertEqual((r['reportedRatio'],r['sourceKind'],r['hqla']),(1.06,'bank_lcr_public_disclosure',114040000000))
+  i=[k for k,x in enumerate(self.a['records']) if x['rssdId']=='1069778'][0]
+  for patch in [{'sourceSha256':None},{'sourceSha256':'x'*64},{'sourceUrl':'http://d1io3yog0oux5.cloudfront.net/a.pdf'},{'sourceKind':'press_release'},
+                {'basis':'ratio_only','netOutflows':None,'ratioRoundingTolerance':None},{'reportedRatio':1.16},{'sourceKind':None}]:
+   with self.subTest(patch=patch):
+    a=copy.deepcopy(self.a);a['records'][i].update(patch);self.assertIsNone(liquidity_for(p,a,self.now))
  def test_duplicate_and_expired_source(self):
   self.a['records']*=2;self.assertIsNone(liquidity_for(self.p,self.a,self.now));self.a['records']=self.a['records'][:1];self.assertIsNone(liquidity_for(self.p,self.a,self.now+dt.timedelta(days=140)))
 if __name__=='__main__':unittest.main()

@@ -261,6 +261,28 @@
       "ratioRoundingTolerance": null,
       "sourceUrl": "https://www.sec.gov/Archives/edgar/data/927628/000092762826000152/cof-20260930.htm",
       "sourceSection": "Liquidity Risk Profile, Liquidity Coverage Ratio: \"Our average LCR during the third quarter of 2026 was 163%\""
+    },
+    {
+      "rssdId": "1069778",
+      "holdingName": "PNC FINANCIAL SERVICES GROUP, INC., THE",
+      "scope": "listed_consolidated_holding",
+      "period": "2026-09-30",
+      "reviewedOn": "2026-11-12",
+      "reviewExpires": "2027-03-29",
+      "publicationDate": null,
+      "pointInTimeUsable": false,
+      "averaging": "quarter_average",
+      "currency": "USD",
+      "unit": "fraction",
+      "basis": "amounts",
+      "hqla": 114040000000.0,
+      "netOutflows": 107493000000.0,
+      "reportedRatio": 1.06,
+      "ratioRoundingTolerance": 0.005,
+      "sourceKind": "bank_lcr_public_disclosure",
+      "sourceUrl": "https://d1io3yog0oux5.cloudfront.net/_089afc4ce03f3c8175c939c4de65c807/pnc/db/2467/24037/disclosure/Q3_2026_LCR_Disclosures_FINAL.pdf",
+      "sourceSha256": "ef5b8b82537664494aab3869ac3e06cc0097720230963e75a00c18ee3730f0c3",
+      "sourceSection": "PNC Liquidity Coverage Ratio Disclosure as of September 30, 2026 (12 CFR 249 Subpart J), Table 1, PDF page 4: average weighted HQLA $114,040 million, total adjusted net cash outflows $107,493 million, LCR 106 % (three months ended September 30, 2026); linked from investor.pnc.com/sec-filings/regulatory-disclosures"
     }
   ],
   "exemptions": [

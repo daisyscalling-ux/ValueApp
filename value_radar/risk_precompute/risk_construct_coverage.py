@@ -65,6 +65,37 @@ def load(path, default):
         return default
 
 
+# Laender mit gekennzeichnetem Ersatz-ETF (market-proxies.json, substituteFor), z. B. Portugal -> Eurozone (EZU).
+SUBSTITUTE_MARKETS = {a.upper() for r in json.loads((Path(__file__).with_name('market-proxies.json')).read_text(encoding='utf8')) if r.get('substituteFor') for a in [r['country'], *r.get('aliases', [])]}
+
+
+EBITDA_MARGIN_FALLBACK = 'annual_statement_ebitda_over_revenue_v1'
+
+
+def ebitda_margin(r, today):
+    """Wie margin() in der App: ROIC-Marge oder gekennzeichneter Ersatz (Methode bekannt, Stichtag <= 460 Tage)."""
+    v = (r or {}).get('ebitda_margin')
+    if not finite(v):
+        return None
+    src = r.get('ebitda_margin_source')
+    if src is None:
+        return v
+    try:
+        age = (today - dt.date.fromisoformat(str(src.get('end')))).days
+    except (AttributeError, ValueError):
+        return None
+    return v if src.get('method') == EBITDA_MARGIN_FALLBACK and 0 <= age <= 460 and abs(v) <= 100 else None
+
+
+HISTORY_REASONS = {'Weniger als ein Handelsjahr vorhanden.': 'Weniger als ein Handelsjahr (Neuemission)',
+                   'Kurshistorie enthält längere Lücken.': 'Kurshistorie mit längeren Handelslücken'}
+
+
+def history_reason(error):
+    """Grund der Vorberechnung statt pauschal 'fehlerhaft' (bekannte Gruende kurz, sonst woertlich)."""
+    return HISTORY_REASONS.get(str(error), 'Kurshistorie nicht verwertbar: ' + str(error)[:80])
+
+
 def available(d):
     return isinstance(d, dict) and d.get('state') == 'available'
 
@@ -220,6 +251,7 @@ class Listing:
 
     def __init__(self, symbol, domains, universe_row, stats, annual, market_currency, peers, peer_selected=0, peer_usable=0, share_basis=None, fx=None, today=None):
         self.symbol, self.domains, self.u, self.stats = symbol, domains or {}, universe_row or {}, stats or {}
+        self.today = today or dt.datetime.now(dt.timezone.utc).date()
         self.balance = self.domains.get('balance') or {}
         self.f = (annual or {}).get('fields') or {}
         ac, mc = (annual or {}).get('currency'), market_currency
@@ -316,7 +348,7 @@ def metrics(x):
     # Verkuerzte Historie (253-504 Kurspunkte, shortHistory): ES und Volatilitaet gefuellt, groesster Rueckgang offen (wie die App).
     short = s.get('shortHistory') is True and finite(s.get('observations')) and SHORT_OBSERVATIONS <= s['observations'] < MIN_OBSERVATIONS
     for name, key, w in (('Expected Shortfall', 'es', 15), ('Volatilität', 'vol', 10), ('Größter Rückgang', 'dd', 5)):
-        out.append(m(K, name, w, *first((not s, 'Keine Kurshistorie'), (bool(s.get('error')), 'Kurshistorie fehlerhaft'),
+        out.append(m(K, name, w, *first((not s, 'Keine Kurshistorie'), (bool(s.get('error')), history_reason(s.get('error'))),
                                         (key == 'dd' and short, 'Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren'),
                                         (not (finite(s.get('observations')) and (s['observations'] >= MIN_OBSERVATIONS or short)), 'Kurshistorie kürzer als 505 Handelstage'),
                                         (not finite(s.get(key)), 'Kennzahl in der Vorberechnung noch nicht vorhanden'))))
@@ -350,7 +382,7 @@ def metrics(x):
         out += [m(F, 'Nettoschulden / EBITDA', 15, *yes((finite(ebitda) and ebitda > 0 and finite(f.get('total_debt')) and finite(f.get('cash'))) or finite(u.get('net_debt_ebitda')), 'EBITDA, Schulden oder Kasse fehlen')),
                 # Die App nimmt FCFF und Umsatz aus der ROIC-Zeile; seit dem Universumsexport mit fcff_margin genau messbar, sonst Näherung über den Ersatzabschluss.
                 fcff_metric(f, u, b)]
-    out += [m(U, 'Markt-ETF', 10, *yes(available(x.domains.get('market')), 'Kein Markt-ETF zugeordnet')),
+    out += [(m(U, 'Markt-ETF', 10, 'filled', 'Ersatz: Eurozone-ETF (kein US-notierter Länder-ETF)') if available(x.domains.get('market')) and str(x.u.get('country') or '').upper() in SUBSTITUTE_MARKETS else m(U, 'Markt-ETF', 10, *yes(available(x.domains.get('market')), 'Kein Markt-ETF zugeordnet'))),
             m(U, 'Peer-Stress', 5, *first((x.peer_selected == 0, 'Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)'),
                                           (x.peer_selected < PEER_MINIMUM, 'Weniger als drei Peers ausgewählt'),
                                           (x.peer_usable < PEER_MINIMUM, 'Weniger als drei der ersten fünf Peers mit aktueller Kurshistorie')))]
@@ -381,7 +413,7 @@ def metrics(x):
                 m(W, 'EBITDA-Marge gegenüber Peers', 5, 'by_design', 'Für Finanzunternehmen nicht aussagekräftig')]
     else:
         out += [m(W, 'Bruttomargen-Trend', 5, 'app_only', 'Benötigt drei Geschäftsjahre aus dem ROIC-Abruf der App'),
-                m(W, 'EBITDA-Marge gegenüber Peers', 5, *yes(finite(u.get('ebitda_margin')) and x.peers >= 3, 'Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen'))]
+                (m(W, 'EBITDA-Marge gegenüber Peers', 5, 'filled', 'Ersatz: EBITDA / Umsatz aus dem Jahresabschluss') if ebitda_margin(u, x.today) is not None and x.peers >= 3 and u.get('ebitda_margin_source') else m(W, 'EBITDA-Marge gegenüber Peers', 5, *yes(ebitda_margin(u, x.today) is not None and x.peers >= 3, 'Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen')))]
     out.append(m(W, 'Umsatzentwicklung', 5, 'app_only', 'Benötigt drei Geschäftsjahre aus dem ROIC-Abruf der App'))
     return out
 
@@ -414,7 +446,7 @@ def build(universe, shards, risk, annuals, now=None):
         usable = sum(1 for r in chosen[:PEER_HISTORIES] if drawdown_ok(r))
         ev_peers = sum(1 for r in chosen if finite(r.get('ev_ebitda')) and r['ev_ebitda'] > 0)
         # Wie competitionMetrics der App: alle ausgewaehlten Peers (bis zu 8, inkl. Branchengruppe) mit EBITDA-Marge, ohne die eigene Notierung.
-        margin_peers = sum(1 for r in chosen if finite(r.get('ebitda_margin')) and r.get('listing_symbol') != symbol)
+        margin_peers = sum(1 for r in chosen if ebitda_margin(r, now.date()) is not None and r.get('listing_symbol') != symbol)
         annual, currency, basis, fx, quote = (tuple(annuals.get(symbol) or ()) + (None, None, None, None, None))[:5]
         x = Listing(symbol, domains, u, (risk.get(symbol) or {}).get('statistics'), annual, currency, margin_peers, len(chosen), usable, basis, fx, now.date())
         x.peer_ev_ebitda = ev_peers

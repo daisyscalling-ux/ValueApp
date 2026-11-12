@@ -107,6 +107,17 @@ Probelauf: 30 Ersatzhistorien, z. B. OTC:MBFJF aus TSE:8306 (MUFG) und OTC:LLDTF
 
 Offen und sachlich richtig offen: Neuemissionen mit weniger als zwei Handelsjahren. Offen ohne Ersatz: OTC-Notierungen ohne Börsennotierung im Universum (vor allem chinesische Banken) und Einträge ohne Börsenpräfix. Nebenbefund: STO:INVE_B trägt im Universum die ISIN der A-Aktie (SE0015811955).
 
+Restlücken Riskscore (12.11.2026), Entscheidungen des Nutzers:
+- **EBITDA-Marge, Ersatz mit Kennzeichnung** (`ebitda_margin_fallback.py`, Methode `annual_statement_ebitda_over_revenue_v1`).
+  - Ursache der Lücke: Nach dem Geschäftsjahreswechsel liefert ROIC das TTM-EBITDA vorübergehend nicht (Emerson, Infineon hatten bis 06.11. eine Marge).
+  - Regel: Nur wenn die ROIC-Marge fehlt, EBITDA / Umsatz aus dem eigenen Jahresabschluss. Voraussetzungen: dieselbe Notierung (mit `listing_symbol`), Stichtag ≤ 460 Tage, Umsatz > 0, |Marge| ≤ 100 %.
+  - Kennzeichnung im Feld `ebitda_margin_source`. App (`margin()`) und Messung prüfen Methode und Alter erneut.
+  - Wirkt ab dem nächsten precompute-Lauf. Probelauf: 12 Notierungen gefüllt (9 eigene Ersatzmargen, dazu Nestlé, ABF und General Mills über zusätzliche Peers mit Marge).
+  - Verzerrung: Der Jahreswert kann bis zu 15 Monate älter sein als TTM. Einmaleffekte wie die Abschreibung bei Kraft Heinz (−14,2 %) wirken voll; das lässt die Firma eher schlechter als besser aussehen.
+- **Portugal, Markt-ETF als Ersatz:** iShares MSCI Eurozone (EZU), Register-Feld `substituteFor`. Der Hinweistext erscheint in der App beim Marktvergleich, die Messung zeigt „Ersatz: Eurozone-ETF“. Betroffen sind 5 Notierungen. Die Kurse von EZU kommen mit dem nächsten daily-risk.
+- **Genauere Gründe:** „Kurshistorie fehlerhaft“ ist ersetzt durch „Weniger als ein Handelsjahr (Neuemission)“ bzw. „Kurshistorie mit längeren Handelslücken“. Betroffen sind 4 Neuemissionen sowie Nebius und Zegona.
+- **Gesamt offen 1,4 → 1,3 %** des Gewichts (ohne den Portugal-Effekt, der erst mit den ETF-Kursen messbar ist).
+
 ## ADR-Umtauschverhältnisse (10.11.2026)
 
 `fundamental_export/adr_basis.py` läuft nach jedem Abschluss-Export und leitet das Verhältnis eines Depositary Receipts zur Stammaktie doppelt ab:

@@ -22,5 +22,6 @@
   {"country":"PL","proxy":"EPOL","aliases":["POLAND"],"source":"https://www.ishares.com/us/products/239676/ishares-msci-poland-capped-etf"},
   {"country":"IE","proxy":"EIRL","aliases":["IRELAND"],"source":"https://www.sec.gov/Archives/edgar/data/1100663/000119312525336751/d863356d497k.htm"},
   {"country":"GR","proxy":"GREK","aliases":["GREECE"],"source":"https://www.globalxetfs.com/funds/grek"},
-  {"country":"TH","proxy":"THD","aliases":["THAILAND"],"source":"https://www.ishares.com/us/products/239688/ishares-msci-thailand-capped-etf"}
+  {"country":"TH","proxy":"THD","aliases":["THAILAND"],"source":"https://www.ishares.com/us/products/239688/ishares-msci-thailand-capped-etf"},
+  {"country":"PT","proxy":"EZU","aliases":["PORTUGAL"],"source":"https://www.ishares.com/us/products/239644/ishares-msci-eurozone-etf","substituteFor":"PT","note":"Ersatz: Für Portugal gibt es keinen US-notierten Länder-ETF; verwendet wird der iShares MSCI Eurozone ETF (EZU), in dem Portugal nur gering gewichtet ist."}
 ]

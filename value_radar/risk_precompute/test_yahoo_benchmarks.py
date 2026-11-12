@@ -4,8 +4,8 @@ from yahoo_benchmarks import normalize, PROXIES, REGISTRY
 
 class YahooTests(unittest.TestCase):
     def test_shared_registry_and_all_new_markets(self):
-        self.assertEqual(len(PROXIES),24)
-        self.assertEqual(len(set(r['country'] for r in REGISTRY)),24)
+        self.assertEqual(len(PROXIES),25)
+        self.assertEqual(len(set(r['country'] for r in REGISTRY)),25);self.assertEqual(PROXIES['EZU'],'PT')
         for proxy,country in PROXIES.items():
             result=normalize(proxy,{**self.meta,'symbol':proxy},self.prices,self.now)
             self.assertEqual(result['region'],country)

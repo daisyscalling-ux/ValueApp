@@ -19,6 +19,18 @@ class CoverageTests(unittest.TestCase):
  def test_weights_per_listing_add_up_to_100(self):
   r=self.run_build()
   for p in r['profiles'].values():self.assertAlmostEqual(sum(p['averageWeight'].values()),100,delta=.2)
+ def test_ebitda_margin_substitute_and_portugal_etf_like_app(self):
+  import datetime as dt
+  t=dt.date(2026,11,12);src=lambda end,method=cc.EBITDA_MARGIN_FALLBACK:{'method':method,'end':end}
+  self.assertEqual(cc.ebitda_margin({'ebitda_margin':28.5,'ebitda_margin_source':src('2026-09-30')},t),28.5)
+  self.assertIsNone(cc.ebitda_margin({'ebitda_margin':28.5,'ebitda_margin_source':src('2025-07-31')},t))
+  self.assertIsNone(cc.ebitda_margin({'ebitda_margin':28.5,'ebitda_margin_source':src('2026-09-30','x')},t))
+  self.assertEqual(cc.ebitda_margin({'ebitda_margin':26.1},t),26.1)
+  self.assertEqual(cc.SUBSTITUTE_MARKETS,{'PT','PORTUGAL'})
+ def test_history_reason_is_specific(self):
+  self.assertEqual(cc.history_reason('Weniger als ein Handelsjahr vorhanden.'),'Weniger als ein Handelsjahr (Neuemission)')
+  self.assertEqual(cc.history_reason('Kurshistorie enthält längere Lücken.'),'Kurshistorie mit längeren Handelslücken')
+  self.assertTrue(cc.history_reason('x').startswith('Kurshistorie nicht verwertbar: '))
  def test_corporate_fully_filled_except_app_only(self):
   c=self.run_build()['profiles']['corporate']['blocks']
   self.assertEqual(c['Finanzielle Verwundbarkeit']['filledShareOfMeasurable'],1.0)

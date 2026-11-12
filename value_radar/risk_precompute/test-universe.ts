@@ -133,7 +133,8 @@ test('home-listing history proxy keeps identity when ISIN matches',()=>{
 });
 test('general news never means company news covered',()=>assert.equal(audit().stocks[0].domains.news.state,'not_assessed'));
 test('all reviewed countries and aliases match',()=>{for(const r of registry)for(const a of [r.country,...r.aliases])assert.equal(marketProxy(a.toLowerCase()),r.proxy);assert.equal(new Set(registry.map(r=>r.country)).size,registry.length)});
-test('unsupported market explicit',()=>assert.equal(audit([{...row,country:'PT'}]).stocks[0].domains.market.state,'unsupported'));
+test('unsupported market explicit',()=>assert.equal(audit([{...row,country:'BR'}]).stocks[0].domains.market.state,'unsupported'));
+test('Portugal has a labelled substitute proxy and is no longer unsupported',()=>{assert.equal(marketProxy('PT'),'EZU');assert.notEqual(audit([{...row,country:'PT'}]).stocks[0].domains.market.state,'unsupported')});
 test('new unresolved listing scheduled for resolution',()=>assert(auditUniverse({kandidaten:[{ticker:'NEW.DE'}]}, {}, {},now).jobs.some(j=>j.kind==='history'&&j.state==='queued')));
 test('backoff bounded and expired retry allowed',()=>{const s=failureState('HTTP 503',undefined,now);assert(!retryDue(s,now));assert(retryDue(s,now+3*3600000));assert(retryDue({nextAttemptAt:'2099-01-01'},now))});
 test('retry state keeps a safe plain-text reason',()=>{assert.equal(failureState('Keine gültige Risiko-Historie: Kurshistorie enthält längere Lücken.',undefined,now).reason,'Keine gültige Risiko-Historie: Kurshistorie enthält längere Lücken.');assert.equal(failureState('fetch failed for https://api.roic.ai/x?apikey=SECRET',undefined,now).reason,'Abruf fehlgeschlagen');assert.ok(!failureState('ROIC-Kurshistorie HTTP 500 https://api.roic.ai/v3?k=1',undefined,now).reason.includes('roic.ai'))});

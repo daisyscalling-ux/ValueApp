@@ -83,6 +83,22 @@ Der Jahresumsatz aus SEC companyfacts kam zuerst aus dem ASC-606-Feld, ohne Miet
 3. **Bank-LCR:** Für EU-Banken fehlt eine Quelle. Die Säule-3-Berichte enthalten die LCR, ein KM1-Import wie bei den internationalen Banken wäre möglich.
 4. **Kurshistorie:** 55 Unternehmen und 41 Banken ohne verwertbare Historie, meist OTC-Notierungen.
 
+## Banken: BCV-Kreditqualität und Einheitenkorrektur Crédit Agricole S.A. (12.11.2026)
+
+Probelauf auf einer Kopie von main (a8a22235) gegen dieselbe Kopie mit der Änderung:
+- Notierungen ohne Lücke: 1.260 → 1.262 von 1.340. Fehlendes Gewicht im Mittel unverändert 1,1, weil sich nur zwei von 1.340 Notierungen ändern.
+- SIX:BCVN: Kreditqualität von fehlend auf befüllt (CR1 0,36 %).
+- EURONEXT:ACA: Kernkapital-Puffer von fehlend auf befüllt (geprüfte Einheitenkorrektur, Anforderung 8,748 %).
+- Sonst keine Änderung.
+
+Weiter offen, mit Grund:
+
+| Notierung | Kennzahl | Grund |
+|---|---|---|
+| SIX:VATN | Kreditqualität | CR1 nur jährlich; 31.12.2025 ist älter als 270 Tage |
+| CPH:RILBA | Kreditqualität | CR1 im Hub nur zum 31.12.2025 |
+| CPH:ALSYDB | Kernkapital-Puffer | KM1 ohne SREP-Zeilen |
+
 ## Versicherer außerhalb von Solvency II/UK (11.11.2026)
 
 Entscheidung des Nutzers: Die Solvenzquote wird nur für Gruppen unter Solvency II (EWR) oder Solvency UK verglichen. Maßgeblich ist das ISIN-Land; geprüfte Ausnahme ist Prudential plc (Gruppenaufsicht Hongkong). Andere Länder (USA, Japan, Schweiz, Bermuda) zählen als `by_design` mit Grund. Spiegel von `insurerSolvencyScope` (valueapp-cf). Messung: Solvenzquote fehlend 41 → 10, 31 bewusst außerhalb, 12 vorhanden; S&P 500 offen 2,16 → 1,62 %, Nikkei 225 1,60 → 1,20 %.

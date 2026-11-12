@@ -72,8 +72,15 @@ Für diese Banken kommen CET1-, Tier-1-, Gesamtkapital- und Leverage-Quote, Anfo
 **Ergebnis:**
 - 9 von 10 Banken übernommen.
 - Bank Millennium ist abgelehnt: Ihre letzte Einreichung vom 31.12.2025 ist über 270 Tage alt.
-- Bei Crédit Agricole S.A. bleibt die Anforderung offen: Sie meldet den CET1-Anteil der Säule-2-Anforderung als 0,9281 statt 0,009281, also in Prozent statt als Anteil. Er wird nicht stillschweigend umgerechnet.
-- Bei Sydbank bleibt die Anforderung ebenfalls offen, weil die SREP-Zeilen fehlen.
+- Crédit Agricole S.A. meldet den CET1-Anteil der Säule-2-Anforderung als 0,9281 statt 0,009281, also in Prozent statt als Anteil. Seit 12.11.2026 gibt es dafür eine **geprüfte Einheitenkorrektur** (`km1UnitCorrections` in `eu-bank-map.json`, Funktion `apply_unit_corrections`). Sie gilt nur, wenn alle Bedingungen erfüllt sind:
+  - Der Hub meldet genau den hinterlegten Wert.
+  - Korrigierter Wert × 100 = gemeldeter Wert.
+  - Die daraus berechnete Anforderung liegt höchstens 0,1 Prozentpunkte neben der von der Bank veröffentlichten (8,8 % laut Mitteilung zur Säule-2-Anforderung, über mfn.se; credit-agricole.com war im Wartungsmodus).
+  - Nachweis mit https-URL und sha256.
+  - Prüfung gültig (12.11.–31.12.2026).
+
+  Ergebnis: 4,5 % + 0,928 % + 3,32 % = **8,748 %**. Der Datensatz trägt `derivation = reviewed_unit_correction_p2r_cet1_percent` und `unitCorrection` mit dem Nachweis. Eine bereits vorhandene Anforderung wird nie ersetzt. Schlägt eine Bedingung fehl, bleibt die Anforderung offen (`unit_correction_not_applicable` oder `unit_correction_check_failed`). Die App prüft den Nachweis beim Lesen erneut (valueapp-cf, `derivationOk`). Verzerrung: Die Korrektur erhöht die Anforderung. Ohne sie fehlte die Kennzahl; mit dem Hub-Wert als Anteil gelesen (+92,8 Prozentpunkte) wäre sie unsinnig. Ab 01.01.2027 ist die Anforderung wieder offen, bis die Prüfung für 2027 erneuert ist.
+- Bei AL Sydbank bleibt die Anforderung offen: Die KM1 zum 30.09.2026 enthält die Gesamtanforderung (Zeile 12) und den kombinierten Puffer, aber nicht die SREP-Zeilen EU 7a–7d. Der CET1-Anteil der Säule-2-Anforderung (dänisch „individuelt solvensbehov“) ist daraus nicht ableitbar; die Differenz zur Gesamtanforderung enthält Kapital aller Klassen. Grund in der App: „Geprüfte Kapitalquote mit Anforderung fehlt“.
 
 **Probelauf:**
 - Bank-LCR-Lücken 50 → 41
@@ -88,7 +95,7 @@ Es gelten dieselben Prüfungen wie bei KM1: Taxonomie 4.2, Institut und Stichtag
 
 **Kontrolle gegen die EBA-Quote:** Bei 32 Banken mit beiden Quellen beträgt die mittlere Abweichung 0,2 Prozentpunkte, obwohl ein Jahr zwischen den Stichtagen liegt. Am weitesten liegt Monte dei Paschi auseinander (1,35 Prozentpunkte, sinkender NPL-Bestand).
 
-**Ergebnis:** 40 von 42 Banken haben eine NPL-Quote. Bei ABN AMRO fehlt die CR1-Tabelle, bei Ringkjøbing gibt es keine aktuelle Einreichung.
+**Ergebnis:** 40 von 42 Banken haben eine NPL-Quote. Bei ABN AMRO fehlt die CR1-Tabelle, bei Ringkjøbing gibt es keine aktuelle Einreichung. (Stand 12.11.2026: Ringkjøbing reicht CR1 im Hub nur zum 31.12.2025 ein; das sind 316 Tage, also mehr als die erlaubten 270. Der Halbjahresbericht der Bank enthält keine CR1. Die Kreditqualität bleibt offen, bis der Jahresbericht 2026 erscheint.)
 
 **Probelauf** gegen den Stand „Banken nur aus der Säule 3“: Bank-Kreditqualitätslücken 76 → 68, Banken 59,0 → 59,4.
 

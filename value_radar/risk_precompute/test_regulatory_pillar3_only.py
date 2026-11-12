@@ -20,4 +20,11 @@ class Pillar3Only(unittest.TestCase):
   old={**KM1,'banks':{LEI:{**KM1['banks'][LEI],'period':'2025-12-31'}}}
   self.assertEqual(build_eu({'kandidaten':[ROW]},CAP,MAP,NOW,km1=old)['rejected'],{'VIE:EBS':'no_current_pillar3_km1_for_lei'})
   self.assertEqual(build_eu({'kandidaten':[{**ROW,'share_class':'preferred'}]},CAP,MAP,NOW,km1=KM1)['rejected'],{'VIE:EBS':'listing_identity_unverified'})
+ def test_unit_correction_passes_marker_and_shorter_review(self):
+  uc={'field':'srep_additional_cet1','reportedValue':.9281,'correctedValue':.009281,'statedRequirement':.088,'evidenceUrl':'https://example.org/n','evidenceSha256':'c'*64,'reviewedOn':'2026-11-10','reviewExpires':'2026-12-31'}
+  km1={**KM1,'banks':{LEI:{**KM1['banks'][LEI],'cet1Requirement':{'value':.087481,'derivation':'reviewed_unit_correction_p2r_cet1_percent','unitCorrection':uc}}}}
+  q=build_eu({'kandidaten':[ROW]},CAP,MAP,NOW,km1=km1)['stocks']['VIE:EBS']['capitalRequirement']
+  self.assertEqual((q['derivation'],q['unitCorrection'],q['reviewExpires']),('reviewed_unit_correction_p2r_cet1_percent',uc,'2026-12-31'))
+  q=build_eu({'kandidaten':[ROW]},CAP,MAP,NOW,km1=KM1)['stocks']['VIE:EBS']['capitalRequirement']
+  self.assertEqual((q['derivation'],q['unitCorrection'],q['reviewExpires']),(None,None,'2027-05-08'))
 if __name__=='__main__':unittest.main()

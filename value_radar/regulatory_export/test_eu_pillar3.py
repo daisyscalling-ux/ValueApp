@@ -54,3 +54,42 @@ class Cr1Npl(unittest.TestCase):
    b=run({url():pkg(),f:bad},[url(),f])['banks'][LEI];self.assertIsNone(b['npl']);self.assertTrue(b['nplOpen'][0].endswith(why),b['nplOpen'])
   self.assertEqual(run({url():pkg()},[url()])['banks'][LEI]['nplOpen'],['no_findis_submission_listed'])
 if __name__=='__main__':unittest.main()
+
+
+class UnitCorrectionTests(unittest.TestCase):
+    """Geprüfte Einheitenkorrektur (Crédit Agricole S.A., EU 7e als Prozentwert gemeldet)."""
+    def bank(self):
+        return {'metrics': {'srep_additional_cet1': 0.9281, 'combined_buffer': 0.0332, 'srep_total': 0.0965, 'overall_requirement': 0.1297},
+                'cet1Requirement': None, 'cet1RequirementOpen': 'requirement_out_of_range'}
+    def corr(self, **k):
+        c = {'lei': 'L', 'field': 'srep_additional_cet1', 'reportedValue': 0.9281, 'correctedValue': 0.009281, 'statedRequirement': 0.088, 'tolerance': 0.001,
+             'evidence': 'Pflichtmitteilung', 'evidenceUrl': 'https://example.org/p.html', 'evidenceSha256': 'a' * 64, 'reviewedOn': '2026-11-12', 'reviewExpires': '2026-12-31'}
+        c.update(k); return c
+    def run_c(self, c, bank=None):
+        import import_eu_pillar3 as ip
+        banks = {'L': bank or self.bank()}
+        ip.apply_unit_corrections(banks, [c], dt.datetime(2026, 11, 12, tzinfo=dt.timezone.utc))
+        return banks['L']
+    def test_correction_applies_with_marker(self):
+        b = self.run_c(self.corr())
+        self.assertAlmostEqual(b['cet1Requirement']['value'], 0.087481)
+        self.assertEqual(b['cet1Requirement']['derivation'], 'reviewed_unit_correction_p2r_cet1_percent')
+        self.assertEqual(b['cet1Requirement']['unitCorrection']['statedRequirement'], 0.088)
+    def test_rejections(self):
+        for k in ({'reportedValue': 0.93}, {'correctedValue': 0.0093}, {'statedRequirement': 0.095}, {'reviewExpires': '2026-11-01'},
+                  {'evidenceSha256': 'x'}, {'evidenceUrl': 'http://x'}, {'field': 'combined_buffer'}):
+            b = self.run_c(self.corr(**k))
+            self.assertIsNone(b['cet1Requirement'], k)
+            self.assertIn(b['cet1RequirementOpen'], ('unit_correction_not_applicable', 'unit_correction_check_failed'), k)
+    def test_existing_requirement_is_never_replaced(self):
+        bank = {**self.bank(), 'cet1Requirement': {'value': 0.1}, 'cet1RequirementOpen': None}
+        self.assertEqual(self.run_c(self.corr(), bank)['cet1Requirement'], {'value': 0.1})
+    def test_repository_correction_reproduces_stored_requirement(self):
+        import json
+        from pathlib import Path
+        root = Path(__file__).resolve().parent
+        m = json.loads((root / 'eu-bank-map.json').read_text(encoding='utf-8'))
+        k = json.loads((root.parent / 'daten/regulatory/eu-pillar3-km1.json').read_text(encoding='utf-8'))
+        b = k['banks']['969500TJ5KRTCJQWXH05']
+        self.assertEqual(b['cet1Requirement']['derivation'], 'reviewed_unit_correction_p2r_cet1_percent')
+        self.assertEqual(m['km1UnitCorrections'][0]['lei'], '969500TJ5KRTCJQWXH05')

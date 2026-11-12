@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "intl-bank-metrics-v1",
- "importedAt": "2026-11-12T19:33:33.731224+00:00",
+ "importedAt": "2026-11-12T19:43:57.189189+00:00",
  "domesticStandard": {
   "JP3500610005": {
    "issuer": "Resona Holdings, Inc.",
@@ -872,12 +872,12 @@
     "countercyclicalBuffer": 0.01
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.0035733867765782457,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://www.bcv.ch/content/dam/bcv/fichiers/publications/publications-institutionnelles/rapports/ra-et-rse/bale-iii/2026/BCV%2026%2008%2010%20B%C3%A2le%20III%20Final%20-%20Pilier%203%20au%2030.06.2026%20v1.0_eng_final.pdf",
     "sha256": "871d6d3480dd277b54500283e6590633b9cf268d24c400fc8331e7cdc3d9b1cc",
-    "location": "PDF page 67, Table 32 (full KM1) rows 5-7, 12c, 14, 20, column 30/6/26; LCR from PDF page 6 Table 2 (average of the six preceding months)"
+    "location": "PDF page 67, Table 32 (full KM1) rows 5-7, 12c, 14, 20, column 30/6/26; LCR from PDF page 6 Table 2 (average of the six preceding months); CR1 (Credit quality of assets, Table 10, BCV Group, 30 June 2026) on PDF page 24, row 1 Loans (excl. debt securities), columns a and b"
    }
   },
   "CH0014786500": {

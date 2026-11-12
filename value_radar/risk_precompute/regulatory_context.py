@@ -90,7 +90,8 @@ def km1_requirement(km1,lei,now):
  if not b or not isinstance(q.get('value'),(int,float)) or not 0<q['value']<.3 or not isinstance(cet1,(int,float)) or not 0<cet1<1:return None
  return {'state':'available','method':'eba-p3dh-km1-cet1-requirement-v1','unit':'fraction','value':q['value'],'cet1Ratio':cet1,'comparisonPeriod':b['period'],
          'headroomPercentagePoints':(cet1-q['value'])*100,'components':q.get('components'),'derivation':q.get('derivation'),'sourceUrl':b['sourceUrl'],
-         'sourceFileSha256':b['sourceFileSha256'],'reviewExpires':km1.get('mappingReviewExpires'),
+         'sourceFileSha256':b['sourceFileSha256'],'reviewExpires':min(x for x in (km1.get('mappingReviewExpires'),(q.get('unitCorrection') or {}).get('reviewExpires')) if x) if km1.get('mappingReviewExpires') else None,
+         'unitCorrection':q.get('unitCorrection'),
          'definition':'4,5 % CET1-Mindestquote + CET1-Anteil der SREP-Zusatzanforderung (EU KM1 EU 7e) + kombinierte Kapitalpufferanforderung (Zeile 11)','scoreContribution':0}
 def km1_credit(km1,lei,now):
  """NPL-Quote aus EU CR1 (EBA Pillar 3 Data Hub, Modul FINDIS): notleidende / gesamte Kredite und Darlehen, brutto, hoechstens 270 Tage alt."""

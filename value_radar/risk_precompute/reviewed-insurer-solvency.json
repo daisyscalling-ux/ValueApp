@@ -97,6 +97,14 @@
           "sourcePages": "69",
           "basisNote": "Ohne Übergangsmaßnahmen; vorgeschlagene Dividende und ausstehende Rückkäufe abgezogen. Eigenmittel und SCR dieser Variante hier nicht separat berichtet."
         }
+      ],
+      "reviewedNameAliases": [
+        {
+          "name": "Munchener Ruckversicherungs-Gesellschaft",
+          "name_full": "Munchener Ruckversicherungs-Gesellschaft AG",
+          "reviewedOn": "2026-11-12",
+          "evidence": "Gleiche ISIN DE0008430026; Anbieter liefert je nach Lauf diese Schreibweise oder „Munich Re AG“ (Universum 11.11. und 12.11.2026)."
+        }
       ]
     },
     {

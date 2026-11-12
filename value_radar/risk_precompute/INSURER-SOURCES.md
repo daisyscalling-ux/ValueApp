@@ -116,3 +116,14 @@ Offen:
 - PZU: Die Quote zum 30.06.2026 erscheint mit dem Q3-Bericht (um den 20.11.2026).
 
 Probelauf: Solvenzquote bei 8 Versicherern neu gefüllt. Versicherer offen 10 → 2.
+
+## Geprüfte Namensvarianten (12. November 2026, nach dem Tageslauf)
+
+Nach dem Lauf vom 12.11. fehlte die Solvenzquote von Munich Re wieder (`identity_mismatch`). Ursache: Der Anbieter liefert für XETR:MUV2 je nach Lauf „Munich Re AG“ oder „Munchener Ruckversicherungs-Gesellschaft“. Das betrifft nur diese eine von 1.338 Notierungen; andere Identitätsfelder haben sich bei keiner Notierung geändert.
+
+Regel nach dem Muster `name_aliases` der US-Holdings:
+- Notierung, Ticker, ISIN, Währung, Wertpapierart und Gattung müssen exakt übereinstimmen.
+- Der Name muss der Registername sein oder ein geprüftes Paar aus `reviewedNameAliases`, mit Prüfdatum und Beleg.
+- Der Ausgabedatensatz trägt die tatsächlich geprüfte Zeilenidentität. Die Vorberechnung (`withInsurerSolvency`) vergleicht dagegen weiter alle Felder exakt.
+
+Probelauf auf dem Stand nach dem Lauf: Munich Re wieder gefüllt, sonst keine Änderung.

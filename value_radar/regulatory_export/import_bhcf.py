@@ -95,7 +95,8 @@ def carried_definitions(previous, period, fields, unit_keys):
         if any(k not in d for k in unit_keys):
             raise ValueError('Carried definition without unit: ' + code)
     files = previous.get('files') or []
-    dictionary = previous.get('dictionary_sha256') or next((f.get('sha256') for f in files if str(f.get('name', '')).lower().endswith('.xlsx')), None)
+    dictionary = previous.get('dictionary_sha256') or (previous.get('definitions_source') or {}).get('dictionary_sha256') \
+        or next((f.get('sha256') for f in files if str(f.get('name', '')).lower().endswith('.xlsx')), None)
     if not isinstance(dictionary, str) or not re.fullmatch('[0-9a-f]{64}', dictionary):
         raise ValueError('Carried definitions without reviewed dictionary hash')
     return {code: dict(d) for code, d in defs.items()}, {'kind': 'previous_reviewed_import', 'dictionary_sha256': dictionary,

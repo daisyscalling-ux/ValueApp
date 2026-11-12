@@ -26,3 +26,16 @@ class Tests(unittest.TestCase):
   r=coverage({'kandidaten':[{'ticker':'HOLD','name':'Holding Inc','industry':'Major banks'}]},data)['stocks'][0]
   self.assertEqual(r['state'],'identity_review');self.assertEqual(r['fdic_name_candidates'],['628']);self.assertIsNone(r['group_metrics']);self.assertIsNone(r['score'])
 if __name__=='__main__':unittest.main()
+
+
+class SecResolveTests(unittest.TestCase):
+    def test_unique_accession_for_form_and_report_date(self):
+        import fetch_sec_filings as f
+        sub = {'filings': {'recent': {'form': ['10-Q', '8-K', '10-Q', '10-Q/A'], 'reportDate': ['2026-09-30', '2026-09-30', '2026-06-30', '2026-09-30'],
+                                      'accessionNumber': ['0000019617-26-000300', '0000019617-26-000299', '0000019617-26-000200', '0000019617-26-000301']}}}
+        self.assertEqual(f.resolve(sub, '10-Q', '2026-09-30'), '0000019617-26-000300')
+        with self.assertRaises(SystemExit):
+            f.resolve(sub, '10-Q', '2026-12-31')
+        sub['filings']['recent']['form'][2] = '10-Q'; sub['filings']['recent']['reportDate'][2] = '2026-09-30'
+        with self.assertRaises(SystemExit):
+            f.resolve(sub, '10-Q', '2026-09-30')

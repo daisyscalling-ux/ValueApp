@@ -120,3 +120,26 @@ Prüfung in `holding_liquidity.py` und `holding-liquidity.ts` (identisch mit val
 Mit dem FR-Y-9C-Import für Q3 werden alle Einträge auf den 30.09.2026 umgestellt; die Q3-10-Q liegen bereits in `sec-bank-filings.json`.
 
 **Probelauf** gegen main: US-LCR vorhanden 4 → 13, bewusst außerhalb 4, offen 19 → 6. S&P 500 offen 1,18 → 0,99 %. Kein Titel schlechter.
+
+## Kreditqualität aller 22 Holdings, Archiv neu eingelesen (12. November 2026)
+
+Der Nutzer hat die BHCF-Archive zum 31.03., 30.06. und 30.09.2026 bereitgestellt. Für den 30.06. hat die FFIEC eine korrigierte Datei veröffentlicht: SHA-256 `3cfbb530…` statt `a995a394…`. Geändert sind nur zwei Holdings außerhalb unserer Zuordnung (RSSD 2531245 und 5586741). Bei den 22 zugeordneten Holdings sind die Kapitalquoten identisch.
+
+Vorgehen:
+- Kapital (`bhcf-import.json`) und Kreditqualität (`bhcf-credit-quality.json`) stammen aus derselben neuen Datei. `regulatory_credit.py` verlangt gleiche Periode und gleiche Prüfsumme.
+- `holding-stock-map.json`: Die Prüfsumme der Holding-Belege ist für alle 22 Einträge nachgeführt. RSSD und Name wurden vorher gegen die neue Datei geprüft.
+- Ohne neues Datenwörterbuch übernehmen beide Importer die Felddefinitionen aus dem letzten, gegen das Wörterbuch (SHA `26c40652…`) geprüften Import (`--reviewed-definitions`, Kennzeichnung `definitions_source.kind = previous_reviewed_import`).
+  - Voraussetzungen: dieselben Codes und Kennzahlen, Beschreibung unverändert, Gültigkeitszeitraum umfasst den Stichtag, Einheit angegeben, Prüfsumme des Wörterbuchs bekannt.
+  - Sonst bricht der Import ab.
+- Die Archive selbst werden nicht veröffentlicht.
+
+Ergebnis:
+- Kreditqualität für alle 22 Holdings, bisher 9.
+- Probelauf: 13 US-Banken neu gefüllt (HBAN, NTRS, AXP, BNY, CFG, FITB, KEY, MS, MTB, RF, STT, SYF, TFC). Sonst keine Änderung.
+- Spanne „notleidend + 90 Tage überfällig“: 0,01 % (Schwab) bis 2,0 % (Synchrony).
+
+Bewusst auf dem 30.06. geblieben:
+- Die geprüften LCR-Werte aus den 10-Q-Berichten sind an diesen Stichtag gebunden.
+- Das Holdingkapital gilt höchstens 180 Tage, zum 30.06. also bis 27.12.2026.
+- Vorher steht der Wechsel auf den 30.09. an: Kapital und Kreditqualität aus `BHCF20260930.ZIP` sowie die LCR-Werte aus den Q3-10-Q neu prüfen.
+- Die Datei zum 30.09. enthält nur die 429 Holdings mit Quartalsmeldung; darunter sind alle 22 zugeordneten.

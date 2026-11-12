@@ -15,3 +15,19 @@ class CreditImportTests(unittest.TestCase):
  def test_incomplete_new_quarter_cannot_replace_existing_holdings(self):
   with self.assertRaisesRegex(ValueError,'no_reviewed'):parse(self.stream(),dt.date(2026,6,30),{'2'})
 if __name__=='__main__':unittest.main()
+
+
+class CarriedCreditDefinitionTests(unittest.TestCase):
+    def test_repository_credit_archive_covers_all_reviewed_holdings_with_carried_definitions(self):
+        import json
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        archive = json.loads((root / 'daten/regulatory/bhcf-credit-quality.json').read_text(encoding='utf-8'))
+        capital = json.loads((root / 'daten/regulatory/bhcf-import.json').read_text(encoding='utf-8'))
+        registry = json.loads((root / 'regulatory_export/holding-stock-map.json').read_text(encoding='utf-8-sig'))
+        self.assertEqual(set(archive['entities']), {e['rssd_id'] for e in registry['entries']})
+        self.assertEqual(archive['source_file_sha256'], capital['files'][0]['sha256'])
+        self.assertEqual(archive['reporting_period'], capital['reporting_period'])
+        self.assertTrue(all(e['holding_evidence']['source_file_sha256'] == archive['source_file_sha256'] for e in registry['entries']))
+        self.assertEqual(archive['definitions_source']['kind'], 'previous_reviewed_import')
+        self.assertTrue(all(d['unit'] == 'USD_thousands' for d in archive['definitions'].values()))

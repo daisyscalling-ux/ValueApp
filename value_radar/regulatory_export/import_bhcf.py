@@ -81,8 +81,29 @@ def parse_stream(stream, period, today):
         raise ValueError('Empty archive')
     return records, len(seen), missing
 
-def import_archive(archive, dictionary, today=None):
-    archive = Path(archive); dictionary = Path(dictionary)
+def carried_definitions(previous, period, fields, unit_keys):
+    """Felddefinitionen aus einem frueheren, gegen das FFIEC-Woerterbuch geprueften Import (ohne neues Woerterbuch).
+    Nur wenn genau dieselben Codes mit derselben Kennzahl vorliegen und ihr Gueltigkeitszeitraum den Stichtag umfasst."""
+    defs = previous.get('definitions') or {}
+    if set(defs) != set(fields):
+        raise ValueError('Carried definitions incomplete')
+    for code, d in defs.items():
+        if d.get('metric') != fields[code][0] or not str(d.get('description', '')).upper().startswith(fields[code][1]):
+            raise ValueError('Carried definition changed: ' + code)
+        if not d.get('valid_from', '9999') <= period.isoformat() <= d.get('valid_to', '0000'):
+            raise ValueError('Carried definition not valid for period: ' + code)
+        if any(k not in d for k in unit_keys):
+            raise ValueError('Carried definition without unit: ' + code)
+    files = previous.get('files') or []
+    dictionary = previous.get('dictionary_sha256') or next((f.get('sha256') for f in files if str(f.get('name', '')).lower().endswith('.xlsx')), None)
+    if not isinstance(dictionary, str) or not re.fullmatch('[0-9a-f]{64}', dictionary):
+        raise ValueError('Carried definitions without reviewed dictionary hash')
+    return {code: dict(d) for code, d in defs.items()}, {'kind': 'previous_reviewed_import', 'dictionary_sha256': dictionary,
+        'previous_reporting_period': previous.get('reporting_period'), 'previous_imported_at': previous.get('imported_at')}
+
+
+def import_archive(archive, dictionary, today=None, previous=None):
+    archive = Path(archive); dictionary = Path(dictionary) if dictionary else None
     with zipfile.ZipFile(archive) as z:
         entries = z.infolist()
         if len(entries) != 1 or not re.fullmatch(r'BHCF\d{8}\.txt', entries[0].filename, re.I):
@@ -91,15 +112,18 @@ def import_archive(archive, dictionary, today=None):
         if entry.file_size > 100_000_000:
             raise ValueError('Archive too large')
         period = dt.datetime.strptime(entry.filename[4:12], '%Y%m%d').date()
-        definitions = read_dictionary(dictionary, period)
+        if dictionary:
+            definitions, origin = read_dictionary(dictionary, period), {'kind': 'dictionary', 'dictionary_sha256': hashlib.sha256(dictionary.read_bytes()).hexdigest()}
+        else:
+            definitions, origin = carried_definitions(previous or {}, period, FIELDS, ('unit', 'source_unit'))
         with z.open(entry) as raw:
             records, total, missing = parse_stream(io.TextIOWrapper(raw, encoding='cp1252'), period, today or dt.date.today())
     return {'schema': 1, 'source': 'FFIEC NIC BHCF manual download', 'source_url': SOURCE,
         'reporting_period': period.isoformat(), 'imported_at': dt.datetime.now(dt.timezone.utc).isoformat(),
         'scope': 'FR_Y9C_consolidated_reporting_entity', 'published_at': None,
         'historical_point_in_time_usable': False, 'unit_evidence_url': FORM,
-        'files': [{'name': p.name, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()} for p in (archive,dictionary)],
-        'definitions': definitions, 'source_row_count': total, 'rows_without_capital_ratios': missing,
+        'files': [{'name': p.name, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()} for p in ((archive, dictionary) if dictionary else (archive,))],
+        'definitions': definitions, 'definitions_source': origin, 'source_row_count': total, 'rows_without_capital_ratios': missing,
         'entity_count': len(records), 'entities': records,
         'limitations': ['Manual quarterly snapshot; no automatic FFIEC download.',
             'Consolidated reporting entity may be an intermediate holding, not the listed ultimate parent.',
@@ -128,10 +152,13 @@ def link_fdic(holdings, fdic, today=None):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('--archive', required=True); p.add_argument('--dictionary', required=True)
+    p.add_argument('--archive', required=True)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument('--dictionary'); g.add_argument('--reviewed-definitions', help='frueherer Import mit gegen das Woerterbuch geprueften Definitionen')
     p.add_argument('--output', required=True)
     args = p.parse_args()
-    data = import_archive(args.archive, args.dictionary)
+    previous = json.loads(Path(args.reviewed_definitions).read_text(encoding='utf8')) if args.reviewed_definitions else None
+    data = import_archive(args.archive, args.dictionary, previous=previous)
     path = Path(args.output); path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix('.tmp')
     temp.write_text(json.dumps(data, ensure_ascii=False, allow_nan=False), encoding='utf8'); temp.replace(path)

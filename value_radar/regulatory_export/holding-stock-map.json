@@ -12,7 +12,7 @@
       "listing_source_url": "https://jpmorganchaseco.gcs-web.com/ir/shareholder-information/faqs",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -29,7 +29,7 @@
       "listing_source_url": "https://investor.bankofamerica.com/shareholder-information/shareholder-and-contact-info",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -46,7 +46,7 @@
       "listing_source_url": "https://www.citigroup.com/global/investors/stockholder-services",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -63,7 +63,7 @@
       "listing_source_url": "https://www.sec.gov/Archives/edgar/data/886982/000088698226000091/gs-20251231.htm",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -80,7 +80,7 @@
       "listing_source_url": "https://www.sec.gov/Archives/edgar/data/72971/000007297126000133/wfc-20251231_d2.htm",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -97,7 +97,7 @@
       "listing_source_url": "https://pressroom.aboutschwab.com/press-releases/press-release/2026/Schwab-Initiates-Secondary-Listing-on-the-Texas-Stock-Exchange/default.aspx",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -114,7 +114,7 @@
       "listing_source_url": "https://investor.capitalone.com/news-releases/news-release-details/capital-one-announces-quarterly-dividend-87",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -131,7 +131,7 @@
       "listing_source_url": "https://www.usbank.com/content/dam/usbank/en/documents/pdfs/about-us-bank/2025-annual-report.pdf",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -148,7 +148,7 @@
       "listing_source_url": "https://investor.pnc.com/sec-filings/all-sec-filings/content/0000713676-24-000028/descriptionofsecuritiese.htm",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -167,7 +167,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -186,7 +186,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -205,7 +205,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -224,7 +224,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -243,7 +243,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -262,7 +262,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -281,7 +281,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -300,7 +300,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -319,7 +319,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -338,7 +338,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -357,7 +357,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -376,7 +376,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },
@@ -395,7 +395,7 @@
       "reviewed_on": "2026-11-11",
       "holding_evidence": {
         "file": "bhcf-import.json",
-        "source_file_sha256": "a995a39423206451a64a13ea1aae423d57382b2f42c37e2a8e111fac27a39add",
+        "source_file_sha256": "3cfbb530a62e6fa6a3442e36602de8c1bd53e11028f65202e551ae6d6d063104",
         "rssd_field": "RSSD9001",
         "name_field": "RSSD9017"
       },

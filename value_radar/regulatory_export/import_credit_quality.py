@@ -34,31 +34,39 @@ def parse(stream,period,wanted):
  if not out:raise ValueError('no_reviewed_holdings_in_archive')
  return out
 
-def import_archive(archive,dictionary,registry,now=None):
- import openpyxl
+def import_archive(archive,dictionary,registry,now=None,previous=None):
  now=now or dt.datetime.now(dt.timezone.utc)
- archive=Path(archive);dictionary=Path(dictionary)
+ archive=Path(archive);dictionary=Path(dictionary) if dictionary else None
  with zipfile.ZipFile(archive) as z:
   entries=z.infolist()
   if len(entries)!=1 or not re.fullmatch('BHCF[0-9]{8}\\.txt',entries[0].filename,re.I) or entries[0].file_size>100_000_000:raise ValueError('invalid_archive')
   period=dt.datetime.strptime(entries[0].filename[4:12],'%Y%m%d').date()
   if not 0<=(now.date()-period).days<=180 or (period.month,period.day) not in [(3,31),(6,30),(9,30),(12,31)]:raise ValueError('stale_or_invalid_period')
-  defs={};book=openpyxl.load_workbook(dictionary,read_only=True,data_only=True)
-  try:
-   for number,(code,start,end,description) in enumerate(book['Financial'].iter_rows(values_only=True),1):
-    if code not in FIELDS or not start.date()<=period<=end.date():continue
-    if code in defs or not description.upper().startswith(FIELDS[code][1]):raise ValueError('changed_dictionary')
-    defs[code]={'metric':FIELDS[code][0],'description':description,'row':number,'valid_from':start.date().isoformat(),'valid_to':end.date().isoformat(),'unit':'USD_thousands'}
-  finally:book.close()
-  if set(defs)!=set(FIELDS):raise ValueError('missing_definitions')
+  if dictionary:
+   import openpyxl
+   defs={};book=openpyxl.load_workbook(dictionary,read_only=True,data_only=True)
+   try:
+    for number,(code,start,end,description) in enumerate(book['Financial'].iter_rows(values_only=True),1):
+     if code not in FIELDS or not start.date()<=period<=end.date():continue
+     if code in defs or not description.upper().startswith(FIELDS[code][1]):raise ValueError('changed_dictionary')
+     defs[code]={'metric':FIELDS[code][0],'description':description,'row':number,'valid_from':start.date().isoformat(),'valid_to':end.date().isoformat(),'unit':'USD_thousands'}
+   finally:book.close()
+   if set(defs)!=set(FIELDS):raise ValueError('missing_definitions')
+   dict_sha,origin=hashlib.sha256(dictionary.read_bytes()).hexdigest(),{'kind':'dictionary'}
+  else:
+   from import_bhcf import carried_definitions
+   defs,origin=carried_definitions(previous or {},period,FIELDS,('unit',))
+   if any(d['unit']!='USD_thousands' for d in defs.values()):raise ValueError('changed_unit')
+   dict_sha=origin['dictionary_sha256']
   wanted={r['rssd_id'] for r in registry['entries']}
   with z.open(entries[0]) as stream:entities=parse(io.TextIOWrapper(stream,encoding='cp1252'),period,wanted)
- return {'schema':1,'source':'FFIEC_BHCF_loan_quality','scope':'FR_Y9C_consolidated_reporting_entity','source_url':SOURCE,'unit_evidence_url':FORM,'reporting_period':period.isoformat(),'imported_at':now.isoformat(),'published_at':None,'historical_point_in_time_usable':False,'source_file_sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'dictionary_sha256':hashlib.sha256(dictionary.read_bytes()).hexdigest(),'definitions':defs,'entities':entities}
+ return {'schema':1,'source':'FFIEC_BHCF_loan_quality','scope':'FR_Y9C_consolidated_reporting_entity','source_url':SOURCE,'unit_evidence_url':FORM,'reporting_period':period.isoformat(),'imported_at':now.isoformat(),'published_at':None,'historical_point_in_time_usable':False,'source_file_sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'dictionary_sha256':dict_sha,'definitions':defs,'definitions_source':origin,'entities':entities}
 
 if __name__=='__main__':
  import argparse
- p=argparse.ArgumentParser();p.add_argument('--archive',required=True);p.add_argument('--dictionary',required=True);p.add_argument('--registry',required=True);p.add_argument('--output',required=True);a=p.parse_args()
- result=import_archive(a.archive,a.dictionary,json.loads(Path(a.registry).read_text(encoding='utf-8-sig')))
+ p=argparse.ArgumentParser();p.add_argument('--archive',required=True);g=p.add_mutually_exclusive_group(required=True);g.add_argument('--dictionary');g.add_argument('--reviewed-definitions');p.add_argument('--registry',required=True);p.add_argument('--output',required=True);a=p.parse_args()
+ previous=json.loads(Path(a.reviewed_definitions).read_text(encoding='utf-8')) if a.reviewed_definitions else None
+ result=import_archive(a.archive,a.dictionary,json.loads(Path(a.registry).read_text(encoding='utf-8-sig')),previous=previous)
  dest=Path(a.output)
  if dest.exists():
   previous=json.loads(dest.read_text(encoding='utf-8'))

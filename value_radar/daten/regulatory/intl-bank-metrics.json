@@ -1,7 +1,48 @@
 {
  "schema": 1,
  "method": "intl-bank-metrics-v1",
- "importedAt": "2026-11-11T12:36:06.897650+00:00",
+ "importedAt": "2026-11-12T08:17:35.001497+00:00",
+ "domesticStandard": {
+  "JP3500610005": {
+   "issuer": "Resona Holdings, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "standard": "jp_domestic_core_capital",
+   "period": "2026-06-30",
+   "domesticCapitalRatio": 0.1265,
+   "source": {
+    "type": "bank_capital_release",
+    "url": "https://www2.jpx.co.jp/disc/83080/140120260806513586.pdf",
+    "sha256": "34887a0ea5a63534857b11ab89e67db8d3290f79f6f298bcff237ddcda60b922",
+    "location": "Resona Holdings timely disclosure (TDnet) of 2026-08-07, 2027年3月期第1四半期末の自己資本比率について, page 1: Resona Holdings consolidated 国内基準 自己資本比率 12.65 % (June 30, 2026); the international-standard ratios on the same page are marked 〔参考〕 (reference only)"
+   },
+   "lcrRule": {
+    "url": "https://www.fsa.go.jp/policy/basel_ii/mochikabu1-04.pdf",
+    "sha256": "69d16b1d0b5ff5711d27d654d60127517581623f0c745a08a438a83a967c2e48",
+    "location": "FSA Notice No. 62 (2014) for bank holding companies, consolidated text updated 2026-05-22, Art. 2 (PDF page 13): the consolidated LCR standard applies to bank holding companies whose subsidiary banks have overseas business offices (海外営業拠点); banks with overseas offices must use the international capital standard, so domestic-standard groups have no LCR requirement"
+   }
+  },
+  "JP3805010000": {
+   "issuer": "Fukuoka Financial Group, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "standard": "jp_domestic_core_capital",
+   "period": "2026-06-30",
+   "domesticCapitalRatio": 0.1166,
+   "source": {
+    "type": "bank_capital_release",
+    "url": "https://www.fse.or.jp/files/lis_tkj/26081283540.pdf",
+    "sha256": "203bd0e4b6ab92e0098445d56a2a81b5946e038f07c9e84c7d7f16f94efcd29a",
+    "location": "Fukuoka Financial Group release of 2026-08-12 (Fukuoka Stock Exchange), Capital Adequacy Ratio for the First Quarter of the Year Ending March 31, 2027, page 1: consolidated capital adequacy ratio 11.66 % on core capital (コア資本, domestic standard term); the securities report filed 2026-06-19 (EDINET S100YFNB, sha256 629c8bf13a2ad084c7b7425346c57ec722922558b068f83a29eb7cc7e23a51a6, PDF page 31) states 当社は、国内基準を適用"
+   },
+   "lcrRule": {
+    "url": "https://www.fsa.go.jp/policy/basel_ii/mochikabu1-04.pdf",
+    "sha256": "69d16b1d0b5ff5711d27d654d60127517581623f0c745a08a438a83a967c2e48",
+    "location": "FSA Notice No. 62 (2014) for bank holding companies, consolidated text updated 2026-05-22, Art. 2 (PDF page 13): the consolidated LCR standard applies to bank holding companies whose subsidiary banks have overseas business offices (海外営業拠点); banks with overseas offices must use the international capital standard, so domestic-standard groups have no LCR requirement"
+   }
+  }
+ },
+ "domesticRejected": {},
  "mappingReviewExpires": "2027-05-08",
  "issuers": {
   "AU000000CBA7": {
@@ -406,20 +447,24 @@
    "metrics": {
     "cet1_ratio": 0.1624,
     "tier1_ratio": 0.1624,
-    "total_capital_ratio": 0.1624
+    "total_capital_ratio": 0.1624,
+    "leverage_ratio": 0.0725
    },
-   "lcr": null,
-   "nsfr": null,
-   "cet1Requirement": null,
-   "cet1RequirementDefinition": null,
-   "requirementComponents": null,
+   "lcr": 1.62,
+   "nsfr": 1.064,
+   "cet1Requirement": 0.0702,
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation and countercyclical buffer; no D-SIB surcharge). Japan publishes no institution-specific Pillar 2 requirement.",
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.0252
+   },
    "requirementSourceUrl": null,
    "defaultedLoanRatio": null,
    "source": {
-    "type": "bank_capital_release",
-    "url": "https://www.shizuoka-fg.co.jp/english/pdf/ir/2026_1Q_basel-regulatory-disclosures.pdf",
-    "sha256": "baf0105b074ae1b07d49a0afaeba44eb52fcf581f9e336582a55f572cd1f4cf5",
-    "location": "Capital ratio release, Shizuoka Financial Group, Inc. (Consolidated), International Standard, As of Jun. 30, 2026; no buffer requirement, LCR or leverage ratio in this release"
+    "type": "basel_pillar3_km1",
+    "url": "https://www.shizuoka-fg.co.jp/pdf/ir/2027/2027_1Q_km1.pdf",
+    "sha256": "a12a33113ba74823a1278f5f1996d16d7bb4738aeae0a52727ff52744232223c",
+    "location": "KM1 主要な指標（銀行持株）, Shizuoka Financial Group (consolidated), PDF page 1, rows 5-7, 11, 14, 17, 20, column イ (June 30, 2026 / FY2026 Q1); Japanese-language disclosure page www.shizuoka-fg.co.jp/ir/basel.html"
    }
   },
   "CNE000001P37": {
@@ -979,6 +1024,64 @@
     "sha256": "0cac95b5945b31a97c17219c1bdb49c09ec5c618ad48b494c3ccb054ea25ba57",
     "location": "Q3 2026 Interim Management Statement (Form 6-K filed with the SEC on 2026-10-29), page 6 capital table and page 7 Capital section (UK leverage ratio), at 30 September 2026. The Q3 Interim Pillar 3 disclosure with KM1, requirement and LCR is only on www.lloydsbankinggroup.com, which blocks automated requests (Akamai)."
    }
+  },
+  "JP3511800009": {
+   "issuer": "The Chiba Bank, Ltd.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1536,
+    "tier1_ratio": 0.1536,
+    "total_capital_ratio": 0.1536,
+    "leverage_ratio": 0.0615
+   },
+   "lcr": 1.294,
+   "nsfr": 1.217,
+   "cet1Requirement": 0.0703,
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation and countercyclical buffer; no D-SIB surcharge). Japan publishes no institution-specific Pillar 2 requirement.",
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.0253
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://www.chibabank.co.jp/f/capital_2026_02_003",
+    "sha256": "3ed4379a482097717b0384cede945c6361192e90adcde58173a198898a98d3e1",
+    "location": "KM1 主要な指標（銀行連結）, Chiba Bank (consolidated), PDF page 1, rows 5-7, 11, 14, column イ (September 30, 2026); international standard; LCR and NSFR from KM1 流動性カバレッジ比率及び安定調達比率の推移 (https://www.chibabank.co.jp/f/liquidity_2026_02_005, sha256 96885cc8e4374450c7002f63c2b275eea69dbcf575fbdea2b0e53d32d7779bf8), consolidated rows 17 and 20, column イ"
+   }
+  },
+  "JP3305990008": {
+   "issuer": "Yokohama Financial Group, Inc.",
+   "jurisdiction": "JP",
+   "regulator": "JFSA",
+   "scope": "consolidated_group",
+   "period": "2026-09-30",
+   "metrics": {
+    "cet1_ratio": 0.1493,
+    "tier1_ratio": 0.1498,
+    "total_capital_ratio": 0.1559,
+    "leverage_ratio": 0.0614
+   },
+   "lcr": 1.201,
+   "nsfr": null,
+   "cet1Requirement": 0.07,
+   "cet1RequirementDefinition": "CET1 requirement = 4.5 % minimum + KM1 row 11 (capital conservation and countercyclical buffer; no D-SIB surcharge). Japan publishes no institution-specific Pillar 2 requirement.",
+   "requirementComponents": {
+    "minimum": 0.045,
+    "km1Row11": 0.025
+   },
+   "requirementSourceUrl": null,
+   "defaultedLoanRatio": null,
+   "source": {
+    "type": "basel_pillar3_km1",
+    "url": "https://ssl4.eir-parts.net/doc/7186/ir_material_for_fiscal_ym9/217830/00.pdf",
+    "sha256": "c3edfeeb555bff68c4889e1424573821a859d1b41e7670f353d555f73ce1f09f",
+    "location": "KM1 主要な指標（銀行持株）, Yokohama Financial Group (consolidated), PDF page 1, rows 5-7, 11, 14, 17, column イ (2026年度第2四半期 = September 30, 2026); NSFR for this quarter not yet disclosed (footnote), left null; document hosted on the company IR document service linked from www.yokohamafg.co.jp/shareholder/ir/basel3/"
+   }
   }
  },
  "rejected": {},
@@ -986,10 +1089,6 @@
  "open": {
   "AU000000ANZ3": "Listed ANZ Group Holdings Limited is a non-operating holding company; APRA publishes the authorised deposit-taking institution Australia and New Zealand Banking Group Limited (Level 2).",
   "JP3946750001": "Japan Post Bank reports under the Japanese domestic standard (Core Capital ratio, see https://www.jp-bank.japanpost.jp/en/ir/financial/pdf/en2027_ccd_q1_c.pdf, sha256 59645295843a032ef15bb20e1aded76b6f0c3361c850d10c979417f5939eeb57); not comparable with CET1.",
-  "JP3500610005": "Resona Holdings: website refuses automated requests (Akamai, HTTP 403); domestic capital standard expected, which is not comparable with CET1.",
-  "JP3511800009": "Chiba Bank: document lists are loaded by script from eir-parts.net; Basel disclosure not located; domestic capital standard expected.",
-  "JP3805010000": "Fukuoka Financial Group: website refuses automated requests (Akamai, HTTP 403); domestic capital standard expected.",
-  "JP3305990008": "Yokohama Financial Group (formerly Concordia, now www.yokohamafg.co.jp): document lists are loaded by script; Basel disclosure not located; domestic capital standard expected.",
   "SG1S04926220": "Oversea-Chinese Banking Corporation: www.ocbc.com (Incapsula) and the SGX announcement service (Akamai) both block automated requests; OCBC does not file with the SEC."
  },
  "scoreContribution": 0

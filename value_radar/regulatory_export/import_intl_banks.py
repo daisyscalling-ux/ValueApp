@@ -95,7 +95,16 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
         for alt in e.get('shareClassIsins') or []:
             if re.fullmatch(r'[A-Z]{2}[A-Z0-9]{9}[0-9]', str(alt)) and alt != e['isin'] and alt not in issuers:
                 issuers[alt] = {**issuers[e['isin']], 'shareClassOf': e['isin']}
-    return {'schema': 1, 'method': 'intl-bank-metrics-v1', 'importedAt': now.isoformat(),
+    domestic, domestic_rejected = {}, {}
+    rule = (reviewed or {}).get('domesticStandardLcrRule')
+    for e in (reviewed or {}).get('domesticStandard', []):
+        reason = domestic_problem(e, rule, now)
+        if reason or e['isin'] in issuers:
+            domestic_rejected[e.get('isin', '?')] = reason or 'domestic_and_basel_both_present'
+            continue
+        domestic[e['isin']] = {'issuer': e['issuer'], 'jurisdiction': e['jurisdiction'], 'regulator': e['regulator'], 'standard': e['standard'], 'period': e['period'],
+                               'domesticCapitalRatio': fraction(e.get('domesticCapitalRatio')), 'source': e['source'], 'lcrRule': rule}
+    return {'schema': 1, 'method': 'intl-bank-metrics-v1', 'importedAt': now.isoformat(), 'domesticStandard': domestic, 'domesticRejected': domestic_rejected,
             'mappingReviewExpires': min(mapping['review_expires'], (reviewed or {}).get('review_expires', mapping['review_expires'])),
             'issuers': issuers, 'rejected': rejected, 'creditRejected': credit_rejected, 'open': {**mapping.get('open', {}), **(reviewed or {}).get('open', {})}, 'scoreContribution': 0}
 
@@ -142,6 +151,30 @@ def credit_problem(e, now):
         return 'credit_values_invalid'
     if c.get('type') != CREDIT_SOURCE_TYPE or not re.fullmatch(r'[0-9a-f]{64}', str(c.get('sha256', ''))) or not str(c.get('url', '')).startswith('https://') or not str(c.get('location', '')).strip():
         return 'credit_source_unverified'
+    return ''
+
+
+DOMESTIC_STANDARDS = ('jp_domestic_core_capital',)
+DOMESTIC_MAX_AGE_DAYS = 270
+
+
+def domestic_problem(e, rule, now):
+    """Bank nach Inlandsstandard (Japan): Beleg je Bank und Beleg fuer den LCR-Geltungsbereich. Leer = gueltig."""
+    def proof(x):
+        return isinstance(x, dict) and str(x.get('url', '')).startswith('https://') and re.fullmatch(r'[0-9a-f]{64}', str(x.get('sha256', ''))) and str(x.get('location', '')).strip()
+    if not re.fullmatch(r'[A-Z]{2}[A-Z0-9]{9}[0-9]', str(e.get('isin', ''))) or not all(e.get(k) for k in ('issuer', 'jurisdiction', 'regulator')):
+        return 'domestic_entry_incomplete'
+    if e.get('standard') not in DOMESTIC_STANDARDS:
+        return 'domestic_standard_unknown'
+    period = str(e.get('period', ''))
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', period) or not 0 <= (now.date() - dt.date.fromisoformat(period)).days <= DOMESTIC_MAX_AGE_DAYS:
+        return 'domestic_evidence_stale'
+    if e.get('domesticCapitalRatio') is not None and not (fraction(e['domesticCapitalRatio']) is not None and e['domesticCapitalRatio'] <= 1):
+        return 'domestic_ratio_invalid'
+    if not proof(e.get('source')) or e['source'].get('type') not in REVIEWED_SOURCE_TYPES + ('securities_report',):
+        return 'domestic_source_unverified'
+    if not proof(rule):
+        return 'lcr_rule_unverified'
     return ''
 
 

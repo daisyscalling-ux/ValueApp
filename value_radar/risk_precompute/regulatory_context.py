@@ -169,6 +169,27 @@ def intl_credit_source(i,now):
  if src.get('type')!='basel_pillar3_cr1' or not re.fullmatch(r'[0-9a-f]{64}',str(src.get('sha256',''))) or not str(src.get('url','')).startswith('https://') or not str(src.get('location','')).strip():return False
  return {'period':p,'periodBasis':'separate_cr1','sourceType':src['type'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceDetail':src['location']}
 
+DOMESTIC_STANDARDS=('jp_domestic_core_capital',)
+def _proof(x):
+ return isinstance(x,dict) and str(x.get('url','')).startswith('https://') and bool(re.fullmatch(r'[0-9a-f]{64}',str(x.get('sha256','')))) and bool(str(x.get('location','')).strip())
+def domestic_record_problem(row,d,now):
+ """Inlandsstandard (Japan): gleiche Identitaetsregeln wie bei Basel-Kennzahlen, Beleg <= 270 Tage, Beleg fuer den LCR-Geltungsbereich."""
+ if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
+  return 'listing_identity_unverified'
+ p=str(d.get('period',''))
+ if d.get('standard') not in DOMESTIC_STANDARDS or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',p) or not 0<=(now.date()-dt.date.fromisoformat(p)).days<=INTL_CREDIT_MAX_AGE_DAYS:
+  return 'domestic_evidence_stale_or_unknown'
+ if not _proof(d.get('source')) or not _proof(d.get('lcrRule')):return 'domestic_evidence_unverified'
+ return ''
+def domestic_record(row,d,data):
+ src=d['source'];r=d.get('domesticCapitalRatio')
+ return {'state':'not_applicable','scope':'domestic_capital_standard','standard':d['standard'],'holdingName':d['issuer'],'issuerIsin':row['isin'],'jurisdiction':d['jurisdiction'],'regulator':d['regulator'],
+  'inputIdentity':{k:row.get(k) for k in FIELDS},'period':d['period'],'domesticCapitalRatio':r if isinstance(r,(int,float)) and 0<=r<=1 else None,
+  'sourceImportedAt':data['importedAt'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceType':src['type'],'sourceDetail':src['location'],
+  'lcrRule':{k:d['lcrRule'][k] for k in ('url','sha256','location')},'identityReviewExpires':data['mappingReviewExpires'],'metrics':{},'score':None,
+  'capitalRequirement':None,'liquidity':None,'creditQuality':None,'scoreContribution':0,
+  'limitations':['Japanese domestic capital standard (core capital, 4 % minimum): no Basel III CET1 ratio or requirement and no LCR requirement; buffer and LCR are not compared.']}
+
 def build_intl(universe,data,now):
  """Banken ausserhalb EU/EWR/USA (APRA, spaeter Basel-KM1): Kapitalquoten, LCR, NSFR je Konzern. Gleiche Identitaetsregeln."""
  stocks,rejected,deferred={},{},[]
@@ -176,6 +197,13 @@ def build_intl(universe,data,now):
  if data.get('method')!='intl-bank-metrics-v1' or not isinstance(data.get('issuers'),dict):out['state']='source_unavailable';return out
  for row in universe.get('kandidaten',[]):
   s=row.get('listing_symbol');i=data['issuers'].get(row.get('isin'))
+  dom=(data.get('domesticStandard') or {}).get(row.get('isin')) if isinstance(data.get('domesticStandard'),dict) else None
+  if s and not i and dom:
+   if depositary_candidate(row):deferred.append((row,row['isin']));continue
+   reason=domestic_record_problem(row,dom,now)
+   if reason:rejected[s]=reason;continue
+   stocks[s]=domestic_record(row,dom,data)
+   continue
   if not s or not i:continue
   if depositary_candidate(row):deferred.append((row,i.get('shareClassOf') or row['isin']));continue
   if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
@@ -200,7 +228,7 @@ def build_intl(universe,data,now):
    'capitalRequirement':req,'liquidity':liq,'creditQuality':credit,
    'limitations':['Published key metrics of the supervised consolidated group; no institution-specific requirement unless disclosed.','No harmonised non-performing loan ratio in this source.']}
  adopt_depositaries(stocks,rejected,deferred,'issuerIsin')
- out.update(state='ready',summary={'intlBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
+ out.update(state='ready',summary={'intlBanks':sum(1 for v in stocks.values() if v.get('state')=='available'),'domesticStandard':sum(1 for v in stocks.values() if v.get('scope')=='domestic_capital_standard'),'rejected':dict(Counter(rejected.values()))})
  return out
 
 def main():

@@ -322,7 +322,12 @@ def metrics(x):
                                         (not finite(s.get(key)), 'Kennzahl in der Vorberechnung noch nicht vorhanden'))))
     f, u, b = x.f, x.u, x.balance
     p = x.profile
-    if p == 'bank':
+    if p == 'bank' and (b.get('bankCapital') or {}).get('scope') == 'domestic_capital_standard' and (b.get('bankCapital') or {}).get('state') == 'not_applicable':
+        # Japanischer Inlandsstandard (von regulatory-context.ts geprueft): CET1-Puffer und LCR nicht anwendbar, Kreditqualitaet offen.
+        out += [m(F, 'Kernkapital-Puffer (CET1)', 10, 'by_design', 'Japanischer Inlandsstandard (Core Capital), keine CET1-Anforderung (belegt)'),
+                m(F, 'Liquiditätsdeckung (LCR)', 7.5, 'by_design', 'Keine LCR-Pflicht nach Inlandsstandard (FSA-Bekanntmachung Nr. 62/2014, Art. 2)'),
+                m(F, 'Kreditqualität', 7.5, 'missing', 'Geprüfte Kreditqualität fehlt')]
+    elif p == 'bank':
         c = b.get('bankCapital') or {}
         credit = available(c.get('creditQuality')) or available((x.domains.get('reviewedRisk') or {}).get('bankCredit'))
         out += [m(F, 'Kernkapital-Puffer (CET1)', 10, *yes(available(c) and available(c.get('capitalRequirement')), 'Geprüfte Kapitalquote mit Anforderung fehlt')),

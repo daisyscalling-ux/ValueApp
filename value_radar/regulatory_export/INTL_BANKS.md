@@ -71,6 +71,22 @@ Fundstellen: Die KM1 von Yokohama FG liegt beim IR-Dokumentdienst der Bank (ssl4
 
 **Verzerrung:** Inlandsstandard-Banken haben zwei Finanzkennzahlen weniger. Ihr Teilscore stützt sich damit stärker auf Kurs- und Bewertungsdaten. Ein Vergleich mit CET1-Banken wäre aber falsch: Core Capital hat andere Abzüge, und die Mindestquote liegt bei 4 % statt 7 %. Die Referenzwerte nach internationalem Standard, die Resona freiwillig nennt, sind keine Aufsichtsgröße und werden nicht verwendet.
 
+## Kreditqualität der japanischen Regionalbanken (12. November 2026)
+
+CR1 zum 31.03.2026 aus den Jahresoffenlegungen, als `credit`-Block mit eigenem Stichtag (gleiche Regel wie bei den Großbanken):
+
+| Bank | Ausgefallen / nicht ausgefallen (Mio. Yen) | Quote | Fundstelle |
+|---|---|---:|---|
+| Chiba (Bank, Konzern) | 170.533 / 14.018.136 | 1,20 % | Offenlegungsheft 2026, Kapitel „自己資本の充実の状況“, Abschnitt „銀行連結“, PDF-S. 52 |
+| Yokohama FG (Holding) | 251.654 / 17.344.234 | 1,43 % | Integrierter Bericht 2026, Datenteil, PDF-S. 105 |
+| Shizuoka FG (Holding) | 93.087 / 10.863.276 | 0,85 % | Integrierter Bericht 2026, Anhang, Abschnitt „銀行持株“, PDF-S. 52 |
+
+Die Halbjahresoffenlegung zum 30.09.2025 ist älter als 270 Tage und wurde deshalb nicht verwendet.
+
+Probelauf: Kreditqualität bei TSE:8331, 7186 und 5831 gefüllt, sonst keine Änderung. Die Werte laufen am 26.12.2026 ab (wie bei den Großbanken; die Quartalsaufgabe im Dezember sucht die Halbjahreswerte).
+
+Weiter offen: Resona und Fukuoka. Die Regel für den Inlandsstandard hält die Kreditqualität offen; eine CR1-Übernahme für diese Banken ist noch nicht umgesetzt.
+
 ## Zuordnung (`intl-bank-map.json`)
 
 Eine notierte Stammaktie (ISIN) wird nur dem Konzern zugeordnet, dessen Zahlen veröffentlicht werden, und nur, wenn die notierte Gesellschaft selbst dieser Konzern ist. Holdings ohne Banklizenz bleiben offen. Depositary Receipts mit derselben ISIN übernehmen ab 10.11.2026 den Eintrag einer im selben Lauf geprüften Stammaktie, weil Kapital-, Liquiditäts- und Kreditquoten den Konzern beschreiben, nicht die Aktie (`depositaryOf`). Ohne geprüfte Stammaktie bleibt das DR offen.

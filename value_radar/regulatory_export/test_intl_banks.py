@@ -83,7 +83,7 @@ class IntlBankImportTests(unittest.TestCase):
     def test_repository_japan_cr1_blocks_are_valid(self):
         data = json.loads((intl.ROOT / 'reviewed-key-metrics.json').read_text(encoding='utf-8'))
         jp = [e for e in data['entries'] if e.get('credit')]
-        self.assertEqual({e['isin'] for e in jp}, {'JP3902900004', 'JP3890350006', 'JP3885780001', 'JP3892100003'})
+        self.assertEqual({e['isin'] for e in jp}, {'JP3902900004', 'JP3890350006', 'JP3885780001', 'JP3892100003', 'JP3511800009', 'JP3305990008', 'JP3351500008'})
         for e in jp:
             self.assertEqual(intl.credit_problem(e, dt.datetime(2026, 11, 11, tzinfo=dt.timezone.utc)), '', e['isin'])
 

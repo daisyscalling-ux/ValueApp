@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "intl-bank-metrics-v1",
- "importedAt": "2026-11-12T08:17:35.001497+00:00",
+ "importedAt": "2026-11-12T18:51:14.263548+00:00",
  "domesticStandard": {
   "JP3500610005": {
    "issuer": "Resona Holdings, Inc.",
@@ -459,12 +459,19 @@
     "km1Row11": 0.0252
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.008496158807443675,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://www.shizuoka-fg.co.jp/pdf/ir/2027/2027_1Q_km1.pdf",
     "sha256": "a12a33113ba74823a1278f5f1996d16d7bb4738aeae0a52727ff52744232223c",
     "location": "KM1 主要な指標（銀行持株）, Shizuoka Financial Group (consolidated), PDF page 1, rows 5-7, 11, 14, 17, 20, column イ (June 30, 2026 / FY2026 Q1); Japanese-language disclosure page www.shizuoka-fg.co.jp/ir/basel.html"
+   },
+   "creditPeriod": "2026-03-31",
+   "creditSource": {
+    "type": "basel_pillar3_cr1",
+    "url": "https://www.shizuoka-fg.co.jp/pdf/ir/2026/shizuokafg_tougoureport_2026_appendix.pdf",
+    "sha256": "691c5ecad6886d0c530f6862b92ee309ce354872ff4480ce271458638121cf16",
+    "location": "Shizuoka Financial Group Integrated Report 2026 appendix (別冊), 自己資本の充実の状況 (銀行持株), PDF page 52, CR1 2025年度末 (2026-03-31), row 1 貸出金, columns イ and ロ, millions of yen"
    }
   },
   "CNE000001P37": {
@@ -1046,12 +1053,19 @@
     "km1Row11": 0.0253
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.012018956816879723,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://www.chibabank.co.jp/f/capital_2026_02_003",
     "sha256": "3ed4379a482097717b0384cede945c6361192e90adcde58173a198898a98d3e1",
     "location": "KM1 主要な指標（銀行連結）, Chiba Bank (consolidated), PDF page 1, rows 5-7, 11, 14, column イ (September 30, 2026); international standard; LCR and NSFR from KM1 流動性カバレッジ比率及び安定調達比率の推移 (https://www.chibabank.co.jp/f/liquidity_2026_02_005, sha256 96885cc8e4374450c7002f63c2b275eea69dbcf575fbdea2b0e53d32d7779bf8), consolidated rows 17 and 20, column イ"
+   },
+   "creditPeriod": "2026-03-31",
+   "creditSource": {
+    "type": "basel_pillar3_cr1",
+    "url": "https://www.chibabank.co.jp/f/disclosure_2026_02_014",
+    "sha256": "fb0a8a831a04a62019d81e5d524d726f77ea728bbd1cb9b07b4afa3965ffd793",
+    "location": "Chiba Bank disclosure 2026 (ディスクロージャー誌2026年3月期), 自己資本の充実の状況, 銀行連結, PDF page 52, CR1 as of 2026-03-31 (2026年3月末), row 1 貸出金, columns イ (defaulted) and ロ (non-defaulted), millions of yen"
    }
   },
   "JP3305990008": {
@@ -1075,12 +1089,19 @@
     "km1Row11": 0.025
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.014301864162808948,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://ssl4.eir-parts.net/doc/7186/ir_material_for_fiscal_ym9/217830/00.pdf",
     "sha256": "c3edfeeb555bff68c4889e1424573821a859d1b41e7670f353d555f73ce1f09f",
     "location": "KM1 主要な指標（銀行持株）, Yokohama Financial Group (consolidated), PDF page 1, rows 5-7, 11, 14, 17, column イ (2026年度第2四半期 = September 30, 2026); NSFR for this quarter not yet disclosed (footnote), left null; document hosted on the company IR document service linked from www.yokohamafg.co.jp/shareholder/ir/basel3/"
+   },
+   "creditPeriod": "2026-03-31",
+   "creditSource": {
+    "type": "basel_pillar3_cr1",
+    "url": "https://ssl4.eir-parts.net/doc/7186/ir_material_for_fiscal_ym7/209264/00.pdf",
+    "sha256": "3c79f5e2f81952505edb12be948ec5990b42b6e36a9d559c2f68a31b90c8c34d",
+    "location": "Yokohama Financial Group Integrated Report 2026, data section (資料編), 横浜フィナンシャルグループ 自己資本の充実の状況 定量的な開示事項, PDF page 105, CR1 2026年3月期, row 1 貸出金, columns イ and ロ, millions of yen; IR document service linked from www.yokohamafg.co.jp"
    }
   }
  },

@@ -89,3 +89,10 @@ test('FCF / revenue substitute from the same dated annual record (11.11.2026)',(
  assert.equal(fin.supplementalMetrics.fcfRevenue,undefined,'financials never get it');
 });
 console.log(count+' field-level balance checks passed');
+test('Storebrand: vendor "Savings banks" corrected to insurer from the real registry entry (12.11.2026)',()=>{
+ const t=Date.parse('2026-11-12T20:00:00Z'),row={industry:'Savings banks',metadata_asof:'2026-11-12T12:00:00Z',isin:'NO0003053605'};
+ assert.equal(balanceProfile(row,t),'insurer');assert.equal(profileOverride(row,t)?.evidencePages,'37');
+ assert.equal(balanceProfile({...row,industry:'Regional Banks'},t),'bank','vendor industry changed: override no longer applies');
+ assert.equal(balanceProfile({...row,isin:'NO0003053606'},t),'bank','other ISIN');
+ assert.equal(balanceProfile(row,Date.parse('2027-05-13T00:00:00Z')),'unclassified','metadata stale; override would also have expired');
+});

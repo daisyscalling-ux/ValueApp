@@ -152,6 +152,16 @@
     "url": "https://www.hsbc.com/-/files/hsbc/investors/hsbc-results/2026/3q/pdfs/hsbc-holdings-plc/261103-hsbc-holdings-plc-pillar-3-disclosures-at-30-september-2026-english.pdf",
     "sha256": "e3ed6c1c448466cd876f25d521d94f493acc966e93386f5236c3d67e398b7e3e",
     "location": "PDF page 5, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   },
+   "credit": {
+    "period": "2026-06-30",
+    "nonPerformingLoans": 25000,
+    "performingLoans": 1488300,
+    "loanUnit": "USD_million",
+    "type": "uk_pillar3_cr1",
+    "url": "https://vpr.hkma.gov.hk/statics/assets/doc/100002/lac_qtrhc/lac_qtrhc_0626_pt01_eng.pdf",
+    "sha256": "d6e492f06737f01f5bceda25dbd4fcb54a82e018a2963dbdf0f9eea157891a1d",
+    "location": "HSBC Holdings plc Pillar 3 Disclosures at 30 June 2026 (filed with the HKMA), Table 23 CR1, PDF page 30, row 010 Loans and advances, gross carrying amount performing 1,488.3 and non-performing 25.0 (USD billion, stored in USD million)"
    }
   },
   {
@@ -178,6 +188,16 @@
     "url": "https://investors.natwestgroup.com/~/media/Files/R/RBS-IR-V2/results-center/30102026/nwg-q3-2026-pillar-3-report.pdf",
     "sha256": "6f555f71e09e71a4b6b631bf6a98a800cf9660d04423644bbc1347a869dabbd8",
     "location": "PDF page 6, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   },
+   "credit": {
+    "period": "2026-06-30",
+    "nonPerformingLoans": 5036,
+    "performingLoans": 450574,
+    "loanUnit": "GBP_million",
+    "type": "uk_pillar3_cr1",
+    "url": "https://investors.natwestgroup.com/~/media/Files/R/RBS-IR-V2/results-center/31072026/nwg-h1-2026-pillar-3-report.pdf",
+    "sha256": "b762dd3f02f10a1d771e53554ecb3bf3c76fb3276604bfee3186101efba88362",
+    "location": "NatWest Group Pillar 3 H1 2026, UK CR1 Performing and non-performing exposures and related provisions, 30 June 2026, PDF page 36, row 010 Loans and advances, gross carrying amount performing and non-performing (GBP million)"
    }
   },
   {
@@ -204,6 +224,16 @@
     "url": "https://www.sc.com/en/uploads/sites/66/content/docs/standard-chartered-plc-q3-2026-pillar-3-disclosure.pdf",
     "sha256": "c8eabe864c4df4b884bfec3766b34d1d0afe9f88ab19ddd7b3d2c10b68906bad",
     "location": "PDF page 4, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   },
+   "credit": {
+    "period": "2026-06-30",
+    "nonPerformingLoans": 5785,
+    "performingLoans": 433417,
+    "loanUnit": "USD_million",
+    "type": "uk_pillar3_cr1",
+    "url": "https://www.sc.com/en/uploads/sites/66/content/docs/standard-chartered-plc-hy-2026-pillar-3-disclosure.pdf",
+    "sha256": "d27eae1dfa2ccc84c3882f638036c2c1bb173fa7957996f16b8629136e31ee52",
+    "location": "Standard Chartered PLC Pillar 3 HY 2026, Table 24 UK CR1, 30.06.26, PDF page 28, row 010 Loans and advances, gross carrying amount performing and non-performing (USD million)"
    }
   },
   {

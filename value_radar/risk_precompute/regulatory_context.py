@@ -181,13 +181,16 @@ def build_eu(universe,capital,mapping,now,km1=None,dr_review=None):
  return out
 
 INTL_CREDIT_MAX_AGE_DAYS=270
+# Quellenart -> Methode (Basel CR1 ausgefallen; UK CR1 notleidend nach EBA/UK-Definition).
+CR1_SOURCES={'basel_pillar3_cr1':'basel-cr1-default-v1','uk_pillar3_cr1':'uk-cr1-npl-v1'}
+CR1_DEFINITIONS={'basel-cr1-default-v1':'Defaulted / (defaulted + non-defaulted) gross carrying value of loans, Basel Pillar 3 table CR1.','uk-cr1-npl-v1':'Non-performing / (performing + non-performing) gross carrying amount of loans and advances, UK Pillar 3 table UK CR1 (EBA definition).'}
 def intl_credit_source(i,now):
  """CR1 mit eigenem Stichtag (Japan: nur Jahres-/Halbjahresbericht). None = gleicher Stichtag wie KM1, False = ungueltig, sonst Zusatzfelder."""
  p,src=i.get('creditPeriod'),i.get('creditSource')
  if p is None and src is None:return None
  if not isinstance(src,dict) or not isinstance(p,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',p) or p>str(i.get('period')):return False
  if not 0<=(now.date()-dt.date.fromisoformat(p)).days<=INTL_CREDIT_MAX_AGE_DAYS:return False
- if src.get('type')!='basel_pillar3_cr1' or not re.fullmatch(r'[0-9a-f]{64}',str(src.get('sha256',''))) or not str(src.get('url','')).startswith('https://') or not str(src.get('location','')).strip():return False
+ if src.get('type') not in CR1_SOURCES or (i.get('creditMethod') or CR1_SOURCES['basel_pillar3_cr1'])!=CR1_SOURCES[src['type']] or not re.fullmatch(r'[0-9a-f]{64}',str(src.get('sha256',''))) or not str(src.get('url','')).startswith('https://') or not str(src.get('location','')).strip():return False
  return {'period':p,'periodBasis':'separate_cr1','sourceType':src['type'],'sourceUrl':src['url'],'sourceFileSha256':src['sha256'],'sourceDetail':src['location']}
 
 DOMESTIC_STANDARDS=('jp_domestic_core_capital',)
@@ -240,9 +243,11 @@ def build_intl(universe,data,now,dr_review=None):
         'components':i.get('requirementComponents'),'componentSourceUrl':i.get('requirementSourceUrl'),'scoreContribution':0}
   credit=None
   if isinstance(i.get('defaultedLoanRatio'),(int,float)) and 0<=i['defaultedLoanRatio']<=1:
-   credit={'state':'available','method':'basel-cr1-default-v1','unit':'fraction','ratio':i['defaultedLoanRatio'],'period':i['period'],
-           'definition':'Defaulted / (defaulted + non-defaulted) gross carrying value of loans, Basel Pillar 3 table CR1.','scoreContribution':0}
-   sep=intl_credit_source(i,now)
+   method=i.get('creditMethod') or 'basel-cr1-default-v1'
+   if method not in CR1_DEFINITIONS:method=None
+   credit={'state':'available','method':method,'unit':'fraction','ratio':i['defaultedLoanRatio'],'period':i['period'],
+           'definition':CR1_DEFINITIONS.get(method),'scoreContribution':0} if method else None
+   sep=intl_credit_source(i,now) if credit else None
    if sep is False:credit=None
    elif sep:credit.update(sep)
   stocks[s]={'state':'available','scope':'basel_key_metrics','holdingName':i['issuer'],'issuerIsin':i.get('shareClassOf') or row['isin'],'jurisdiction':i['jurisdiction'],'regulator':i['regulator'],'consolidation':i['scope'],

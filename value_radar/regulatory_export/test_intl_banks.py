@@ -82,8 +82,11 @@ class IntlBankImportTests(unittest.TestCase):
 
     def test_repository_japan_cr1_blocks_are_valid(self):
         data = json.loads((intl.ROOT / 'reviewed-key-metrics.json').read_text(encoding='utf-8'))
-        jp = [e for e in data['entries'] if e.get('credit')]
+        jp = [e for e in data['entries'] if e.get('credit') and e['credit']['type'] == 'basel_pillar3_cr1']
         self.assertEqual({e['isin'] for e in jp}, {'JP3902900004', 'JP3890350006', 'JP3885780001', 'JP3892100003', 'JP3511800009', 'JP3305990008', 'JP3351500008'})
+        uk = [e for e in data['entries'] if e.get('credit') and e['credit']['type'] == 'uk_pillar3_cr1']
+        self.assertEqual({e['isin'] for e in uk}, {'GB0005405286', 'GB00BM8PJY71', 'GB0004082847'})
+        jp += uk
         for e in jp:
             self.assertEqual(intl.credit_problem(e, dt.datetime(2026, 11, 11, tzinfo=dt.timezone.utc)), '', e['isin'])
 
@@ -115,6 +118,24 @@ class IntlBankImportTests(unittest.TestCase):
         self.assertFalse(isins & {e['isin'] for e in data['entries']})
         for e in data['domesticStandard']:
             self.assertEqual(intl.domestic_problem(e, data['domesticStandardLcrRule'], dt.datetime(2026, 11, 12, tzinfo=dt.timezone.utc)), '', e['isin'])
+
+    def test_uk_cr1_npl_block(self):
+        """UK CR1 (EBA-Definition): eigene Methode uk-cr1-npl-v1, notleidend / (performing + non-performing)."""
+        credit = {'period': '2026-06-30', 'nonPerformingLoans': 5036, 'performingLoans': 450574, 'loanUnit': 'GBP_million', 'type': 'uk_pillar3_cr1',
+                  'url': 'https://example.org/p3.pdf', 'sha256': 'c' * 64, 'location': 'UK CR1 row 010'}
+        e = {'isin': 'GB00BM8PJY71', 'issuer': 'NatWest', 'jurisdiction': 'GB', 'regulator': 'PRA', 'period': '2026-09-30', 'cet1_ratio': .14, 'tier1_ratio': .16,
+             'total_capital_ratio': .19, 'credit': credit, 'source': {'type': 'basel_pillar3_km1', 'url': 'https://example.org/km1.pdf', 'sha256': 'b' * 64}}
+        wrong_fields = {**e, 'isin': 'GB0000000001', 'credit': {**{k: v for k, v in credit.items() if k not in ('nonPerformingLoans', 'performingLoans')}, 'defaultedLoans': 5036, 'nonDefaultedLoans': 450574}}
+        unknown = {**e, 'isin': 'GB0000000002', 'credit': {**credit, 'type': 'uk_guess'}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'apra.xlsx'
+            path.write_bytes(b'x')
+            with mock.patch.object(intl, 'apra', return_value={}):
+                r = intl.build(path, {**MAPPING, 'issuers': []}, NOW, reviewed={'review_expires': '2027-01-01', 'entries': [e, wrong_fields, unknown]})
+        i = r['issuers']['GB00BM8PJY71']
+        self.assertAlmostEqual(i['defaultedLoanRatio'], 5036 / (5036 + 450574))
+        self.assertEqual((i['creditMethod'], i['creditPeriod']), ('uk-cr1-npl-v1', '2026-06-30'))
+        self.assertEqual(r['creditRejected'], {'GB0000000001': 'credit_values_invalid', 'GB0000000002': 'credit_source_unverified'})
 
     def test_entry_without_disclosed_requirement_keeps_capital_only(self):
         e = {'isin': 'JP3351500008', 'issuer': 'Shizuoka Financial Group, Inc.', 'jurisdiction': 'JP', 'regulator': 'JFSA', 'period': '2026-06-30',

@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "intl-bank-metrics-v1",
- "importedAt": "2026-11-12T18:51:14.263548+00:00",
+ "importedAt": "2026-11-12T19:33:33.731224+00:00",
  "domesticStandard": {
   "JP3500610005": {
    "issuer": "Resona Holdings, Inc.",
@@ -253,12 +253,20 @@
     "km1Row11": 0.053
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.016520187669331922,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://www.hsbc.com/-/files/hsbc/investors/hsbc-results/2026/3q/pdfs/hsbc-holdings-plc/261103-hsbc-holdings-plc-pillar-3-disclosures-at-30-september-2026-english.pdf",
     "sha256": "e3ed6c1c448466cd876f25d521d94f493acc966e93386f5236c3d67e398b7e3e",
     "location": "PDF page 5, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   },
+   "creditPeriod": "2026-06-30",
+   "creditMethod": "uk-cr1-npl-v1",
+   "creditSource": {
+    "type": "uk_pillar3_cr1",
+    "url": "https://vpr.hkma.gov.hk/statics/assets/doc/100002/lac_qtrhc/lac_qtrhc_0626_pt01_eng.pdf",
+    "sha256": "d6e492f06737f01f5bceda25dbd4fcb54a82e018a2963dbdf0f9eea157891a1d",
+    "location": "HSBC Holdings plc Pillar 3 Disclosures at 30 June 2026 (filed with the HKMA), Table 23 CR1, PDF page 30, row 010 Loans and advances, gross carrying amount performing 1,488.3 and non-performing 25.0 (USD billion, stored in USD million)"
    }
   },
   "GB00BM8PJY71": {
@@ -283,12 +291,20 @@
     "km1Row11": 0.042
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.011053313140624656,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://investors.natwestgroup.com/~/media/Files/R/RBS-IR-V2/results-center/30102026/nwg-q3-2026-pillar-3-report.pdf",
     "sha256": "6f555f71e09e71a4b6b631bf6a98a800cf9660d04423644bbc1347a869dabbd8",
     "location": "PDF page 6, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   },
+   "creditPeriod": "2026-06-30",
+   "creditMethod": "uk-cr1-npl-v1",
+   "creditSource": {
+    "type": "uk_pillar3_cr1",
+    "url": "https://investors.natwestgroup.com/~/media/Files/R/RBS-IR-V2/results-center/31072026/nwg-h1-2026-pillar-3-report.pdf",
+    "sha256": "b762dd3f02f10a1d771e53554ecb3bf3c76fb3276604bfee3186101efba88362",
+    "location": "NatWest Group Pillar 3 H1 2026, UK CR1 Performing and non-performing exposures and related provisions, 30 June 2026, PDF page 36, row 010 Loans and advances, gross carrying amount performing and non-performing (GBP million)"
    }
   },
   "GB0004082847": {
@@ -313,12 +329,20 @@
     "km1Row11": 0.039
    },
    "requirementSourceUrl": null,
-   "defaultedLoanRatio": null,
+   "defaultedLoanRatio": 0.013171615794099298,
    "source": {
     "type": "basel_pillar3_km1",
     "url": "https://www.sc.com/en/uploads/sites/66/content/docs/standard-chartered-plc-q3-2026-pillar-3-disclosure.pdf",
     "sha256": "c8eabe864c4df4b884bfec3766b34d1d0afe9f88ab19ddd7b3d2c10b68906bad",
     "location": "PDF page 4, table UK KM1, column 30 Sep 2026; LCR = 12-month average"
+   },
+   "creditPeriod": "2026-06-30",
+   "creditMethod": "uk-cr1-npl-v1",
+   "creditSource": {
+    "type": "uk_pillar3_cr1",
+    "url": "https://www.sc.com/en/uploads/sites/66/content/docs/standard-chartered-plc-hy-2026-pillar-3-disclosure.pdf",
+    "sha256": "d27eae1dfa2ccc84c3882f638036c2c1bb173fa7957996f16b8629136e31ee52",
+    "location": "Standard Chartered PLC Pillar 3 HY 2026, Table 24 UK CR1, 30.06.26, PDF page 28, row 010 Loans and advances, gross carrying amount performing and non-performing (USD million)"
    }
   },
   "JP3902900004": {
@@ -350,6 +374,7 @@
     "location": "KM1 (Mitsubishi UFJ Financial Group) rows 5-7, 11, 14, 17, 20, column a June 30, 2026"
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://www.mufg.jp/dam/ir/report/annual_report/pdf/baseliii26_en.pdf",
@@ -390,6 +415,7 @@
     }
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://www.smfg.co.jp/english/investor/library/annual/fy2025e_f02_pdf/fy2025e_f02_24.pdf",
@@ -431,6 +457,7 @@
     }
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://library.mizuhogroup.com/asset/c856b66f-c1a8-4410-a787-a55052ddd053/fg-investors-financial-information-annual_data26d_shiryo_all.pdf",
@@ -467,6 +494,7 @@
     "location": "KM1 主要な指標（銀行持株）, Shizuoka Financial Group (consolidated), PDF page 1, rows 5-7, 11, 14, 17, 20, column イ (June 30, 2026 / FY2026 Q1); Japanese-language disclosure page www.shizuoka-fg.co.jp/ir/basel.html"
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://www.shizuoka-fg.co.jp/pdf/ir/2026/shizuokafg_tougoureport_2026_appendix.pdf",
@@ -969,6 +997,7 @@
     }
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://links.sgx.com/FileOpen/2026AnnualReport%20FinancialData.ashx?App=Announcement&FileID=904886",
@@ -1061,6 +1090,7 @@
     "location": "KM1 主要な指標（銀行連結）, Chiba Bank (consolidated), PDF page 1, rows 5-7, 11, 14, column イ (September 30, 2026); international standard; LCR and NSFR from KM1 流動性カバレッジ比率及び安定調達比率の推移 (https://www.chibabank.co.jp/f/liquidity_2026_02_005, sha256 96885cc8e4374450c7002f63c2b275eea69dbcf575fbdea2b0e53d32d7779bf8), consolidated rows 17 and 20, column イ"
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://www.chibabank.co.jp/f/disclosure_2026_02_014",
@@ -1097,6 +1127,7 @@
     "location": "KM1 主要な指標（銀行持株）, Yokohama Financial Group (consolidated), PDF page 1, rows 5-7, 11, 14, 17, column イ (2026年度第2四半期 = September 30, 2026); NSFR for this quarter not yet disclosed (footnote), left null; document hosted on the company IR document service linked from www.yokohamafg.co.jp/shareholder/ir/basel3/"
    },
    "creditPeriod": "2026-03-31",
+   "creditMethod": "basel-cr1-default-v1",
    "creditSource": {
     "type": "basel_pillar3_cr1",
     "url": "https://ssl4.eir-parts.net/doc/7186/ir_material_for_fiscal_ym7/209264/00.pdf",

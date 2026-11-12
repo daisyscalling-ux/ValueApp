@@ -87,6 +87,22 @@ Probelauf: Kreditqualität bei TSE:8331, 7186 und 5831 gefüllt, sonst keine Än
 
 Weiter offen: Resona und Fukuoka. Die Regel für den Inlandsstandard hält die Kreditqualität offen; eine CR1-Übernahme für diese Banken ist noch nicht umgesetzt.
 
+## Britische Banken: notleidende Kredite aus UK CR1 (12. November 2026)
+
+Britische Banken veröffentlichen statt der Basel-CR1 (ausgefallen / nicht ausgefallen) die Tabelle **UK CR1** nach EBA-Definition (performing / non-performing). Das ist dieselbe Vorlage wie EU CR1.
+
+Neu in `reviewed-key-metrics.json` ist ein `credit`-Block mit `type = uk_pillar3_cr1` und den Feldern `nonPerformingLoans` und `performingLoans`. Der Import setzt die Methode `creditMethod = uk-cr1-npl-v1`. Kontext, Vorberechnung und App lassen den Wert nur zu, wenn Methode und Quellenart zusammenpassen und der Block mit eigenem Stichtag belegt ist. Die App bezeichnet ihn als „Notleidende Kredite (UK CR1)“.
+
+| Bank | Non-performing / performing (Zeile 010 Loans and advances) | NPL-Quote | Fundstelle |
+|---|---|---:|---|
+| NatWest | 5.036 / 450.574 Mio. £ | 1,11 % | Säule 3 H1 2026, PDF-S. 36 |
+| Standard Chartered | 5.785 / 433.417 Mio. $ | 1,32 % | Säule 3 HY 2026, Tabelle 24, PDF-S. 28 |
+| HSBC | 25,0 / 1.488,3 Mrd. $ | 1,65 % | Säule 3 zum 30.06.2026 (bei der HKMA hinterlegt), Tabelle 23, PDF-S. 30 |
+
+Probelauf: Kreditqualität bei LSE:NWG, LSE:STAN und NYSE:HSBC gefüllt, sonst keine Änderung.
+
+Verzerrung: „Non-performing“ ist breiter als „defaulted“. Die drei Banken wirken dadurch eher schlechter, nicht besser.
+
 ## Zuordnung (`intl-bank-map.json`)
 
 Eine notierte Stammaktie (ISIN) wird nur dem Konzern zugeordnet, dessen Zahlen veröffentlicht werden, und nur, wenn die notierte Gesellschaft selbst dieser Konzern ist. Holdings ohne Banklizenz bleiben offen. Depositary Receipts mit derselben ISIN übernehmen ab 10.11.2026 den Eintrag einer im selben Lauf geprüften Stammaktie, weil Kapital-, Liquiditäts- und Kreditquoten den Konzern beschreiben, nicht die Aktie (`depositaryOf`). Ohne geprüfte Stammaktie bleibt das DR offen.

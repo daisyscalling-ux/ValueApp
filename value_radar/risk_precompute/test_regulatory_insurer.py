@@ -84,3 +84,21 @@ class GeneraliTests(unittest.TestCase):
   self.assertEqual(late['stocks']['MIL:G']['primary']['period'],'2025-12-31')
   wrong=build_insurers({'kandidaten':[{**e['inputIdentity'],'isin':'IT0000062071'}]},reg,dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc))
   self.assertNotIn('MIL:G',wrong['stocks'],'falsche ISIN')
+
+class ReviewedNameAliasTests(unittest.TestCase):
+ """Geprüfte Namensvarianten (12.11.2026): nur der Anbietername darf abweichen, alle anderen Identitätsfelder exakt."""
+ def setUp(self):
+  self.reg=json.loads((Path(__file__).with_name('reviewed-insurer-solvency.json')).read_text(encoding='utf-8'))
+  self.e=next(e for e in self.reg['entries'] if e['inputIdentity']['listing_symbol']=='XETR:MUV2')
+  self.now=dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc)
+ def run_row(self,**change):
+  row={**self.e['inputIdentity'],**change}
+  return build_insurers({'kandidaten':[row]},{**self.reg,'entries':[self.e]},self.now)
+ def test_both_reviewed_spellings_accepted_with_row_identity(self):
+  for name,full in [('Munich Re AG','Munich Re AG'),('Munchener Ruckversicherungs-Gesellschaft','Munchener Ruckversicherungs-Gesellschaft AG')]:
+   out=self.run_row(name=name,name_full=full);s=out['stocks']['XETR:MUV2']
+   self.assertEqual((s['inputIdentity']['name'],s['inputIdentity']['name_full']),(name,full))
+ def test_unknown_name_or_other_field_rejected(self):
+  self.assertEqual(self.run_row(name='Munich Re',name_full='Munich Re AG')['rejected'],{'XETR:MUV2':'identity_mismatch'})
+  self.assertEqual(self.run_row(name='Munchener Ruckversicherungs-Gesellschaft',name_full='Munchener Ruckversicherungs-Gesellschaft AG',isin='DE0008430027')['rejected'],{'XETR:MUV2':'identity_mismatch'})
+  self.assertEqual(self.run_row(name='Munchener Ruckversicherungs-Gesellschaft',name_full='Munchener Ruckversicherungs-Gesellschaft AG',currency='USD')['rejected'],{'XETR:MUV2':'identity_mismatch'})

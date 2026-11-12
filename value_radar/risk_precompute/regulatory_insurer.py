@@ -30,6 +30,16 @@ def observation(o,today,reviewed):
  if complete and (not number(own) or own<0 or not number(scr) or scr<=0 or abs(own/scr-ratio)>.015):return None
  return {**o,'amountsVerified':complete}
 
+NAME_FIELDS=('name','name_full')
+def identity_matches(row,e):
+ """Notierung, Ticker, ISIN, Waehrung, Wertpapierart und Gattung exakt; der Anbietername exakt oder als geprueftes Paar in
+ reviewedNameAliases (der Anbieter liefert fuer manche Titel je nach Lauf zwei Schreibweisen, z. B. Munich Re)."""
+ ident=e.get('inputIdentity',{})
+ if any(row.get(k)!=ident.get(k) for k in FIELDS if k not in NAME_FIELDS):return False
+ names=(row.get('name'),row.get('name_full'))
+ if names==(ident.get('name'),ident.get('name_full')):return True
+ return any(isinstance(a,dict) and (a.get('name'),a.get('name_full'))==names for a in e.get('reviewedNameAliases') or [])
+
 def build_insurers(universe,registry,now=None):
  now=now or dt.datetime.now(dt.timezone.utc);today=now.date()
  out={'schema':1,'source':SOURCE,'generatedAt':now.isoformat(),'stocks':{},'rejected':{},'scoreContribution':0}
@@ -42,7 +52,7 @@ def build_insurers(universe,registry,now=None):
   symbol=row.get('listing_symbol');matching=[e for e in entries if e.get('inputIdentity',{}).get('listing_symbol')==symbol]
   if not matching:continue
   e=matching[0]
-  if counts[symbol]!=1 or rowcounts[symbol]!=1 or not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common_stock','common','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch') or any(row.get(k)!=e.get('inputIdentity',{}).get(k) for k in FIELDS):
+  if counts[symbol]!=1 or rowcounts[symbol]!=1 or not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common_stock','common','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch') or not identity_matches(row,e):
    out['rejected'][symbol]='identity_mismatch';continue
   if e.get('scope')!='insurance_group' or (e.get('framework'),e.get('jurisdiction'),e.get('regulator')) not in REGIMES or not url(e.get('scopeSourceUrl')) or not e.get('scopeSourcePages'):
    out['rejected'][symbol]='scope_unverified';continue
@@ -54,7 +64,7 @@ def build_insurers(universe,registry,now=None):
   if not best or len(best)>1:
    out['rejected'][symbol]='basis_unavailable_or_ambiguous';continue
   primary=best[0]
-  out['stocks'][symbol]={**e,'state':'available','observations':valid,'primary':primary,'reviewedOn':reviewed.isoformat(),'reviewExpires':expires.isoformat(),'pointInTimeUsable':False,'scoreContribution':0}
+  out['stocks'][symbol]={**e,'inputIdentity':{k:row.get(k) for k in FIELDS},'state':'available','observations':valid,'primary':primary,'reviewedOn':reviewed.isoformat(),'reviewExpires':expires.isoformat(),'pointInTimeUsable':False,'scoreContribution':0}
  # Depositary Receipts: Die Solvenzquote gilt fuer den Versicherungskonzern. Ein DR mit derselben ISIN uebernimmt den Eintrag einer im
  # selben Lauf geprueften Stammaktie (wie bei Banken), mit eigener Identitaet und depositaryOf; sonst bleibt er offen.
  for row in rows:

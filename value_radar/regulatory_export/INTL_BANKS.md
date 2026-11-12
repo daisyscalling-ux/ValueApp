@@ -99,3 +99,19 @@ KM1-Werte müssen je Quartal neu gelesen werden: neue Werte, Fundstelle und SHA-
 ## Aktiengattungen desselben Konzerns (10. November 2026)
 
 Chinesische Banken notieren A-Aktien (Shanghai) und H-Aktien (Hongkong). Die Kennzahlen gelten für den Konzern. Geprüfte Einträge in `reviewed-key-metrics.json` können deshalb weitere ISINs desselben Konzerns unter `shareClassIsins` führen (Quelle: HKEX List of Securities). Der Import legt sie mit `shareClassOf` (Haupt-ISIN) ab. In `regulatory_context.py` trägt jeder Eintrag `issuerIsin`. Depositary Receipts übernehmen die Quoten einer im selben Lauf geprüften Stammaktie desselben Konzerns: bei EU-Banken über die LEI, bei internationalen über `issuerIsin`. Betroffen sind ICBC, CCB, Bank of China, ABC, China Merchants Bank und Bank of Communications.
+
+## Kreditqualität der japanischen Regionalbanken (12. November 2026)
+
+CR1 zum 31.03.2026 aus den Jahresoffenlegungen, als `credit`-Block mit eigenem Stichtag (gleiche Regel wie bei den Großbanken):
+
+| Bank | Ausgefallen / nicht ausgefallen (Mio. Yen) | Quote | Fundstelle |
+|---|---|---:|---|
+| Chiba (Bank, Konzern) | 170.533 / 14.018.136 | 1,20 % | Offenlegungsheft 2026, Kapitel „自己資本の充実の状況“, Abschnitt „銀行連結“, PDF-S. 52 |
+| Yokohama FG (Holding) | 251.654 / 17.344.234 | 1,43 % | Integrierter Bericht 2026, Datenteil, PDF-S. 105 |
+| Shizuoka FG (Holding) | 93.087 / 10.863.276 | 0,85 % | Integrierter Bericht 2026, Anhang, Abschnitt „銀行持株“, PDF-S. 52 |
+
+Die Halbjahresoffenlegung zum 30.09.2025 ist älter als 270 Tage und wurde deshalb nicht verwendet.
+
+Probelauf: Kreditqualität bei TSE:8331, 7186 und 5831 gefüllt, sonst keine Änderung. Die Werte laufen am 26.12.2026 ab (wie bei den Großbanken; die Quartalsaufgabe im Dezember sucht die Halbjahreswerte).
+
+Weiter offen: Resona und Fukuoka. Die Regel für den Inlandsstandard hält die Kreditqualität offen; eine CR1-Übernahme für diese Banken ist noch nicht umgesetzt.

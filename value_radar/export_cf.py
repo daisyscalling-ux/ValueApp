@@ -152,6 +152,9 @@ def main() -> int:
     ergebnisse = combine(universum, saved, ergebnisse, {r["ticker"] for r in identity_rejected}, observed)
     for r in ergebnisse:
         r["index_membership"] = mitglied.get(r["ticker"], [])
+    # EBITDA-Marge: gekennzeichneter Ersatz aus dem eigenen Jahresabschluss, nur wenn ROIC keine liefert.
+    import ebitda_margin_fallback
+    _melde(f"[export] EBITDA-Marge aus Jahresabschluss ergaenzt: {ebitda_margin_fallback.apply(ergebnisse, Path(__file__).resolve().parent / 'daten' / 'fundamentals')}")
 
     # JSON schreiben
     AUSGABE.parent.mkdir(parents=True, exist_ok=True)

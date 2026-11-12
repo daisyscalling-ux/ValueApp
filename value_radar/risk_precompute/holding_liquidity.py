@@ -1,15 +1,25 @@
 """Reviewed holding liquidity, no inference from subsidiary or capital ratios. Spiegel von holding-liquidity.ts."""
 import datetime as dt,math,re
+from urllib.parse import urlparse
 SEC=r'https://www\.sec\.gov/Archives/edgar/data/\d+/\d+/[A-Za-z0-9_.-]+\.htm'
 
 def _num(v):
  return isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
 
+def _public_disclosure(r):
+ """Gesetzliche LCR-Offenlegung der Bank (12 CFR 249 Subpart J) auf der Bank-Website: https, SHA-256, nur mit Betraegen."""
+ try:u=urlparse(r['sourceUrl'])
+ except (TypeError,ValueError):return False
+ return u.scheme=='https' and bool(u.hostname) and bool(re.fullmatch(r'[0-9a-f]{64}',r.get('sourceSha256') or '')) and r.get('basis','amounts')=='amounts'
+
 def _anchored(r,parent,now):
  try:
   if r.get('method')!='reviewed-holding-lcr-v1' or r['scope']!='listed_consolidated_holding' or r['holdingName']!=parent['holdingName']:return False
   if not 0<=(now.date()-dt.date.fromisoformat(r['period'])).days<=180 or not dt.date.fromisoformat(r['period'])<=dt.date.fromisoformat(r['reviewedOn'])<=now.date()<=dt.date.fromisoformat(r['reviewExpires']):return False
-  return bool(re.fullmatch(SEC,r['sourceUrl'])) and isinstance(r.get('sourceSection'),str) and bool(r['sourceSection'].strip())
+  if not (isinstance(r.get('sourceSection'),str) and r['sourceSection'].strip()):return False
+  kind=r.get('sourceKind')
+  if kind is None:return bool(re.fullmatch(SEC,r['sourceUrl']))
+  return kind=='bank_lcr_public_disclosure' and _public_disclosure(r)
  except (KeyError,ValueError,TypeError):return False
 
 def liquidity_for(parent,archive,now):

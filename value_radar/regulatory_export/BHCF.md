@@ -110,7 +110,7 @@ Die Konzern-LCR muss denselben Stichtag haben wie das FR-Y-9C-Kapital, also den 
   - Capital One 165 %
 - **Ausnahme Kategorie IV** (`exemptions`, wörtliches Zitat): M&T (10-Q), KeyCorp, Regions, Citizens (je 10-K 2025, Kategorie IV im 10-Q Q2 bestätigt).
 - **Offen:**
-  - PNC, Northern Trust: keine LCR-Zahl im 10-Q; Beträge stehen in separaten LCR-Offenlegungen.
+  - PNC, Northern Trust: keine LCR-Zahl im 10-Q; Beträge stehen in separaten LCR-Offenlegungen. PNC ist seit 12.11.2026 erledigt (Abschnitt unten). Northern Trust bleibt offen, weil der Host automatisierte Abrufe sperrt.
   - Fifth Third: 10-K nennt nur „calibrated LCR requirements“, ab Q3 2026 Kategorie III.
   - Huntington: im 10-K ausgenommen, zum 30.06. nicht belegt, ab Q3 Kategorie III.
   - Synchrony: kein Beleg gefunden.
@@ -120,6 +120,25 @@ Prüfung in `holding_liquidity.py` und `holding-liquidity.ts` (identisch mit val
 Mit dem FR-Y-9C-Import für Q3 werden alle Einträge auf den 30.09.2026 umgestellt; die Q3-10-Q liegen bereits in `sec-bank-filings.json`.
 
 **Probelauf** gegen main: US-LCR vorhanden 4 → 13, bewusst außerhalb 4, offen 19 → 6. S&P 500 offen 1,18 → 0,99 %. Kein Titel schlechter.
+
+## LCR aus der gesetzlichen Offenlegung der Bank: PNC (12. November 2026)
+
+US-Banken der Kategorien I–III müssen die LCR vierteljährlich auf der eigenen Website offenlegen (12 CFR 249 Subpart J, §§ 249.90–249.91), mit HQLA, Abflüssen und Zuflüssen im Quartalsdurchschnitt. Diese Offenlegung liegt nicht bei der SEC. Bisher galten nur SEC-Dokumente.
+
+Neue Quellenart `sourceKind = bank_lcr_public_disclosure` in `reviewed-liquidity.json`:
+- Pflicht: https, SHA-256 der Originaldatei, Fundstelle und Beträge (`basis = amounts`, HQLA / Nettoabflüsse gegen die Quote geprüft, Toleranz 0,5 Prozentpunkte).
+- Eine reine Quote reicht bei dieser Quellenart nicht.
+- Ohne `sourceKind` gilt weiterhin nur sec.gov.
+- Geprüft in `holding_liquidity.py` und `holding-liquidity.ts` (identisch mit valueapp-cf). Die App nennt die Quelle („gesetzliche LCR-Offenlegung der Bank“) und zeigt die Prüfsumme.
+
+PNC, Stichtag 30.09.2026:
+- „PNC Liquidity Coverage Ratio Disclosure as of September 30, 2026“, verlinkt auf investor.pnc.com, Bereich Regulatory Disclosures.
+- Table 1, PDF-Seite 4: HQLA 114.040 Mio. USD, bereinigte Nettoabflüsse 107.493 Mio. USD, LCR **106 %** (gerechnet 106,09 %).
+- sha256 `ef5b8b82…`.
+
+Verzerrung: Keine. Die Offenlegung ist die Pflichtquelle, aus der auch die 10-Q-Angaben anderer Banken stammen. Banken mit Kategorie-IV-Ausnahme werden dadurch nicht anders behandelt.
+
+Probelauf (Kopie von main a8a22235): NYSE:PNC LCR befüllt, sonst keine Änderung. Notierungen ohne Lücke 1.260 → 1.261.
 
 ## Kreditqualität aller 22 Holdings, Archiv neu eingelesen (12. November 2026)
 

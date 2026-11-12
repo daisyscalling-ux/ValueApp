@@ -118,6 +118,12 @@ Restlücken Riskscore (12.11.2026), Entscheidungen des Nutzers:
 - **Genauere Gründe:** „Kurshistorie fehlerhaft“ ist ersetzt durch „Weniger als ein Handelsjahr (Neuemission)“ bzw. „Kurshistorie mit längeren Handelslücken“. Betroffen sind 4 Neuemissionen sowie Nebius und Zegona.
 - **Gesamt offen 1,4 → 1,3 %** des Gewichts (ohne den Portugal-Effekt, der erst mit den ETF-Kursen messbar ist).
 
+## US-Banken: LCR aus der Pflichtoffenlegung, PNC (12.11.2026)
+
+Probelauf gegen main a8a22235: NYSE:PNC LCR befüllt (106 %, Quellenart `bank_lcr_public_disclosure`), Notierungen ohne Lücke 1.260 → 1.261. Weiter offen bei der US-LCR (5):
+- NTRS: Host sperrt automatisierte Abrufe.
+- HBAN, FITB, CFG, SYF: kein Beleg für Wert oder Ausnahme zum 30.09.2026.
+
 ## ADR-Umtauschverhältnisse (10.11.2026)
 
 `fundamental_export/adr_basis.py` läuft nach jedem Abschluss-Export und leitet das Verhältnis eines Depositary Receipts zur Stammaktie doppelt ab:

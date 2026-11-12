@@ -373,3 +373,23 @@ ist yfinance-Tempo, nicht das der Sparfassung mit vier Abrufen.
 Warum die Umstellung nicht greift, ist offen. `_roic_zuerst()` meldet den
 Grund jetzt einmalig auf stderr: kein Schlüssel, keine Abdeckung, fehlendes
 Feld oder Ausnahme.
+
+## PB1 — Scanner bewertete Finanzwerte mit dem Industrie-Playbook
+**behoben 12.11.2026**
+
+`valuation.classify_playbook` (Pipeline, Scanner-Werte in `cf_universum.json`) prüfte den **Rohsektor**. ROIC/FactSet liefert aber „Finance“, „Process industries“, „Non-energy minerals“ usw.; im Universum tragen 274 Titel „Finance“, nur 3 „Financial Services“. Banken und Versicherer liefen deshalb im Playbook `quality` bzw. `inflection` (DCF, EV/EBITDA statt KBV und faires KGV), Chemie- und Rohstoffwerte nicht als `cyclical`. Die App (`valuation.ts`, `normalisierenSektor`) normalisiert seit dem Befund SK1, die Pipeline nicht, obwohl `sektor.normalisieren` vorhanden war.
+
+*Behoben:* `classify_playbook` nutzt `sektor.normalisieren` und nimmt Zahlungsnetzwerke (Visa, Mastercard) wie die App vom Finanz-Playbook aus. Test: `tests/test_playbook_sector.py` (im Workflow precompute-3tage).
+
+*Messung* (1.190 Titel mit identischen Eingängen aus `daten/fundamentals`, Abschluss- und Kurswährung gleich; Python gegen TS-Kern):
+
+| | vorher | nachher |
+|---|---|---|
+| Playbook verschieden | 304 | 0 |
+| Fair Value, Abweichung Median / P90 | 2,4 % / 30,3 % | 0,0 % / 6,3 % |
+| Quantum, Abweichung Median / P90 | 0,8 / 7,5 Punkte | 0,0 / 2,9 Punkte |
+| Composite, Abweichung Median / P90 | 0,0 / 2,8 Punkte | 0,0 / 0,0 Punkte |
+
+Restabweichung: Unternehmensphasen (nur App). Sie entfällt mit dem einheitlichen Rechenweg (`BEWERTUNG_RISIKODATEN.md`).
+
+*Wirkung im Scanner* (304 Titel mit neuem Playbook, 241 Finanzwerte, 63 zyklisch): Fair Value ändert sich im Median um 19,5 % (P90 54,9 %), Quantum um 5,0 Punkte (P90 17,3). Mittlerer Upside der Finanzwerte −3,9 % → −7,9 %. Kauf-Urteil (Näherung ohne Datenqualitätsstufe): 5 bleiben „kauf“, 5 werden neu „kauf“, 4 verlieren es. Verzerrung: Das alte Playbook ließ Finanzwerte im Mittel günstiger erscheinen, weil DCF und EV/EBITDA bei Bankbilanzen nicht passen.

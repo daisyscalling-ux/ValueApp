@@ -16,6 +16,9 @@ on:
       - 'value_radar/tests/test_publish_cf.py'
       - 'value_radar/tests/test_index_continuity.py'
       - 'value_radar/tests/test_ebitda_margin_fallback.py'
+      - 'value_radar/tests/test_playbook_sector.py'
+      - 'value_radar/valuation.py'
+      - 'value_radar/sektor.py'
       - 'value_radar/ebitda_margin_fallback.py'
       - 'value_radar/index_membership.py'
       - 'value_radar/sp500_liste.txt'
@@ -58,6 +61,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_publish_cf.py -v
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_ebitda_margin_fallback.py -v
+      - working-directory: value_radar
+        run: python -m unittest discover -s tests -p test_playbook_sector.py -v
   precompute:
     concurrency:
       group: roic-bulk-production

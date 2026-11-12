@@ -83,6 +83,14 @@ _DEFENSIVE_SECTORS = {"Utilities", "Consumer Defensive", "Healthcare"}
 _CYCLICAL_SECTORS = {"Energy", "Basic Materials"}
 
 
+def _zahlungsnetzwerk(fund) -> bool:
+    """Spiegel von paymentNetwork (valueapp-cf, src/lib/lifecycle.ts)."""
+    import re
+    return (str(fund.get("ticker") or "").upper() in ("MA", "V", "NYSE:MA", "NYSE:V")
+            and bool(re.search(r"credit services|payment|finance/rental/leasing|miscellaneous commercial services",
+                               str(fund.get("industry") or ""), re.I)))
+
+
 def classify_playbook(fund) -> str:
     """Automatische Zuordnung des passenden Bewertungs-Playbooks.
 
@@ -94,7 +102,11 @@ def classify_playbook(fund) -> str:
     Sektor-bewusst: defensive Sektoren (Versorger, Basiskonsum, Gesundheit) werden
     NICHT zyklisch, auch wenn ein Stichwort (z. B. "gas" bei Gasversorgern) passt.
     """
-    sector = fund.get("sector") or ""
+    # Sektor vereinheitlichen wie in der App (valuation.ts, normalisierenSektor):
+    # ROIC/FactSet liefert "Finance", "Process industries" usw.; ohne Alias fielen
+    # Finanzwerte ins Industrie-Playbook (Fehler, behoben 12.11.2026).
+    import sektor as _sektor
+    sector = _sektor.normalisieren(fund.get("sector")) or ""
     industry = (fund.get("industry") or "").lower()
 
     # 0) datenbasierte Zyklus-Erkennung (z.B. aus dem Backtest): stark
@@ -103,7 +115,9 @@ def classify_playbook(fund) -> str:
         return "cyclical"
 
     # 1) Finanzwerte: eigenes Modell (Gewinn + Buchwert)
-    if sector == "Financial Services":
+    # Zahlungsnetzwerke (Visa, Mastercard) sind keine Bilanzbanken: wie in der App
+    # (lifecycle.ts, paymentNetwork) nicht ins Finanz-Playbook.
+    if sector == "Financial Services" and not _zahlungsnetzwerk(fund):
         return "financial"
 
     # 2) zyklisch — aber nie bei defensiven Sektoren

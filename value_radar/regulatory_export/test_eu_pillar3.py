@@ -93,3 +93,25 @@ class UnitCorrectionTests(unittest.TestCase):
         b = k['banks']['969500TJ5KRTCJQWXH05']
         self.assertEqual(b['cet1Requirement']['derivation'], 'reviewed_unit_correction_p2r_cet1_percent')
         self.assertEqual(m['km1UnitCorrections'][0]['lei'], '969500TJ5KRTCJQWXH05')
+
+
+class LeiEvidenceTests(unittest.TestCase):
+    """Jede pillar3Only-Zuordnung braucht einen ISIN-basierten LEI-Nachweis: GLEIF filter[isin] oder ESMA FIRDS (seit 12.11.2026)."""
+    def test_every_pillar3_only_mapping_has_isin_based_lei_evidence(self):
+        import json, re
+        from pathlib import Path
+        m = json.loads((Path(__file__).with_name('eu-bank-map.json')).read_text(encoding='utf-8'))
+        for b in m['pillar3Only']:
+            with self.subTest(lei=b['lei']):
+                self.assertRegex(b['lei'], r'^[A-Z0-9]{20}$')
+                src = b.get('leiSource', '')
+                if src.startswith('ESMA FIRDS'):
+                    self.assertEqual(len(b['isins']), 1)
+                    self.assertTrue(b['firdsSource'].startswith('https://registers.esma.europa.eu/solr/esma_registers_firds/select?q=isin:' + b['isins'][0] + '&'))
+                    self.assertIn(b['isins'][0], src)
+                    self.assertIn('keiner widerspricht', src)
+                else:
+                    self.assertTrue(src.startswith('GLEIF lei-records filter[isin]'), src)
+        firds = {b['lei'] for b in m['pillar3Only'] if b.get('leiSource', '').startswith('ESMA FIRDS')}
+        self.assertEqual(firds, {'635400C8EK6DRI12LJ39', '529900ODI3047E2LIV03'})
+        self.assertNotIn('EURONEXT:BIRG', m['open'])

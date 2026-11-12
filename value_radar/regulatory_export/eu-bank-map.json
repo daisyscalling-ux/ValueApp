@@ -4,7 +4,6 @@
  "review_expires": "2027-05-08",
  "method": "ISIN to LEI via GLEIF lei-records filter[isin] (single match only); LEI must equal the EBA reporting LEI; ECB P2R matched by exact institution name, reviewed manually.",
  "open": {
-  "EURONEXT:BIRG": "GLEIF returned no single LEI for the ISIN",
   "OSL:STB": "Insurance-led group, not in EBA 2025 sample"
  },
  "banks": [
@@ -471,6 +470,30 @@
    "leiSource": "GLEIF lei-records filter[isin], genau ein Treffer (11.11.2026)",
    "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json)",
    "reviewed_on": "2026-11-11"
+  },
+  {
+   "lei": "635400C8EK6DRI12LJ39",
+   "isins": [
+    "IE00BD1RP616"
+   ],
+   "listing": "EURONEXT:BIRG",
+   "gleifName": "Bank of Ireland Group PLC",
+   "leiSource": "ESMA FIRDS (Instrumentenregister): alle 81 Einträge mit LEI zur ISIN IE00BD1RP616 nennen diese LEI, 2 ohne LEI, keiner widerspricht (12.11.2026). GLEIF filter[isin] liefert keinen Treffer.",
+   "firdsSource": "https://registers.esma.europa.eu/solr/esma_registers_firds/select?q=isin:IE00BD1RP616&wt=json&rows=500&fl=lei",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json), KM1 und CR1 zum 30.06.2026",
+   "reviewed_on": "2026-11-12"
+  },
+  {
+   "lei": "529900ODI3047E2LIV03",
+   "isins": [
+    "FI4000297767"
+   ],
+   "listing": "HEL:NDA_FI",
+   "gleifName": "Nordea Bank Abp",
+   "leiSource": "ESMA FIRDS (Instrumentenregister): alle 88 Einträge mit LEI zur ISIN FI4000297767 nennen diese LEI, 1 ohne LEI, keiner widerspricht (12.11.2026). GLEIF filter[isin] liefert keinen Treffer.",
+   "firdsSource": "https://registers.esma.europa.eu/solr/esma_registers_firds/select?q=isin:FI4000297767&wt=json&rows=500&fl=lei",
+   "filingEvidence": "Einreichungen im EBA Pillar 3 Data Hub unter dieser LEI (p3dh-submissions.json), KM1 und CR1 zum 30.06.2026",
+   "reviewed_on": "2026-11-12"
   }
  ],
  "pillar3OnlyMethod": "Banken ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub). ISIN zu LEI ueber GLEIF mit genau einem Treffer; die LEI muss im Hub einreichen.",

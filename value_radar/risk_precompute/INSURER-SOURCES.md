@@ -91,3 +91,28 @@ Offen: Tryg (Solvency II, Finanstilsynet DK, DKK) bräuchte die Freigabe von DK/
 ## Versicherer außerhalb von Solvency II/UK (11. November 2026)
 
 Die Solvenzquote ist nur für Gruppen unter Solvency II (EWR) oder Solvency UK vergleichbar. Bei ISIN-Ländern außerhalb davon (USA, Japan, Schweiz, Bermuda) und bei Prudential plc (Gruppenaufsicht Hongkong GWS, Beleg Halbjahresbericht 2026) wird sie bewusst nicht geführt. App und Messung nennen den Grund; in der Messung zählt sie als `by_design`. Weiter zu füllen bleiben 10 Gruppen: Hannover Rück, Mapfre, Ageas, ASR, PZU, Tryg (DK fehlt noch in `INSURER_REGIMES`), Admiral, Beazley, Standard Life und St. James's Place.
+
+## Nachtrag 12. November 2026: acht Versicherer, Dänemark freigegeben
+
+Neu ist Dänemark in `REGIMES`/`INSURER_REGIMES` (Solvency II, Finanstilsynet, DKK), in Pipeline und App gleichzeitig. `reviewedOn` steht auf 12.11.2026.
+
+| Versicherer | Stichtag | Quote | Beträge | Quelle |
+|---|---|---:|---|---|
+| Hannover Re | 30.06.2026 | 254 % | nein | EQS-Pflichtmitteilung 12.08.2026; hannover-re.com sperrt automatisierte Abrufe (HTTP 403) |
+| Mapfre | 30.06.2026 | 208,8 % | 11.555 / 5.533 Mio. € | Mitteilung 04.09.2026, PDF 1–2 |
+| Admiral | 30.06.2026 | 173 % | nein | Halbjahresbericht (RNS über Investegate), aufsichtsrechtliche Schätzung; die Schlagzeilenquote 190 % mit nicht genehmigtem Kapitalaufschlag wird nicht verwendet |
+| Tryg | 30.09.2026 | 203 % | 14.080 / 6.940 Mio. DKK | Q1–Q3-Bericht, PDF 14 |
+| St. James's Place | 31.12.2025 | 182 % | 4.569,0 / 2.508,9 Mio. £ | SFCR 2025, PDF 5, nach vorhersehbarer Dividende |
+| a.s.r. | 31.12.2025 | 218 % | 13.007 / 5.966 Mio. € | SFCR 2025 der Gruppe, PDF 6 |
+| PZU | 31.12.2025 | 239 % | 34,5 / 14,4 Mrd. PLN | Ergebnispräsentation H1 2026, PDF 26; Jahreswert laut Fußnote aus dem testierten SFCR |
+| Munich Re | unverändert | 300 % | | Identität erneuert: Der Anbieter führt den Namen jetzt als „Munich Re AG“. ISIN DE0008430026 und Notierung sind unverändert. |
+
+Bewusst nicht verwendet:
+- Unternehmenseigene Sichten: Ageas „Pillar II“ (195 %), Standard Life „Shareholder Capital Coverage Ratio“ (169 %, ohne unsupported With-Profits).
+- Admirals Schlagzeilenquote.
+
+Offen:
+- Ageas und Standard Life: Der Gruppen-SFCR 2025 war nicht als Originaldatei auffindbar.
+- PZU: Die Quote zum 30.06.2026 erscheint mit dem Q3-Bericht (um den 20.11.2026).
+
+Probelauf: Solvenzquote bei 8 Versicherern neu gefüllt. Versicherer offen 10 → 2.

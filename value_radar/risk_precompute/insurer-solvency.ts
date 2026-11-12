@@ -6,8 +6,8 @@ const num=(v:any)=>typeof v==='number'&&Number.isFinite(v);
 const url=(v:any)=>{try{return typeof v==='string'&&new URL(v).protocol==='https:'}catch{return false}};
 export const insurerRequirements=['eligible_own_funds','solvency_requirement','jurisdiction_and_regulatory_scope'];
 // Vergleichbare Gruppen-Solvenzsysteme: Eigenmittel / Solvenzkapitalanforderung, 100 % = Mindestanforderung. Spiegel von REGIMES in regulatory_insurer.py.
-export const INSURER_REGIMES=['Solvency II|DE|BaFin','Solvency II|FR|ACPR','Solvency II|NL|DNB','Solvency II|FI|FIN-FSA','Solvency II|IT|IVASS','Solvency II|NO|Finanstilsynet','Solvency II|ES|DGSFP','Solvency II|BE|NBB','Solvency II|PL|KNF','Solvency UK|GB|PRA'];
-const CURRENCIES=['EUR','GBP','NOK','PLN'];
+export const INSURER_REGIMES=['Solvency II|DE|BaFin','Solvency II|FR|ACPR','Solvency II|NL|DNB','Solvency II|FI|FIN-FSA','Solvency II|IT|IVASS','Solvency II|NO|Finanstilsynet','Solvency II|DK|Finanstilsynet','Solvency II|ES|DGSFP','Solvency II|BE|NBB','Solvency II|PL|KNF','Solvency UK|GB|PRA'];
+const CURRENCIES=['EUR','GBP','NOK','PLN','DKK'];
 export function verifiedInsurer(r:Row|undefined|null,now:number){
  const today=new Date(now).toISOString().slice(0,10);
  if(r?.state!=='available'||r.scope!=='insurance_group'||!INSURER_REGIMES.includes(r.framework+'|'+r.jurisdiction+'|'+r.regulator)||!url(r.scopeSourceUrl)||!r.scopeSourcePages||!date(r.reviewedOn)||!date(r.reviewExpires)||r.reviewedOn>today||r.reviewExpires<today)return null;

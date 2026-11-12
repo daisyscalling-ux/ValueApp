@@ -112,7 +112,32 @@ Bewusst nicht verwendet:
 - Admirals Schlagzeilenquote.
 
 Offen:
-- Ageas und Standard Life: Der Gruppen-SFCR 2025 war nicht als Originaldatei auffindbar.
+- Ageas und Standard Life: Der Gruppen-SFCR 2025 war nicht als Originaldatei auffindbar. Standard Life ist inzwischen erledigt (Nachtrag unten).
+
+### Nachtrag: Standard Life aus dem Gruppen-SFCR, Ageas weiter offen (12. November 2026)
+
+**Standard Life**
+
+Der Gruppen-SFCR 2025 der Standard Life plc liegt auf library.standardlife.co.uk. Er ist auf der Seite „Results, reports and presentations“ verlinkt (231 Seiten, sha256 `24d5e8d8…`).
+
+| Größe | Fundstelle | Wert |
+|---|---|---|
+| Anrechenbare Eigenmittel | IR.23.01.04 Gruppe, R0660 | 10.332,9 Mio. £ |
+| Gruppen-SCR | IR.23.01.04 Gruppe, R0680 | 6.741,1 Mio. £ |
+| Quote | IR.23.01.04 Gruppe, R0690 | **153 %** |
+
+Weitere Angaben:
+- Die Fundstelle liegt auf PDF-Seite 145. Gegenprobe: Tabelle der Gruppen-Eigenmittel auf PDF-Seite 104.
+- Die ISIN GB00BGXQNP29 ist dieselbe wie bei Phoenix Group Holdings plc (Umbenennung am 24.02.2026).
+- Verwendet wird die aufsichtliche Gruppenquote. Die von der Gesellschaft hervorgehobene Shareholder Capital Coverage Ratio (176 %) klammert With-Profits-Fonds und Pensionspläne aus und bleibt unberücksichtigt. Ein Test stellt sicher, dass 176 % mit den Gruppenbeträgen verworfen wird.
+- Verzerrung: Die aufsichtliche Quote ist niedriger als die eigene Sicht. Damit wirkt die Firma nicht zu gut.
+- Höchstalter für Jahreswerte: 550 Tage, also gültig bis etwa 04.07.2027.
+
+**Ageas**
+
+Ageas bleibt offen. Der Halbjahresbericht 2026 (Pflichtmitteilung vom 27.08.2026, über via.ritzau.dk) nennt nur „Solvency II – Pillar II“ mit 195 %. Das ist die eigene Sicht, und die wird bewusst nicht verwendet (siehe oben). Die aufsichtliche Quote nach Säule I steht im Gruppen-SFCR. ageas.com liefert die Seite aber nur nach einer Cloudflare-Prüfung („Just a moment“), und die wird nicht umgangen. Weg zur Schließung: Der Nutzer lädt den SFCR 2025 der Gruppe von ageas.com herunter und stellt ihn bereit. Aufwand danach: etwa 30 Minuten.
+
+Probelauf (Kopie von main a8a22235): Bei LSE:SDLF ist die Solvenzquote jetzt befüllt, sonst keine Änderung. Notierungen ohne Lücke 1.260 → 1.261. Versicherer offen: 2 → 1.
 - PZU: Die Quote zum 30.06.2026 erscheint mit dem Q3-Bericht (um den 20.11.2026).
 
 Probelauf: Solvenzquote bei 8 Versicherern neu gefüllt. Versicherer offen 10 → 2.

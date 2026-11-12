@@ -10,7 +10,10 @@ class InsurerTests(unittest.TestCase):
   self.now=dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc)
  def run_case(self):return build_insurers(self.u,self.reg,self.now)
  def test_original_amounts_and_bases(self):
-  r=self.run_case()['stocks'];self.assertEqual(len(r),22)
+  r=self.run_case()['stocks'];self.assertEqual(len(r),23)
+  sl=r['LSE:SDLF']['primary'];self.assertEqual((sl['ratio'],sl['eligibleOwnFunds'],sl['solvencyRequirement'],sl['amountsVerified']),(1.53,10332862000,6741068000,True))
+  # Unternehmenseigene Shareholder-Sicht (176 %) passt nicht zu den Gruppenbetraegen und wird verworfen.
+  self.assertIsNone(observation({**sl,'ratio':1.76},self.now.date(),self.now.date()))
   a=r['XETR:ALV'];self.assertEqual(a['primary']['ratio'],2.25);self.assertEqual(a['primary']['eligibleOwnFunds'],97000000000)
   self.assertFalse(a['observations'][1]['amountsVerified']);self.assertEqual(a['observations'][1]['ratio'],2.18)
   m=r['XETR:MUV2'];self.assertEqual(m['primary']['solvencyRequirement'],18230000000);self.assertEqual(m['primary']['ratio'],3)
@@ -50,7 +53,7 @@ class InsurerTests(unittest.TestCase):
    with patch.dict(os.environ,{'RISK_DATA_DIR':folder}),patch.object(regulatory_context,'build_insurers',side_effect=lambda u,r:build_insurers(u,r,self.now)):
     regulatory_context.main()
    result=json.loads(Path(folder,'cf_regulatory_context.json').read_text(encoding='utf-8'))
-   self.assertEqual(result['state'],'source_unavailable');self.assertEqual(len(result['insurers']['stocks']),22)
+   self.assertEqual(result['state'],'source_unavailable');self.assertEqual(len(result['insurers']['stocks']),23)
 
 class InsurerDepositaryTests(unittest.TestCase):
  def test_dr_adopts_verified_ordinary_but_never_overrides_own_entry(self):

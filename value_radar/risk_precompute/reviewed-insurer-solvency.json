@@ -767,6 +767,41 @@
     },
     {
       "inputIdentity": {
+        "listing_symbol": "LSE:SDLF",
+        "ticker": "SDLF.L",
+        "isin": "GB00BGXQNP29",
+        "currency": "GBP",
+        "name": "Standard Life plc",
+        "name_full": "Standard Life plc",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Standard Life plc Group (bis 24.02.2026 Phoenix Group Holdings plc)",
+      "scope": "insurance_group",
+      "framework": "Solvency UK",
+      "jurisdiction": "GB",
+      "regulator": "PRA",
+      "scopeSourceUrl": "https://library.standardlife.co.uk/standard-life-plc-solvency-and-financial-condition-report-31-december-2025.pdf",
+      "scopeSourcePages": "PDF 15 (Prüfungsvermerk zum Gruppen-SFCR der Standard Life plc), PDF 104 (Tabelle Group Own Funds)",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "sfcr_group_regulatory_ratio_not_shareholder_view",
+          "ratio": 1.53,
+          "eligibleOwnFunds": 10332862000,
+          "solvencyRequirement": 6741068000,
+          "currency": "GBP",
+          "unit": "currency_units",
+          "sourceUrl": "https://library.standardlife.co.uk/standard-life-plc-solvency-and-financial-condition-report-31-december-2025.pdf",
+          "sourcePages": "PDF 145 (IR.23.01.04 Gruppe, R0660, R0680, R0690); PDF 104 (Tabelle Eligible Own Funds to meet SCR)",
+          "sourceSha256": "24d5e8d85b62e45b21421f6407a6e58c0cede79509460b54ebfb0dfc845e9e9d",
+          "basisNote": "Gruppen-SFCR 2025: anrechenbare Eigenmittel 10.332,9 Mio. £ (R0660), Gruppen-SCR 6.741,1 Mio. £ (R0680), Quote 153 % (R0690). Aufsichtliche Gruppenquote; die von der Gesellschaft hervorgehobene Shareholder Capital Coverage Ratio (176 %) klammert With-Profits-Fonds und Pensionspläne aus und wird nicht verwendet."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
         "listing_symbol": "EURONEXT:ASRNL",
         "ticker": "ASRNL.AS",
         "isin": "NL0011872643",

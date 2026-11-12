@@ -97,6 +97,10 @@ Betroffen sind 189 Notierungen: 134 Unternehmen, 32 Banken, 12 Versicherer, 10 S
 
 Entscheidung des Nutzers: Liefert ROIC keinen TTM-FCFF, nimmt die App gekennzeichnet die Jahres-FCF-Marge, also (operativer Cashflow − Investitionen) / Umsatz aus demselben datierten Abschluss (`balance.supplementalMetrics.fcfRevenue` aus `balance-profile.ts`; Prüfung in `fcfSubstitute`, valueapp-cf). Die Messung zählt das als gefüllt, Grund „Ersatz: Jahres-FCF / Umsatz“. Probelauf: FCFF offen 29 → 12 (17 ersetzt); S&P 500 offen 1,32 → 1,18 %, DAX 1,54 → 1,28 %; kein Titel schlechter. Offen bleiben Abschlüsse, die unvollständig, zu alt oder ohne Umsatz sind.
 
+## Versicherer: Standard Life aus dem Gruppen-SFCR (12.11.2026)
+
+Probelauf gegen main a8a22235: Bei LSE:SDLF ist die Solvenzquote jetzt befüllt (153 %, IR.23.01.04 R0690). Notierungen ohne Lücke 1.260 → 1.261. Offen bleibt EURONEXT:AGS: Es gibt nur die eigene Pillar-II-Sicht, und der SFCR liegt hinter einer Cloudflare-Prüfung (siehe `INSURER-SOURCES.md`).
+
 ## Fehlende Kurshistorien (10.11.2026)
 
 Ausgangslage: 109 Notierungen ohne verwertbare eigene Historie. 76 haben keinen Eintrag, 18 eine Historie mit längeren Lücken, 15 weniger als zwei Handelsjahre. Die meisten sind OTC-Notierungen (64), dazu Neuemissionen (CoreWeave, Nebius, Magnum Ice Cream, Metlen) und 23 Einträge ohne Börsenpräfix (Vorzugsaktien wie MS-PA, BML-PH und Ticker ohne Zuordnung).

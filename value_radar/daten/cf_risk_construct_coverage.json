@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-12T18:19:22.600028+00:00",
+ "generatedAt": "2026-11-12T19:44:27.696772+00:00",
  "listings": 1340,
  "overallAverageWeight": {
-  "filled": 82.0,
-  "missing": 1.2,
+  "filled": 82.1,
+  "missing": 1.1,
   "app_only": 14.2,
   "by_design": 2.6
  },
@@ -14,8 +14,8 @@
   "bank": {
    "listings": 88,
    "averageWeight": {
-    "filled": 73.3,
-    "missing": 6.0,
+    "filled": 74.3,
+    "missing": 5.0,
     "app_only": 10.0,
     "by_design": 10.7
    },
@@ -30,11 +30,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 19.63,
-     "missing": 4.72,
+     "filled": 20.62,
+     "missing": 3.72,
      "app_only": 0.0,
      "by_design": 0.65,
-     "filledShareOfMeasurable": 0.806
+     "filledShareOfMeasurable": 0.847
     },
     "Umfeldstress": {
      "weight": 15,
@@ -232,30 +232,6 @@
    }
   },
   {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Kreditqualität",
-   "weight": 7.5,
-   "missingListings": 21,
-   "filledListings": 67,
-   "weightedGap": 157.5,
-   "reasons": {
-    "Geprüfte Kreditqualität fehlt": 21
-   }
-  },
-  {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Kernkapital-Puffer (CET1)",
-   "weight": 10,
-   "missingListings": 13,
-   "filledListings": 73,
-   "weightedGap": 130,
-   "reasons": {
-    "Geprüfte Kapitalquote mit Anforderung fehlt": 13
-   }
-  },
-  {
    "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Volatilität",
@@ -267,18 +243,6 @@
     "Keine Kurshistorie": 10,
     "Weniger als ein Handelsjahr (Neuemission)": 2,
     "Kurshistorie mit längeren Handelslücken": 1
-   }
-  },
-  {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Liquiditätsdeckung (LCR)",
-   "weight": 7.5,
-   "missingListings": 17,
-   "filledListings": 66,
-   "weightedGap": 127.5,
-   "reasons": {
-    "Geprüfte LCR fehlt": 17
    }
   },
   {
@@ -306,6 +270,42 @@
     "Verlust oder Jahresergebnis fehlt": 7,
     "Umsatzsprung über ±50 %": 4,
     "Umsatzwachstum fehlt": 1
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Liquiditätsdeckung (LCR)",
+   "weight": 7.5,
+   "missingListings": 15,
+   "filledListings": 68,
+   "weightedGap": 112.5,
+   "reasons": {
+    "Geprüfte LCR fehlt": 15
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Kernkapital-Puffer (CET1)",
+   "weight": 10,
+   "missingListings": 11,
+   "filledListings": 75,
+   "weightedGap": 110,
+   "reasons": {
+    "Geprüfte Kapitalquote mit Anforderung fehlt": 11
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Kreditqualität",
+   "weight": 7.5,
+   "missingListings": 14,
+   "filledListings": 74,
+   "weightedGap": 105.0,
+   "reasons": {
+    "Geprüfte Kreditqualität fehlt": 14
    }
   },
   {

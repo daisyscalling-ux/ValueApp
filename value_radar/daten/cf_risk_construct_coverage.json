@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-12T19:44:27.696772+00:00",
+ "generatedAt": "2026-11-12T20:24:15.384367+00:00",
  "listings": 1340,
  "overallAverageWeight": {
   "filled": 82.1,
@@ -14,8 +14,8 @@
   "bank": {
    "listings": 88,
    "averageWeight": {
-    "filled": 74.3,
-    "missing": 5.0,
+    "filled": 74.6,
+    "missing": 4.7,
     "app_only": 10.0,
     "by_design": 10.7
    },
@@ -30,11 +30,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 20.62,
-     "missing": 3.72,
+     "filled": 20.91,
+     "missing": 3.44,
      "app_only": 0.0,
      "by_design": 0.65,
-     "filledShareOfMeasurable": 0.847
+     "filledShareOfMeasurable": 0.859
     },
     "Umfeldstress": {
      "weight": 15,
@@ -116,8 +116,8 @@
   "insurer": {
    "listings": 52,
    "averageWeight": {
-    "filled": 59.9,
-    "missing": 1.2,
+    "filled": 60.2,
+    "missing": 0.9,
     "app_only": 10.0,
     "by_design": 28.9
    },
@@ -132,11 +132,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 5.48,
-     "missing": 0.58,
+     "filled": 5.77,
+     "missing": 0.29,
      "app_only": 0.0,
      "by_design": 18.94,
-     "filledShareOfMeasurable": 0.905
+     "filledShareOfMeasurable": 0.952
     },
     "Umfeldstress": {
      "weight": 15,
@@ -277,35 +277,11 @@
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Liquiditätsdeckung (LCR)",
    "weight": 7.5,
-   "missingListings": 15,
-   "filledListings": 68,
-   "weightedGap": 112.5,
-   "reasons": {
-    "Geprüfte LCR fehlt": 15
-   }
-  },
-  {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Kernkapital-Puffer (CET1)",
-   "weight": 10,
-   "missingListings": 11,
-   "filledListings": 75,
-   "weightedGap": 110,
-   "reasons": {
-    "Geprüfte Kapitalquote mit Anforderung fehlt": 11
-   }
-  },
-  {
-   "profile": "bank",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Kreditqualität",
-   "weight": 7.5,
    "missingListings": 14,
-   "filledListings": 74,
+   "filledListings": 69,
    "weightedGap": 105.0,
    "reasons": {
-    "Geprüfte Kreditqualität fehlt": 14
+    "Geprüfte LCR fehlt": 14
    }
   },
   {
@@ -333,6 +309,30 @@
    "weightedGap": 105,
    "reasons": {
     "Eigenkapital, Schulden, Kasse oder Bilanzsumme fehlen oder Währungskonflikt": 7
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Kernkapital-Puffer (CET1)",
+   "weight": 10,
+   "missingListings": 10,
+   "filledListings": 76,
+   "weightedGap": 100,
+   "reasons": {
+    "Geprüfte Kapitalquote mit Anforderung fehlt": 10
+   }
+  },
+  {
+   "profile": "bank",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Kreditqualität",
+   "weight": 7.5,
+   "missingListings": 13,
+   "filledListings": 75,
+   "weightedGap": 97.5,
+   "reasons": {
+    "Geprüfte Kreditqualität fehlt": 13
    }
   },
   {
@@ -396,18 +396,6 @@
    "reasons": {
     "Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei": 2,
     "Eigenkapitalrendite fehlt": 1
-   }
-  },
-  {
-   "profile": "insurer",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Solvenzquote",
-   "weight": 15,
-   "missingListings": 2,
-   "filledListings": 19,
-   "weightedGap": 30,
-   "reasons": {
-    "Geprüfte Solvenzquote fehlt": 2
    }
   },
   {
@@ -496,6 +484,18 @@
    "weightedGap": 15,
    "reasons": {
     "Weniger als ein Handelsjahr (Neuemission)": 1
+   }
+  },
+  {
+   "profile": "insurer",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Solvenzquote",
+   "weight": 15,
+   "missingListings": 1,
+   "filledListings": 20,
+   "weightedGap": 15,
+   "reasons": {
+    "Geprüfte Solvenzquote fehlt": 1
    }
   },
   {

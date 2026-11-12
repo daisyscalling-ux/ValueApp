@@ -115,7 +115,7 @@ Entscheidung des Nutzers: Liefert ROIC keinen TTM-FCFF, nimmt die App gekennzeic
 
 ## Versicherer: Standard Life aus dem Gruppen-SFCR (12.11.2026)
 
-Probelauf gegen main a8a22235: Bei LSE:SDLF ist die Solvenzquote jetzt befüllt (153 %, IR.23.01.04 R0690). Notierungen ohne Lücke 1.260 → 1.261. Offen bleibt EURONEXT:AGS: Es gibt nur die eigene Pillar-II-Sicht, und der SFCR liegt hinter einer Cloudflare-Prüfung (siehe `INSURER-SOURCES.md`).
+Probelauf gegen main a8a22235: Bei LSE:SDLF ist die Solvenzquote jetzt befüllt (153 %, IR.23.01.04 R0690). Notierungen ohne Lücke 1.260 → 1.261. EURONEXT:AGS folgt aus dem vom Nutzer bereitgestellten Gruppen-SFCR (Säule 1, 193 %). Probelauf gegen main 17fd7243: 1.264 → 1.265 Notierungen ohne Lücke. Kein Versicherer ist mehr offen.
 
 ## Fehlende Kurshistorien (10.11.2026)
 

@@ -99,3 +99,30 @@ KM1-Werte müssen je Quartal neu gelesen werden: neue Werte, Fundstelle und SHA-
 ## Aktiengattungen desselben Konzerns (10. November 2026)
 
 Chinesische Banken notieren A-Aktien (Shanghai) und H-Aktien (Hongkong). Die Kennzahlen gelten für den Konzern. Geprüfte Einträge in `reviewed-key-metrics.json` können deshalb weitere ISINs desselben Konzerns unter `shareClassIsins` führen (Quelle: HKEX List of Securities). Der Import legt sie mit `shareClassOf` (Haupt-ISIN) ab. In `regulatory_context.py` trägt jeder Eintrag `issuerIsin`. Depositary Receipts übernehmen die Quoten einer im selben Lauf geprüften Stammaktie desselben Konzerns: bei EU-Banken über die LEI, bei internationalen über `issuerIsin`. Betroffen sind ICBC, CCB, Bank of China, ABC, China Merchants Bank und Bank of Communications.
+
+## Depositary Receipts ohne Stammaktie im Universum (12. November 2026)
+
+Die Regel „ein DR übernimmt die Kennzahlen einer im selben Lauf geprüften Stammaktie“ greift nicht, wenn das DR im Universum allein steht:
+- **HSBC:** Der Universumsexport ersetzt die Londoner Pence-Notierung HSBA.L durch das NYSE-ADR.
+- **ABN AMRO:** An Euronext Amsterdam handeln nur Depositary Receipts der Stiftung STAK AAB.
+
+Für solche Fälle gibt es das Register `reviewed-depositary-listings.json` (Methode `reviewed-standalone-depositary-v1`).
+
+Voraussetzungen:
+- Notierung, ISIN, Währung und Wertpapierart (`dr`) stimmen exakt.
+- Der Konzernschlüssel stimmt (LEI bzw. Emittenten-ISIN).
+- Die Prüfung ist gültig.
+- Ein Beleg mit https, SHA-256 und Text liegt vor.
+
+Der Datensatz trägt `standaloneDepositary`. Die App prüft die Kennzeichnung erneut und zeigt sie unter „Berechnung und Datenqualität“.
+
+Belege:
+- HSBC: Investor Relations von HSBC USA (ADR-Programm an der NYSE, 1 ADS = 5 Stammaktien).
+- ABN AMRO: Euronext-Produktseite (ABN AMRO BANK N.V., NL0011540547) und GLEIF-Zuordnung der ISIN zur LEI. abnamro.com lehnt automatisierte Abrufe ab (HTTP 503).
+
+Probelauf:
+- ABN AMRO: CET1-Puffer, LCR und Kreditqualität gefüllt.
+- HSBC: CET1-Puffer und LCR gefüllt. Eine Kreditqualität (CR1) liegt in keiner Quelle vor.
+- Offenes Gewicht 1,2 → 1,1 %.
+
+Weiter offen: Nordea Finnland (NDA-FI.HE). Die ROIC-Suche findet „NDA-FI“ nicht, und der gemeinsame Notierungsabgleich kennt zweibuchstabige Gattungs-Suffixe mit Unterstrich (z. B. `NDA_FI`) nicht. Eine Änderung dort betrifft App und Pipeline und ist für eine unbestätigte Notierung zurückgestellt.

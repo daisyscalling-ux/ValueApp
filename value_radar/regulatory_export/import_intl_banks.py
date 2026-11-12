@@ -80,7 +80,7 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
             credit_rejected[e['isin']] = credit_reason
         separate = isinstance(credit, dict) and not credit_reason
         if separate:
-            dl, nd = credit['defaultedLoans'], credit['nonDefaultedLoans']
+            dl, nd = credit_amounts(credit)
         issuers[e['isin']] = {'issuer': e['issuer'], 'jurisdiction': e['jurisdiction'], 'regulator': e['regulator'], 'scope': 'consolidated_group',
                               'period': e['period'], 'metrics': {k: e[k] for k in ('cet1_ratio', 'tier1_ratio', 'total_capital_ratio', 'leverage_ratio') if fraction(e.get(k)) is not None},
                               'lcr': fraction(e.get('lcr')), 'nsfr': fraction(e.get('nsfr')),
@@ -90,7 +90,8 @@ def build(apra_path, mapping, now, apra_url=APRA_PAGE, reviewed=None):
                               'source': e['source']}
         if separate:
             # CR1 mit eigenem Stichtag (z. B. Japan: CR1 nur im Jahres-/Halbjahresbericht, KM1 vierteljaehrlich).
-            issuers[e['isin']].update(creditPeriod=credit['period'], creditSource={k: credit[k] for k in ('type', 'url', 'sha256', 'location')})
+            issuers[e['isin']].update(creditPeriod=credit['period'], creditMethod=CREDIT_METHODS[credit['type']],
+                                      creditSource={k: credit[k] for k in ('type', 'url', 'sha256', 'location')})
         # Weitere Aktiengattungen desselben Konzerns (z. B. H-Aktie neben der A-Aktie): gleiche Konzernquoten, Verweis auf die Haupt-ISIN.
         for alt in e.get('shareClassIsins') or []:
             if re.fullmatch(r'[A-Z]{2}[A-Z0-9]{9}[0-9]', str(alt)) and alt != e['isin'] and alt not in issuers:
@@ -130,6 +131,15 @@ def reviewed_problem(e):
 
 
 CREDIT_SOURCE_TYPE = 'basel_pillar3_cr1'
+# Quellenart -> Methode. Basel CR1: ausgefallen / (ausgefallen + nicht ausgefallen). UK CR1 (wie EU CR1, EBA-Definition):
+# notleidend / (performing + non-performing), Zeile 010 Loans and advances, Bruttobuchwert (12.11.2026).
+CREDIT_METHODS = {'basel_pillar3_cr1': 'basel-cr1-default-v1', 'uk_pillar3_cr1': 'uk-cr1-npl-v1'}
+CREDIT_FIELDS = {'basel_pillar3_cr1': ('defaultedLoans', 'nonDefaultedLoans'), 'uk_pillar3_cr1': ('nonPerformingLoans', 'performingLoans')}
+
+
+def credit_amounts(c):
+    a, b = CREDIT_FIELDS[c['type']]
+    return c.get(a), c.get(b)
 CREDIT_MAX_AGE_DAYS = 270   # wie Bankquartal; aeltere CR1-Werte bleiben offen
 CREDIT_MAX_RATIO = .5       # Plausibilitaet: mehr als die Haelfte ausgefallener Kredite gilt als Lesefehler
 
@@ -146,10 +156,12 @@ def credit_problem(e, now):
         return 'credit_period_invalid'
     if not 0 <= (now.date() - dt.date.fromisoformat(period)).days <= CREDIT_MAX_AGE_DAYS:
         return 'credit_period_stale'
-    dl, nd = c.get('defaultedLoans'), c.get('nonDefaultedLoans')
+    if c.get('type') not in CREDIT_METHODS:
+        return 'credit_source_unverified'
+    dl, nd = credit_amounts(c)
     if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in (dl, nd)) or dl < 0 or nd <= 0 or dl / (dl + nd) > CREDIT_MAX_RATIO or not c.get('loanUnit'):
         return 'credit_values_invalid'
-    if c.get('type') != CREDIT_SOURCE_TYPE or not re.fullmatch(r'[0-9a-f]{64}', str(c.get('sha256', ''))) or not str(c.get('url', '')).startswith('https://') or not str(c.get('location', '')).strip():
+    if c.get('type') not in CREDIT_METHODS or not re.fullmatch(r'[0-9a-f]{64}', str(c.get('sha256', ''))) or not str(c.get('url', '')).startswith('https://') or not str(c.get('location', '')).strip():
         return 'credit_source_unverified'
     return ''
 

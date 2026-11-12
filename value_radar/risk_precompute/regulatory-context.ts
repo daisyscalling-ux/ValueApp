@@ -37,8 +37,10 @@ export function verifiedEuCapital(archive:Row|undefined|null,row:Row,identityOK:
  return {...r,metrics,capitalRequirement:requirement,creditQuality:credit,liquidity};
 }
 // CR1 mit eigenem Stichtag (Japan: CR1 nur im Jahres-/Halbjahresbericht): <= 270 Tage, nicht nach dem KM1-Stichtag, eigene Quelle mit SHA-256.
+// Quellenart -> Methode: Basel CR1 (ausgefallen) bzw. UK CR1 (notleidend, EBA-Definition, seit 12.11.2026).
+const CR1_SOURCES:Record<string,string>={basel_pillar3_cr1:'basel-cr1-default-v1',uk_pillar3_cr1:'uk-cr1-npl-v1'};
 function separateCr1(c:Row,r:Row,now:number){
- return c.periodBasis==='separate_cr1'&&dateOnly(c.period)&&c.period<=r.period&&fresh(c.period,now,270)&&c.sourceType==='basel_pillar3_cr1'&&/^[0-9a-f]{64}$/.test(c.sourceFileSha256||'')&&typeof c.sourceUrl==='string'&&c.sourceUrl.startsWith('https://')&&typeof c.sourceDetail==='string'&&c.sourceDetail.trim()!=='';
+ return c.periodBasis==='separate_cr1'&&dateOnly(c.period)&&c.period<=r.period&&fresh(c.period,now,270)&&CR1_SOURCES[c.sourceType]===c.method&&/^[0-9a-f]{64}$/.test(c.sourceFileSha256||'')&&typeof c.sourceUrl==='string'&&c.sourceUrl.startsWith('https://')&&typeof c.sourceDetail==='string'&&c.sourceDetail.trim()!=='';
 }
 // Banken ausserhalb EU/EWR/USA: veroeffentlichte Basel-Kennzahlen (APRA, spaeter KM1). Hoechstalter 270 Tage (Quartalsdaten).
 export function verifiedIntlCapital(archive:Row|undefined|null,row:Row,identityOK:boolean,now:number):Row|null{
@@ -52,7 +54,7 @@ export function verifiedIntlCapital(archive:Row|undefined|null,row:Row,identityO
  const liquidity=l?.state==='available'&&l.method==='intl-lcr-v1'&&l.period===r.period&&typeof l.reportedRatio==='number'&&l.reportedRatio>0&&l.reportedRatio<10?l:null;
  const requirement=q?.state==='available'&&q.method==='basel-km1-cet1-requirement-v1'&&q.comparisonPeriod===r.period&&typeof q.value==='number'&&q.value>0&&q.value<.3&&dateOnly(q.reviewExpires)&&q.reviewExpires>=today?{...q,headroomPercentagePoints:(cet1-q.value)*100}:null;
  const c=r.creditQuality;
- const credit=c?.state==='available'&&c.method==='basel-cr1-default-v1'&&c.unit==='fraction'&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&(c.period===r.period||separateCr1(c,r,now))?c:null;
+ const credit=c?.state==='available'&&(c.method==='basel-cr1-default-v1'&&c.period===r.period||separateCr1(c,r,now))&&c.unit==='fraction'&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1?c:null;
  return {...r,metrics,liquidity,capitalRequirement:requirement,creditQuality:credit};
 }
 // Japanischer Inlandsstandard (国内基準): nur mit Beleg je Bank (<= 270 Tage) und Beleg fuer den LCR-Geltungsbereich.

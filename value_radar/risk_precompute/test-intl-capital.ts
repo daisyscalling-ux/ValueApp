@@ -60,4 +60,12 @@ test('Japanese domestic standard: CET1 requirement and LCR not applicable, credi
   assert.equal(verifiedDomesticStandard(arc({...dom,...bad}),drow,true,now),null,JSON.stringify(bad));
  assert.equal(verifiedDomesticStandard(arc(dom),drow,false,now),null,'identity check failed upstream');
 });
+test('UK CR1 (non-performing, EBA definition) only with its own method and source type',()=>{
+ const credit={state:'available',method:'uk-cr1-npl-v1',unit:'fraction',ratio:.011,period:'2026-03-31',periodBasis:'separate_cr1',sourceType:'uk_pillar3_cr1',sourceUrl:'https://example.org/p3.pdf',sourceFileSha256:'d'.repeat(64),sourceDetail:'UK CR1 row 010'};
+ const ok=(c:any)=>verifiedIntlCapital(archive({...record,creditQuality:c}),row,true,now)!.creditQuality;
+ assert.equal(ok(credit).method,'uk-cr1-npl-v1');
+ assert.equal(ok({...credit,sourceType:'basel_pillar3_cr1'}),null,'method and source type must match');
+ assert.equal(ok({...credit,method:'basel-cr1-default-v1'}),null);
+ assert.equal(ok({...credit,periodBasis:undefined,period:'2026-06-30'}),null,'UK CR1 only via the separate block, even on the KM1 date');
+});
 console.log(checks+' international capital checks passed');

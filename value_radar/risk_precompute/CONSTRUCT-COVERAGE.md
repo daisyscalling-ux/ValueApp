@@ -68,6 +68,10 @@ Bank of Ireland und Nordea haben bei GLEIF keine LEI zur ISIN. Seit 12.11.2026 d
 
 Durch einen still fehlgeschlagenen Wikipedia-Abruf (HTTP 403) fehlten 274 S&P-500-Mitglieder; ein Screener-Rückfall füllte das Universum mit 215 OTC-Linien und rund 60 ausländischen ADRs. Zusätzlich verdrängten gleichnamige US-Ticker europäische Indexwerte (DTE.DE, MRK.DE, AIR.PA). Neu: S&P 500 mit beschreibendem User-Agent oder datierter fester Liste, Zusammenfassung nur im selben Land, `index_membership` je Zeile. Universum 1.330 → 1.345: 310 Indexwerte hinzu, 295 Nicht-Mitglieder entfernt. Vor der Korrektur war im Segment der OTC-Linien 9,8 % des Gewichts offen, bei den US-Hauptnotierungen 2,8 %. Bis die neuen Titel Daten haben, sinkt die Abdeckung vorübergehend. Details in `value_radar/UNIVERSUM.md`.
 
+## Storebrand als Versicherer (12.11.2026)
+
+Geprüfte Profilkorrektur (Anbieter: „Savings banks“) und Solvenzquote 200 % zum 30.09.2026 (siehe `INSURER-SOURCES.md`). Probelauf gegen main da6b9b76 (13.11.2026): Bei OSL:STB sind drei fehlende Bankkennzahlen (Gewicht 25) durch die befüllte Solvenzquote ersetzt. Der Peer-Stress bleibt offen (Peers aus der Anbieterbranche). Notierungen ohne Lücke 1.266, unverändert.
+
 ## US-Banken im S&P 500 (11.11.2026)
 
 13 weitere US-Bankholdings sind dem FR-Y-9C-Bestand und den Fed-Anforderungen zugeordnet; nun 22 statt 9. Probelauf: S&P 500 gefüllt 80,69 → 80,95 %, offen 3,24 → 3,01 %. Offen bleiben je Bank LCR und Kreditqualität. Details in `regulatory_export/BHCF.md`.

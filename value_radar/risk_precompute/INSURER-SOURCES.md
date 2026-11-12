@@ -152,6 +152,29 @@ Probelauf (Kopie von main a8a22235): Bei LSE:SDLF ist die Solvenzquote jetzt bef
 
 Probelauf: Solvenzquote bei 8 Versicherern neu gefüllt. Versicherer offen 10 → 2.
 
+## Storebrand: Profilkorrektur und Solvenzquote (12. November 2026)
+
+Der Datenanbieter führt Storebrand ASA als „Savings banks“. Deshalb lief Storebrand im Bankprofil: CET1, LCR und Kreditqualität fehlten, weil es keine Bank-Offenlegung gibt (`eu-bank-map.json`, `open`: insurance-led group).
+
+Der Zwischenbericht Q3 2026 (Pflichtmitteilung über Cision, 45 Seiten, sha256 `b0a23499…`) sagt in Note G9 auf PDF-Seite 37: „The Storebrand Group is an insurance-dominated, cross-sectoral financial group with capital requirements in accordance with Solvency II.“
+
+- **Profilkorrektur** (`reviewed-profile-overrides.json`): ISIN NO0003053605, Anbieterbranche „Savings banks“, Profil `insurer`, gültig bis 12.05.2027.
+- **Solvenzquote** (Note G9, PDF-Seiten 37–38, Standardformel):
+
+| Größe | Wert |
+|---|---|
+| Solvenzkapital (inkl. CRD-IV-Töchter nach Sektorregeln, nach erwarteter Ausschüttung) | 60.963 Mio. NOK |
+| Solvenzkapitalanforderung | 30.557 Mio. NOK |
+| Quote | **200 %** |
+
+Ein Test prüft, dass die Quote nur des Versicherungsteils (53.325 / 24.341 = 219 %) mit den Gruppenbeträgen verworfen wird. Verzerrung: Verwendet wird die Gruppenquote, die niedriger ist als die Quote des Versicherungsteils. Die Profilkorrektur führt in ein Profil mit eigener Solvenzprüfung, nicht zu günstigeren Unternehmenskennzahlen.
+
+Probelauf (Kopie von main da6b9b76, 13.11.2026): OSL:STB wechselt von Bank zu Versicherer.
+- CET1, LCR und Kreditqualität entfallen (vorher fehlend, Gewicht 25).
+- Die Solvenzquote ist befüllt.
+- Offen bleibt der Peer-Stress, weil die Peers noch aus der Anbieterbranche „Savings banks“ gewählt werden.
+- Notierungen ohne Lücke unverändert 1.266.
+
 ## Geprüfte Namensvarianten (12. November 2026, nach dem Tageslauf)
 
 Nach dem Lauf vom 12.11. fehlte die Solvenzquote von Munich Re wieder (`identity_mismatch`). Ursache: Der Anbieter liefert für XETR:MUV2 je nach Lauf „Munich Re AG“ oder „Munchener Ruckversicherungs-Gesellschaft“. Das betrifft nur diese eine von 1.338 Notierungen; andere Identitätsfelder haben sich bei keiner Notierung geändert.

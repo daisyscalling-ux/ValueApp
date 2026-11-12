@@ -19,7 +19,8 @@ def listing_matches(ticker,listing):
   if ex not in SUFFIXES.get(suffix,()):return False
   # Market-specific notation only: preserve every share-class character.
   if ex in ('STO','CPH','HEL'):
-   def class_key(v):return re.sub(r'[._ -]([A-Z])$',r'-\1',v)
+   # Gattungsbuchstabe (VOLV_B) oder zweibuchstabige Laenderlinie (NDA_FI, seit 12.11.2026): nur das Trennzeichen wird vereinheitlicht.
+   def class_key(v):return re.sub(r'[._ -]([A-Z]{1,2})$',r'-\1',v)
    return class_key(base)==class_key(wanted)
   if ex=='LSE':return base.rstrip('.')==wanted.rstrip('.')
   return base==wanted

@@ -162,4 +162,8 @@ Probelauf:
 - HSBC: CET1-Puffer und LCR gefüllt. Eine Kreditqualität (CR1) liegt in keiner Quelle vor.
 - Offenes Gewicht 1,2 → 1,1 %.
 
-Weiter offen: Nordea Finnland (NDA-FI.HE). Die ROIC-Suche findet „NDA-FI“ nicht, und der gemeinsame Notierungsabgleich kennt zweibuchstabige Gattungs-Suffixe mit Unterstrich (z. B. `NDA_FI`) nicht. Eine Änderung dort betrifft App und Pipeline und ist für eine unbestätigte Notierung zurückgestellt.
+Nordea Finnland (NDA-FI.HE), Nachtrag 12.11.2026:
+- Die Notierung ist jetzt bestätigt. Das Protokoll von precompute-3tage (12.11.2026, 12:03 UTC) zeigt, dass ROIC `HEL:NDA_FI` anbietet (Aktie, primär, ISIN-Land FI). Der Abgleich lehnte sie nur ab, weil er bei Nordic-Notierungen bisher nur einbuchstabige Gattungen kannte.
+- Behoben in `listing_identity.py` und `listing-identity.ts`, identisch in valueapp-cf. Das Trennzeichen vor einem oder zwei Großbuchstaben am Ende wird vereinheitlicht, sonst bleibt alles exakt.
+- Weiterhin abgelehnt: `HEL:NDA_SE`, `HEL:NDA`, `HEL:NDAFI`, `STO:NDA_FI` und `STO:HMB` gegen `HM-B.ST`.
+- Wirksam ab dem nächsten precompute-3tage-Lauf, der die Notierung neu auflöst.

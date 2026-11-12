@@ -52,6 +52,10 @@ Vorzugsaktien (10.11.2026, Nutzerentscheidung): 14 Vorzugsaktien US-amerikanisch
 
 EBITDA-Marge gegenüber Peers (10.11.2026): Die Messung zählte Firmen derselben Branche mit Marge. Die App (`competitionMetrics`) vergleicht dagegen mit den ausgewählten Peers, bis zu 8 und seit den Branchengruppen auch aus verwandten Branchen. Die Messung zählt jetzt genau diese Peers mit EBITDA-Marge, ohne die eigene Notierung. Wirkung auf denselben Daten: Lücken 90 → 29, Unternehmen 82,5 → 82,8.
 
+## Nordea Helsinki: Notierungsabgleich (12.11.2026)
+
+NDA-FI.HE (STOXX 600) war bei allen Kennzahlen leer, weil der Notierungsabgleich `HEL:NDA_FI` nicht erkannte. Das war ein Fehler im eigenen Code (siehe `INTL_BANKS.md`). Ein Probelauf ist offline nicht möglich, denn die Notierung wird erst im Export (precompute-3tage) über ROIC aufgelöst. Erwartet: Kurshistorie, Peers und Eigenkapitalrendite für eine Notierung. Die Bankkennzahlen folgen erst mit der EU-Zuordnung (eigener PR).
+
 ## Profilkorrektur für falsch eingeordnete Versicherer (10.11.2026)
 
 Generali und Tryg führt der Datenanbieter als „Insurance brokers/Services“. Eine geprüfte Korrektur je ISIN (`reviewed-profile-overrides.json`, mit Beleg, SHA-256 und Ablauf) ordnet sie dem Profil `insurer` zu. Sie gilt nur, solange der Anbieter dieselbe Branche meldet und die Prüfung gültig ist. Probelauf: Versicherer 54 → 57, Solvenzquote vorhanden 17 → 19, offen 37 → 38 (Tryg ohne zugelassenes System), Unternehmen 1.053 → 1.050, Gesamtabdeckung 78,3 → 78,2 % (Tryg-Lücke jetzt sichtbar). Details in `INSURER-SOURCES.md`.

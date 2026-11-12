@@ -18,5 +18,13 @@ class IdentityTests(unittest.TestCase):
    exec(compile(ast.Module(body=[fn],type_ignores=[]),'roic.py','exec'),env)
    result=env['aufloesen'](ticker)
    self.assertEqual(result and result['symbol'],expected)
+ def test_two_letter_nordic_line(self):
+  # Nordea Helsinki: ROIC fuehrt HEL:NDA_FI, Yahoo NDA-FI.HE (12.11.2026)
+  self.assertTrue(listing_matches('NDA-FI.HE','HEL:NDA_FI'))
+  for listing in ['HEL:NDA_SE','HEL:NDA','HEL:NDAFI','STO:NDA_FI','NYSE:FI','FRA:NDA']:
+   with self.subTest(listing=listing):self.assertFalse(listing_matches('NDA-FI.HE',listing))
+  hits=[{'symbol':s,'is_primary':True,'isin':i} for s,i in [('HEL:NDA_FI','FI4000297767'),('NYSE:FI','US3377381088'),('NASDAQ:NDAQ','US6311031081'),('FRA:NDA',None)]]
+  self.assertEqual(select_listing('NDA-FI.HE',hits)['symbol'],'HEL:NDA_FI')
+  self.assertFalse(listing_matches('HM-B.ST','STO:HMB'))
 if __name__=='__main__':unittest.main()
 

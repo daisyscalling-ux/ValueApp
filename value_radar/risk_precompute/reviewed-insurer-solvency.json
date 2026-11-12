@@ -802,6 +802,41 @@
     },
     {
       "inputIdentity": {
+        "listing_symbol": "OSL:STB",
+        "ticker": "STB.OL",
+        "isin": "NO0003053605",
+        "currency": "NOK",
+        "name": "Storebrand ASA",
+        "name_full": "Storebrand ASA",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Storebrand Group (Storebrand ASA)",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "NO",
+      "regulator": "Finanstilsynet",
+      "scopeSourceUrl": "https://mb.cision.com/Main/6558/4412638/4329065.pdf",
+      "scopeSourcePages": "PDF 37 (Note G9: versicherungsdominierte Finanzgruppe, Kapitalanforderung nach Solvency II, Standardformel), PDF 12 (Finanstilsynet)",
+      "observations": [
+        {
+          "period": "2026-09-30",
+          "reportKind": "interim",
+          "basis": "group_solvency_ii_standard_formula_incl_crd_iv_sectoral_rules",
+          "ratio": 2.0,
+          "eligibleOwnFunds": 60963000000,
+          "solvencyRequirement": 30557000000,
+          "currency": "NOK",
+          "unit": "currency_units",
+          "sourceUrl": "https://mb.cision.com/Main/6558/4412638/4329065.pdf",
+          "sourcePages": "PDF 37–38 (Note G9: Total solvency capital, Total solvency capital requirement, Solvency margin)",
+          "sourceSha256": "b0a234998aa4aaefbde93934e20ea3559914f8efc7a15ce82bb14ed0f8abd2bf",
+          "basisNote": "Zwischenbericht Q3 2026 (Pflichtmitteilung über Cision): Solvenzkapital 60.963 Mio. NOK (nach erwarteter Dividende/Rückkauf, inkl. CRD-IV-Töchter nach Sektorregeln), Solvenzkapitalanforderung 30.557 Mio. NOK, Quote 200 %. Standardformel."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
         "listing_symbol": "EURONEXT:ASRNL",
         "ticker": "ASRNL.AS",
         "isin": "NL0011872643",

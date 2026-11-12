@@ -26,6 +26,18 @@
    "evidenceSha256": "88c5afccbbbecb43096acfd3d6a872b2e56975be3d270ba22178b44115edcb05",
    "reviewed_on": "2026-11-10",
    "review_expires": "2027-05-10"
+  },
+  {
+   "isin": "NO0003053605",
+   "issuer": "Storebrand ASA",
+   "vendorIndustry": "Savings banks",
+   "profile": "insurer",
+   "evidence": "Zwischenbericht Q3 2026, Note G9: \"The Storebrand Group is an insurance-dominated, cross-sectoral financial group with capital requirements in accordance with Solvency II.\"",
+   "evidenceUrl": "https://mb.cision.com/Main/6558/4412638/4329065.pdf",
+   "evidencePages": "37",
+   "evidenceSha256": "b0a234998aa4aaefbde93934e20ea3559914f8efc7a15ce82bb14ed0f8abd2bf",
+   "reviewed_on": "2026-11-12",
+   "review_expires": "2027-05-12"
   }
  ]
 }

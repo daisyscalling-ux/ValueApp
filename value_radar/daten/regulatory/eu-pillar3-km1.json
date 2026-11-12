@@ -2065,6 +2065,102 @@
     "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/5493007SJLLCTM6J6M37.CON_ES_PILLAR3020100_FINDIS_2026-06-30_20260924092453089.zip",
     "sourceFileSha256": "0c9b45c48beec5c6d6e635dca4daa3835212dc4a0184bbd7f3ec2bfa732861a8"
    }
+  },
+  "529900ODI3047E2LIV03": {
+   "name": "Nordea Bank Abp",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/529900ODI3047E2LIV03.CON_FI_PILLAR3020100_CODIS_2026-06-30_20260831122547000.zip",
+   "sourceFileSha256": "f07add194bfe328efdef390f099dc0781045c5541819bbe63f41dcf3cae887aa",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.15379965339858936,
+    "tier1_ratio": 0.17353748879742967,
+    "total_capital_ratio": 0.2058778194342813,
+    "srep_total": 0.096,
+    "srep_additional": 0.016,
+    "srep_additional_cet1": 0.009,
+    "combined_buffer": 0.08442359708472785,
+    "overall_requirement": 0.18042359708472785,
+    "leverage_ratio": 0.045598824462130996,
+    "lcr": 1.5615106916666666,
+    "nsfr": 1.2058817671924693
+   },
+   "lcr": 1.5615106916666666,
+   "nsfr": 1.2058817671924693,
+   "cet1Requirement": {
+    "value": 0.138424,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.009,
+     "combined_buffer": 0.08442359708472785
+    },
+    "check": {
+     "overall_requirement": 0.18042359708472785,
+     "srep_total": 0.096
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.00911408830482174,
+    "performing": 357506399035.27,
+    "nonPerforming": 3288314882.56,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/529900ODI3047E2LIV03.CON_FI_PILLAR3020100_FINDIS_2026-06-30_20260827102516000.zip",
+    "sourceFileSha256": "ade1332405872b177fb2dc0680911a0b620cd870f63ca19916c232247a243c95"
+   }
+  },
+  "635400C8EK6DRI12LJ39": {
+   "name": "Bank of Ireland Group PLC",
+   "period": "2026-06-30",
+   "scope": "consolidated",
+   "sourceUrl": "https://errp.eba.europa.eu/public-documents/CODIS/input/635400C8EK6DRI12LJ39.CON_IE_PILLAR3020100_CODIS_2026-06-30_20260930161118017.zip",
+   "sourceFileSha256": "737b793601494ffeb45374fefcf316d2ebcd23c0244829e9747ad56989bbd37a",
+   "baseCurrency": "iso4217:EUR",
+   "decimalsPercentage": "4",
+   "metrics": {
+    "cet1_ratio": 0.147337085589189,
+    "tier1_ratio": 0.168268178717001,
+    "total_capital_ratio": 0.19756702476591,
+    "srep_total": 0.104,
+    "srep_additional": 0.024,
+    "srep_additional_cet1": 0.0135,
+    "combined_buffer": 0.0554291464686424,
+    "overall_requirement": 0.159429146468642,
+    "leverage_ratio": 0.0676318483174122,
+    "lcr": 1.9086,
+    "nsfr": 1.56066510347522
+   },
+   "lcr": 1.9086,
+   "nsfr": 1.56066510347522,
+   "cet1Requirement": {
+    "value": 0.113929,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.0135,
+     "combined_buffer": 0.0554291464686424
+    },
+    "check": {
+     "overall_requirement": 0.159429146468642,
+     "srep_total": 0.104
+    },
+    "derivation": null
+   },
+   "cet1RequirementOpen": null,
+   "npl": {
+    "ratio": 0.020182462070192347,
+    "performing": 85728217309.87,
+    "nonPerforming": 1765845606.17,
+    "currency": "iso4217:EUR",
+    "period": "2026-06-30",
+    "scope": "consolidated",
+    "sourceUrl": "https://errp.eba.europa.eu/public-documents/FINDIS/input/635400C8EK6DRI12LJ39.CON_IE_PILLAR3020100_FINDIS_2026-06-30_20260924155202854.zip",
+    "sourceFileSha256": "c52bf96fa0ad944fe97b8b47ac865ce915a016b30a9e9593ceaa3f5e107a009a"
+   }
   }
  },
  "rejected": {
@@ -2087,6 +2183,14 @@
     "5493007SJLLCTM6J6M37"
    ],
    "note": "Nachtrag ING Bank Śląski und Unicaja (pillar3Only, 11.11.2026); übrige Banken unverändert vom Import 2026-11-10T19:41:08.454681+00:00"
+  },
+  {
+   "importedAt": "2026-11-12T20:36:04.334193+00:00",
+   "leis": [
+    "529900ODI3047E2LIV03",
+    "635400C8EK6DRI12LJ39"
+   ],
+   "note": "Nachtrag Bank of Ireland und Nordea (pillar3Only, LEI über ESMA FIRDS, 12.11.2026); übrige Banken unverändert"
   }
  ]
 }

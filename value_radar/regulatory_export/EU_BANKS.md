@@ -104,7 +104,26 @@ Es gelten dieselben Prüfungen wie bei KM1: Taxonomie 4.2, Institut und Stichtag
 Mit dem Index-Universum kamen zwei EU-Banken ohne Zuordnung hinzu. Beide haben eine eindeutige LEI per ISIN bei GLEIF und Einreichungen im Pillar 3 Data Hub. Sie stehen jetzt unter `pillar3Only`:
 - **Unicaja Banco** (5493007SJLLCTM6J6M37), Stichtag 30.06.2026: CET1 15,8 %, CET1-Anforderung 8,65 %, LCR 295 %, NPL (CR1) 1,8 %.
 - **ING Bank Śląski** (259400YLRTOBISHBVX41) bleibt offen. In den Einreichungen zu Q2 und Q3 2026 fehlt die KM1-Tabelle (`km1_missing`), die Q1-Quoten sind unvollständig oder nicht stimmig, Q4 2025 ist zu alt. Die Zuordnung bleibt, damit eine spätere vollständige Einreichung automatisch greift.
-- **Bank of Ireland:** GLEIF liefert zur ISIN keine LEI. Eine Namenssuche ist kein Identitätsnachweis, deshalb bleibt sie offen.
+- **Bank of Ireland:** GLEIF liefert zur ISIN keine LEI. Eine Namenssuche ist kein Identitätsnachweis, deshalb bleibt sie offen. Seit 12.11.2026 erledigt über ESMA FIRDS (siehe nächster Nachtrag).
+
+### Nachtrag: LEI über ESMA FIRDS, Bank of Ireland und Nordea (12. November 2026)
+
+Findet GLEIF über `filter[isin]` keine LEI, gilt jetzt auch das ESMA-Instrumentenregister FIRDS als Nachweis. Es ordnet jeder ISIN die LEI des Emittenten zu, gemeldet von den Handelsplätzen. Bedingungen:
+- Alle FIRDS-Einträge der ISIN, die eine LEI nennen, nennen dieselbe LEI.
+- Kein Eintrag widerspricht.
+- Die Abfrage-URL steht in `firdsSource`.
+- Ein Repository-Test erzwingt für jede `pillar3Only`-Zuordnung einen ISIN-basierten Nachweis (GLEIF oder FIRDS).
+
+Der Name ist weiterhin kein Nachweis.
+
+| Bank | ISIN | LEI | FIRDS | Hub, Stichtag 30.06.2026 |
+|---|---|---|---|---|
+| Bank of Ireland Group | IE00BD1RP616 | 635400C8EK6DRI12LJ39 | 81 von 83 Einträgen mit dieser LEI, 2 ohne | CET1 14,73 %, Anforderung 11,39 %, LCR 191 %, NPL (CR1) 2,02 % |
+| Nordea Bank Abp | FI4000297767 | 529900ODI3047E2LIV03 | 88 von 89 Einträgen mit dieser LEI, 1 ohne | CET1 15,38 %, Anforderung 13,84 %, LCR 156 %, NPL (CR1) 0,91 % |
+
+Importiert wurden nur diese beiden LEIs (`build` mit eingeschränkter Zuordnung) und in `eu-pillar3-km1.json` eingefügt (`additions`). Die übrigen Banken sind unverändert.
+
+Probelauf (Kopie von main 17fd7243): Bei EURONEXT:BIRG sind CET1-Puffer, LCR und Kreditqualität jetzt befüllt, sonst keine Änderung. Notierungen ohne Lücke 1.264 → 1.265. Nordea (NDA-FI.HE) greift erst, wenn der Export die Notierung `HEL:NDA_FI` mit ISIN auflöst (ValueApp#183, nächster precompute-3tage-Lauf).
 
 Import nur der beiden neuen Banken (`build` mit eingeschränkter Zuordnung), in die bestehende `eu-pillar3-km1.json` eingefügt. Der Eintrag `additions` dokumentiert das; die übrigen Banken sind unverändert.
 

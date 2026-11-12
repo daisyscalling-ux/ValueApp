@@ -11,7 +11,7 @@ Stand 09.11.2026. Gemeinsames Format `intl-bank-metrics-v1` für veröffentlicht
   - BMO (31.07.2026) und Lloyds (30.09.2026) über ihre SEC-Einreichungen (Form 6-K), weil beide Websites automatisierte Abrufe sperren. Der Workflow `sec-bank-filings` lädt die in `sec-bank-filings.json` gelisteten Einreichungen mit dem Secret `SEC_USER_AGENT` und legt sie mit SHA-256 als Artefakt ab. BMO: Quartalsbericht (MD&A), Anforderung 11,0 % laut Tabelle 11 (4,5 % + 3,5 % Säule-1-Puffer + 3,0 % DSB), LCR, NSFR. Lloyds: nur Kapitalquoten und Leverage aus dem Q3-Zwischenbericht; die Säule-3-Tabelle mit Anforderung und LCR liegt nur auf der gesperrten Website. Quellenart jeweils `bank_capital_release`.
   - Japan, Stichtag 30.06.2026: MUFG und SMFG (KM1, Anforderung = 4,5 % + Zeile 11; LCR, NSFR), Mizuho (Basel-Überblick der Bank: CET1-Mindestquote 8,0 % ohne antizyklischen Puffer, LCR; Tier 1 und Gesamtkapital aus der Mitteilung vom 14.08.2026), Shizuoka Financial Group (nur Kapitalquoten, internationaler Standard, keine Anforderung offengelegt). Japan veröffentlicht keine bankspezifische Säule-2-Anforderung.
   - Japan, Nachtrag: Sumitomo Mitsui Trust Group (neue Domain www.smtg.jp; KM1, Anforderung = 4,5 % + Zeile 11 mit 0,5 % D-SIB-Zuschlag, LCR, NSFR).
-  - Japan offen: Japan Post Bank rechnet nachweislich nach dem Inlandsstandard („Core Capital“, nicht mit CET1 vergleichbar). Resona und Fukuoka sperren automatisierte Abrufe (Akamai). Chiba und Yokohama Financial Group (früher Concordia, jetzt www.yokohamafg.co.jp) laden ihre Dokumentlisten per Skript. Für diese vier wird der Inlandsstandard erwartet. Banken nach japanischem Inlandsstandard melden eine „Core Capital Ratio“, die mit CET1 nicht vergleichbar ist.
+  - Japan, Stand 12.11.2026: Shizuoka jetzt aus der japanischen KM1 zum 30.06.2026 (Anforderung 7,02 %, LCR, NSFR; die englische Seite enthält nur die Kapitalmeldung). Chiba und Yokohama FG rechnen nach **internationalem** Standard (die frühere Annahme „Inlandsstandard“ war falsch) und haben KM1 zum 30.09.2026. Resona und Fukuoka rechnen nach Inlandsstandard und werden belegt als „nicht anwendbar“ geführt (Abschnitt unten). Japan Post Bank ist nicht im Universum.
   - China, Stichtag 30.09.2026, Quelle Hongkonger Börse (www1.hkexnews.hk, die H-Aktien-Meldungen der Banken): ICBC, CCB, Bank of China, Agricultural Bank (KM1, CET1-Anforderung = 5 % Mindestquote der NFRA + Zeile 11 mit Erhaltungspuffer 2,5 % und G-SIB-Zuschlag 1,5 %; LCR als Tagesdurchschnitt des Quartals, NSFR). China Merchants Bank: Quartalsbericht, Anforderung 8,25 % laut Bank (5 % + 2,5 % + 0,75 % D-SIB), LCR, keine NSFR. Bank of Communications: nur Kapitalquoten aus der Quartalsmitteilung; der KM1-Bericht liegt nur auf www.bankcomm.com, das aus dieser Umgebung nicht erreichbar ist. Bei ICBC steigt der G-SIB-Zuschlag ab 01.01.2027 auf 2,0 %.
   - Schweiz, Stichtag 30.06.2026 (halbjährlich): BCV und Valiant (KM1, CET1-Anforderung = Zeile 12c: 4,5 % + 3,3 % Puffer nach Anhang 8 ERV + antizyklischer Puffer; LCR, NSFR). Der befristete FINMA-Zuschlag von 1 % für BCV (Art. 45 ERV) gilt für das Gesamtkapital und ist nicht enthalten. Cembra: nur Kapitalquoten aus dem Halbjahresbericht, KM1 erscheint nur jährlich.
   - Singapur, Stichtag 30.09.2026: DBS (KM1, CET1-Anforderung = 6,5 % MAS-Mindestquote + Zeile 11; LCR, NSFR). OCBC offen: Website (Incapsula) und SGX-Mitteilungen (Akamai) sperren automatisierte Abrufe, eine SEC-Einreichung gibt es nicht.
@@ -46,7 +46,30 @@ Der Bericht von Sumitomo Mitsui Trust stammt aus der Einreichung bei der Singapu
 
 Verzerrung: Die CR1-Quote ist bis zu neun Monate älter als die Kapitalquoten. In einer Phase steigender Ausfälle wirkt die Bank dadurch zu gut. Das Höchstalter von 270 Tagen begrenzt den Abstand. Der Stichtag ist in der App sichtbar. Die Halbjahreswerte zum 30.09.2026 erscheinen etwa im Dezember und werden dann eingetragen. Ohne Aktualisierung laufen die Märzwerte am 26.12.2026 ab und die Kreditqualität ist wieder offen.
 
-Probelauf 11.11.2026: Kreditqualität bei 4 Notierungen neu gefüllt (TSE:8306, 8316, 8411, 8309), sonst keine Änderung. Shizuoka bleibt offen, weil keine CR1 erhoben wurde (Quelle `bank_capital_release`). Die Banken nach Inlandsstandard (Japan Post Bank, Resona, Chiba, Fukuoka, Yokohama FG) sind noch nicht bearbeitet.
+Probelauf 11.11.2026: Kreditqualität bei 4 Notierungen neu gefüllt (TSE:8306, 8316, 8411, 8309), sonst keine Änderung. Shizuoka bleibt offen, weil keine CR1 erhoben wurde (Quelle `bank_capital_release`). Die übrigen japanischen Banken sind im Abschnitt „Japan: Inlandsstandard und Nachträge“ beschrieben.
+
+## Japan: Inlandsstandard und Nachträge (12. November 2026)
+
+Entscheidung des Nutzers: Banken nach japanischem Inlandsstandard (国内基準) werden „bewusst außerhalb“ geführt, mit Beleg je Bank. Bei der Prüfung zeigte sich, dass zwei der vier vermuteten Inlandsstandard-Banken in Wahrheit nach internationalem Standard rechnen.
+
+| Bank | Standard | Beleg | Ergebnis |
+|---|---|---|---|
+| Chiba Bank | international | Wertpapierbericht 19.06.2026, PDF-S. 40; KM1 30.09.2026 | CET1 15,36 %, Anforderung 7,03 % (4,5 % + Zeile 11 2,53 %), LCR 129,4 %, NSFR 121,7 % |
+| Yokohama FG | international | Kapitalmeldung 14.08.2026 (Fußnote); KM1 30.09.2026 | CET1 14,93 %, Anforderung 7,00 %, LCR 120,1 %; NSFR folgt (Fußnote der Bank) |
+| Shizuoka FG | international | KM1 30.06.2026 (japanische Seite) | CET1 16,24 %, Anforderung 7,02 %, LCR 162,0 %, NSFR 106,4 % |
+| Resona HD | Inland | TDnet 07.08.2026: 国内基準 12,65 %; internationale Werte dort nur 〔参考〕 | CET1-Puffer und LCR nicht anwendbar |
+| Fukuoka FG | Inland | Meldung 12.08.2026 (Core Capital 11,66 %); Wertpapierbericht 19.06.2026, PDF-S. 31: „当社は、国内基準を適用“ | CET1-Puffer und LCR nicht anwendbar |
+
+Fundstellen: Die KM1 von Yokohama FG liegt beim IR-Dokumentdienst der Bank (ssl4.eir-parts.net). Die Website lädt die Liste per Skript; die Liste wurde direkt abgerufen, ohne Bot-Schutz zu umgehen. Die Fukuoka-Meldung stammt von der Fukuokaer Börse (www.fse.or.jp), weil die Website der Bank automatisierte Abrufe sperrt.
+
+**Regel Inlandsstandard** (`domesticStandard` in `reviewed-key-metrics.json`):
+- Beleg je Bank: https, SHA-256, Fundstelle, Stichtag höchstens 270 Tage alt.
+- Beleg für den LCR-Geltungsbereich (`domesticStandardLcrRule`): FSA-Bekanntmachung Nr. 62/2014, Art. 2 (PDF-Seite 13). Die Konzern-LCR gilt nur für Holdings mit Banktöchtern mit Auslandsgeschäftsstellen; genau diese Banken müssen den internationalen Kapitalstandard anwenden.
+- Geprüft wird in Import, `regulatory_context.py`, `regulatory-context.ts` (`verifiedDomesticStandard`) und App (`src/lib/domestic-standard.ts`). Fehlt ein Beleg oder ist er zu alt, bleiben die Kennzahlen einfach offen.
+- Messung: CET1-Puffer und LCR `by_design`. Die Kreditqualität bleibt anwendbar und offen.
+- Die gemeldete Quote nach Inlandsstandard wird nur angezeigt, nicht bewertet.
+
+**Verzerrung:** Inlandsstandard-Banken haben zwei Finanzkennzahlen weniger. Ihr Teilscore stützt sich damit stärker auf Kurs- und Bewertungsdaten. Ein Vergleich mit CET1-Banken wäre aber falsch: Core Capital hat andere Abzüge, und die Mindestquote liegt bei 4 % statt 7 %. Die Referenzwerte nach internationalem Standard, die Resona freiwillig nennt, sind keine Aufsichtsgröße und werden nicht verwendet.
 
 ## Zuordnung (`intl-bank-map.json`)
 

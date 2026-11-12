@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {withRegulatoryContext as merge,verifiedIntlCapital} from './regulatory-context';
+import {withRegulatoryContext as merge,verifiedIntlCapital,verifiedDomesticStandard} from './regulatory-context';
 const now=Date.parse('2026-11-09T18:00:00Z');
 const row={listing_symbol:'OTC:CBAUF',isin:'AU000000CBA7',currency:'USD',name:'Commonwealth Bank of Australia',security_type:'stock'};
 const base={profile:'bank',state:'context_only',sectorRequirements:[]};
@@ -46,5 +46,18 @@ test('Basel CR1 with its own reporting date (Japan) needs source, SHA-256 and ag
  assert.equal(ok({...credit,sourceDetail:''}),null);
  assert.equal(ok({...credit,period:'2026-09-30'}),null,'not after the KM1 date');
  assert.equal(ok({...credit,period:'2026-02-10'}),null,'older than 270 days');
+});
+test('Japanese domestic standard: CET1 requirement and LCR not applicable, credit quality stays open; proofs and identity are rechecked',()=>{
+ const drow={listing_symbol:'TSE:8308',ticker:'8308.T',isin:'JP3500610005',currency:'JPY',name:'Resona',security_type:'stock'};
+ const dom={state:'not_applicable',scope:'domestic_capital_standard',standard:'jp_domestic_core_capital',inputIdentity:drow,period:'2026-06-30',identityReviewExpires:'2027-05-08',
+  sourceUrl:'https://example.org/r.pdf',sourceFileSha256:'e'.repeat(64),sourceDetail:'p. 1',lcrRule:{url:'https://www.fsa.go.jp/x.pdf',sha256:'d'.repeat(64),location:'Notice 62 Art. 2'},domesticCapitalRatio:.1265};
+ const arc=(r:any)=>({schema:1,generatedAt:'2026-11-09T17:30:00Z',stocks:{},intlBanks:{schema:1,source:'intl_basel_key_metrics',state:'ready',stocks:{'TSE:8308':r}}});
+ const r=merge(base,drow,arc(dom),true,now);
+ assert.equal(r.bankCapital.scope,'domestic_capital_standard');
+ assert.deepEqual(r.sectorAssessment.notApplicableRequirements,['regulatory_capital_CET1','institution_specific_capital_requirement','liquidity_LCR_or_local_equivalent']);
+ assert.deepEqual(r.sectorAssessment.openRequirements,['asset_quality_nonperforming_loans']);
+ for(const bad of [{period:'2026-01-30'},{lcrRule:null},{sourceFileSha256:'x'},{standard:'x'},{state:'available'},{inputIdentity:{...drow,isin:'JP0000000001'}},{identityReviewExpires:'2026-11-01'}])
+  assert.equal(verifiedDomesticStandard(arc({...dom,...bad}),drow,true,now),null,JSON.stringify(bad));
+ assert.equal(verifiedDomesticStandard(arc(dom),drow,false,now),null,'identity check failed upstream');
 });
 console.log(checks+' international capital checks passed');

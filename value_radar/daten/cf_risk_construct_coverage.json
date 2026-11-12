@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-12T16:11:13.010141+00:00",
+ "generatedAt": "2026-11-12T18:19:22.600028+00:00",
  "listings": 1340,
  "overallAverageWeight": {
   "filled": 82.0,
@@ -15,7 +15,7 @@
    "listings": 88,
    "averageWeight": {
     "filled": 73.3,
-    "missing": 5.9,
+    "missing": 6.0,
     "app_only": 10.0,
     "by_design": 10.7
    },
@@ -31,10 +31,10 @@
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
      "filled": 19.63,
-     "missing": 4.63,
+     "missing": 4.72,
      "app_only": 0.0,
-     "by_design": 0.74,
-     "filledShareOfMeasurable": 0.809
+     "by_design": 0.65,
+     "filledShareOfMeasurable": 0.806
     },
     "Umfeldstress": {
      "weight": 15,
@@ -116,8 +116,8 @@
   "insurer": {
    "listings": 52,
    "averageWeight": {
-    "filled": 59.6,
-    "missing": 1.4,
+    "filled": 59.9,
+    "missing": 1.2,
     "app_only": 10.0,
     "by_design": 28.9
    },
@@ -132,11 +132,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 5.19,
-     "missing": 0.87,
+     "filled": 5.48,
+     "missing": 0.58,
      "app_only": 0.0,
      "by_design": 18.94,
-     "filledShareOfMeasurable": 0.857
+     "filledShareOfMeasurable": 0.905
     },
     "Umfeldstress": {
      "weight": 15,
@@ -274,11 +274,11 @@
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Liquiditätsdeckung (LCR)",
    "weight": 7.5,
-   "missingListings": 16,
+   "missingListings": 17,
    "filledListings": 66,
-   "weightedGap": 120.0,
+   "weightedGap": 127.5,
    "reasons": {
-    "Geprüfte LCR fehlt": 16
+    "Geprüfte LCR fehlt": 17
    }
   },
   {
@@ -361,18 +361,6 @@
    }
   },
   {
-   "profile": "insurer",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "Solvenzquote",
-   "weight": 15,
-   "missingListings": 3,
-   "filledListings": 18,
-   "weightedGap": 45,
-   "reasons": {
-    "Geprüfte Solvenzquote fehlt": 3
-   }
-  },
-  {
    "profile": "specialist_financial",
    "block": "Finanzielle Verwundbarkeit",
    "metric": "Eigenkapitalrendite",
@@ -408,6 +396,18 @@
    "reasons": {
     "Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei": 2,
     "Eigenkapitalrendite fehlt": 1
+   }
+  },
+  {
+   "profile": "insurer",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "Solvenzquote",
+   "weight": 15,
+   "missingListings": 2,
+   "filledListings": 19,
+   "weightedGap": 30,
+   "reasons": {
+    "Geprüfte Solvenzquote fehlt": 2
    }
   },
   {

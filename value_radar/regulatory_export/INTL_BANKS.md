@@ -85,7 +85,12 @@ Die Halbjahresoffenlegung zum 30.09.2025 ist älter als 270 Tage und wurde desha
 
 Probelauf: Kreditqualität bei TSE:8331, 7186 und 5831 gefüllt, sonst keine Änderung. Die Werte laufen am 26.12.2026 ab (wie bei den Großbanken; die Quartalsaufgabe im Dezember sucht die Halbjahreswerte).
 
-Weiter offen: Resona und Fukuoka. Die Regel für den Inlandsstandard hält die Kreditqualität offen; eine CR1-Übernahme für diese Banken ist noch nicht umgesetzt.
+Weiter offen: Resona und Fukuoka. **Entscheidung des Nutzers (12.11.2026): offen lassen.**
+- Beide Websites sperren automatisierte Abrufe: resona-gr.co.jp mit Akamai „Access Denied“, Fukuoka FG siehe oben.
+- Die Säule-3-Offenlegung mit CR1 ist deshalb nicht prüfbar zu beschaffen.
+- Verworfene Alternative: die risikobehafteten Kredite (リスク管理債権) aus dem Wertpapierbericht über EDINET. Sie haben eine andere Abgrenzung (inklusive drei Monate überfälliger und gestundeter Kredite) und wären mit CR1 nicht vergleichbar.
+- Angezeigter Grund: „Geprüfte Kreditqualität fehlt“.
+- Neu prüfen, falls die Bank die Offenlegung über TDnet oder einen offenen Host bereitstellt.
 
 ## Britische Banken: notleidende Kredite aus UK CR1 (12. November 2026)
 

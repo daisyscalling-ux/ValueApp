@@ -1,0 +1,33 @@
+{
+ "schema": 1,
+ "method": "reviewed-standalone-depositary-v1",
+ "note": "Depositary Receipts, die im Universum ohne Stammaktie stehen (Pence-Notierung durch ADR ersetzt bzw. nur DR börsennotiert). Die Konzernkennzahlen gelten dann für genau diese Zeile; alle Identitätsfelder müssen exakt passen.",
+ "entries": [
+  {
+   "listing_symbol": "EURONEXT:ABN",
+   "isin": "NL0011540547",
+   "currency": "EUR",
+   "security_type": "dr",
+   "issuerKey": {"lei": "BFXS5XCH7N0Y05NIXW11"},
+   "kind": "only_listed_instrument",
+   "evidence": "An Euronext Amsterdam handeln ausschließlich Depositary Receipts der Stiftung STAK AAB (ISIN NL0011540547) auf Aktien der ABN AMRO Bank N.V.; Euronext-Produktseite nennt ABN AMRO BANK N.V. | NL0011540547; GLEIF ordnet die ISIN der LEI BFXS5XCH7N0Y05NIXW11 zu (eu-bank-map.json). abnamro.com lehnt automatisierte Abrufe ab (HTTP 503).",
+   "sourceUrl": "https://live.euronext.com/en/product/equities/NL0011540547-XAMS",
+   "sourceSha256": "0cde78b3494c034f8b5a8388afb3c6a2ef759ea9f4e1ecbbb153a0a37134b1c1",
+   "reviewedOn": "2026-11-12",
+   "reviewExpires": "2027-05-11"
+  },
+  {
+   "listing_symbol": "NYSE:HSBC",
+   "isin": "GB0005405286",
+   "currency": "USD",
+   "security_type": "dr",
+   "issuerKey": {"issuerIsin": "GB0005405286"},
+   "kind": "adr_without_ordinary_in_universe",
+   "evidence": "HSBC Holdings plc unterhält ein ADR-Programm an der NYSE, 1 ADS = 5 Stammaktien (Depositary: The Bank of New York Mellon). Im Universum ersetzt das ADR die Londoner Pence-Notierung HSBA.L; die Zeile trägt die ISIN der Stammaktie.",
+   "sourceUrl": "https://www.about.us.hsbc.com/investor-relations",
+   "sourceSha256": "52bd6640d79611ee39a725c3fd3227f1f4f5fd71b163560d185c057ec4c2fc08",
+   "reviewedOn": "2026-11-12",
+   "reviewExpires": "2027-05-11"
+  }
+ ]
+}

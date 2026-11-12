@@ -114,7 +114,25 @@ def pillar3_only_record(row,lei,km1,mapping,now):
   'identityReviewExpires':mapping.get('review_expires'),'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
   'capitalRequirement':km1_requirement(km1,lei,now),'liquidity':km1_liquidity(km1,lei,now),'creditQuality':km1_credit(km1,lei,now),
   'limitations':['Only Pillar 3 (no EBA transparency data): capital, requirement and LCR from EU KM1, non-performing loans from EU CR1.']}
-def build_eu(universe,capital,mapping,now,km1=None):
+DR_METHOD='reviewed-standalone-depositary-v1'
+def standalone_dr(row,review,now,key):
+ """Geprueftes DR ohne Stammaktie im Universum (nur DR boersennotiert oder ADR ersetzt die Pence-Notierung): alle Identitaetsfelder
+ exakt, gleicher Konzernschluessel (LEI bzw. Emittenten-ISIN), gueltige Pruefung, Beleg mit https und SHA-256."""
+ if not isinstance(review,dict) or review.get('schema')!=1 or review.get('method')!=DR_METHOD or row.get('security_type') not in DEPOSITARY:return None
+ today=now.date().isoformat()
+ for e in review.get('entries',[]):
+  if any(row.get(k)!=e.get(k) for k in ('listing_symbol','isin','currency','security_type')) or e.get('issuerKey')!=key:continue
+  if not (isinstance(e.get('reviewedOn'),str) and isinstance(e.get('reviewExpires'),str) and e['reviewedOn']<=today<=e['reviewExpires']):return None
+  if not str(e.get('sourceUrl','')).startswith('https://') or not re.fullmatch('[0-9a-f]{64}',str(e.get('sourceSha256',''))) or not str(e.get('evidence','')).strip():return None
+  return e
+ return None
+def mark_standalone(stocks,marks):
+ for s,e in marks.items():
+  if s in stocks:
+   stocks[s]={**stocks[s],'standaloneDepositary':{k:e[k] for k in ('kind','evidence','sourceUrl','sourceSha256','reviewedOn','reviewExpires')},
+    'limitations':[*stocks[s].get('limitations',[]),'Depositary receipt without ordinary share in the universe; group ratios apply via reviewed mapping ('+e['kind']+').']}
+
+def build_eu(universe,capital,mapping,now,km1=None,dr_review=None):
  """EU/EWR-Banken: EBA-Kapital und -NPL je LEI, Teilanforderung aus EZB-P2R. Gleiche Identitaetsregeln wie bei US-Holdings."""
  stocks,rejected,deferred={},{},[]
  out={'schema':1,'source':'eba_transparency_ecb_p2r','method':capital.get('method'),'stocks':stocks,'rejected':rejected,'scoreContribution':0}
@@ -122,21 +140,23 @@ def build_eu(universe,capital,mapping,now,km1=None):
  by_isin={i:b['lei'] for b in mapping.get('banks',[]) for i in b.get('isins',[])}
  p3only={b['lei'] for b in mapping.get('pillar3Only',[])}
  by_isin.update({i:b['lei'] for b in mapping.get('pillar3Only',[]) for i in b.get('isins',[])})
- eba=capital['sources']['eba'];ecb=capital['sources']['ecb']
+ eba=capital['sources']['eba'];ecb=capital['sources']['ecb'];marks={}
  for row in universe.get('kandidaten',[]):
   s=row.get('listing_symbol');lei=by_isin.get(row.get('isin'))
   if not s or not lei:continue
+  rev=standalone_dr(row,dr_review,now,{'lei':lei})
+  if rev:marks[s]=rev
   b=capital['banks'].get(lei)
   if not b and lei in p3only:
    rec=pillar3_only_record(row,lei,km1,mapping,now)
    if rec is None:rejected[s]='no_current_pillar3_km1_for_lei'
-   elif depositary_candidate(row):deferred.append((row,lei))
-   elif not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):rejected[s]='listing_identity_unverified'
+   elif depositary_candidate(row) and not rev:deferred.append((row,lei))
+   elif not valid_isin(row.get('isin')) or (row.get('security_type') not in ('stock','common','common_stock','equity') and not rev) or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):rejected[s]='listing_identity_unverified'
    else:stocks[s]=rec
    continue
   if not b:rejected[s]='no_eu_capital_for_lei';continue
-  if depositary_candidate(row):deferred.append((row,lei));continue
-  if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
+  if depositary_candidate(row) and not rev:deferred.append((row,lei));continue
+  if not valid_isin(row.get('isin')) or (row.get('security_type') not in ('stock','common','common_stock','equity') and not rev) or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
    rejected[s]='listing_identity_unverified';continue
   metrics={k:{'state':'available','value':b['metrics'][k],'unit':'fraction','sourceField':'EBA:'+code} for k,code in EU_ITEMS.items() if isinstance(b['metrics'].get(k),(int,float)) and 0<=b['metrics'][k]<=1}
   if 'cet1_ratio' not in metrics:rejected[s]='eu_cet1_missing';continue
@@ -155,6 +175,7 @@ def build_eu(universe,capital,mapping,now,km1=None):
    'identityReviewExpires':capital['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
    'capitalRequirement':km1_requirement(km1,lei,now) or req,'liquidity':km1_liquidity(km1,lei,now),'creditQuality':km1_credit(km1,lei,now) or credit,
    'limitations':['EBA transparency data are published annually; the period can be up to 24 months old.','Without Pillar 3 KM1: partial CET1 requirement excludes countercyclical, systemic and O-SII/G-SII buffers, and no LCR.']}
+ mark_standalone(stocks,marks)
  adopt_depositaries(stocks,rejected,deferred,'lei')
  out.update(state='ready',summary={'euBanks':len(stocks),'rejected':dict(Counter(rejected.values()))})
  return out
@@ -190,9 +211,9 @@ def domestic_record(row,d,data):
   'capitalRequirement':None,'liquidity':None,'creditQuality':None,'scoreContribution':0,
   'limitations':['Japanese domestic capital standard (core capital, 4 % minimum): no Basel III CET1 ratio or requirement and no LCR requirement; buffer and LCR are not compared.']}
 
-def build_intl(universe,data,now):
+def build_intl(universe,data,now,dr_review=None):
  """Banken ausserhalb EU/EWR/USA (APRA, spaeter Basel-KM1): Kapitalquoten, LCR, NSFR je Konzern. Gleiche Identitaetsregeln."""
- stocks,rejected,deferred={},{},[]
+ stocks,rejected,deferred,marks={},{},[],{}
  out={'schema':1,'source':'intl_basel_key_metrics','method':data.get('method'),'stocks':stocks,'rejected':rejected,'scoreContribution':0}
  if data.get('method')!='intl-bank-metrics-v1' or not isinstance(data.get('issuers'),dict):out['state']='source_unavailable';return out
  for row in universe.get('kandidaten',[]):
@@ -205,8 +226,10 @@ def build_intl(universe,data,now):
    stocks[s]=domestic_record(row,dom,data)
    continue
   if not s or not i:continue
-  if depositary_candidate(row):deferred.append((row,i.get('shareClassOf') or row['isin']));continue
-  if not valid_isin(row.get('isin')) or row.get('security_type') not in ('stock','common','common_stock','equity') or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
+  rev=standalone_dr(row,dr_review,now,{'issuerIsin':i.get('shareClassOf') or row.get('isin')})
+  if rev:marks[s]=rev
+  if depositary_candidate(row) and not rev:deferred.append((row,i.get('shareClassOf') or row['isin']));continue
+  if not valid_isin(row.get('isin')) or (row.get('security_type') not in ('stock','common','common_stock','equity') and not rev) or row.get('share_class') not in (None,'','common','ordinary') or row.get('listing_reference_status') in ('expired','input_mismatch'):
    rejected[s]='listing_identity_unverified';continue
   src=i['source'];metrics={k:{'state':'available','value':v,'unit':'fraction','sourceField':src['type']+':'+k} for k,v in i['metrics'].items() if isinstance(v,(int,float)) and 0<=v<=1}
   if 'cet1_ratio' not in metrics:rejected[s]='intl_cet1_missing';continue
@@ -227,6 +250,7 @@ def build_intl(universe,data,now):
    'sourceDetail':src.get('tables') or src.get('location'),'identityReviewExpires':data['mappingReviewExpires'],'publicationDate':None,'pointInTimeUsable':False,'metrics':metrics,'score':None,
    'capitalRequirement':req,'liquidity':liq,'creditQuality':credit,
    'limitations':['Published key metrics of the supervised consolidated group; no institution-specific requirement unless disclosed.','No harmonised non-performing loan ratio in this source.']}
+ mark_standalone(stocks,marks)
  adopt_depositaries(stocks,rejected,deferred,'issuerIsin')
  out.update(state='ready',summary={'intlBanks':sum(1 for v in stocks.values() if v.get('state')=='available'),'domesticStandard':sum(1 for v in stocks.values() if v.get('scope')=='domestic_capital_standard'),'rejected':dict(Counter(rejected.values()))})
  return out
@@ -235,7 +259,7 @@ def main():
  folder=Path(os.getenv('RISK_DATA_DIR',str(Path(__file__).resolve().parents[1]/'daten')))
  result=build(load(folder/'cf_universum.json',{}),load(folder/'regulatory/bhcf-import.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/holding-stock-map.json',{}),credit_archive=load(folder/'regulatory/bhcf-credit-quality.json',{}),requirements_archive=load(folder/'cf_capital_requirements.json',{}),liquidity_archive=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-liquidity.json',{}))
  result['insurers']=build_insurers(load(folder/'cf_universum.json',{}),load(Path(__file__).with_name('reviewed-insurer-solvency.json'),{}))
- result['euBanks']=build_eu(load(folder/'cf_universum.json',{}),load(folder/'regulatory/eu-bank-capital.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/eu-bank-map.json',{}),dt.datetime.now(dt.timezone.utc),km1=load(folder/'regulatory/eu-pillar3-km1.json',{}))
- result['intlBanks']=build_intl(load(folder/'cf_universum.json',{}),load(folder/'regulatory/intl-bank-metrics.json',{}),dt.datetime.now(dt.timezone.utc))
+ result['euBanks']=build_eu(load(folder/'cf_universum.json',{}),load(folder/'regulatory/eu-bank-capital.json',{}),load(Path(__file__).resolve().parents[1]/'regulatory_export/eu-bank-map.json',{}),dt.datetime.now(dt.timezone.utc),km1=load(folder/'regulatory/eu-pillar3-km1.json',{}),dr_review=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-depositary-listings.json',{}))
+ result['intlBanks']=build_intl(load(folder/'cf_universum.json',{}),load(folder/'regulatory/intl-bank-metrics.json',{}),dt.datetime.now(dt.timezone.utc),dr_review=load(Path(__file__).resolve().parents[1]/'regulatory_export/reviewed-depositary-listings.json',{}))
  save(folder/'cf_regulatory_context.json',result);print(result.get('summary',{'state':result['state']}))
 if __name__=='__main__':main()

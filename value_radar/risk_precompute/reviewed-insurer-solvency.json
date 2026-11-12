@@ -802,6 +802,41 @@
     },
     {
       "inputIdentity": {
+        "listing_symbol": "EURONEXT:AGS",
+        "ticker": "AGS.BR",
+        "isin": "BE0974264930",
+        "currency": "EUR",
+        "name": "ageas SA/NV",
+        "name_full": "ageas SA/NV",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Ageas Group (ageas SA/NV)",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "BE",
+      "regulator": "NBB",
+      "scopeSourceUrl": "https://ageas.com/en/annual-report-2025",
+      "scopeSourcePages": "SFCR 2025 PDF 3 (SFCR der Ageas Group und der ageas SA/NV), PDF 9 (Aufsicht: National Bank of Belgium)",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "sfcr_group_pillar1_partial_internal_model_not_ageas_pillar2_view",
+          "ratio": 1.93,
+          "eligibleOwnFunds": 8238000000,
+          "solvencyRequirement": 4266000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://ageas.com/en/annual-report-2025",
+          "sourcePages": "SFCR 2025 PDF 7 und PDF 89 (E.2.3 Solvency ratios, Gruppe, 31.12.2025)",
+          "sourceSha256": "cb1967e796fdc880a455fba1289ccf3c2b5f62294bb763a94c467d80a262456d",
+          "basisNote": "Gruppen-SFCR 2025, Säule 1: anrechenbare Eigenmittel 8.238 Mio. €, Gruppen-SCR nach von der NBB genehmigtem Teilinternmodell 4.266 Mio. €, Quote 193 %. Nicht verwendet: die eigene Sicht „Pillar II“/SCR Ageas (211 %). Die Datei hat der Nutzer von ageas.com bereitgestellt (die Website verlangt eine Cloudflare-Prüfung, kein automatisierter Abruf); Prüfsumme bezieht sich auf diese Datei, die Quell-URL ist die Berichtsseite 2025."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
         "listing_symbol": "EURONEXT:ASRNL",
         "ticker": "ASRNL.AS",
         "isin": "NL0011872643",

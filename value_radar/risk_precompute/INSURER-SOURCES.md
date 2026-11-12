@@ -133,9 +133,19 @@ Weitere Angaben:
 - Verzerrung: Die aufsichtliche Quote ist niedriger als die eigene Sicht. Damit wirkt die Firma nicht zu gut.
 - Höchstalter für Jahreswerte: 550 Tage, also gültig bis etwa 04.07.2027.
 
-**Ageas**
+**Ageas** (Nachtrag 12.11.2026, abends)
 
-Ageas bleibt offen. Der Halbjahresbericht 2026 (Pflichtmitteilung vom 27.08.2026, über via.ritzau.dk) nennt nur „Solvency II – Pillar II“ mit 195 %. Das ist die eigene Sicht, und die wird bewusst nicht verwendet (siehe oben). Die aufsichtliche Quote nach Säule I steht im Gruppen-SFCR. ageas.com liefert die Seite aber nur nach einer Cloudflare-Prüfung („Just a moment“), und die wird nicht umgangen. Weg zur Schließung: Der Nutzer lädt den SFCR 2025 der Gruppe von ageas.com herunter und stellt ihn bereit. Aufwand danach: etwa 30 Minuten.
+Der Nutzer hat den Gruppen-SFCR 2025 von ageas.com bereitgestellt (98 Seiten, erstellt 20.05.2026, sha256 `cb1967e7…`). Die Website verlangt eine Cloudflare-Prüfung, deshalb gibt es keinen automatisierten Abruf. Als Quell-URL steht die Berichtsseite 2025, die Prüfsumme bezieht sich auf die bereitgestellte Datei. Das ist im `basisNote` gekennzeichnet.
+
+| Größe | Fundstelle | Wert |
+|---|---|---|
+| Anrechenbare Eigenmittel (Säule 1) | PDF 7 und 89, E.2.3 | 8.238 Mio. € |
+| Gruppen-SCR, Teilinternmodell (von der NBB genehmigt) | PDF 7 und 89 | 4.266 Mio. € |
+| Quote | PDF 7 und 89 | **193 %** |
+
+Nicht verwendet wird die eigene Sicht „Pillar II“ (SCR Ageas, 211 % zum Jahresende, 195 % zum 30.06.2026). Ein Test stellt sicher, dass 211 % mit den Säule-1-Beträgen verworfen wird. Verzerrung: Die verwendete Quote ist die niedrigere. Grenze: Die Halbjahresquote nach Säule 1 veröffentlicht Ageas nicht, deshalb gilt der Jahreswert (Höchstalter 550 Tage, bis etwa 04.07.2027).
+
+Probelauf (Kopie von main 17fd7243): Bei EURONEXT:AGS ist die Solvenzquote jetzt befüllt, sonst keine Änderung. Notierungen ohne Lücke 1.264 → 1.265. Kein Versicherer ist mehr offen.
 
 Probelauf (Kopie von main a8a22235): Bei LSE:SDLF ist die Solvenzquote jetzt befüllt, sonst keine Änderung. Notierungen ohne Lücke 1.260 → 1.261. Versicherer offen: 2 → 1.
 - PZU: Die Quote zum 30.06.2026 erscheint mit dem Q3-Bericht (um den 20.11.2026).

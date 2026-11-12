@@ -143,3 +143,27 @@ Bewusst auf dem 30.06. geblieben:
 - Das Holdingkapital gilt höchstens 180 Tage, zum 30.06. also bis 27.12.2026.
 - Vorher steht der Wechsel auf den 30.09. an: Kapital und Kreditqualität aus `BHCF20260930.ZIP` sowie die LCR-Werte aus den Q3-10-Q neu prüfen.
 - Die Datei zum 30.09. enthält nur die 429 Holdings mit Quartalsmeldung; darunter sind alle 22 zugeordneten.
+
+## Umstellung der US-Banken auf den 30.09.2026 (12. November 2026)
+
+Grund: Das Holdingkapital gilt höchstens 180 Tage; der Stand zum 30.06. wäre am 27.12.2026 abgelaufen. Kapital, Kreditqualität und LCR müssen denselben Stichtag haben.
+
+- **Kapital und Kreditqualität** kommen aus `BHCF20260930.ZIP` (SHA `c84ab31d…`, 429 Holdings mit Quartalsmeldung, darunter alle 22 zugeordneten). Die Felddefinitionen sind über zwei Quartale übernommen; der Hash des geprüften Wörterbuchs (`26c40652…`) wird mitgeführt.
+- **Eigener Fehler, behoben:** `carried_definitions` fand diesen Hash bei verketteter Übernahme nicht (`definitions_source`). Neuer Test dafür.
+- **Holding-Zuordnung:** Prüfsumme nachgeführt; RSSD und Namen gegen die Q3-Datei geprüft.
+- **LCR aus den 10-Q zum 30.09.2026** (`reviewed-liquidity.json`, gültig bis 29.03.2027):
+
+| Grundlage | Banken |
+|---|---|
+| Beträge gegengeprüft (≤ 0,5 Pp.) | Citigroup 114 %, JPMorgan 113 %, Goldman Sachs 132 %, Schwab 125 %, American Express 226 %, Morgan Stanley 133 %, Wells Fargo 122 % |
+| Nur Quote | Bank of America 113 %, State Street 106 %, BNY 111 %, Truist 110 %, U.S. Bancorp 109,1 %, Capital One 163 % |
+| Keine LCR-Pflicht, belegt | M&T (Zitat im 10-Q Q3), KeyCorp und Regions (Zitat im 10-K 2025, Kategorie IV im 10-Q Q3 bestätigt) |
+| Offen | Citizens (Kategorie IV im 10-Q Q3 nicht bestätigt; die Ausnahme wird nicht fortgeschrieben), PNC und Northern Trust (keine Zahl im 10-Q) |
+
+Die 10-Q von Citigroup, JPMorgan, Goldman Sachs und Schwab hat der Workflow `sec-bank-filings` geladen. Die Zugangsnummern hat er selbst mit `SEC_USER_AGENT` ermittelt (eigener PR „SEC-Abruf: Zugangsnummer per Workflow“).
+
+Probelauf gegen main: Alle 22 Holdings stehen auf dem 30.09. LCR bei 13, Kreditqualität und Kapitalanforderung bei 22. Einzige Änderung in der Messung: Bei Citizens ist die LCR jetzt offen statt „bewusst außerhalb“.
+
+Nächste Termine:
+- Die Prüfung der Fed-Kapitalanforderungen (`fed-capital-requirements.json`) läuft am 31.12.2026 ab.
+- Das Q4-Archiv und die 10-K 2026 erscheinen ab Februar 2027.

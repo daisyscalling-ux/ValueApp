@@ -76,6 +76,12 @@ class CarriedDefinitionTests(unittest.TestCase):
         self.assertEqual(set(defs), set(ib.FIELDS))
         self.assertEqual(origin['kind'], 'previous_reviewed_import'); self.assertEqual(origin['dictionary_sha256'], 'b' * 64)
 
+    def test_carried_definitions_chain_over_two_quarters(self):
+        import datetime as dt, import_bhcf as ib
+        p = self.previous(); defs, origin = ib.carried_definitions(p, dt.date(2026, 6, 30), ib.FIELDS, ('unit', 'source_unit'))
+        second = {'reporting_period': '2026-06-30', 'definitions': defs, 'definitions_source': origin, 'files': [{'name': 'BHCF20260630.ZIP', 'sha256': 'c' * 64}]}
+        self.assertEqual(ib.carried_definitions(second, dt.date(2026, 9, 30), ib.FIELDS, ('unit', 'source_unit'))[1]['dictionary_sha256'], 'b' * 64)
+
     def test_carried_definitions_rejections(self):
         import datetime as dt, import_bhcf as ib
         code = next(iter(ib.FIELDS))

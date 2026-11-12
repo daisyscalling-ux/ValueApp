@@ -59,3 +59,33 @@ class BHCFTests(unittest.TestCase):
         self.assertIsNone(result['score'])
 
 if __name__ == '__main__': unittest.main()
+
+
+class CarriedDefinitionTests(unittest.TestCase):
+    """Ohne neues Woerterbuch: Definitionen aus einem frueheren, gegen das Woerterbuch geprueften Import (12.11.2026)."""
+    def previous(self):
+        import import_bhcf as ib
+        defs = {code: {'metric': m, 'description': d + ' (BHC CONSOLIDATED)', 'sheet': 'Financial', 'row': 1, 'valid_from': '2015-03-31',
+                       'valid_to': '9999-12-31', 'source_unit': 'percent', 'unit': 'fraction'} for code, (m, d) in ib.FIELDS.items()}
+        return {'reporting_period': '2026-06-30', 'imported_at': '2026-10-30T13:56:52+00:00', 'definitions': defs,
+                'files': [{'name': 'BHCF20260630.ZIP', 'sha256': 'a' * 64}, {'name': 'Financial_Download_Dictionary.xlsx', 'sha256': 'b' * 64}]}
+
+    def test_carried_definitions_keep_reviewed_dictionary_hash(self):
+        import datetime as dt, import_bhcf as ib
+        defs, origin = ib.carried_definitions(self.previous(), dt.date(2026, 9, 30), ib.FIELDS, ('unit', 'source_unit'))
+        self.assertEqual(set(defs), set(ib.FIELDS))
+        self.assertEqual(origin['kind'], 'previous_reviewed_import'); self.assertEqual(origin['dictionary_sha256'], 'b' * 64)
+
+    def test_carried_definitions_rejections(self):
+        import datetime as dt, import_bhcf as ib
+        code = next(iter(ib.FIELDS))
+        cases = {'incomplete': lambda p: p['definitions'].pop(code),
+                 'metric': lambda p: p['definitions'][code].update(metric='other'),
+                 'description': lambda p: p['definitions'][code].update(description='SOMETHING ELSE'),
+                 'period': lambda p: p['definitions'][code].update(valid_to='2026-03-31'),
+                 'unit': lambda p: p['definitions'][code].pop('source_unit'),
+                 'no dictionary hash': lambda p: p.update(files=p['files'][:1])}
+        for label, change in cases.items():
+            p = self.previous(); change(p)
+            with self.assertRaises(ValueError, msg=label):
+                ib.carried_definitions(p, dt.date(2026, 6, 30), ib.FIELDS, ('unit', 'source_unit'))

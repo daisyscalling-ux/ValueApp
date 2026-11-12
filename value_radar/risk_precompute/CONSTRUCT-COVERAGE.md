@@ -154,3 +154,5 @@ Japan: Inlandsstandard und KM1-Nachträge (12.11.2026):
 - Probelauf gegen den Stand mit dem CR1-Nachtrag: 5 Notierungen ändern sich (TSE:5831, 7186, 8331 gefüllt; TSE:8308, 8354 `by_design`).
 - Bank-CET1-Puffer offen 18 → 13, Bank-LCR offen 21 → 16. Gesamtgewicht unverändert gerundet (gefüllt 81,7 %, offen 1,5 %).
 - Ablauf in `regulatory_export/INTL_BANKS.md`.
+
+US-Bank-Kreditqualität aus dem BHCF-Archiv (12.11.2026): Die Kreditqualität ist jetzt für alle 22 zugeordneten Holdings importiert, aus derselben (korrigierten) FFIEC-Datei zum 30.06.2026 wie das Kapital. Probelauf: 13 US-Banken neu gefüllt, Bank-Kreditqualität offen 34 → 21. Ablauf und Grenzen stehen in `regulatory_export/BHCF.md`.

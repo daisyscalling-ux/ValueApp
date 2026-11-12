@@ -473,5 +473,21 @@
    "reviewed_on": "2026-11-11"
   }
  ],
- "pillar3OnlyMethod": "Banken ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub). ISIN zu LEI ueber GLEIF mit genau einem Treffer; die LEI muss im Hub einreichen."
+ "pillar3OnlyMethod": "Banken ohne EBA-Transparenzdaten: Kapitalquoten, Anforderung und LCR ausschliesslich aus EU KM1 (EBA Pillar 3 Data Hub). ISIN zu LEI ueber GLEIF mit genau einem Treffer; die LEI muss im Hub einreichen.",
+ "km1UnitCorrections": [
+  {
+   "lei": "969500TJ5KRTCJQWXH05",
+   "issuer": "Crédit Agricole S.A.",
+   "field": "srep_additional_cet1",
+   "reportedValue": 0.9281,
+   "correctedValue": 0.009281,
+   "statedRequirement": 0.088,
+   "tolerance": 0.001,
+   "evidence": "Pflichtmitteilung vom 31.10.2025: Säule-2-Anforderung (P2R) 1,65 % ab 01.01.2026; CET1-Anforderung mindestens 8,8 % einschließlich Säule 1, Säule 2 und kombinierter Pufferanforderung. CET1-Anteil der P2R = 56,25 % × 1,65 % = 0,928 %, also ist der im Hub gemeldete Wert 0,9281 ein Prozentwert. credit-agricole.com war zum Prüfzeitpunkt im Wartungsmodus; Quelle ist die Verteilung über MFN.",
+   "evidenceUrl": "https://www.mfn.se/one/a/credit-agricole/credit-agricole-sa-capital-notification-of-the-level-of-pillar-2-additional-requirement-495d6690",
+   "evidenceSha256": "3127a057e47bd179a8b765e241011a06ea36e22f3184f3c2ea4abf54a8f4ccd6",
+   "reviewedOn": "2026-11-12",
+   "reviewExpires": "2026-12-31"
+  }
+ ]
 }

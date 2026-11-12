@@ -1195,8 +1195,31 @@
    },
    "lcr": 1.4129,
    "nsfr": 1.1525,
-   "cet1Requirement": null,
-   "cet1RequirementOpen": "requirement_out_of_range",
+   "cet1Requirement": {
+    "value": 0.087481,
+    "components": {
+     "pillar1_cet1": 0.045,
+     "p2r_cet1": 0.009281,
+     "combined_buffer": 0.0332
+    },
+    "check": {
+     "overall_requirement": 0.1297,
+     "srep_total": 0.0965
+    },
+    "derivation": "reviewed_unit_correction_p2r_cet1_percent",
+    "unitCorrection": {
+     "field": "srep_additional_cet1",
+     "reportedValue": 0.9281,
+     "correctedValue": 0.009281,
+     "statedRequirement": 0.088,
+     "evidenceUrl": "https://www.mfn.se/one/a/credit-agricole/credit-agricole-sa-capital-notification-of-the-level-of-pillar-2-additional-requirement-495d6690",
+     "evidenceSha256": "3127a057e47bd179a8b765e241011a06ea36e22f3184f3c2ea4abf54a8f4ccd6",
+     "evidence": "Pflichtmitteilung vom 31.10.2025: Säule-2-Anforderung (P2R) 1,65 % ab 01.01.2026; CET1-Anforderung mindestens 8,8 % einschließlich Säule 1, Säule 2 und kombinierter Pufferanforderung. CET1-Anteil der P2R = 56,25 % × 1,65 % = 0,928 %, also ist der im Hub gemeldete Wert 0,9281 ein Prozentwert. credit-agricole.com war zum Prüfzeitpunkt im Wartungsmodus; Quelle ist die Verteilung über MFN.",
+     "reviewedOn": "2026-11-12",
+     "reviewExpires": "2026-12-31"
+    }
+   },
+   "cet1RequirementOpen": null,
    "npl": {
     "ratio": 0.013446458749074618,
     "performing": 1130343060301.3,

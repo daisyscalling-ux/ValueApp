@@ -137,6 +137,32 @@ def requirement(v):
             'check': {'overall_requirement': ocr, 'srep_total': srep}, 'derivation': derived}, ''
 
 
+def apply_unit_corrections(banks, corrections, now):
+    """Gepruefte Einheitenkorrekturen (eu-bank-map.json, km1UnitCorrections): nur wenn der gemeldete Wert exakt uebereinstimmt,
+    die Pruefung gilt und die korrigierte Anforderung hoechstens `tolerance` von der veroeffentlichten Anforderung der Bank abweicht.
+    Sonst bleibt die Anforderung offen. Gekennzeichnet ueber derivation und unitCorrection."""
+    today = now.date().isoformat()
+    for c in corrections or []:
+        b = banks.get(c.get('lei'))
+        if not b or b.get('cet1Requirement') is not None:
+            continue
+        ok = (str(c.get('reviewedOn', '9999')) <= today <= str(c.get('reviewExpires', '0000')) and str(c.get('evidenceUrl', '')).startswith('https://')
+              and re.fullmatch(r'[0-9a-f]{64}', str(c.get('evidenceSha256', ''))) and c.get('field') == 'srep_additional_cet1'
+              and b['metrics'].get(c['field']) == c.get('reportedValue') and isinstance(c.get('correctedValue'), float)
+              and abs(c['correctedValue'] * 100 - c['reportedValue']) < 1e-9 and isinstance(c.get('statedRequirement'), float))
+        if not ok:
+            b['cet1RequirementOpen'] = 'unit_correction_not_applicable'
+            continue
+        req, why = requirement({**b['metrics'], c['field']: c['correctedValue']})
+        if not req or abs(req['value'] - c['statedRequirement']) > c.get('tolerance', .001):
+            b['cet1RequirementOpen'] = 'unit_correction_check_failed'
+            continue
+        req['derivation'] = 'reviewed_unit_correction_p2r_cet1_percent'
+        req['unitCorrection'] = {k: c[k] for k in ('field', 'reportedValue', 'correctedValue', 'statedRequirement', 'evidenceUrl', 'evidenceSha256', 'evidence', 'reviewedOn', 'reviewExpires')}
+        b['cet1Requirement'], b['cet1RequirementOpen'] = req, None
+    return banks
+
+
 def build(submissions, mapping, fetch, now):
     leis = {b['lei']: b for b in mapping.get('banks', [])}
     # Banken ohne EBA-Transparenzdaten (nur Saeule 3): gleiche Pruefung, Name aus GLEIF.
@@ -193,6 +219,7 @@ def build(submissions, mapping, fetch, now):
     for lei in leis:
         if lei not in banks and lei not in rejected:
             rejected[lei] = ['no_codis_submission_listed']
+    apply_unit_corrections(banks, mapping.get('km1UnitCorrections'), now)
     return {'schema': 1, 'method': METHOD, 'importedAt': now.isoformat(), 'mappingReviewExpires': mapping.get('review_expires'),
             'source': {'name': 'EBA Pillar 3 data hub (P3DH), Originaldateien', 'listUrl': 'https://edap-public.eba.europa.eu/Report/index/MTE1',
                        'listRetrievedAt': submissions.get('retrievedAt'), 'taxonomy': TAXONOMY, 'table': 'K_61.00 EU KM1, Spalte T', 'rows': ROWS,

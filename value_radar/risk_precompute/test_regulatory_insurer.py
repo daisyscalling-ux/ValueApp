@@ -7,10 +7,10 @@ class InsurerTests(unittest.TestCase):
  def setUp(self):
   self.reg=json.loads(Path(__file__).with_name('reviewed-insurer-solvency.json').read_text(encoding='utf-8'))
   self.u={'kandidaten':[copy.deepcopy(e['inputIdentity']) for e in self.reg['entries']]}
-  self.now=dt.datetime(2026,11,10,12,tzinfo=dt.timezone.utc)
+  self.now=dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc)
  def run_case(self):return build_insurers(self.u,self.reg,self.now)
  def test_original_amounts_and_bases(self):
-  r=self.run_case()['stocks'];self.assertEqual(len(r),15)
+  r=self.run_case()['stocks'];self.assertEqual(len(r),22)
   a=r['XETR:ALV'];self.assertEqual(a['primary']['ratio'],2.25);self.assertEqual(a['primary']['eligibleOwnFunds'],97000000000)
   self.assertFalse(a['observations'][1]['amountsVerified']);self.assertEqual(a['observations'][1]['ratio'],2.18)
   m=r['XETR:MUV2'];self.assertEqual(m['primary']['solvencyRequirement'],18230000000);self.assertEqual(m['primary']['ratio'],3)
@@ -23,7 +23,7 @@ class InsurerTests(unittest.TestCase):
   for key,value in [('isin','US0378331005'),('security_type','dr'),('listing_symbol','OTC:ALIZY'),('name','Allianz subsidiary')]:
    u=copy.deepcopy(self.u);u['kandidaten'][0][key]=value
    self.assertNotIn('XETR:ALV',build_insurers(u,self.reg,self.now)['stocks'])
-  for patch in [{'reviewExpires':'2026-11-09'},{'reviewedOn':'2026-11-11'},{'source':'unreviewed'}]:self.assertFalse(build_insurers(self.u,{**self.reg,**patch},self.now)['stocks'])
+  for patch in [{'reviewExpires':'2026-11-09'},{'reviewedOn':'2026-11-13'},{'source':'unreviewed'}]:self.assertFalse(build_insurers(self.u,{**self.reg,**patch},self.now)['stocks'])
   self.reg['entries'].append(copy.deepcopy(self.reg['entries'][0]));self.assertNotIn('XETR:ALV',self.run_case()['stocks'])
  def test_old_annual_not_refreshed_by_daily_job(self):
   self.reg['reviewExpires']='2028-01-01';self.now=dt.datetime(2027,8,1,tzinfo=dt.timezone.utc)
@@ -50,7 +50,7 @@ class InsurerTests(unittest.TestCase):
    with patch.dict(os.environ,{'RISK_DATA_DIR':folder}),patch.object(regulatory_context,'build_insurers',side_effect=lambda u,r:build_insurers(u,r,self.now)):
     regulatory_context.main()
    result=json.loads(Path(folder,'cf_regulatory_context.json').read_text(encoding='utf-8'))
-   self.assertEqual(result['state'],'source_unavailable');self.assertEqual(len(result['insurers']['stocks']),15)
+   self.assertEqual(result['state'],'source_unavailable');self.assertEqual(len(result['insurers']['stocks']),22)
 
 class InsurerDepositaryTests(unittest.TestCase):
  def test_dr_adopts_verified_ordinary_but_never_overrides_own_entry(self):
@@ -58,7 +58,7 @@ class InsurerDepositaryTests(unittest.TestCase):
   from pathlib import Path
   reg=json.loads(Path(__file__).with_name('reviewed-insurer-solvency.json').read_text(encoding='utf-8'))
   e=next(x for x in reg['entries'] if x['inputIdentity']['listing_symbol']=='XETR:ALV')
-  now=dt.datetime(2026,11,10,tzinfo=dt.timezone.utc)
+  now=dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc)
   dr={**e['inputIdentity'],'listing_symbol':'OTC:ALIZY','ticker':'ALIZY','currency':'USD','security_type':'dr'}
   out=build_insurers({'kandidaten':[dict(e['inputIdentity']),dr]},reg,now)
   self.assertEqual(out['stocks']['OTC:ALIZY']['depositaryOf'],'XETR:ALV');self.assertEqual(out['stocks']['OTC:ALIZY']['inputIdentity']['security_type'],'dr')
@@ -75,12 +75,12 @@ class GeneraliTests(unittest.TestCase):
   reg=json.loads(Path(__file__).with_name('reviewed-insurer-solvency.json').read_text(encoding='utf-8'))
   e=next(x for x in reg['entries'] if x['inputIdentity']['listing_symbol']=='MIL:G')
   dr={**e['inputIdentity'],'listing_symbol':'OTC:ARZGY','ticker':'ARZGY','currency':'USD','security_type':'dr'}
-  out=build_insurers({'kandidaten':[dict(e['inputIdentity']),dr]},reg,dt.datetime(2026,11,10,tzinfo=dt.timezone.utc))
+  out=build_insurers({'kandidaten':[dict(e['inputIdentity']),dr]},reg,dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc))
   g=out['stocks']['MIL:G'];self.assertEqual(g['primary']['period'],'2026-06-30');self.assertEqual(g['primary']['ratio'],2.16);self.assertFalse(g['primary']['amountsVerified'])
   a=next(o for o in g['observations'] if o['period']=='2025-12-31');self.assertTrue(a['amountsVerified']);self.assertAlmostEqual(a['eligibleOwnFunds']/a['solvencyRequirement'],a['ratio'],places=3)
   self.assertEqual(out['stocks']['OTC:ARZGY']['depositaryOf'],'MIL:G')
   # Halbjahreswert nach 210 Tagen zu alt: dann gilt der Jahreswert mit Betraegen (bis 550 Tage).
   late=build_insurers({'kandidaten':[dict(e['inputIdentity'])]},reg,dt.datetime(2027,1,31,tzinfo=dt.timezone.utc))
   self.assertEqual(late['stocks']['MIL:G']['primary']['period'],'2025-12-31')
-  wrong=build_insurers({'kandidaten':[{**e['inputIdentity'],'isin':'IT0000062071'}]},reg,dt.datetime(2026,11,10,tzinfo=dt.timezone.utc))
+  wrong=build_insurers({'kandidaten':[{**e['inputIdentity'],'isin':'IT0000062071'}]},reg,dt.datetime(2026,11,12,12,tzinfo=dt.timezone.utc))
   self.assertNotIn('MIL:G',wrong['stocks'],'falsche ISIN')

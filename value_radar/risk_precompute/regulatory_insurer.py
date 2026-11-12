@@ -9,8 +9,8 @@ FIELDS=('listing_symbol','ticker','isin','currency','name','name_full','security
 SOURCE='reviewed_insurer_original_reports'
 # Vergleichbare Gruppen-Solvenzsysteme: Eigenmittel / Solvenzkapitalanforderung, 100 % = Mindestanforderung.
 REGIMES={('Solvency II','DE','BaFin'),('Solvency II','FR','ACPR'),('Solvency II','NL','DNB'),('Solvency II','FI','FIN-FSA'),('Solvency II','IT','IVASS'),
- ('Solvency II','NO','Finanstilsynet'),('Solvency II','ES','DGSFP'),('Solvency II','BE','NBB'),('Solvency II','PL','KNF'),('Solvency UK','GB','PRA')}
-CURRENCIES={'EUR','GBP','NOK','PLN'}
+ ('Solvency II','NO','Finanstilsynet'),('Solvency II','DK','Finanstilsynet'),('Solvency II','ES','DGSFP'),('Solvency II','BE','NBB'),('Solvency II','PL','KNF'),('Solvency UK','GB','PRA')}
+CURRENCIES={'EUR','GBP','NOK','PLN','DKK'}
 def date(value):
  try:return dt.date.fromisoformat(value) if isinstance(value,str) and len(value)==10 else None
  except ValueError:return None

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "reviewed_insurer_original_reports",
-  "reviewedOn": "2026-11-10",
+  "reviewedOn": "2026-11-12",
   "reviewExpires": "2027-02-01",
   "pointInTimeUsable": false,
   "entries": [
@@ -58,8 +58,8 @@
         "ticker": "MUV2.DE",
         "isin": "DE0008430026",
         "currency": "EUR",
-        "name": "Munchener Ruckversicherungs-Gesellschaft",
-        "name_full": "Munchener Ruckversicherungs-Gesellschaft AG",
+        "name": "Munich Re AG",
+        "name_full": "Munich Re AG",
         "security_type": "stock",
         "share_class": null
       },
@@ -579,6 +579,251 @@
           "sourcePages": "113 (Tabelle Solvency ratio); Aufsicht IVASS, Register der Versicherungsgruppen Nr. 026: S. 35",
           "sourceSha256": "8432c16fd5b501c76d357cbe2404b8d22908e515a4723e5718fa51de316ffd5e",
           "basisNote": "SFCR 2025: Gruppeneigenmittel zur Deckung der SCR 52.551 Mio. €, SCR 24.004 Mio. €, Quote 218,9 % nach vorhersehbarer Dividende und Aktienrückkauf; von KPMG geprüft."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "XETR:HNR1",
+        "ticker": "HNR1.DE",
+        "isin": "DE0008402215",
+        "currency": "EUR",
+        "name": "Hannover Rueck SE",
+        "name_full": "Hannover Rueck SE",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Hannover Re Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DE",
+      "regulator": "BaFin",
+      "scopeSourceUrl": "https://live.deutsche-boerse.com/nachrichten/EQS-News-Hannover-Rueck-erzielt-sehr-gutes-Halbjahresergebnis-und-sieht-sich-auf-Kurs-fuer-das-Gesamtjahr-d7a1c5cf-2713-43fb-b7c7-20f4338d8df5",
+      "scopeSourcePages": "EQS-News vom 12.08.2026, Abschnitt Kapital (HTML)",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "eqs_release_after_pro_rata_dividend",
+          "ratio": 2.54,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://live.deutsche-boerse.com/nachrichten/EQS-News-Hannover-Rueck-erzielt-sehr-gutes-Halbjahresergebnis-und-sieht-sich-auf-Kurs-fuer-das-Gesamtjahr-d7a1c5cf-2713-43fb-b7c7-20f4338d8df5",
+          "sourcePages": "EQS-News vom 12.08.2026, Abschnitt Kapital (HTML)",
+          "sourceSha256": "ed71a2010ab3f8fc47e933ecf0de53345d8b75aefea1e31f5a2ee8b6fa351fdc",
+          "basisNote": "Pflichtmitteilung (EQS) zum Halbjahr 2026: Kapitalbedeckungsquote nach Solvency II der Hannover Rück-Gruppe 254 % (31.12.2025: 256 %), anteilige vorhersehbare Dividende 2026 berücksichtigt. Website hannover-re.com lehnt automatisierte Abrufe ab (HTTP 403). Beträge nicht berichtet."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "BME:MAP",
+        "ticker": "MAP.MC",
+        "isin": "ES0124244E34",
+        "currency": "EUR",
+        "name": "Mapfre SA",
+        "name_full": "Mapfre SA",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "MAPFRE Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "ES",
+      "regulator": "DGSFP",
+      "scopeSourceUrl": "https://www.mapfre.com/media/2026/09/solvency-ii-ratio-jun-2026-caratula.pdf",
+      "scopeSourcePages": "PDF 1–2 (Tabelle Solvency information)",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "regulatory_filing_group_solvency",
+          "ratio": 2.088,
+          "eligibleOwnFunds": 11555000000,
+          "solvencyRequirement": 5533000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.mapfre.com/media/2026/09/solvency-ii-ratio-jun-2026-caratula.pdf",
+          "sourcePages": "PDF 1–2 (Tabelle Solvency information)",
+          "sourceSha256": "185650c623012ededf1494559b5c59968a7d0773798f16abbb5dbfef6a8285ee",
+          "basisNote": "Mitteilung vom 04.09.2026: Gruppen-SCR 5.533 Mio. €, Eigenmittel zur Deckung des SCR 11.555 Mio. €, Quote 208,8 % zum 30.06.2026; Standardformel nach Solvency II."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "LSE:ADM",
+        "ticker": "ADM.L",
+        "isin": "GB00B02J6398",
+        "currency": "GBP",
+        "name": "Admiral Group plc",
+        "name_full": "Admiral Group plc",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Admiral Group",
+      "scope": "insurance_group",
+      "framework": "Solvency UK",
+      "jurisdiction": "GB",
+      "regulator": "PRA",
+      "scopeSourceUrl": "https://www.investegate.co.uk/announcement/gnw/admiral-group--adm/half-year-financial-report/9707253",
+      "scopeSourcePages": "Half-year Financial Report 06.08.2026, Abschnitt Capital structure and solvency (HTML)",
+      "observations": [
+        {
+          "period": "2026-06-30",
+          "reportKind": "interim",
+          "basis": "regulatory_basis_estimate",
+          "ratio": 1.73,
+          "eligibleOwnFunds": null,
+          "solvencyRequirement": null,
+          "currency": "GBP",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.investegate.co.uk/announcement/gnw/admiral-group--adm/half-year-financial-report/9707253",
+          "sourcePages": "Half-year Financial Report 06.08.2026, Abschnitt Capital structure and solvency (HTML)",
+          "sourceSha256": "ced5461c3acfd12aa806497d2e2902567f79c274905cf3ec89b69c25a6ced560",
+          "basisNote": "Halbjahresbericht 2026 (RNS über Investegate; admiralgroup.co.uk lehnt automatisierte Abrufe ab): aufsichtsrechtliche Gruppen-Solvenzquote zum 30.06.2026 geschätzt 173 % (31.12.2025: 185 %). Die Schlagzeilenquote 190 % enthält einen nicht genehmigten Kapitalaufschlag und Eigenmittel nach dem Stichtag und wird nicht verwendet."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "CPH:TRYG",
+        "ticker": "TRYG.CO",
+        "isin": "DK0060636678",
+        "currency": "DKK",
+        "name": "Tryg A/S",
+        "name_full": "Tryg A/S",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "Tryg Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "DK",
+      "regulator": "Finanstilsynet",
+      "scopeSourceUrl": "https://tryg.com/system/files/2026-10/Interim%20report%20Q1-Q3%202026%20-TRYG%20A_S.pdf",
+      "scopeSourcePages": "PDF 14 (Solvency); Highlights",
+      "observations": [
+        {
+          "period": "2026-09-30",
+          "reportKind": "interim",
+          "basis": "interim_report_group_solvency",
+          "ratio": 2.03,
+          "eligibleOwnFunds": 14080000000,
+          "solvencyRequirement": 6940000000,
+          "currency": "DKK",
+          "unit": "currency_units",
+          "sourceUrl": "https://tryg.com/system/files/2026-10/Interim%20report%20Q1-Q3%202026%20-TRYG%20A_S.pdf",
+          "sourcePages": "PDF 14 (Solvency); Highlights",
+          "sourceSha256": "88c5afccbbbecb43096acfd3d6a872b2e56975be3d270ba22178b44115edcb05",
+          "basisNote": "Q1–Q3-Bericht 2026: Eigenmittel 14.080 Mio. DKK, SCR 6.940 Mio. DKK, Quote 203 % zum 30.09.2026 (partielles internes Modell, Dividende abgezogen)."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "LSE:STJ",
+        "ticker": "STJ.L",
+        "isin": "GB0007669376",
+        "currency": "GBP",
+        "name": "St. James's Place Plc",
+        "name_full": "St. James's Place Plc",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "St. James's Place Group",
+      "scope": "insurance_group",
+      "framework": "Solvency UK",
+      "jurisdiction": "GB",
+      "regulator": "PRA",
+      "scopeSourceUrl": "https://www.sjp.co.uk/sites/sjp-corp/files/SJP/shareholders/reports-presentations-webcasts/2026/SJP_SFCR_2025.pdf",
+      "scopeSourcePages": "PDF 5 (Tabelle SJP Group)",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "sfcr_group_after_foreseeable_dividend",
+          "ratio": 1.82,
+          "eligibleOwnFunds": 4569000000,
+          "solvencyRequirement": 2508900000,
+          "currency": "GBP",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.sjp.co.uk/sites/sjp-corp/files/SJP/shareholders/reports-presentations-webcasts/2026/SJP_SFCR_2025.pdf",
+          "sourcePages": "PDF 5 (Tabelle SJP Group)",
+          "sourceSha256": "526f403b718bb5cf6b683c99a293b3dd712fb6ba5857598dece2dfea873a6585",
+          "basisNote": "SFCR 2025: Solvency-II-Eigenmittel der Gruppe 4.632,3 Mio. £ abzüglich vorhersehbarer Dividende 63,3 Mio. £ = 4.569,0 Mio. £, SCR 2.508,9 Mio. £, Quote 182 % (A−C)/B."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "EURONEXT:ASRNL",
+        "ticker": "ASRNL.AS",
+        "isin": "NL0011872643",
+        "currency": "EUR",
+        "name": "ASR Nederland N.V.",
+        "name_full": "ASR Nederland N.V.",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "a.s.r. Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "NL",
+      "regulator": "DNB",
+      "scopeSourceUrl": "https://asrnederland.nl/-/media/files/asrnederland-nl/investor-relations/jaarverslagen/2025/2025-asr-nederland-nv-sfcr.pdf",
+      "scopeSourcePages": "PDF 6 (Summary, Capital management)",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "sfcr_group_after_foreseeable_dividend",
+          "ratio": 2.18,
+          "eligibleOwnFunds": 13007000000,
+          "solvencyRequirement": 5966000000,
+          "currency": "EUR",
+          "unit": "currency_units",
+          "sourceUrl": "https://asrnederland.nl/-/media/files/asrnederland-nl/investor-relations/jaarverslagen/2025/2025-asr-nederland-nv-sfcr.pdf",
+          "sourcePages": "PDF 6 (Summary, Capital management)",
+          "sourceSha256": "b43c3bef1a58fc0738cba8be5fd5070eb5007429373083d839bbef1e037e2c79",
+          "basisNote": "SFCR 2025 der Gruppe: anrechenbare Eigenmittel 13.007 Mio. €, Gruppen-SCR (PIM) 5.966 Mio. €, Quote 218 % zum 31.12.2025. Die Halbjahresmitteilung 2026 war unter der verlinkten Adresse nicht abrufbar (HTTP 404)."
+        }
+      ]
+    },
+    {
+      "inputIdentity": {
+        "listing_symbol": "GPW:PZU",
+        "ticker": "PZU.WA",
+        "isin": "PLPZU0000011",
+        "currency": "PLN",
+        "name": "Powszechny Zaklad Ubezpieczen Spolka Akc",
+        "name_full": "Powszechny Zaklad Ubezpieczen Spolka Akcyjna",
+        "security_type": "stock",
+        "share_class": null
+      },
+      "issuer": "PZU Group",
+      "scope": "insurance_group",
+      "framework": "Solvency II",
+      "jurisdiction": "PL",
+      "regulator": "KNF",
+      "scopeSourceUrl": "https://www.pzu.pl/_fileserver/item/1574497",
+      "scopeSourcePages": "PDF 26 (High level of solvency of the Group, Wert 4Q25)",
+      "observations": [
+        {
+          "period": "2025-12-31",
+          "reportKind": "annual",
+          "basis": "sfcr_group_audited_reported_in_results_presentation",
+          "ratio": 2.39,
+          "eligibleOwnFunds": 34500000000,
+          "solvencyRequirement": 14400000000,
+          "currency": "PLN",
+          "unit": "currency_units",
+          "sourceUrl": "https://www.pzu.pl/_fileserver/item/1574497",
+          "sourcePages": "PDF 26 (High level of solvency of the Group, Wert 4Q25)",
+          "sourceSha256": "83d52b98b135ea8860b5fde69f63f9579e6e01f78dd4eb3990b75ab6c543c014",
+          "basisNote": "Ergebnispräsentation H1 2026 (20.08.2026): Gruppenquote 31.12.2025 239 %, Eigenmittel 34,5 Mrd. PLN, SCR 14,4 Mrd. PLN; Jahreswerte laut Fußnote aus dem testierten SFCR. PZU veröffentlicht Quartalsquoten mit einem Quartal Verzug; der Wert zum 31.03.2026 (230 %) ist älter als 210 Tage."
         }
       ]
     }

@@ -45,6 +45,17 @@ class CoverageTests(unittest.TestCase):
   r=self.run_build()['profiles'];self.assertEqual(r['bank']['listings'],2);self.assertNotIn('specialist_financial',r)
   self.assertEqual(r['bank']['blocks']['Wettbewerbsanfälligkeit']['by_design'],10.0)
   g={(x['profile'],x['metric']):x for x in self.run_build()['largestGaps']};self.assertEqual(g[('bank','Liquiditätsdeckung (LCR)')]['missingListings'],1)
+ def test_japan_domestic_standard_is_by_design_only_with_marker(self):
+  sh=shards();sh['NYSE:B1']['balance']['bankCapital']={'state':'not_applicable','scope':'domestic_capital_standard'}
+  ann={'NYSE:B1':(annual(),'USD')}
+  r=cc.build(UNI,{'NYSE:B1':sh['NYSE:B1']},{'NYSE:B1':{'statistics':STATS}},ann)
+  g={(x['profile'],x['metric']):x for x in r['largestGaps']}
+  self.assertNotIn(('bank','Kernkapital-Puffer (CET1)'),g);self.assertNotIn(('bank','Liquiditätsdeckung (LCR)'),g)
+  self.assertEqual(g[('bank','Kreditqualität')]['missingListings'],1)
+  self.assertEqual(r['profiles']['bank']['blocks']['Finanzielle Verwundbarkeit']['by_design'],17.5)
+  sh['NYSE:B1']['balance']['bankCapital']={'state':'available','scope':'domestic_capital_standard'}
+  r=cc.build(UNI,{'NYSE:B1':sh['NYSE:B1']},{'NYSE:B1':{'statistics':STATS}},ann)
+  g={(x['profile'],x['metric']):x for x in r['largestGaps']};self.assertIn(('bank','Liquiditätsdeckung (LCR)'),g,'without the not_applicable marker nothing is by_design')
  def test_main_writes_file(self):
   with tempfile.TemporaryDirectory() as d:
    d=Path(d);(d/'risk_app').mkdir();(d/'fundamentals').mkdir()

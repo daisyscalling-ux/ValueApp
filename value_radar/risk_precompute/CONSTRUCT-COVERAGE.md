@@ -147,3 +147,10 @@ EU-Banken aus dem EBA Pillar 3 Data Hub (10.11.2026): LCR und vollständige CET1
 EU-Banken nur aus der Säule 3 (10.11.2026): 9 Banken ohne EBA-Transparenzdaten (Erste, mBank, Erste Polska, Crédit Agricole S.A., Eurobank, Piraeus, Sydbank, Ringkjøbing, Sparebanken Norge) bekommen Kapitalquoten, Anforderung und LCR ausschließlich aus EU KM1. Bank-LCR-Lücken 50 → 41, CET1-Puffer 47 → 40, Banken 58,0 → 59,0.
 
 Japan: Kreditqualität mit eigenem CR1-Stichtag (11.11.2026): Japanische Banken legen KM1 vierteljährlich offen, CR1 aber nur im Jahres- bzw. Halbjahresbericht. Bisher galt CR1 nur bei gleichem Stichtag wie KM1, deshalb blieb die Kreditqualität bei MUFG, SMFG, Mizuho und Sumitomo Mitsui Trust offen. Jetzt trägt ein geprüfter Eintrag einen eigenen CR1-Block (Stichtag, Quelle, SHA-256, Fundstelle; höchstens 270 Tage alt, nicht nach dem KM1-Stichtag). Probelauf auf einer Kopie von main: genau 4 Notierungen ändern sich (TSE:8306, 8316, 8411, 8309), nur bei der Kreditqualität (offen → gefüllt). Bank-Kreditqualität offen 38 → 34, gesamt offen 1,6 → 1,5 % des Gewichts. Ablauf in `regulatory_export/INTL_BANKS.md`.
+
+Japan: Inlandsstandard und KM1-Nachträge (12.11.2026):
+- Chiba, Yokohama FG und Shizuoka rechnen nach internationalem Standard und haben jetzt KM1 mit Anforderung und LCR.
+- Resona und Fukuoka rechnen nach Inlandsstandard (belegt): CET1-Puffer und LCR `by_design`, Kreditqualität bleibt offen.
+- Probelauf gegen den Stand mit dem CR1-Nachtrag: 5 Notierungen ändern sich (TSE:5831, 7186, 8331 gefüllt; TSE:8308, 8354 `by_design`).
+- Bank-CET1-Puffer offen 18 → 13, Bank-LCR offen 21 → 16. Gesamtgewicht unverändert gerundet (gefüllt 81,7 %, offen 1,5 %).
+- Ablauf in `regulatory_export/INTL_BANKS.md`.

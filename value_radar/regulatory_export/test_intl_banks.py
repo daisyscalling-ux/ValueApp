@@ -87,6 +87,35 @@ class IntlBankImportTests(unittest.TestCase):
         for e in jp:
             self.assertEqual(intl.credit_problem(e, dt.datetime(2026, 11, 11, tzinfo=dt.timezone.utc)), '', e['isin'])
 
+    def test_domestic_standard_entries(self):
+        """Japan, Inlandsstandard: Beleg je Bank und LCR-Geltungsbereich; Fehler verwerfen nur den Eintrag."""
+        rule = {'url': 'https://www.fsa.go.jp/x.pdf', 'sha256': 'd' * 64, 'location': 'Notice 62 Art. 2'}
+        ok = {'isin': 'JP3500610005', 'issuer': 'Resona', 'jurisdiction': 'JP', 'regulator': 'JFSA', 'standard': 'jp_domestic_core_capital', 'period': '2026-06-30',
+              'domesticCapitalRatio': .1265, 'source': {'type': 'bank_capital_release', 'url': 'https://example.org/r.pdf', 'sha256': 'e' * 64, 'location': 'p. 1'}}
+        bad = {'domestic_evidence_stale': {'period': '2025-12-31'}, 'domestic_standard_unknown': {'standard': 'other'},
+               'domestic_source_unverified': {'source': {**ok['source'], 'sha256': 'x'}}, 'domestic_ratio_invalid': {'domesticCapitalRatio': 4},
+               'domestic_entry_incomplete': {'isin': 'JP123'}}
+        entries = [ok] + [{**ok, 'isin': f'JP000000001{n}', **v} for n, v in enumerate(bad.values())]
+        entries[-1]['isin'] = 'JP123'
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'apra.xlsx'
+            path.write_bytes(b'x')
+            with mock.patch.object(intl, 'apra', return_value={}):
+                r = intl.build(path, {**MAPPING, 'issuers': []}, NOW, reviewed={'review_expires': '2027-01-01', 'entries': [], 'domesticStandard': entries, 'domesticStandardLcrRule': rule})
+                no_rule = intl.build(path, {**MAPPING, 'issuers': []}, NOW, reviewed={'review_expires': '2027-01-01', 'entries': [], 'domesticStandard': [ok]})
+        self.assertEqual(r['domesticStandard']['JP3500610005']['lcrRule'], rule)
+        self.assertEqual(r['domesticRejected'], {**{f'JP000000001{n}': k for n, k in enumerate(bad) if k != 'domestic_entry_incomplete'}, 'JP123': 'domestic_entry_incomplete'})
+        self.assertEqual(no_rule['domesticRejected'], {'JP3500610005': 'lcr_rule_unverified'})
+        self.assertNotIn('JP3500610005', r['issuers'], 'no capital ratios are invented')
+
+    def test_repository_domestic_entries_are_valid(self):
+        data = json.loads((intl.ROOT / 'reviewed-key-metrics.json').read_text(encoding='utf-8'))
+        isins = {e['isin'] for e in data['domesticStandard']}
+        self.assertEqual(isins, {'JP3500610005', 'JP3805010000'})
+        self.assertFalse(isins & {e['isin'] for e in data['entries']})
+        for e in data['domesticStandard']:
+            self.assertEqual(intl.domestic_problem(e, data['domesticStandardLcrRule'], dt.datetime(2026, 11, 12, tzinfo=dt.timezone.utc)), '', e['isin'])
+
     def test_entry_without_disclosed_requirement_keeps_capital_only(self):
         e = {'isin': 'JP3351500008', 'issuer': 'Shizuoka Financial Group, Inc.', 'jurisdiction': 'JP', 'regulator': 'JFSA', 'period': '2026-06-30',
              'cet1_ratio': .1624, 'tier1_ratio': .1624, 'total_capital_ratio': .1624, 'cet1Requirement': None, 'lcr': None,

@@ -55,6 +55,15 @@ export function verifiedIntlCapital(archive:Row|undefined|null,row:Row,identityO
  const credit=c?.state==='available'&&c.method==='basel-cr1-default-v1'&&c.unit==='fraction'&&typeof c.ratio==='number'&&Number.isFinite(c.ratio)&&c.ratio>=0&&c.ratio<=1&&(c.period===r.period||separateCr1(c,r,now))?c:null;
  return {...r,metrics,liquidity,capitalRequirement:requirement,creditQuality:credit};
 }
+// Japanischer Inlandsstandard (国内基準): nur mit Beleg je Bank (<= 270 Tage) und Beleg fuer den LCR-Geltungsbereich.
+export function verifiedDomesticStandard(archive:Row|undefined|null,row:Row,identityOK:boolean,now:number):Row|null{
+ const x=archive?.intlBanks,r=x?.stocks?.[row.listing_symbol],today=new Date(now).toISOString().slice(0,10),l=r?.lcrRule;
+ const proof=(u:any,h:any,d:any)=>typeof u==='string'&&u.startsWith('https://')&&/^[0-9a-f]{64}$/.test(h||'')&&typeof d==='string'&&d.trim()!=='';
+ if(!identityOK||archive?.schema!==1||!fresh(archive.generatedAt,now,1.5)||x?.schema!==1||x.source!=='intl_basel_key_metrics'||x.state!=='ready'||r?.state!=='not_applicable'||r.scope!=='domestic_capital_standard'||r.standard!=='jp_domestic_core_capital')return null;
+ if(!keys.every(k=>(row[k]??null)===(r.inputIdentity?.[k]??null))||!dateOnly(r.period)||!fresh(r.period,now,270)||!dateOnly(r.identityReviewExpires)||r.identityReviewExpires<today)return null;
+ if(!proof(r.sourceUrl,r.sourceFileSha256,r.sourceDetail)||!proof(l?.url,l?.sha256,l?.location))return null;
+ return {...r,metrics:{},capitalRequirement:null,liquidity:null,creditQuality:null};
+}
 export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|null,identityOK:boolean,now:number){
  if(!['bank','insurer','specialist_financial'].includes(base.profile))return base;
  if(base.profile==='insurer')return withInsurerSolvency(base,row,archive?.insurers,identityOK,now);
@@ -73,6 +82,15 @@ export function withRegulatoryContext(base:Row,row:Row,archive:Row|undefined|nul
  }
  if(!capital&&base.profile==='bank')capital=verifiedEuCapital(archive,row,identityOK,now);
  if(!capital&&base.profile==='bank')capital=verifiedIntlCapital(archive,row,identityOK,now);
+ // Japanischer Inlandsstandard: CET1, Anforderung und LCR nicht anwendbar (belegt); Kreditqualitaet bleibt offen.
+ const domestic=!capital&&base.profile==='bank'?verifiedDomesticStandard(archive,row,identityOK,now):null;
+ if(domestic){
+  const notApplicable=['regulatory_capital_CET1','institution_specific_capital_requirement','liquidity_LCR_or_local_equivalent'];
+  const open=[...new Set([...requirements,'regulatory_capital_CET1','asset_quality_nonperforming_loans'])].filter(k=>!notApplicable.includes(k));
+  return {...base,sectorRequirements:open,bankCapital:domestic,
+   sectorAssessment:{state:'open',fulfilledRequirements:[],notApplicableRequirements:notApplicable,openRequirements:open,capitalContextAvailable:false,scoreContribution:0,
+    explanation:'Japanese domestic capital standard: no Basel III CET1 requirement and no LCR requirement (documented). Credit quality remains open.'}};
+ }
  // Spezialfinanzierer mit geprueftem US-Holding-Kapital (FR Y-9C) sind Bankkonzerne und erfuellen dieselben Nachweise.
  const bankLike=base.profile==='bank'||base.profile==='specialist_financial'&&capital?.scope==='listed_consolidated_holding';
  const fulfilled=capital&&bankLike?['regulatory_capital_CET1']:[];

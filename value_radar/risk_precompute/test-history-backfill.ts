@@ -11,5 +11,11 @@ assert.equal(Object.keys(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':
 assert.equal(Object.keys(historyBalances({kandidaten:[row,row]},coverage,cache,now).stocks).length,0);
 assert.equal(Object.keys(historyBalances(u,{stocks:[]},cache,now).stocks).length,0);
 assert.equal(Object.keys(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],retrievedAt:'2026-01-01'}}},now).stocks).length,0);
+// Mehrjaehrige Cash-Conversion (13.11.2026): drei aufeinanderfolgende Jahre noetig, Summe FCF / Summe Gewinn
+const years=['2023-12-31','2024-12-31','2025-12-31'].map((end,i)=>({...a,end,fields:{...a.fields,operating_cashflow:15+i,capex:5,net_income:8+i}}));
+const cc=historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],annuals:years}}},now).stocks['NYSE:EX'].cashConversion;
+assert.equal(cc.state,'available');assert.equal(cc.years,3);assert.ok(Math.abs(cc.raw-(10+11+12)/(8+9+10))<1e-12);
+assert.equal(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],annuals:years.slice(1)}}},now).stocks['NYSE:EX'].cashConversion.state,'missing');
+assert.equal(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],annuals:years.map(y=>({...y,source:'Yahoo'}))}}},now).stocks['NYSE:EX'],undefined,'other source not used');
 console.log('Historical evaluation isolated from current annual freshness; identity, duplicates and cache age verified');
 assert.equal(Object.keys(historyBalances(u,coverage,{...cache,stocks:{'NYSE:EX':{...cache.stocks['NYSE:EX'],annuals:[a,{...a,fields:{...a.fields,total_assets:200}}]}}},now).stocks).length,0);

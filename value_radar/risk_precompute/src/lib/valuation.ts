@@ -42,6 +42,8 @@ export interface Fund {
   _ist_zyklisch?: boolean; currency?: string;
   /** Gepruefte Volatilitaet (letzte 252 Handelstage, annualisiert) aus der bereinigten Kurshistorie des Risikoscores. */
   _measured_vol?: { vol: number; last: string; observations: number; short: boolean } | null;
+  /** Herkunft der Cash-Conversion (cash-conversion.ts), z. B. '5 Geschaeftsjahre bis 2025-12-31, ROIC'. */
+  cash_conversion_source?: string | null;
 }
 
 export type Playbook = "quality" | "inflection" | "cyclical" | "financial";
@@ -138,6 +140,9 @@ export function fcfBasis(fund: Fund, conversion?: number | null): FcfBasis {
   const gemeldet = fund.free_cashflow ?? null;
   const conv = conversion ?? fund.cash_conversion ?? null;
   const ni = fund.net_income ?? null;
+  // Gepruefte mehrjaehrige Conversion <= 0: freier Cashflow ueber 3-5 Jahre in Summe nicht positiv -> DCF offen,
+  // kein Rueckfall auf einen einzelnen besseren Jahreswert (cash-conversion.ts, seit 13.11.2026).
+  if (conv !== null && conv <= 0) return { basis: null, gemeldet, normalisiert: null, conversion: conv, quelle: "normalisiert" };
   const normal = conv && ni && ni > 0 ? ni * conv : null;
   let basis: number | null, quelle: "normalisiert" | "gemeldet";
   if (normal && normal > 0) { basis = normal; quelle = "normalisiert"; }
@@ -992,7 +997,7 @@ export function dcfDiagnose(fund: Fund, preset: Playbook = "quality"): DcfDiagno
   }
   if (basis.quelle === "normalisiert" && basis.normalisiert && basis.gemeldet) {
     const abw = basis.normalisiert / basis.gemeldet - 1.0;
-    hinweise.push(`DCF rechnet mit normalisiertem Cashflow: Nettogewinn x ${Math.round((basis.conversion ?? 0) * 100)}% Conversion = ${(basis.normalisiert / 1e9).toFixed(1)} Mrd statt gemeldeter ${(basis.gemeldet / 1e9).toFixed(1)} Mrd (${abw >= 0 ? "+" : ""}${Math.round(abw * 100)}%).`);
+    hinweise.push(`DCF rechnet mit normalisiertem Cashflow: Nettogewinn x ${Math.round((basis.conversion ?? 0) * 100)}% Conversion = ${(basis.normalisiert / 1e9).toFixed(1)} Mrd statt gemeldeter ${(basis.gemeldet / 1e9).toFixed(1)} Mrd (${abw >= 0 ? "+" : ""}${Math.round(abw * 100)}%)${fund.cash_conversion_source ? `; Conversion aus ${fund.cash_conversion_source}` : ""}.`);
   }
 
   return {

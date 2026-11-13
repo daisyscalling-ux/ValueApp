@@ -23,6 +23,8 @@ on:
       - 'value_radar/index_membership.py'
       - 'value_radar/sp500_liste.txt'
       - 'value_radar/roic.py'
+      - 'value_radar/risk_precompute/app-copies.json'
+      - 'value_radar/risk_precompute/app_copies.py'
       - 'value_radar/providers.py'
       - 'value_radar/tests/test_roic_52w.py'
       - 'value_radar/ts_bewertung.py'
@@ -51,6 +53,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: App-Kopien identisch mit valueapp-cf (app-copies.json)
+        run: python value_radar/risk_precompute/app_copies.py
       - name: App-Rechenweg bauen und pruefen
         run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/scanner-evaluate.ts --bundle --platform=node --format=esm --outfile=value_radar/risk_precompute/.build/scanner-evaluate.mjs
       - working-directory: value_radar

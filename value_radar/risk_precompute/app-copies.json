@@ -1,0 +1,193 @@
+{
+ "schema": 1,
+ "source": "daisyscalling-ux/valueapp-cf main",
+ "note": "Kopien aus der App; nur mit app_copies.py abgleichen. Pruefung: Pipeline test_app_copies.py, App tests/pipeline-copies.test.mjs.",
+ "files": [
+  {
+   "app": "src/holding-liquidity.ts",
+   "pipeline": "value_radar/risk_precompute/src/holding-liquidity.ts",
+   "sha256": "6583634bb691ea1b39410e705abe97bf13312ac8985a9064f04dbb69dc1408f9"
+  },
+  {
+   "app": "src/insurer-solvency.ts",
+   "pipeline": "value_radar/risk_precompute/src/insurer-solvency.ts",
+   "sha256": "d3a51fd5ee127a4e151795c0ad9d09634d1c83e8ecb6d6ce96154554b8580d60"
+  },
+  {
+   "app": "src/lib/cash-conversion.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/cash-conversion.ts",
+   "sha256": "7d849383b27114fe942e7081494bc890dda66bde255def192c27f988d082334d"
+  },
+  {
+   "app": "src/lib/currency.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/currency.ts",
+   "sha256": "00e661813fa7b66549da63618578b12f6c49bfd43ea499477a6da9b37e4201e7"
+  },
+  {
+   "app": "src/lib/depositary.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/depositary.ts",
+   "sha256": "f179b58a42d4eb854008b53711758505d5b08a5739d189d36bc8818a9c5f5d26"
+  },
+  {
+   "app": "src/lib/domestic-standard.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/domestic-standard.ts",
+   "sha256": "191d0948bb17f8931f9b9613ab7796d635cadb2494d783be05c1a82aeb61ebc4"
+  },
+  {
+   "app": "src/lib/eu-bank.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/eu-bank.ts",
+   "sha256": "ea41cc54b52e7d1008214597194ec9f92ef18b9cd7bc048d13f852122bab7c80"
+  },
+  {
+   "app": "src/lib/evaluation.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
+   "sha256": "2e172f4aa88173ea05fb9a0b1ffbae314238510d057b6af36f36375c0b274d05"
+  },
+  {
+   "app": "src/lib/financial-health.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/financial-health.ts",
+   "sha256": "a06596792b0acc513519e8f620170ab7c9308a412c7b38bcc7366c33c4ff32f0"
+  },
+  {
+   "app": "src/lib/intl-bank.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/intl-bank.ts",
+   "sha256": "2aaa04f00a664d33e654b40edeca819efab2f03db5ef38fdc57c1d6bb23e0201"
+  },
+  {
+   "app": "src/lib/lifecycle.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/lifecycle.ts",
+   "sha256": "744cef6787d9af5be8fc974867e21a14dfe92f8790e079ec050f4c54c00206b9"
+  },
+  {
+   "app": "src/lib/listing-identity.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/listing-identity.ts",
+   "sha256": "607d8212b0d7d4d72ba4cbaa041f3088e7a1bd98e973c2a1bdab436d1490d42f"
+  },
+  {
+   "app": "src/lib/peer-industry-groups.json",
+   "pipeline": "value_radar/risk_precompute/src/lib/peer-industry-groups.json",
+   "sha256": "2c22bd83b103ce583b6d8a4a8f62900afb9cfa0e27b834d3de0b8204fba7e44e"
+  },
+  {
+   "app": "src/lib/peer-selection.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/peer-selection.ts",
+   "sha256": "ff99210e96656fac7bae7560794dcbaf7422f7974b25f96151ebba9f8c0c8e66"
+  },
+  {
+   "app": "src/lib/peer-valuation.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/peer-valuation.ts",
+   "sha256": "ad26f61e0d8036ce8e282dbe368ac2303b64caef3d603a281db266459e784f73"
+  },
+  {
+   "app": "src/lib/risk-construct.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/risk-construct.ts",
+   "sha256": "72e3c724f76a245f4145f243fbe842d4aba2d5d36aceffe0b35ca9c1199b85c3"
+  },
+  {
+   "app": "src/lib/risk-context.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/risk-context.ts",
+   "sha256": "51f9c113f9284c7f23742431de92b28b06e8ca963707d6c8db7e5daee20faccb"
+  },
+  {
+   "app": "src/lib/risk-score.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/risk-score.ts",
+   "sha256": "238c889c798c3954f82b8271d521a9279d9ce0fa02b04551efaf9231c80cf79d"
+  },
+  {
+   "app": "src/lib/risk-statistics.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/risk-statistics.ts",
+   "sha256": "36b48acc4240b82631a2a4a0348ec2b555f647b3f071ffa3f469830fba6dff21"
+  },
+  {
+   "app": "src/lib/risk-validation.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/risk-validation.ts",
+   "sha256": "b5e4c83be9a6c6b2b62505413309e9b6cc853fd1c8d613da023aa3ccbc307a37"
+  },
+  {
+   "app": "src/lib/scanner-evaluation.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/scanner-evaluation.ts",
+   "sha256": "598fa99b9c627c65b57ca113124bbfac28efa037425b083038e324b58f681e9d"
+  },
+  {
+   "app": "src/lib/scores.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/scores.ts",
+   "sha256": "74f107ea98ee68f944761c75ff60e94a31cbb5df7ef9a9c5155088a5f07da70c"
+  },
+  {
+   "app": "src/lib/scores_plus.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/scores_plus.ts",
+   "sha256": "72e7268816c5c66d96f693f543135405754a7a756faa9e913ffa90ffa5ca08c7"
+  },
+  {
+   "app": "src/lib/scoring.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/scoring.ts",
+   "sha256": "0350218dd2be832988b6cfcbfabba799b8326e20019ec7ce9257ca4d3f8b050d"
+  },
+  {
+   "app": "src/lib/valuation-data.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/valuation-data.ts",
+   "sha256": "38c2fdb4865fd9aab1a413cc70c45ddfb2a991ed85e7ab72023a913b7b9a4f74"
+  },
+  {
+   "app": "src/lib/valuation-risk.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/valuation-risk.ts",
+   "sha256": "4a6b7aa1489547d6a5a322e18d5447d0538842d84280deb19a900e12cb6c8384"
+  },
+  {
+   "app": "src/lib/valuation.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/valuation.ts",
+   "sha256": "0534faa4726cf1b71c04745e9210072b2205bdc55e4bd749e9fbae58a59ae146"
+  },
+  {
+   "app": "src/risk_capital_requirement_view.ts",
+   "pipeline": "value_radar/risk_precompute/src/risk_capital_requirement_view.ts",
+   "sha256": "992619e7f932d47b7c63c4fb9e20da3db561f1b40af62900b3b28bf43b656836"
+  },
+  {
+   "app": "src/risk_review_view.ts",
+   "pipeline": "value_radar/risk_precompute/src/risk_review_view.ts",
+   "sha256": "5871103bc39904403b8ebae441b036e1ac51d54241eb61d73419395aa00f79d5"
+  },
+  {
+   "app": "src/holding-liquidity.ts",
+   "pipeline": "value_radar/risk_precompute/holding-liquidity.ts",
+   "sha256": "6583634bb691ea1b39410e705abe97bf13312ac8985a9064f04dbb69dc1408f9"
+  },
+  {
+   "app": "src/insurer-solvency.ts",
+   "pipeline": "value_radar/risk_precompute/insurer-solvency.ts",
+   "sha256": "d3a51fd5ee127a4e151795c0ad9d09634d1c83e8ecb6d6ce96154554b8580d60"
+  },
+  {
+   "app": "worker/market-proxies.json",
+   "pipeline": "value_radar/risk_precompute/market-proxies.json",
+   "sha256": "6801d14b8c51e923d26ed747ed154f15006550d3f09cf84c452e08cc701a274c"
+  },
+  {
+   "app": "worker/company-data.ts",
+   "pipeline": "value_radar/risk_precompute/worker/company-data.ts",
+   "sha256": "44a2a89fc1db307ca70103c6233e07c8101d8a85c368ca94cb61b86b7c854e46"
+  },
+  {
+   "app": "worker/risk-data.ts",
+   "pipeline": "value_radar/risk_precompute/worker/risk-data.ts",
+   "sha256": "1f96373266accae999499b259f309e9a6621fbb7ae5524a29dc1de1d0bf35f0a"
+  },
+  {
+   "app": "worker/risk-listing.ts",
+   "pipeline": "value_radar/risk_precompute/worker/risk-listing.ts",
+   "sha256": "b7f925fff627056c5b9d3b8ef9a8bf2f446e25132a11413e853f58c469cceeef"
+  },
+  {
+   "app": "worker/risk-benchmark.ts",
+   "pipeline": "value_radar/risk_precompute/worker/risk-benchmark.ts",
+   "sha256": "51d4ad8c2567ec488108acf20bb92512e2d9393fd6b445bdc5f37e707dd7c55c",
+   "normalize": [
+    [
+     "'../market-proxies.json'",
+     "'./market-proxies.json'"
+    ]
+   ]
+  }
+ ]
+}

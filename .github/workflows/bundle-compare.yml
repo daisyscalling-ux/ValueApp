@@ -1,0 +1,39 @@
+name: bundle-compare
+# Messung Datenweg (13.11.2026): fuer eine feste Stichprobe dasselbe Bundle wie die Einzelanalyse abrufen und mit den
+# Scanner-Zeilen vergleichen. Nur manuell, schreibt nichts ins Repo; Ergebnis als Artefakt und Zusammenfassung.
+on:
+  workflow_dispatch:
+    inputs:
+      anzahl:
+        description: 'Titel in der Stichprobe (max. 100)'
+        default: '50'
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: App-Kopien identisch
+        run: python value_radar/risk_precompute/app_copies.py
+      - name: Messung bauen
+        run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/bundle-compare.ts --bundle --platform=node --format=esm --outfile=bundle-compare.mjs
+      - name: Stichprobe abrufen und vergleichen
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          ANZAHL: ${{ github.event.inputs.anzahl }}
+        run: |
+          n=$(( ANZAHL > 100 ? 100 : ANZAHL ))
+          node bundle-compare.mjs value_radar/daten bundle-compare.json "$n" | tee summary.json
+          { echo '## Datenweg: App-Bundle gegen Scanner'; echo '```json'; cat summary.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-compare-${{ github.run_id }}
+          path: bundle-compare.json
+          retention-days: 14

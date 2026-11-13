@@ -11,6 +11,7 @@
  */
 
 import type { Fund } from "./valuation";
+import { PEER_PERCENTILE_MIN } from "./peer-valuation";
 
 export type Category = "valuation" | "quality" | "growth" | "health" | "momentum" | "catalyst";
 
@@ -86,6 +87,9 @@ export interface ScoreResult {
   composite: number;
   value_trap: boolean;
   breakdown: Record<string, number>;
+  /** Je Kennzahl: "peers" = Perzentil gegen >= PEER_PERCENTILE_MIN Peers, "scale" = feste Ersatzskala. */
+  metric_source: Record<string, "peers" | "scale">;
+  peer_count: Record<string, number>;
 }
 
 type ScoreFund = Fund & {
@@ -101,17 +105,25 @@ export function scoreStock(
   const catValues: Record<string, number[]> = {};
   for (const k of Object.keys(weights)) catValues[k] = [];
   const breakdown: Record<string, number> = {};
+  const metricSource: Record<string, "peers" | "scale"> = {};
+  const peerCount: Record<string, number> = {};
 
   for (const [metric, [cat, hib]] of Object.entries(METRIC_MAP)) {
     const val = (fund as Record<string, number | null>)[metric] ?? null;
     let s: number;
     if (PATHOLOGICAL_IF_NEGATIVE.has(metric) && val !== null && val <= 0) {
       s = 0.0;
-    } else if (peerFunds) {
-      const peerVals = peerFunds.map((p) => (p as Record<string, number | null>)[metric] ?? null);
-      s = percentileRank(val, peerVals, hib);
     } else {
-      s = absoluteFallback(metric, val, hib);
+      // Peer-Perzentil nur mit mindestens PEER_PERCENTILE_MIN gueltigen Peer-Werten (negative Multiples sind nicht vergleichbar).
+      const peerVals = (peerFunds ?? [])
+        .map((p) => (p as Record<string, number | null>)[metric])
+        .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && (!PATHOLOGICAL_IF_NEGATIVE.has(metric) || v > 0));
+      if (val !== null && peerVals.length >= PEER_PERCENTILE_MIN) {
+        s = percentileRank(val, peerVals, hib); metricSource[metric] = "peers";
+      } else {
+        s = absoluteFallback(metric, val, hib); metricSource[metric] = "scale";
+      }
+      peerCount[metric] = peerVals.length;
     }
     breakdown[metric] = Math.round(s * 10) / 10;
     catValues[cat].push(s);
@@ -153,6 +165,8 @@ export function scoreStock(
     composite: Math.round(composite * 10) / 10,
     value_trap: vt,
     breakdown,
+    metric_source: metricSource,
+    peer_count: peerCount,
   };
 }
 

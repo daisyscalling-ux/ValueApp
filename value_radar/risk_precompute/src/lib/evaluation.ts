@@ -3,14 +3,17 @@ import {scoreStock,quantumScore} from './scoring';
 import {altmanZ,type Row} from './scores';
 import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
+import {peerFundsFromRows} from './peer-valuation';
 
 /** One evaluation path; scoring always uses the native statement units. */
-export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null){
+/** peerRows: Universumszeilen aus selectPeers (Einzelanalyse: /api/peers; Pipeline: dieselbe Auswahl). Ohne Peers wie bisher. */
+export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null){
  const fund={...input};
  const playbook=classifyPlaybook(fund);
- const nativeValue=fairValue(fund,null,playbook);
+ const peers=peerFundsFromRows(peerRows),peerArg=peers.length?peers:null;
+ const nativeValue=fairValue(fund,peerArg,playbook);
  fund._fv_wert=nativeValue.fair_value;
-  const scores = scoreStock(fund as never, null, playbook);
+  const scores = scoreStock(fund as never, peerArg as never, playbook);
 
   // VERBESSERTE Scores: Bilanz/Momentum/Katalysator mit den reicheren Daten
   // ueberschreiben. Der scoreStock-Kern bleibt, nur diese drei werden ersetzt.
@@ -43,7 +46,7 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
   }
 
  const display=fundInEur(fund,eur) as Fund & Record<string,any>;
- const fv=display.currency===fund.currency?nativeValue:fairValue(display,null,playbook);
+ const fv=display.currency===fund.currency?nativeValue:fairValue(display,peerArg,playbook);
  const targetFund={...display};
  if(!targetFund.hist_pe_median&&targetFund.pe_trailing)targetFund.hist_pe_median=targetFund.pe_trailing;
  const kz=kursziel12m(targetFund,playbook);
@@ -55,5 +58,7 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const trend=display._analyst_trend&&typeof display._analyst_trend==='object'?display._analyst_trend:null;
  const q=quantumScore(scores.composite,fv,analyst,scores.category_scores.momentum,null,skepsis,trend);
  display._fv_wert=fv.fair_value;display._composite_live=scores.composite;display._upside_live=fv.upside_pct;
- return {fund:display,playbook,fv,scores,altZforHealth,kz,q};
+ // Dieselben Peers fuer Szenarien und Bewertungsrisiko (szenarioMatrix), sonst passt Base nicht zum Fair Value.
+ display._peer_funds=peerArg;
+ return {fund:display,playbook,fv,scores,altZforHealth,kz,q,peerCount:peers.length};
 }

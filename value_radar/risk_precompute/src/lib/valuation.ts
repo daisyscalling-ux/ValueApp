@@ -1,4 +1,5 @@
 import { valuationDataCheck } from './valuation-data';
+import { PEER_PERCENTILE_MIN } from './peer-valuation';
 /**
  * valuation.ts - Portierung des Bewertungskerns aus valuation.py
  * Methode: Python lesen, 1:1 uebersetzen, gegen Python-Ausgabe testen.
@@ -305,6 +306,20 @@ export function fwdPe(fund: Fund, preset: Playbook = "quality"): number | null {
   return kgv ? eps1 * kgv : null;
 }
 
+/** Ausgangs-Multiple fuer EV/EBITDA (seit 13.11.2026, Entscheidung des Nutzers): Mittel aus Peer-Median und
+ *  Sektortabelle, sobald PEER_PERCENTILE_MIN gueltige Peer-Multiples (0-60x) vorliegen; sonst nur die Sektortabelle.
+ *  Der Peer-Median lag am 13.11.2026 im Median 36 % ueber der Tabelle; das Mittel daempft, dass ein teurer Markt
+ *  sich selbst als fair bestaetigt. Vorher genuegte ein einziger Peer fuer den reinen Peer-Median. */
+export const EV_EBITDA_PEER_SHARE = 0.5;
+export function evEbitdaAnchor(fund: Fund, peerFunds: Fund[] | null): { source: "peers" | "sector"; value: number; n: number; peer_median: number | null; sector: number } {
+  const ms = (peerFunds ?? []).map((p) => p.ev_ebitda).filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0 && v < 60);
+  const med = ms.length >= PEER_PERCENTILE_MIN ? median(ms) : null;
+  const sector = sectorAnchor(fund, SECTOR_EV_EBITDA);
+  return med !== null
+    ? { source: "peers", value: EV_EBITDA_PEER_SHARE * med + (1 - EV_EBITDA_PEER_SHARE) * sector, n: ms.length, peer_median: med, sector }
+    : { source: "sector", value: sector, n: ms.length, peer_median: null, sector };
+}
+
 /** multipleEvEbitda - EV/EBITDA-Verfahren mit Sektor-Multiple, Wachstums-
  *  aufschlag und Teil-Reversion. 1:1 aus valuation.multiple_ev_ebitda. */
 export function multipleEvEbitda(
@@ -314,15 +329,7 @@ export function multipleEvEbitda(
   if (fund.net_debt == null) return null;
   if (!shares || !ebitda || ebitda <= 0) return null;
   const cyclical = preset === "cyclical";
-  let target: number;
-  if (peerFunds && peerFunds.length) {
-    const ms = peerFunds
-      .map((p) => p.ev_ebitda)
-      .filter((v): v is number => !!v && v > 0 && v < 60);
-    target = median(ms) ?? sectorAnchor(fund, SECTOR_EV_EBITDA);
-  } else {
-    target = sectorAnchor(fund, SECTOR_EV_EBITDA);
-  }
+  let target = evEbitdaAnchor(fund, peerFunds).value;
   if (!cyclical) {
     const g = fund.revenue_growth ?? 0;
     if (g > 0.10) target *= 1 + Math.min((g - 0.10) * 2.0, 0.6);
@@ -429,6 +436,7 @@ export interface FairValueResult {
   margin_of_safety: number;
   playbook: Playbook;
   nach_herkunft: Record<string, number>;
+  ev_ebitda_anchor: ReturnType<typeof evEbitdaAnchor>;
 }
 
 /**
@@ -605,6 +613,7 @@ export function fairValue(
     capped,
     margin_of_safety: Math.round(mos * 1000) / 1000,
     playbook: preset,
+    ev_ebitda_anchor: evEbitdaAnchor(fund, peerFunds),
     nach_herkunft: Object.fromEntries(
       Object.entries(nachHerkunft).sort((a, b) => b[1] - a[1])
         .map(([k, v]) => [k, Math.round(v * 10000) / 10000])),

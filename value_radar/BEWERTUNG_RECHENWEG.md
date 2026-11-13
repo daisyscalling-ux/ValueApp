@@ -150,3 +150,9 @@ Entscheidung des Nutzers: alle Profile, als Rang im Profil.
 - Kauf-Urteile 58 → 72, „beobachten“ 145 → 150, „meiden“ 954 → 935.
 
 **Verzerrung:** Die verbleibende Anhebung kommt daher, dass die alte Bilanz nach unten verzerrt war: Median 42, weil feste Ersatzskalen und ein fehlender Liquiditätsgrad 50 bzw. niedrige Werte ergaben. Der Rang ist per Konstruktion mittig. Er bewertet relativ zum Profil; ein schwach finanziertes Profil insgesamt erscheint dadurch nicht schlechter.
+
+## Diagnose gesperrter Bewertungen (13.11.2026)
+
+Sperrt die Datenprüfung der App eine Zeile („Daten prüfen“), schreibt der Export die Rohwerte und ihre Herkunft unter `valuation_check_inputs` mit: Kurs, Währung, Aktienzahl, Börsenwert, Enterprise Value, 52-Wochen-Band, EPS, Quelle, ROIC-Felder, Umrechnungsfaktor, Pence-Normalisierung. Diese Werte fließen in keine Rechnung.
+
+Anlass: Am 13.11.2026 passte bei 52 Titeln der Börsenwert nicht zu Kurs × Aktienzahl (Faktor > 2). Das Universum enthielt die Aktienzahl nicht, die Ursache war ohne neuen Abruf nicht bestimmbar.

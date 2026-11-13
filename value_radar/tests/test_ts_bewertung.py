@@ -19,7 +19,8 @@ def zeile(ticker,fund):
 class Eingabe(unittest.TestCase):
     def test_json_safe_and_private_fields(self):
         d=T.eingabe({'price':float('nan'),'x':float('inf'),'reihe_ebitda':[{'jahr':2024,'wert':float('nan')}],'_quelle':'roic','_analyst_trend':{'richtung':'fallend'},
-                     '_ist_zyklisch':True,'obj':object()},{'buy':3,'hold':1,'sell':0})
+                     '_ist_zyklisch':True,'obj':object(),'_roic_fx':0.0065,'market_cap':5e9},{'buy':3,'hold':1,'sell':0})
+        self.assertEqual(d['_pruef_eingang'],{'market_cap':5e9,'_quelle':'roic','_roic_fx':0.0065,'price':None})
         self.assertIsNone(d['price']);self.assertIsNone(d['x']);self.assertIsNone(d['reihe_ebitda'][0]['wert']);self.assertIsNone(d['obj'])
         self.assertNotIn('_quelle',d);self.assertEqual(d['_analyst_trend'],{'richtung':'fallend'});self.assertTrue(d['_ist_zyklisch'])
         self.assertEqual((d['analyst_buy'],d['analyst_hold'],d['analyst_sell']),(3,1,0))
@@ -49,6 +50,9 @@ class AppRechenweg(unittest.TestCase):
         self.assertIn(a['kauf_urteil'],('kauf','beobachten','meiden'));self.assertNotIn('_ts_input',a)
         # Kurs ueber dem Doppelten des 52W-Hochs: Datenpruefung der App sperrt die Bewertung
         self.assertEqual(b['kauf_urteil'],'Daten prüfen');self.assertIsNone(b['fair_value']);self.assertIsNone(b['quantum']);self.assertTrue(b['valuation_issues'])
+        # Diagnose nur bei gesperrten Zeilen: Rohwerte fuer die Ursachensuche
+        self.assertEqual(b['valuation_check_inputs']['price'],80.0);self.assertEqual(b['valuation_check_inputs']['52w_high'],28.7)
+        self.assertNotIn('valuation_check_inputs',a)
 
 
     def test_peers_from_the_whole_universe(self):

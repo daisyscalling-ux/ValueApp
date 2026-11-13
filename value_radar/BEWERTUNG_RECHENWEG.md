@@ -88,3 +88,36 @@ Kauf-Urteile 58 → 56, „beobachten“ 130 → 156, „meiden“ 969 → 945.
 - Die Peers sind nach Branche und Größe ausgewählt, nicht als direkte Wettbewerber geprüft.
 
 **Grenze:** Die Peer-Werte stammen aus dem Export (Pipeline-Daten), die eigenen Werte in der Einzelanalyse aus dem ROIC-Bundle. Die Einheiten sind gleich, die Quellen verschieden (siehe Abschnitt „Grenzen“).
+
+## Historie im DCF: mehrjährige Cash-Conversion (13.11.2026)
+
+Der DCF normalisiert den freien Cashflow als Jahresüberschuss × Cash-Conversion (`fcfBasis`). Die Conversion wurde bisher nie gesetzt; der DCF rechnete deshalb immer mit dem gemeldeten FCF eines Jahres.
+
+| Regel | Wert | Begründung |
+|---|---|---|
+| Formel | Σ (operativer Cashflow − Investitionen) / Σ Jahresüberschuss über 3–5 aufeinanderfolgende Geschäftsjahre (`sum_fcf_over_sum_net_income_v1`) | Entscheidung des Nutzers. Robust gegen einzelne Ausreißerjahre. |
+| Quelle | geprüfte ROIC-Historie (`cf_roic_history.json`), dieselben Jahre wie im Finanzverlauf: Notierungsidentität, ROIC-Quelle, Abruf ≤ 45 Tage, keine doppelten Jahre | Herkunft und Identität wie im Risikoscore |
+| Bedingungen | eine Währung; Abstand der Jahre 300–430 Tage; letztes Jahr ≤ 550 Tage; Gewinnsumme > 0 | sonst offen mit Grund |
+| Obergrenze | 1,5, gekennzeichnet (`clamped`) | vorsichtig: höhere Werte meist durch Sondereffekte |
+| Untergrenze | keine | Entscheidung des Nutzers. Eine Untergrenze von 0,3 hätte 90 investitionsstarke Unternehmen beschönigt. |
+| Summe FCF ≤ 0 | DCF offen, kein Rückfall auf ein Einzeljahr | Ein einzelnes besseres Jahr würde dauerhaft negativen freien Cashflow verdecken. |
+| Profile | alle (Entscheidung des Nutzers) | Das Finanz-Playbook nutzt den DCF nicht; bei Banken streut der Wert stark (Kundengelder im operativen Cashflow). |
+
+**Ablauf:**
+1. `export-history-backfill.ts` rechnet die Conversion (`cash-conversion.ts`, identisch mit valueapp-cf).
+2. `financial_history.py` legt sie unter `balance.cashConversion` in die Risikoabdeckung.
+3. App und Scanner prüfen beim Lesen erneut (`verifiedCashConversion`): Methode, Jahre, Abstände, Alter, Summen und Begrenzung werden nachgerechnet.
+
+Der Scanner liest sie aus `cf_risk_coverage.json` (`ts_bewertung.risikodaten`) und exportiert `cash_conversion` und `cash_conversion_source`. Die Einzelanalyse lädt `/api/risk-coverage` höchstens 4 s lang und nennt die DCF-Basis oder den Grund, warum der DCF offen ist.
+
+**Messung:**
+- Probelauf der Risikokette: 924 von 1.340 Notierungen mit Conversion (Unternehmen 768, Banken 62, Versicherer 34, Spezialfinanzierer 60).
+- Offen 416: weniger als 3 geprüfte Jahre 301, Gewinnsumme ≤ 0 50, letztes Jahr zu alt 45, Jahre nicht aufeinanderfolgend 13, keine Historie 7.
+- Unternehmen: Median 1,00, P10 0,20, P90 2,00; bei 143 greift die Obergrenze, bei 55 bleibt der DCF offen.
+
+Wirkung im Scanner (1.157 Vergleichstitel, mit Peers):
+- Fair Value geändert bei 355 Titeln (nur wo der DCF im Methodenkern liegt): Median 9,2 %, P90 32,1 %, im Mittel über alle 0,0 %.
+- Quantum geändert bei 326: Median 3,0 Punkte.
+- Kauf-Urteile 56 → 58, „beobachten“ 156 → 145, „meiden“ 945 → 954.
+
+**Verzerrung:** Keine systematische Richtung (Mittel 0,0 %). Die Conversion normalisiert nur das Verhältnis von Cashflow zu Gewinn, nicht den Gewinn selbst. In einem Gewinnhochjahr bleibt die DCF-Basis hoch.

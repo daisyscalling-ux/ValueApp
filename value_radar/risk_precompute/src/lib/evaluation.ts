@@ -4,11 +4,16 @@ import {altmanZ,type Row} from './scores';
 import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
+import {verifiedCashConversion} from './cash-conversion';
 
 /** One evaluation path; scoring always uses the native statement units. */
 /** peerRows: Universumszeilen aus selectPeers (Einzelanalyse: /api/peers; Pipeline: dieselbe Auswahl). Ohne Peers wie bisher. */
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null){
  const fund={...input};
+ // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
+ const cc=verifiedCashConversion(fund._cash_conversion_history);
+ if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' (ROIC, geprüft)'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}
+ else{fund.cash_conversion=null;fund.cash_conversion_source=null;}
  const playbook=classifyPlaybook(fund);
  const peers=peerFundsFromRows(peerRows),peerArg=peers.length?peers:null;
  const nativeValue=fairValue(fund,peerArg,playbook);

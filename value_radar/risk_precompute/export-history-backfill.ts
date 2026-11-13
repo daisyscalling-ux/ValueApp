@@ -1,5 +1,6 @@
 import fs from 'node:fs';import path from 'node:path';
 import {assessBalance} from './balance-profile';
+import {cashConversionFromAnnuals} from './src/lib/cash-conversion';
 type Row=Record<string,any>;
 const keys=['listing_symbol','ticker','isin','currency','security_type','share_class'];
 export function historyBalances(universe:Row,coverage:Row,cache:Row,now=Date.now()){
@@ -10,14 +11,17 @@ export function historyBalances(universe:Row,coverage:Row,cache:Row,now=Date.now
  for(const row of universe.kandidaten||[]){
   const s=row.listing_symbol,c=cache.stocks?.[s],age=now-Date.parse(c?.retrievedAt);
   if(!qualified.has(s)||duplicates.has(s)||!c||!Number.isFinite(age)||age<0||age>45*86400000||!keys.every(k=>(c.inputIdentity?.[k]??null)===(row[k]??null)))continue;
-  const balances=[];const ends=new Set(),duplicateEnds=new Set();
+  const balances=[],annuals:Row[]=[];const ends=new Set(),duplicateEnds=new Set();
   for(const a of c.annuals||[]){if(ends.has(a.end))duplicateEnds.add(a.end);ends.add(a.end)}
   for(const a of c.annuals||[]){
    if(a.symbol!==s||a.source!=='ROIC v3 annual statements'||a.purpose!=='standalone_balance_risk_context'||a.period_type!=='annual'||duplicateEnds.has(a.end))continue;
+   annuals.push(a);
    const b=assessBalance(row,a,c.retrievedAt,true,now,8*366,45);
    if(Object.values({...b.metrics,...b.supplementalMetrics}).some((m:any)=>m.state==='available'))balances.push(b);
   }
-  if(balances.length)stocks[s]={inputIdentity:c.inputIdentity,retrievedAt:c.retrievedAt,balances:balances.sort((a,b)=>a.period.localeCompare(b.period)),pointInTimeUsable:false};
+  // Mehrjaehrige Cash-Conversion fuer den DCF (cash-conversion.ts) aus denselben gepruefte Jahren.
+  const cashConversion=cashConversionFromAnnuals(annuals,now);
+  if(balances.length||cashConversion.state==='available')stocks[s]={inputIdentity:c.inputIdentity,retrievedAt:c.retrievedAt,balances:balances.sort((a,b)=>a.period.localeCompare(b.period)),cashConversion,pointInTimeUsable:false};
  }
  return {schema:1,method:'roic-history-balances-v1',generatedAt:new Date(now).toISOString(),stocks};
 }

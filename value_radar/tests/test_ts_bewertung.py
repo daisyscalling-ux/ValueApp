@@ -64,4 +64,14 @@ class AppRechenweg(unittest.TestCase):
         self.assertIn('roe',subject['composite_peer_metrics'])
         self.assertNotIn('scanner_method',peers[0],'retained rows are only peers, not re-evaluated')
 
+    def test_verified_cash_conversion_from_risk_data_changes_dcf(self):
+        cc={'state':'available','method':'sum_fcf_over_sum_net_income_v1','value':0.7,'raw':0.7,'clamped':False,'years':3,'currency':'EUR','sumFcf':7,'sumNetIncome':10,
+            'periods':[{'end':'2023-12-31','fcf':2,'netIncome':3},{'end':'2024-12-31','fcf':2,'netIncome':3},{'end':'2025-12-31','fcf':3,'netIncome':4}]}
+        mit=[{**zeile('ATHEX:BELA',JUMBO),'listing_symbol':'ATHEX:BELA'}];ohne=[{**zeile('ATHEX:BELA',JUMBO),'listing_symbol':'ATHEX:BELA'}]
+        T.anwenden(mit,risiko={'ATHEX:BELA':{'_cash_conversion_history':cc}});T.anwenden(ohne,risiko={})
+        self.assertNotEqual(mit[0]['fair_value'],ohne[0]['fair_value'])
+        falsch=[{**zeile('ATHEX:BELA',JUMBO),'listing_symbol':'ATHEX:BELA'}]
+        T.anwenden(falsch,risiko={'ATHEX:BELA':{'_cash_conversion_history':{**cc,'value':1.2}}})
+        self.assertEqual(falsch[0]['fair_value'],ohne[0]['fair_value'],'manipulated conversion ignored by the app check')
+
 if __name__=='__main__':unittest.main()

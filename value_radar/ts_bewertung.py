@@ -16,8 +16,8 @@ ALT = "python-v1"
 FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_value", "upside", "entry", "quantum",
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil",
-          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source")
-PRIVAT_ERLAUBT = {"_analyst_trend", "_ist_zyklisch", "_cash_conversion_history"}
+          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile")
+PRIVAT_ERLAUBT = {"_analyst_trend", "_ist_zyklisch", "_cash_conversion_history", "_risk_coverage"}
 
 
 def _sauber(x):
@@ -68,7 +68,7 @@ def rechnen(eingaben, js, node="node", timeout=900, universum=None):
 
 
 def risikodaten(pfad=None):
-    """Gepruefte Bilanzdaten der Risikopipeline je Notierung (cf_risk_coverage.json): heute die Cash-Conversion.
+    """Gepruefte Bilanzdaten der Risikopipeline je Notierung (cf_risk_coverage.json): Bilanzpruefung und Cash-Conversion.
     Der App-Code prueft sie erneut (verifiedCashConversion); hier nur Zuordnung nach listing_symbol."""
     pfad = pfad or os.path.join(os.path.dirname(os.path.abspath(__file__)), "daten", "cf_risk_coverage.json")
     try:
@@ -79,8 +79,9 @@ def risikodaten(pfad=None):
     out = {}
     for row in daten.get("stocks") or []:
         b = ((row or {}).get("domains") or {}).get("balance") or {}
-        if isinstance(row.get("symbol"), str) and isinstance(b.get("cashConversion"), dict):
-            out[row["symbol"]] = {"_cash_conversion_history": b["cashConversion"]}
+        if isinstance(row.get("symbol"), str) and b:
+            # Bilanzpruefung fuer die Bilanz-Kategorie (financial-health.ts) und die Cash-Conversion (DCF).
+            out[row["symbol"]] = {"_risk_coverage": {"balance": b}, "_cash_conversion_history": b.get("cashConversion")}
     return out
 
 

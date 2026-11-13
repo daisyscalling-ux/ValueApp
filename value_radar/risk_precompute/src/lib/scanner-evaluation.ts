@@ -7,6 +7,7 @@
 import {evaluateStock} from './evaluation';
 import {analystTarget,type Fund} from './valuation';
 import {valuationDataCheck} from './valuation-data';
+import type {HealthDistribution} from './financial-health';
 
 export const SCANNER_METHOD='ts-evaluate-v1';
 type Row=Record<string,any>;
@@ -28,8 +29,8 @@ export function displayUpside(fund:Fund&Row,fv:{upside_pct:number|null;capped:bo
  return fv.upside_pct;
 }
 
-export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null){
- const e=evaluateStock({...input},null,peerRows),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
+export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCoverage:Row|null=null,healthDistribution:HealthDistribution|null=null){
+ const e=evaluateStock({...input},null,peerRows,riskCoverage,healthDistribution),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
  const check=input.valuation_data??valuationDataCheck(input),blocked=!!check.blocked;
  const upside=blocked?null:displayUpside(e.fund as Fund&Row,fv);
  const composite=blocked?null:e.scores.composite;
@@ -41,6 +42,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null){
   valuation_issues:blocked?check.issues:[],
   peer_count:e.peerCount,composite_peer_metrics:Object.entries((e.scores as Row).metric_source??{}).filter(([,v])=>v==='peers').map(([k])=>k).sort(),
   ev_ebitda_anchor:fv.ev_ebitda_anchor?.source??null,
+  health_source:(e.scores as Row)._health_source??null,health_raw:(e.scores as Row)._health_raw??null,health_profile:(e.scores as Row)._health_profile??null,health_parts:((e.scores as Row)._health_risk?.parts??[]).map((p:Row)=>p.name),
   cash_conversion:typeof e.fund.cash_conversion==='number'?Math.round(e.fund.cash_conversion*1000)/1000:null,cash_conversion_source:e.fund.cash_conversion_source??null,fv_confidence:fv.confidence,fv_reliable:fv.reliable,
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],

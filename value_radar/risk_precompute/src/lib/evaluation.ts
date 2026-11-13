@@ -5,10 +5,14 @@ import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
 import {verifiedCashConversion} from './cash-conversion';
+import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
 
 /** One evaluation path; scoring always uses the native statement units. */
 /** peerRows: Universumszeilen aus selectPeers (Einzelanalyse: /api/peers; Pipeline: dieselbe Auswahl). Ohne Peers wie bisher. */
-export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null){
+/** riskCoverage: vorberechnete Bilanzpruefung der Risikopipeline ({balance,...}; Einzelanalyse /api/risk-coverage,
+ *  Scanner cf_risk_coverage.json). Ohne sie rechnet die Bilanz-Kategorie wie bisher. */
+/** healthDistribution: Rohwerte der Bilanz je Profil im Universum (Rang statt absoluter Skala). */
+export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
  const fund={...input};
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
  const cc=verifiedCashConversion(fund._cash_conversion_history);
@@ -30,6 +34,11 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
   // Katalysator: echten Wert ODER aus der Matrix nehmen (null)
   Object.assign(scores,{_catalyst_plus:plus.catalyst,_health_teile:plus.health_teile,_catalyst_teile:plus.catalyst_teile});
   if (plus.catalyst !== null) scores.category_scores.catalyst = plus.catalyst;
+  // Bilanz aus den geprueften Finanzkennzahlen des Risikoscores (Block "Finanzielle Verwundbarkeit"), alle Profile.
+  const health = financialHealth(fund as Record<string, any>, riskCoverage);
+  const hProfile = healthProfile(health), hRank = healthRank(health.score, hProfile, healthDistribution);
+  if (hRank) scores.category_scores.health = hRank.score;
+  Object.assign(scores, { _health_source: hRank ? 'risiko_rang' : health.score !== null ? 'kennzahlen_ohne_rang' : 'kennzahlen', _health_risk: health, _health_raw: health.score, _health_profile: hProfile, _health_rank_n: hRank?.n ?? null });
 
   // Composite mit den neuen Werten neu bilden (gleiche Gewichte, aber
   // Katalysator rausnehmen+renormalisieren, wenn keine Signale da).

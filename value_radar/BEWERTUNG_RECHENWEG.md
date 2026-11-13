@@ -121,3 +121,32 @@ Wirkung im Scanner (1.157 Vergleichstitel, mit Peers):
 - Kauf-Urteile 56 → 58, „beobachten“ 156 → 145, „meiden“ 945 → 954.
 
 **Verzerrung:** Keine systematische Richtung (Mittel 0,0 %). Die Conversion normalisiert nur das Verhältnis von Cashflow zu Gewinn, nicht den Gewinn selbst. In einem Gewinnhochjahr bleibt die DCF-Basis hoch.
+
+## Bilanz-Kategorie aus den geprüften Finanzkennzahlen (13.11.2026)
+
+Entscheidung des Nutzers: alle Profile, als Rang im Profil.
+
+| Regel | Wert | Begründung |
+|---|---|---|
+| Rohwert | 100 − gewichtetes Mittel der Kennzahlen im Block „Finanzielle Verwundbarkeit“ des Risikoscores (`financial-health.ts` → `riskConstruct`) | gleiche Skalen, Profile, Profilkorrekturen und Prüfungen wie im Risikoscore; der Gesamt-Risikoscore fließt nicht ein |
+| Kennzahlen je Profil | Unternehmen: Nettoschulden/EBITDA, FCFF-Marge. Banken: CET1-Puffer, LCR, Kreditqualität. Versicherer: Solvenzquote. Spezialfinanzierer: Nettofinanzschulden/EK, Eigenkapitalrendite | |
+| Bilanz im Composite | Rang (Perzentil) des Rohwerts unter allen Titeln desselben Profils im Universum, ab 20 Titeln (`HEALTH_RANK_MIN`) | Die Risikoskalen markieren nur Auffälligkeiten (Rohwert-Median Unternehmen 82, Finanzwerte 90). Absolut übernommen hätten sie den Composite im Mittel um 4,9 Punkte gehoben (Kauf-Urteile 58 → 84). |
+| Ohne geprüfte Kennzahl oder ohne Verteilung | bisherige Bilanzrechnung, gekennzeichnet (`health_source`: `kennzahlen` bzw. `kennzahlen_ohne_rang`) | nie die absolute Skala |
+
+**Daten:**
+- Unternehmen: `risk_financial` aus derselben ROIC-Enterprise-Value-Zeile wie in der App (`roic.risk_financial`, Spiegel von `financialRiskInput`, kein zusätzlicher Abruf).
+- Finanzwerte: die Bilanzprüfung der Risikopipeline (`cf_risk_coverage.json`, `ts_bewertung.risikodaten`).
+
+**Verteilung:**
+- Scanner: zwei Durchgänge in `scanner-evaluate.ts`. Zuerst die Rohwerte aller frisch gerechneten Titel, ergänzt um übernommene Zeilen aus dem App-Rechenweg; dann der Rang.
+- Export: `health_raw` und `health_profile`.
+- App: dieselbe Verteilung aus dem Universum (`/api/health-distribution`).
+
+**Messung** (1.157 Vergleichstitel; `risk_financial` hier genähert aus dem Jahresabschluss in `daten/fundamentals`, im Lauf aus ROIC):
+- Rang bei 1.047 Titeln (Unternehmen 916, Banken 75, Spezialfinanzierer 56).
+- Ohne Rang 16: Versicherer, weil im Profil nur 16 geprüfte Werte vorliegen. Bisherige Rechnung bei 94.
+- Bilanz-Median 42 → 52 (P10 8 → 9, P90 55 → 90).
+- Composite: Abweichung Median 2 Punkte, Mittel +1,3.
+- Kauf-Urteile 58 → 72, „beobachten“ 145 → 150, „meiden“ 954 → 935.
+
+**Verzerrung:** Die verbleibende Anhebung kommt daher, dass die alte Bilanz nach unten verzerrt war: Median 42, weil feste Ersatzskalen und ein fehlender Liquiditätsgrad 50 bzw. niedrige Werte ergaben. Der Rang ist per Konstruktion mittig. Er bewertet relativ zum Profil; ein schwach finanziertes Profil insgesamt erscheint dadurch nicht schlechter.

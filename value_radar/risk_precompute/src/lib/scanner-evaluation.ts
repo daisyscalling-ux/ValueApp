@@ -28,8 +28,8 @@ export function displayUpside(fund:Fund&Row,fv:{upside_pct:number|null;capped:bo
  return fv.upside_pct;
 }
 
-export function scannerFields(input:Fund&Row){
- const e=evaluateStock({...input},null),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
+export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null){
+ const e=evaluateStock({...input},null,peerRows),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
  const check=input.valuation_data??valuationDataCheck(input),blocked=!!check.blocked;
  const upside=blocked?null:displayUpside(e.fund as Fund&Row,fv);
  const composite=blocked?null:e.scores.composite;
@@ -38,7 +38,9 @@ export function scannerFields(input:Fund&Row){
   composite:composite===null?null:Math.round(composite),
   fair_value:blocked?null:r2(fv.fair_value),upside:r1(upside),entry:blocked?null:r2(fv.entry_price),
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
-  valuation_issues:blocked?check.issues:[],fv_confidence:fv.confidence,fv_reliable:fv.reliable,
+  valuation_issues:blocked?check.issues:[],
+  peer_count:e.peerCount,composite_peer_metrics:Object.entries((e.scores as Row).metric_source??{}).filter(([,v])=>v==='peers').map(([k])=>k).sort(),
+  ev_ebitda_anchor:fv.ev_ebitda_anchor?.source??null,fv_confidence:fv.confidence,fv_reliable:fv.reliable,
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],
   kauf_urteil:kaufUrteil({blocked,fallback:fv.used_fallback,upside,quality:cats.quality??null,composite,valueTrap:!!e.scores.value_trap}),

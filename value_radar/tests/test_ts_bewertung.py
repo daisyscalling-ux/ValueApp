@@ -51,4 +51,17 @@ class AppRechenweg(unittest.TestCase):
         self.assertEqual(b['kauf_urteil'],'Daten prüfen');self.assertIsNone(b['fair_value']);self.assertIsNone(b['quantum']);self.assertTrue(b['valuation_issues'])
 
 
+    def test_peers_from_the_whole_universe(self):
+        peers=[{'ticker':f'ATHEX:P{i}','listing_symbol':f'ATHEX:P{i}','isin':f'GRS00000000{i}','name':f'Peer {i}','name_full':f'Peer {i}','currency':'EUR',
+                'sector':'Retail trade','industry':'Specialty stores','market_cap':3e9,'price':50,'eps_forward':2.5,'ev_ebitda':8+i,'pb':2+i/10,
+                'roe':12+i,'gross_margin':40+i,'revenue_growth':3+i,'net_debt_ebitda':0.5} for i in range(1,7)]
+        subject={**zeile('ATHEX:BELA',JUMBO),'listing_symbol':'ATHEX:BELA','isin':'GRS282183003','name':'Jumbo S.A.','currency':'EUR',
+                 'sector':'Retail trade','industry':'Specialty stores','market_cap':3.7e9}
+        rows=[subject,*peers]
+        st=T.anwenden(rows)
+        self.assertEqual(st['ts'],1)
+        self.assertGreaterEqual(subject['peer_count'],5);self.assertEqual(subject['ev_ebitda_anchor'],'peers')
+        self.assertIn('roe',subject['composite_peer_metrics'])
+        self.assertNotIn('scanner_method',peers[0],'retained rows are only peers, not re-evaluated')
+
 if __name__=='__main__':unittest.main()

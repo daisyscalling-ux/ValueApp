@@ -149,14 +149,15 @@ def main() -> int:
             _melde(f"[export] {i + 1}/{len(universum)} gescannt, "
                    f"{len(ergebnisse)} mit Daten, {verbraucht:.0f} min.")
 
-    # Bewertungsfelder aus dem App-Rechenweg (evaluateStock, TypeScript); siehe ts_bewertung.py.
-    import ts_bewertung
-    _melde(f"[export] Bewertung im App-Rechenweg: {ts_bewertung.anwenden(ergebnisse)}")
     refreshed = len(ergebnisse)
     observed = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     ergebnisse = combine(universum, saved, ergebnisse, {r["ticker"] for r in identity_rejected}, observed)
     for r in ergebnisse:
         r["index_membership"] = mitglied.get(r["ticker"], [])
+    # Bewertungsfelder aus dem App-Rechenweg (evaluateStock, TypeScript), Peers aus dem kompletten Universum
+    # (frische und uebernommene Zeilen); siehe ts_bewertung.py.
+    import ts_bewertung
+    _melde(f"[export] Bewertung im App-Rechenweg: {ts_bewertung.anwenden(ergebnisse)}")
     # EBITDA-Marge: gekennzeichneter Ersatz aus dem eigenen Jahresabschluss, nur wenn ROIC keine liefert.
     import ebitda_margin_fallback
     _melde(f"[export] EBITDA-Marge aus Jahresabschluss ergaenzt: {ebitda_margin_fallback.apply(ergebnisse, Path(__file__).resolve().parent / 'daten' / 'fundamentals')}")

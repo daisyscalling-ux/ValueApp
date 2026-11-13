@@ -393,3 +393,24 @@ Feld oder Ausnahme.
 Restabweichung: Unternehmensphasen (nur App). Sie entfällt mit dem einheitlichen Rechenweg (`BEWERTUNG_RISIKODATEN.md`).
 
 *Wirkung im Scanner* (304 Titel mit neuem Playbook, 241 Finanzwerte, 63 zyklisch): Fair Value ändert sich im Median um 19,5 % (P90 54,9 %), Quantum um 5,0 Punkte (P90 17,3). Mittlerer Upside der Finanzwerte −3,9 % → −7,9 %. Kauf-Urteil (Näherung ohne Datenqualitätsstufe): 5 bleiben „kauf“, 5 werden neu „kauf“, 4 verlieren es. Verzerrung: Das alte Playbook ließ Finanzwerte im Mittel günstiger erscheinen, weil DCF und EV/EBITDA bei Bankbilanzen nicht passen.
+
+## K52 — 52-Wochen-Band aus den ältesten statt den jüngsten Kursen
+**behoben 13.11.2026**
+
+`roic.schlusskurse` fragte `prices_history(limit=260, order="ASC")` ab. Aufsteigend sortiert mit Limit liefert ROIC die **ältesten** 260 Kurse der verfügbaren Historie. `providers.get_fundamentals` (tiefer Pfad, also der Cloudflare-Export) leitete daraus `52w_high` und `52w_low` ab. Das Band war dadurch Jahre alt und zudem dividendenbereinigt, während der aktuelle Kurs unbereinigt ist.
+
+*Messung* (`cf_universum.json` vom 13.11.2026, 1.340 Titel): Der Kurs lag bei **677 Titeln mehr als 5 % über dem „52-Wochen-Hoch“** und bei 201 mehr als 5 % unter dem Tief. Nur 462 Titel lagen im Band. Im Universum vom Vortag war es genauso (679 / 199 / 462).
+
+Betroffen waren:
+- die Momentum-Kategorie des Composite (Lage im Band);
+- die Momentum-Schätzung im 12M-Ziel;
+- das Value-Trap-Signal „fallendes Messer“ im Quantum.
+
+Seit dem App-Rechenweg (13.11.2026) sperrt die Datenprüfung der App Titel mit einem Kurs über dem Doppelten des Hochs („Daten prüfen“, 203 Titel). Die Fälle zwischen 5 % und Faktor 2 liefen weiter unbemerkt durch.
+
+*Behoben:*
+- `schlusskurse` holt `order="DESC"` und dreht die Reihenfolge um; die beiden Aufrufer wollen die jüngsten Kurse.
+- Das Band nutzt unbereinigte Schlusskurse (`adjustiert=False`).
+- Der jüngste Kurs muss höchstens 10 Tage alt sein (`_band_aktuell`), sonst bleibt das Band aus ROIC leer.
+
+Test: `tests/test_roic_52w.py`. Wirksam ab dem nächsten precompute-3tage-Lauf. Erwartet: deutlich weniger Titel außerhalb des Bands, weniger „Daten prüfen“; Momentum und 12M-Ziel ändern sich bei den betroffenen Titeln.

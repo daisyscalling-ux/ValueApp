@@ -495,11 +495,15 @@ def prices_history(t: str, von: str = None, bis: str = None,
 
 
 def schlusskurse(t: str, tage: int = 260, adjustiert: bool = True):
-    """Schlusskurse als [(datum, kurs)], aelteste zuerst.
+    """Die JUENGSTEN `tage` Schlusskurse als [(datum, kurs)], aelteste zuerst.
 
     adj_close beruecksichtigt Splits und Dividenden - fuer Renditen ueber
-    laengere Zeitraeume ist das die richtige Reihe."""
-    reihen = prices_history(t, limit=tage, order="ASC")
+    laengere Zeitraeume ist das die richtige Reihe. Fuer Kursbaender gegen den
+    aktuellen Kurs adjustiert=False (unbereinigte Schlusskurse).
+
+    Fehler bis 13.11.2026: order="ASC" mit limit lieferte die AELTESTEN Kurse der
+    verfuegbaren Historie; das 52-Wochen-Band war dadurch Jahre alt (Befund K52)."""
+    reihen = list(reversed(prices_history(t, limit=tage, order="DESC") or []))
     feld = "adj_close" if adjustiert else "close"
     out = []
     for z in reihen or []:

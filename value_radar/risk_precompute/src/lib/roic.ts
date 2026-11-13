@@ -1,5 +1,5 @@
 import { applySupplement } from './fundamental-supplement';
-import { normalizeFinancialRows, valuationDataCheck } from './valuation-data';
+import { normalizeFinancialRows, normalizeMarketCap, valuationDataCheck } from './valuation-data';
 import {financialRiskInput} from './risk-score';
 /**
  * roic.ts - Datenanbindung: rohe roic-API-Antworten -> Fund-Objekt.
@@ -400,6 +400,7 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   }
 
   applySupplement(out, raw);
+  normalizeMarketCap(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
   out.valuation_data = valuationDataCheck(out, raw);
   const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(out)) {

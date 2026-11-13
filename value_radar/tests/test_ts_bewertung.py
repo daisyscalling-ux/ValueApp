@@ -34,6 +34,22 @@ class Eingabe(unittest.TestCase):
         d=T.eingabe({'_ist_zyklisch':True,'_zyklus_diagnose':diag})
         self.assertNotIn('_ist_zyklisch',d);self.assertEqual(d['_cyclicality'],z)
 
+    def test_annual_share_count_only_for_the_same_listing(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            datei={'schema':1,'symbol':'NASDAQ:MU','annual':{'end':'2025-08-28','currency':'USD','source':'Yahoo annual statements',
+                   'fields':{'weighted_shares':1.12e9,'revenue':3.7e10}},'market':{'currency':'USD','fields':{'price':1}},'share_basis':None}
+            Path(d,'NASDAQ_MU.json').write_text(json.dumps(datei));Path(d,'NASDAQ_AMD.json').write_text(json.dumps({**datei,'symbol':'NASDAQ:MUX'}))
+            e=T.ersatzdaten({'listing_symbol':'NASDAQ:MU','ticker':'MU'},d)
+            self.assertEqual(e['_supplement_symbol'],'NASDAQ:MU')
+            self.assertEqual(e['_fundamental_supplement']['annual']['fields'],{'weighted_shares':1.12e9},'only the share count is passed')
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'NASDAQ:AMD'},d),{},'file of another listing')
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'NYSE:XX'},d),{},'no file')
+            Path(d,'NYSE_NA.json').write_text(json.dumps({**datei,'symbol':'NYSE:NA','annual':None}))
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'NYSE:NA'},d),{},'no annual block')
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'../x'},d),{},'path characters are replaced')
+            ein=T.eingabe({**JUMBO,**e});self.assertIn('_fundamental_supplement',ein);self.assertIn('_supplement_symbol',ein)
+
     def test_without_ts_build_python_values_stay_and_are_marked(self):
         rows=[zeile('A',JUMBO),{'ticker':'B','composite':40}]
         st=T.anwenden(rows,js='/nicht/vorhanden.mjs')
@@ -63,6 +79,24 @@ class AppRechenweg(unittest.TestCase):
         self.assertEqual(b['valuation_check_inputs']['price'],80.0);self.assertEqual(b['valuation_check_inputs']['52w_high'],28.7)
         self.assertNotIn('valuation_check_inputs',a)
 
+
+    def test_market_cap_price_times_shares_with_annual_check(self):
+        import json
+        # Micron 13.11.2026: ROIC-Boersenwert zum Stichtag 2025-08-28 (130 Mrd.), Kurs x Aktien 873 Mrd. USD
+        mu={**JUMBO,'ticker':'NASDAQ:MU','currency':'USD','price':778.31,'shares_out':1.122e9,'market_cap':130.16e9,'52w_high':1183,'52w_low':196,
+            'risk_financial':{'asof':'2025-08-28','currency':'USD','source':'ROIC Enterprise Value · dieselbe Berichtszeile'}}
+        datei={'schema':1,'symbol':'NASDAQ:MU','annual':{'end':'2025-08-28','currency':'USD','source':'Yahoo annual statements','fields':{'weighted_shares':1.12e9}},
+               'market':{'currency':'USD'},'share_basis':None}
+        with tempfile.TemporaryDirectory() as d:
+            Path(d,'NASDAQ_MU.json').write_text(json.dumps(datei))
+            mit=[{**zeile('NASDAQ:MU',mu),'listing_symbol':'NASDAQ:MU'}];ohne=[{**zeile('NASDAQ:MU',mu),'listing_symbol':'NASDAQ:MU'}]
+            T.anwenden(mit,risiko={},ordner=d);T.anwenden(ohne,risiko={},ordner=tempfile.gettempdir()+'/leer-nicht-vorhanden')
+            Path(d,'NASDAQ_MU.json').write_text(json.dumps({**datei,'annual':{**datei['annual'],'fields':{'weighted_shares':4e9}}}))
+            falsch=[{**zeile('NASDAQ:MU',mu),'listing_symbol':'NASDAQ:MU'}];T.anwenden(falsch,risiko={},ordner=d)
+        self.assertNotEqual(mit[0]['kauf_urteil'],'Daten prüfen');self.assertEqual(mit[0]['market_cap_source'],'kurs_x_aktien')
+        self.assertAlmostEqual(mit[0]['market_cap'],778.31*1.122e9,delta=1)
+        self.assertEqual(ohne[0]['kauf_urteil'],'Daten prüfen','without annual report the stale provider value stays the yardstick')
+        self.assertEqual(falsch[0]['kauf_urteil'],'Daten prüfen');self.assertIn('Jahresabschluss',' '.join(falsch[0]['valuation_issues']))
 
     def test_peers_from_the_whole_universe(self):
         peers=[{'ticker':f'ATHEX:P{i}','listing_symbol':f'ATHEX:P{i}','isin':f'GRS00000000{i}','name':f'Peer {i}','name_full':f'Peer {i}','currency':'EUR',

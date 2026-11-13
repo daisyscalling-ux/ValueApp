@@ -6,7 +6,7 @@
  */
 import {evaluateStock} from './evaluation';
 import {analystTarget,type Fund} from './valuation';
-import {valuationDataCheck} from './valuation-data';
+import {valuationDataCheck,normalizeMarketCap} from './valuation-data';
 import type {HealthDistribution} from './financial-health';
 
 export const SCANNER_METHOD='ts-evaluate-v1';
@@ -31,7 +31,8 @@ export function displayUpside(fund:Fund&Row,fv:{upside_pct:number|null;capped:bo
 
 export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCoverage:Row|null=null,healthDistribution:HealthDistribution|null=null){
  const e=evaluateStock({...input},null,peerRows,riskCoverage,healthDistribution),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
- const check=input.valuation_data??valuationDataCheck(input),blocked=!!check.blocked;
+ const norm={...input};normalizeMarketCap(norm,input._fundamental_supplement??null,Date.now(),input._supplement_symbol??'');
+ const check=input.valuation_data??valuationDataCheck(norm),blocked=!!check.blocked;
  const upside=blocked?null:displayUpside(e.fund as Fund&Row,fv);
  const composite=blocked?null:e.scores.composite;
  return {
@@ -40,6 +41,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   fair_value:blocked?null:r2(fv.fair_value),upside:r1(upside),entry:blocked?null:r2(fv.entry_price),
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
   valuation_issues:blocked?check.issues:[],
+  market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,
   peer_count:e.peerCount,composite_peer_metrics:Object.entries((e.scores as Row).metric_source??{}).filter(([,v])=>v==='peers').map(([k])=>k).sort(),
   ev_ebitda_anchor:fv.ev_ebitda_anchor?.source??null,
   health_source:(e.scores as Row)._health_source??null,health_raw:(e.scores as Row)._health_raw??null,health_profile:(e.scores as Row)._health_profile??null,health_parts:((e.scores as Row)._health_risk?.parts??[]).map((p:Row)=>p.name),

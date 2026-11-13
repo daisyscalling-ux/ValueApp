@@ -41,7 +41,7 @@
   {
    "app": "src/lib/evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
-   "sha256": "2e172f4aa88173ea05fb9a0b1ffbae314238510d057b6af36f36375c0b274d05"
+   "sha256": "dc9ba5b0046677adc3aadf90efa670ff8b4cce6efaf48c7d6e4cb41929a5b457"
   },
   {
    "app": "src/lib/financial-health.ts",
@@ -106,7 +106,7 @@
   {
    "app": "src/lib/scanner-evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/scanner-evaluation.ts",
-   "sha256": "598fa99b9c627c65b57ca113124bbfac28efa037425b083038e324b58f681e9d"
+   "sha256": "427da8e7c0489c9a983754f8f17d4c21dac9ab58de2c335dd65ca8e9acdede74"
   },
   {
    "app": "src/lib/scores.ts",
@@ -126,7 +126,7 @@
   {
    "app": "src/lib/valuation-data.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/valuation-data.ts",
-   "sha256": "38c2fdb4865fd9aab1a413cc70c45ddfb2a991ed85e7ab72023a913b7b9a4f74"
+   "sha256": "4c311bc0d723592b62ddfcb3130202b79f1c18b1cb7e233d265e2747523fdf70"
   },
   {
    "app": "src/lib/valuation-risk.ts",
@@ -192,7 +192,7 @@
   {
    "app": "src/lib/roic.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
-   "sha256": "e904d19ab550a98a6a7a31d6c5e3cdff72a0ee237294b8d160157b077dd336b4"
+   "sha256": "0da165848ded25bad59b66f3bfa53c19464d8a7f72e4b47dd893f0c92929fc67"
   },
   {
    "app": "src/lib/fundamental-supplement.ts",

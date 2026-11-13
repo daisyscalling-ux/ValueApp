@@ -52,6 +52,12 @@ Die Phase ist bei 453 Titeln „unknown“, weil die Pipeline-Daten keine Phasen
 - **Python-Teile außerhalb des Scanners:** Streamlit, E-Mail, Screener, Radar und Backtests rechnen weiter mit der Python-Fassung.
 - **Kopien:** Die Kopien unter `risk_precompute/src/lib` müssen identisch mit valueapp-cf bleiben (Arbeitsstandard).
 
+## Diagnose gesperrter Bewertungen (13.11.2026)
+
+Sperrt die Datenprüfung der App eine Zeile („Daten prüfen“), schreibt der Export die Rohwerte und ihre Herkunft unter `valuation_check_inputs` mit: Kurs, Währung, Aktienzahl, Börsenwert, Enterprise Value, 52-Wochen-Band, EPS, Quelle, ROIC-Felder, Umrechnungsfaktor, Pence-Normalisierung. Diese Werte fließen in keine Rechnung.
+
+Anlass: Am 13.11.2026 passte bei 52 Titeln der Börsenwert nicht zu Kurs × Aktienzahl (Faktor > 2). Das Universum enthielt die Aktienzahl nicht, die Ursache war ohne neuen Abruf nicht bestimmbar.
+
 ## Peers im Composite und im EV/EBITDA-Multiple (13.11.2026)
 
 Erste Risikodaten in der Bewertung. Peers sind dieselbe Auswahl wie im Peer-Vergleich und im Risikoscore (`selectPeers`, bis zu 8 Titel aus `cf_universum.json`). Im Scanner wählt der App-Code sie aus dem kompletten Exportuniversum, frischen und übernommenen Zeilen.

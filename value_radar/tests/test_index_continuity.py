@@ -122,7 +122,7 @@ class ExportTaggingTests(unittest.TestCase):
         precompute.ersetze_pence_durch_adr.side_effect = lambda x: [precompute.PENCE_ZU_ADR.get(t, t) for t in x]
         precompute.filter_boersen.side_effect = lambda x: x
         precompute.collapse_listings.side_effect = lambda x: x
-        precompute.score_ticker.side_effect = lambda t, deep=True: {'ticker': t, 'price': 1, 'listing_symbol': None}
+        precompute.score_ticker.side_effect = lambda t, deep=True, mit_eingabe=False: {'ticker': t, 'price': 1, 'listing_symbol': None}
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / 'out.json'
             with patch.dict('sys.modules', {'roic': roic, 'precompute': precompute}), patch.object(export_cf, 'AUSGABE', target), \

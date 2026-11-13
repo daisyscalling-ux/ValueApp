@@ -181,8 +181,9 @@ def _fuer_sektormessung(f: dict) -> None:
     })
 
 
-def score_ticker(t: str, deep: bool = True) -> dict | None:
-    """Kennzahlen fuer einen Ticker - identische Logik wie in der App."""
+def score_ticker(t: str, deep: bool = True, mit_eingabe: bool = False) -> dict | None:
+    """Kennzahlen fuer einen Ticker. mit_eingabe=True haengt die Eingangsdaten fuer den App-Rechenweg an
+    (_ts_input, nur fuer export_cf.py; ts_bewertung.anwenden entfernt das Feld wieder)."""
     try:
         f = providers.get_fundamentals(t, deep=deep)
         _fuer_sektormessung(f)
@@ -281,7 +282,12 @@ def score_ticker(t: str, deep: bool = True) -> dict | None:
         pass
 
     from peer_metadata import export_metadata
+    _ts = {}
+    if mit_eingabe:
+        import ts_bewertung
+        _ts = {"_ts_input": ts_bewertung.eingabe(f, analyst)}
     return {
+        **_ts,
         **export_metadata(f),
         "ticker": t,
         "_quelle": _quelle,

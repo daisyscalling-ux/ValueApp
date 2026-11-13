@@ -20,6 +20,11 @@ on:
       - 'value_radar/index_membership.py'
       - 'value_radar/sp500_liste.txt'
       - 'value_radar/roic.py'
+      - 'value_radar/ts_bewertung.py'
+      - 'value_radar/precompute.py'
+      - 'value_radar/tests/test_ts_bewertung.py'
+      - 'value_radar/risk_precompute/scanner-evaluate.ts'
+      - 'value_radar/risk_precompute/src/lib/**'
   schedule:
     - cron: "17 1 * * *"    # daily
   workflow_dispatch: {}
@@ -41,6 +46,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: App-Rechenweg bauen und pruefen
+        run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/scanner-evaluate.ts --bundle --platform=node --format=esm --outfile=value_radar/risk_precompute/.build/scanner-evaluate.mjs
+      - working-directory: value_radar
+        env:
+          SCANNER_EVAL_JS: ${{ github.workspace }}/value_radar/risk_precompute/.build/scanner-evaluate.mjs
+        run: python -m unittest discover -s tests -p test_ts_bewertung.py -v
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p 'test_*continuity.py' -v
       - working-directory: value_radar
@@ -92,10 +103,14 @@ jobs:
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
         run: python precompute.py
 
+      # 2a) Bewertung im App-Rechenweg (evaluateStock) bauen; export_cf.py ruft ihn ueber ts_bewertung.py auf
+      - name: App-Rechenweg bauen
+        run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/scanner-evaluate.ts --bundle --platform=node --format=esm --outfile=value_radar/risk_precompute/.build/scanner-evaluate.mjs
       # 2) Cloudflare-Export (JSON) - dasselbe Universum, schlank
       - name: Cloudflare-JSON exportieren
         working-directory: value_radar
         env:
+          SCANNER_EVAL_JS: ${{ github.workspace }}/value_radar/risk_precompute/.build/scanner-evaluate.mjs
           EXPORT_BUDGET_MIN: "160"
           NETZ_TIMEOUT_S: "20"
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}

@@ -89,6 +89,17 @@ Kauf-Urteile 58 → 56, „beobachten“ 130 → 156, „meiden“ 969 → 945.
 
 **Grenze:** Die Peer-Werte stammen aus dem Export (Pipeline-Daten), die eigenen Werte in der Einzelanalyse aus dem ROIC-Bundle. Die Einheiten sind gleich, die Quellen verschieden (siehe Abschnitt „Grenzen“).
 
+## Messung des Datenwegs (13.11.2026)
+
+Scanner und Einzelanalyse rechnen gleich, holen ihre Daten aber verschieden: die Pipeline über `providers.py`, die App über das ROIC-Bundle.
+
+Workflow `bundle-compare` (nur manuell):
+1. Er ruft für eine feste Stichprobe (Standard 50, sortiert nach SHA-256 der Notierung) dasselbe Rohdaten-Bundle ab wie die Einzelanalyse (`worker/bundle-fetch.ts`, Kopie aus valueapp-cf).
+2. Er formt es mit `bundleLight` zum Fund und bewertet es mit `scannerFields`, mit denselben Peers, derselben Bilanzprüfung und derselben Verteilung.
+3. Er vergleicht Eingänge (Kurs, 52-Wochen-Band, EPS, Kursziel, Wachstum, Eigenkapitalrendite, EV/EBITDA, Börsenwert) und Ergebnisse (Playbook, Composite, Fair Value, Upside, Quantum, 12M-Ziel, Bilanz, Kauf-Urteil) mit den Scanner-Zeilen.
+
+Er schreibt nichts ins Repo; das Ergebnis liegt als Artefakt vor. Abrufe je Lauf bei 50 Titeln: 450 ROIC, 200 Finnhub, 50 FMP. Auf dieser Grundlage entscheidet der Nutzer, ob der Scanner dauerhaft das App-Bundle nutzt.
+
 ## Historie im DCF: mehrjährige Cash-Conversion (13.11.2026)
 
 Der DCF normalisiert den freien Cashflow als Jahresüberschuss × Cash-Conversion (`fcfBasis`). Die Conversion wurde bisher nie gesetzt; der DCF rechnete deshalb immer mit dem gemeldeten FCF eines Jahres.

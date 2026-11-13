@@ -188,6 +188,26 @@
      "'./market-proxies.json'"
     ]
    ]
+  },
+  {
+   "app": "src/lib/roic.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
+   "sha256": "e904d19ab550a98a6a7a31d6c5e3cdff72a0ee237294b8d160157b077dd336b4"
+  },
+  {
+   "app": "src/lib/fundamental-supplement.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/fundamental-supplement.ts",
+   "sha256": "f5273211dc07adf2abb54bb808a7689ee682cd76ccd30f5ae0d3a1200e848362"
+  },
+  {
+   "app": "src/lib/phase-data.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/phase-data.ts",
+   "sha256": "43116cd93f4b95623e822cad97000001ba6d8ef3b2be9bc5227b0a5f339ac20a"
+  },
+  {
+   "app": "worker/bundle-fetch.ts",
+   "pipeline": "value_radar/risk_precompute/worker/bundle-fetch.ts",
+   "sha256": "8d672e53ba2ee8e2f1d5d0a4c38405ab8e6f3628ce570ebb571a961b0a96da4d"
   }
  ]
 }

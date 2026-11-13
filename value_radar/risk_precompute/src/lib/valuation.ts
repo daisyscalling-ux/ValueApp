@@ -40,6 +40,8 @@ export interface Fund {
   surprise_median?: number | null; surprise_beat_quote?: number | null;
   '52w_high'?: number | null; '52w_low'?: number | null;
   _ist_zyklisch?: boolean; currency?: string;
+  /** Datenbasierte Zyklik der Pipeline (cf_universum.json: cyclicality), Pruefung in dataCyclical. */
+  _cyclicality?: { method?: string; margins?: number[]; cv?: number; cyclical?: boolean } | null;
   /** Gepruefte Volatilitaet (letzte 252 Handelstage, annualisiert) aus der bereinigten Kurshistorie des Risikoscores. */
   _measured_vol?: { vol: number; last: string; observations: number; short: boolean } | null;
   /** Herkunft der Cash-Conversion (cash-conversion.ts), z. B. '5 Geschaeftsjahre bis 2025-12-31, ROIC'. */
@@ -103,10 +105,28 @@ export function normalisierenSektor(name: string | null | undefined): string {
 }
 
 
+/** Datenbasierte Zyklik (seit 13.11.2026, Entscheidung des Nutzers): Variationskoeffizient der Nettomarge ueber
+ *  mindestens vier Geschaeftsjahre > 0,40 (Pipeline valuation.zyklisch_aus_margen, ROIC-Historie). Beim Lesen aus der
+ *  Margenreihe nachgerechnet. Nicht fuer Finanzwerte (Margen dort ohne Aussage) und defensive Sektoren (wie die
+ *  Branchenregel). Ersetzt das ungepruefte Flag _ist_zyklisch. */
+export const CYCLICALITY_METHOD = "margin_cv_v1", CYCLICALITY_THRESHOLD = 0.40;
+export function dataCyclical(fund: Fund): boolean {
+  const c = fund._cyclicality;
+  if (!c || c.method !== CYCLICALITY_METHOD || !Array.isArray(c.margins)) return false;
+  const xs = c.margins.filter((m): m is number => typeof m === "number" && Number.isFinite(m));
+  if (xs.length < 4 || xs.length !== c.margins.length) return false;
+  const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+  if (Math.abs(mean) < 0.001) return false;
+  const cv = Math.sqrt(xs.reduce((a, m) => a + (m - mean) ** 2, 0) / xs.length) / Math.abs(mean);
+  if (typeof c.cv !== "number" || Math.abs(cv - c.cv) > 0.01 || !(cv > CYCLICALITY_THRESHOLD)) return false;
+  const sector = normalisierenSektor(fund.sector);
+  return sector !== "Financial Services" && !DEFENSIVE_SECTORS.has(sector);
+}
+
 export function classifyPlaybook(fund: Fund): Playbook {
   const sector = normalisierenSektor(fund.sector);
   const industry = (fund.industry ?? "").toLowerCase();
-  if (fund._ist_zyklisch) return "cyclical";
+  if (dataCyclical(fund)) return "cyclical";
   if (sector === "Financial Services" && !paymentNetwork(fund)) return "financial";
   if (!DEFENSIVE_SECTORS.has(sector)) {
     if (CYCLICAL_SECTORS.has(sector) ||
@@ -579,7 +599,7 @@ export function fairValue(
   if ((fund.free_cashflow ?? 0) < 0) riskAdd += 0.04;
   const cr = fund.current_ratio;
   if (cr !== null && cr !== undefined && cr < 1.0) riskAdd += 0.03;
-  if (fund._ist_zyklisch) riskAdd += 0.03;
+  if (dataCyclical(fund)) riskAdd += 0.03;
   mos = Math.min(mos + riskAdd, 0.55);
   const entry = fv ? fv * (1 - mos) : null;
 

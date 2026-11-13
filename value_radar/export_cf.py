@@ -47,6 +47,8 @@ EXPORT_FELDER = (
     # Fuer die Einzelanalyse-Kursziele (das, was CF sonst fehlt):
     "target_mean", "eps_forward", "eps_trailing", "beta",
     "52w_high", "52w_low", "hist_pe_median",
+    # Datenbasierte Zyklik (valuation.ts, dataCyclical), seit 13.11.2026
+    "cyclicality",
 )
 EXPORT_FELDER = tuple(dict.fromkeys(EXPORT_FELDER + PEER_FIELDS))
 

@@ -124,7 +124,7 @@ def main() -> int:
             break
         attempted += 1
         try:
-            row = precompute.score_ticker(ticker, deep=True)
+            row = precompute.score_ticker(ticker, deep=True, mit_eingabe=True)
         except Exception:
             row = None
         if not row or not row.get("price"):
@@ -135,6 +135,8 @@ def main() -> int:
             continue
         # Nur die Export-Felder behalten
         schlank = {k: row.get(k) for k in EXPORT_FELDER if k in row}
+        if isinstance(row.get('_ts_input'), dict):
+            schlank['_ts_input'] = row['_ts_input']   # nur bis ts_bewertung.anwenden
         # Falls score_ticker den Ticker anders benennt, sicherstellen
         schlank["ticker"] = ticker
         schlank = apply_reference(schlank)
@@ -147,6 +149,9 @@ def main() -> int:
             _melde(f"[export] {i + 1}/{len(universum)} gescannt, "
                    f"{len(ergebnisse)} mit Daten, {verbraucht:.0f} min.")
 
+    # Bewertungsfelder aus dem App-Rechenweg (evaluateStock, TypeScript); siehe ts_bewertung.py.
+    import ts_bewertung
+    _melde(f"[export] Bewertung im App-Rechenweg: {ts_bewertung.anwenden(ergebnisse)}")
     refreshed = len(ergebnisse)
     observed = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     ergebnisse = combine(universum, saved, ergebnisse, {r["ticker"] for r in identity_rejected}, observed)

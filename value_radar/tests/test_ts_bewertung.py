@@ -22,8 +22,17 @@ class Eingabe(unittest.TestCase):
                      '_ist_zyklisch':True,'obj':object(),'_roic_fx':0.0065,'market_cap':5e9},{'buy':3,'hold':1,'sell':0})
         self.assertEqual(d['_pruef_eingang'],{'market_cap':5e9,'_quelle':'roic','_roic_fx':0.0065,'price':None})
         self.assertIsNone(d['price']);self.assertIsNone(d['x']);self.assertIsNone(d['reihe_ebitda'][0]['wert']);self.assertIsNone(d['obj'])
-        self.assertNotIn('_quelle',d);self.assertEqual(d['_analyst_trend'],{'richtung':'fallend'});self.assertTrue(d['_ist_zyklisch'])
+        self.assertNotIn('_quelle',d);self.assertEqual(d['_analyst_trend'],{'richtung':'fallend'});self.assertNotIn('_ist_zyklisch',d,'unchecked flag replaced by _cyclicality (13.11.2026)')
         self.assertEqual((d['analyst_buy'],d['analyst_hold'],d['analyst_sell']),(3,1,0))
+
+    def test_cyclicality_with_margin_series_old_flag_dropped(self):
+        import valuation
+        diag=valuation.zyklisch_aus_margen([0.28,-0.15,0.05,0.30,0.10])
+        z=T.zyklik(diag)
+        self.assertEqual((z['method'],z['cyclical'],z['years'],len(z['margins'])),('margin_cv_v1',True,5,5))
+        self.assertIsNone(T.zyklik({'zyklisch':True}),'without margin series nothing is passed')
+        d=T.eingabe({'_ist_zyklisch':True,'_zyklus_diagnose':diag})
+        self.assertNotIn('_ist_zyklisch',d);self.assertEqual(d['_cyclicality'],z)
 
     def test_without_ts_build_python_values_stay_and_are_marked(self):
         rows=[zeile('A',JUMBO),{'ticker':'B','composite':40}]
@@ -94,5 +103,13 @@ class AppRechenweg(unittest.TestCase):
         self.assertEqual(c[0]['health_source'],'risiko_rang')
         # 26 Werte (25 uebernommene + eigener), zwei Gleichstaende bei 0: (0 + 0,5 x 2) / 26 = 3,8 %
         self.assertAlmostEqual(c[0]['health'],3.8)
+
+    def test_data_cyclicality_in_scanner_with_sector_exclusions(self):
+        import valuation
+        diag=valuation.zyklisch_aus_margen([0.28,-0.15,0.05,0.30,0.10])
+        a=[{**zeile('ATHEX:BELA',{**JUMBO,'_zyklus_diagnose':diag}),'listing_symbol':'ATHEX:BELA'}]
+        b=[{**zeile('ATHEX:BELA',{**JUMBO,'_zyklus_diagnose':diag,'sector':'Utilities'}),'listing_symbol':'ATHEX:BELA'}]
+        T.anwenden(a,risiko={});T.anwenden(b,risiko={})
+        self.assertEqual(a[0]['playbook'],'cyclical');self.assertEqual(b[0]['playbook'],'quality','defensive sector excluded')
 
 if __name__=='__main__':unittest.main()

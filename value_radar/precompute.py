@@ -352,6 +352,8 @@ def score_ticker(t: str, deep: bool = True, mit_eingabe: bool = False) -> dict |
         "gross_margin": (round(f["gross_margin"] * 100, 1)
                          if f.get("gross_margin") is not None else None),
         "net_debt_ebitda": f.get("net_debt_ebitda"),
+        # Datenbasierte Zyklik mit Margenreihe (fuer die Einzelanalyse ueber /api/peers, gleiche Pruefung wie im Scanner)
+        "cyclicality": __import__("ts_bewertung").zyklik(f.get("_zyklus_diagnose")),
     }
 
 

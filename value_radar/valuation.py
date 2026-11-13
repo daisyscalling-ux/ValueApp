@@ -212,6 +212,8 @@ def zyklisch_aus_margen(margen, aktuelle_marge=None,
                            if aktuelle_marge is not None else None),
         "gipfelverdacht": bool(vk > schwelle and gipfel),
         "jahre": len(xs),
+        # Margenreihe fuer die erneute Pruefung in App und Scanner (valuation.ts, dataCyclical), seit 13.11.2026.
+        "margen": [round(m, 6) for m in xs],
         "grund": (f"Margen schwanken um {vk:.0%} des Schnitts"
                   if vk > schwelle else
                   f"Margen stabil ({vk:.0%} Schwankung)"),

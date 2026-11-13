@@ -106,6 +106,24 @@ Workflow `bundle-compare` (nur manuell):
 
 Er schreibt nichts ins Repo; das Ergebnis liegt als Artefakt vor. Abrufe je Lauf bei 50 Titeln: 450 ROIC, 200 Finnhub, 50 FMP. Auf dieser Grundlage entscheidet der Nutzer, ob der Scanner dauerhaft das App-Bundle nutzt.
 
+## Datenbasierte Zyklik in Scanner und Einzelanalyse (13.11.2026)
+
+Befund aus `bundle-compare`: Der Scanner stufte 398 Titel zusätzlich als zyklisch ein, weil ihre Nettomarge über 10 Jahre stark schwankt (`zyklisch_aus_margen`, Variationskoeffizient > 0,40, ROIC-Historie; Flag `_ist_zyklisch`). Die Einzelanalyse kannte das Merkmal nicht. Zyklisch heißt: kein DCF, EV/EBITDA auf 8,5x gedeckelt, Sicherheitsabschlag + 3 Prozentpunkte.
+
+Entscheidung des Nutzers: das Merkmal in beiden Wegen, aber nicht für Finanzwerte und defensive Sektoren.
+
+| Regel | Wert |
+|---|---|
+| Daten | `cyclicality` je Universumszeile: Methode `margin_cv_v1`, Margenreihe, Variationskoeffizient, Jahre |
+| Prüfung beim Lesen (`dataCyclical`, valuation.ts) | Variationskoeffizient aus der Margenreihe nachgerechnet (mindestens 4 Jahre, gespeicherter Wert höchstens 0,01 daneben), Schwelle > 0,40 |
+| Ausnahmen | Finanzwerte (Margen ohne Aussage), Versorger, Basiskonsum, Gesundheit (wie die Branchenregel) |
+| Altes Flag `_ist_zyklisch` | entscheidet nicht mehr und wird nicht weitergegeben |
+| Einzelanalyse | liest `cyclicality` aus der eigenen Universumszeile (`/api/peers`, `universeRow`, nur bei gleicher Notierung oder ISIN) |
+
+**Wirkung** (Universum vom 13.11.2026): Von 398 Titeln, die nur über das Merkmal zyklisch waren, bleiben 208 zyklisch, jetzt auch in der Einzelanalyse. 190 entfallen: Finanzwerte 96, Gesundheit 43, Versorger 31, Basiskonsum 20. Diese laufen im Finanz-Playbook bzw. „quality“.
+
+**Verzerrung:** Das zyklische Playbook bewertet vorsichtiger. Der Wegfall bei Finanzwerten und defensiven Sektoren hebt deren Fair Values tendenziell an. Dort ist eine schwankende Nettomarge aber meist keine Konjunkturzyklik (Rückstellungen, Sondereffekte).
+
 ## Historie im DCF: mehrjährige Cash-Conversion (13.11.2026)
 
 Der DCF normalisiert den freien Cashflow als Jahresüberschuss × Cash-Conversion (`fcfBasis`). Die Conversion wurde bisher nie gesetzt; der DCF rechnete deshalb immer mit dem gemeldeten FCF eines Jahres.

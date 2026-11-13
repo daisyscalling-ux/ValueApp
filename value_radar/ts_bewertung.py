@@ -17,7 +17,7 @@ FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_va
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil",
           "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile")
-PRIVAT_ERLAUBT = {"_analyst_trend", "_ist_zyklisch", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang"}
+PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality"}
 
 
 def _sauber(x):
@@ -42,10 +42,25 @@ DIAGNOSE = ("price", "currency", "shares_out", "market_cap", "enterprise_value",
             "_quelle", "_roic_fx", "_roic_felder", "_pence_normalised", "_src")
 
 
+ZYKLIK_METHODE = "margin_cv_v1"
+
+
+def zyklik(diagnose):
+    """Datenbasierte Zyklik fuer App und Scanner (valuation.ts, dataCyclical prueft erneut und schliesst Finanzwerte
+    und defensive Sektoren aus). Nur mit Margenreihe; das alte Flag _ist_zyklisch wird nicht mehr weitergegeben."""
+    if not isinstance(diagnose, dict) or not isinstance(diagnose.get("margen"), list):
+        return None
+    return {"method": ZYKLIK_METHODE, "margins": _sauber(diagnose["margen"]), "cv": _sauber(diagnose.get("variationskoeffizient")),
+            "cyclical": bool(diagnose.get("zyklisch")), "years": diagnose.get("jahre")}
+
+
 def eingabe(f, analyst=None):
     """Fund-Dict fuer evaluateStock: dieselben Feldnamen wie in der App; private Felder nur, wenn erlaubt."""
     d = {k: _sauber(v) for k, v in (f or {}).items() if not str(k).startswith("_") or k in PRIVAT_ERLAUBT}
     d["_pruef_eingang"] = {k: _sauber((f or {}).get(k)) for k in DIAGNOSE if (f or {}).get(k) is not None}
+    z = zyklik((f or {}).get("_zyklus_diagnose"))
+    if z:
+        d["_cyclicality"] = z
     if isinstance(analyst, dict):
         for k in ("buy", "hold", "sell"):
             if isinstance(analyst.get(k), (int, float)):

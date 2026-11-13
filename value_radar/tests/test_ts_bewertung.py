@@ -74,4 +74,21 @@ class AppRechenweg(unittest.TestCase):
         T.anwenden(falsch,risiko={'ATHEX:BELA':{'_cash_conversion_history':{**cc,'value':1.2}}})
         self.assertEqual(falsch[0]['fair_value'],ohne[0]['fair_value'],'manipulated conversion ignored by the app check')
 
+    def test_health_from_verified_financial_data(self):
+        rf={'asof':'2026-06-30','currency':'EUR','source':'ROIC Enterprise Value · dieselbe Berichtszeile','debt':600,'cash':0,'ebitda':100,'fcff':-10,'revenue':100}
+        a=[{**zeile('ATHEX:BELA',{**JUMBO,'risk_financial':rf}),'listing_symbol':'ATHEX:BELA'}];b=[{**zeile('ATHEX:BELA',JUMBO),'listing_symbol':'ATHEX:BELA'}]
+        T.anwenden(a,risiko={'ATHEX:BELA':{'_risk_coverage':{'balance':{'state':'available','profile':'corporate'}}}});T.anwenden(b,risiko={})
+        self.assertEqual(a[0]['health_raw'],0);self.assertEqual(a[0]['health_profile'],'corporate')
+        self.assertEqual(a[0]['health_parts'],['Nettoschulden / EBITDA','Cashflow-Puffer · berichteter FCFF / Umsatz'])
+        # Nur ein Titel im Profil: kein Rang (mindestens 20), bisherige Bilanz bleibt, gekennzeichnet
+        self.assertEqual(a[0]['health_source'],'kennzahlen_ohne_rang');self.assertEqual(a[0]['health'],b[0]['health'])
+        self.assertEqual(b[0]['health_source'],'kennzahlen')
+        # Mit 25 uebernommenen Zeilen im Profil: Rang statt absoluter Skala
+        alt=[{'ticker':f'X:{i}','listing_symbol':f'X:{i}','scanner_method':'ts-evaluate-v1','health_raw':float(i*4),'health_profile':'corporate'} for i in range(25)]
+        c=[{**zeile('ATHEX:BELA',{**JUMBO,'risk_financial':rf}),'listing_symbol':'ATHEX:BELA'},*alt]
+        T.anwenden(c,risiko={'ATHEX:BELA':{'_risk_coverage':{'balance':{'state':'available','profile':'corporate'}}}})
+        self.assertEqual(c[0]['health_source'],'risiko_rang')
+        # 26 Werte (25 uebernommene + eigener), zwei Gleichstaende bei 0: (0 + 0,5 x 2) / 26 = 3,8 %
+        self.assertAlmostEqual(c[0]['health'],3.8)
+
 if __name__=='__main__':unittest.main()

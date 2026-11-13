@@ -1,4 +1,5 @@
 import { valuationDataCheck } from './valuation-data';
+import { PEER_PERCENTILE_MIN } from './peer-valuation';
 /**
  * valuation.ts - Portierung des Bewertungskerns aus valuation.py
  * Methode: Python lesen, 1:1 uebersetzen, gegen Python-Ausgabe testen.
@@ -39,6 +40,8 @@ export interface Fund {
   surprise_median?: number | null; surprise_beat_quote?: number | null;
   '52w_high'?: number | null; '52w_low'?: number | null;
   _ist_zyklisch?: boolean; currency?: string;
+  /** Gepruefte Volatilitaet (letzte 252 Handelstage, annualisiert) aus der bereinigten Kurshistorie des Risikoscores. */
+  _measured_vol?: { vol: number; last: string; observations: number; short: boolean } | null;
 }
 
 export type Playbook = "quality" | "inflection" | "cyclical" | "financial";
@@ -305,6 +308,20 @@ export function fwdPe(fund: Fund, preset: Playbook = "quality"): number | null {
   return kgv ? eps1 * kgv : null;
 }
 
+/** Ausgangs-Multiple fuer EV/EBITDA (seit 13.11.2026, Entscheidung des Nutzers): Mittel aus Peer-Median und
+ *  Sektortabelle, sobald PEER_PERCENTILE_MIN gueltige Peer-Multiples (0-60x) vorliegen; sonst nur die Sektortabelle.
+ *  Der Peer-Median lag am 13.11.2026 im Median 36 % ueber der Tabelle; das Mittel daempft, dass ein teurer Markt
+ *  sich selbst als fair bestaetigt. Vorher genuegte ein einziger Peer fuer den reinen Peer-Median. */
+export const EV_EBITDA_PEER_SHARE = 0.5;
+export function evEbitdaAnchor(fund: Fund, peerFunds: Fund[] | null): { source: "peers" | "sector"; value: number; n: number; peer_median: number | null; sector: number } {
+  const ms = (peerFunds ?? []).map((p) => p.ev_ebitda).filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0 && v < 60);
+  const med = ms.length >= PEER_PERCENTILE_MIN ? median(ms) : null;
+  const sector = sectorAnchor(fund, SECTOR_EV_EBITDA);
+  return med !== null
+    ? { source: "peers", value: EV_EBITDA_PEER_SHARE * med + (1 - EV_EBITDA_PEER_SHARE) * sector, n: ms.length, peer_median: med, sector }
+    : { source: "sector", value: sector, n: ms.length, peer_median: null, sector };
+}
+
 /** multipleEvEbitda - EV/EBITDA-Verfahren mit Sektor-Multiple, Wachstums-
  *  aufschlag und Teil-Reversion. 1:1 aus valuation.multiple_ev_ebitda. */
 export function multipleEvEbitda(
@@ -314,15 +331,7 @@ export function multipleEvEbitda(
   if (fund.net_debt == null) return null;
   if (!shares || !ebitda || ebitda <= 0) return null;
   const cyclical = preset === "cyclical";
-  let target: number;
-  if (peerFunds && peerFunds.length) {
-    const ms = peerFunds
-      .map((p) => p.ev_ebitda)
-      .filter((v): v is number => !!v && v > 0 && v < 60);
-    target = median(ms) ?? sectorAnchor(fund, SECTOR_EV_EBITDA);
-  } else {
-    target = sectorAnchor(fund, SECTOR_EV_EBITDA);
-  }
+  let target = evEbitdaAnchor(fund, peerFunds).value;
   if (!cyclical) {
     const g = fund.revenue_growth ?? 0;
     if (g > 0.10) target *= 1 + Math.min((g - 0.10) * 2.0, 0.6);
@@ -429,6 +438,7 @@ export interface FairValueResult {
   margin_of_safety: number;
   playbook: Playbook;
   nach_herkunft: Record<string, number>;
+  ev_ebitda_anchor: ReturnType<typeof evEbitdaAnchor>;
 }
 
 /**
@@ -605,6 +615,7 @@ export function fairValue(
     capped,
     margin_of_safety: Math.round(mos * 1000) / 1000,
     playbook: preset,
+    ev_ebitda_anchor: evEbitdaAnchor(fund, peerFunds),
     nach_herkunft: Object.fromEntries(
       Object.entries(nachHerkunft).sort((a, b) => b[1] - a[1])
         .map(([k, v]) => [k, Math.round(v * 10000) / 10000])),
@@ -646,6 +657,12 @@ export function reverseDcfImpliedGrowth(fund: Fund, years?: number): number | nu
   return Math.round(((lo + hi) / 2) * 10000) / 10000;
 }
 
+/** Gepruefte gemessene Volatilitaet als Anteil (0,05-2,5), sonst null. Pruefung der Historie: historyStatistics (risk-statistics.ts). */
+export function measuredVol(fund: Fund): number | null {
+  const m = fund._measured_vol;
+  return m && typeof m.vol === "number" && Number.isFinite(m.vol) && m.vol >= 0.05 && m.vol <= 2.5 ? m.vol : null;
+}
+
 export interface Kursziel12m {
   ziel: number;
   upside_pct: number;
@@ -663,6 +680,9 @@ export interface Kursziel12m {
   spanne_tief: number;
   spanne_hoch: number;
   konfidenz: string;
+  /** Spanne aus Schaetzungsstreuung; seit 13.11.2026 mindestens +/- 1 gemessene Jahresvolatilitaet. */
+  spanne_basis: "schaetzungen" | "gemessene_volatilitaet";
+  vola_pct: number | null;
 }
 
 /**
@@ -789,8 +809,10 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
   let ziel = schaetzungen.reduce((a, x) => a + x.wert * x.gewicht, 0) / gSum;
   ziel = Math.max(Math.min(ziel, kurs * 1.60), kurs * 0.60);
   const werte = schaetzungen.map((x) => x.wert);
-  const spanneTief = Math.min(ziel * 0.92, ...werte);
-  const spanneHoch = Math.max(ziel * 1.08, ...werte);
+  // Gemessene Volatilitaet (Risikoscore): Spanne mindestens +/- 1 Standardabweichung ueber 12 Monate (rund zwei Drittel der Faelle).
+  const mv = measuredVol(fund);
+  const spanneTief = Math.min(ziel * 0.92, mv !== null ? ziel * Math.max(0, 1 - mv) : Infinity, ...werte);
+  const spanneHoch = Math.max(ziel * 1.08, mv !== null ? ziel * (1 + mv) : -Infinity, ...werte);
   const streuung = werte.length > 1 ? (Math.max(...werte) - Math.min(...werte)) / ziel : 0.5;
   let konfidenz = "mittel";
   if (schaetzungen.length >= 3 && streuung < 0.15) konfidenz = "hoch";
@@ -816,6 +838,8 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
     spanne_tief: Math.round(spanneTief * 100) / 100,
     spanne_hoch: Math.round(spanneHoch * 100) / 100,
     konfidenz,
+    spanne_basis: mv !== null ? "gemessene_volatilitaet" : "schaetzungen",
+    vola_pct: mv !== null ? Math.round(mv * 1000) / 10 : null,
   };
 }
 
@@ -825,6 +849,8 @@ export interface Projektionspunkt {
 }
 export interface KursProjektion {
   kurs: number; ziel_12m: number | null; vola_pct: number;
+  /** gemessen = Risikoscore-Kurshistorie; beta_naeherung = 18 % x Beta (bisher immer). */
+  vola_quelle: "gemessen" | "beta_naeherung" | "vorgegeben";
   punkte: Projektionspunkt[]; warnung: string;
 }
 
@@ -847,9 +873,14 @@ export function kursProjektion(
   const jahresRendite = ziel ? ziel / kurs - 1 : 0.0;
 
   let vp = volaPct ?? null;
+  let volaQuelle: KursProjektion["vola_quelle"] = "vorgegeben";
   if (vp === null || vp === undefined) {
-    const beta = fund.beta ?? 1.0;
-    vp = 18.0 * Math.max(0.5, Math.min(beta, 2.5));
+    const mv = measuredVol(fund);
+    if (mv !== null) { vp = mv * 100; volaQuelle = "gemessen"; }
+    else {
+      const beta = fund.beta ?? 1.0;
+      vp = 18.0 * Math.max(0.5, Math.min(beta, 2.5)); volaQuelle = "beta_naeherung";
+    }
   }
   const vola = vp / 100.0;
 
@@ -873,6 +904,7 @@ export function kursProjektion(
     kurs: Math.round(kurs * 100) / 100,
     ziel_12m: ziel ? Math.round(ziel * 100) / 100 : null,
     vola_pct: Math.round(vp * 10) / 10,
+    vola_quelle: volaQuelle,
     punkte,
     warnung: "Mechanische Fortschreibung, keine Vorhersage. Die Spanne ist die eigentliche Aussage - sie zeigt, wie gross die Unsicherheit auf kurze Sicht ist.",
   };

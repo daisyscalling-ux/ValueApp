@@ -51,3 +51,40 @@ Die Phase ist bei 453 Titeln „unknown“, weil die Pipeline-Daten keine Phasen
 - **Daten:** Die Datenquellen bleiben verschieden (Pipeline: `providers.py`; App: ROIC-Bundle über `/api/bundle`). Prüfungen der App, die die Rohantworten brauchen (Ersatzabschluss, Periodenabgleich, Währung), greifen im Scanner nur teilweise. Die Datenangleichung ist Schritt 2 und eine eigene Entscheidung (Abrufkosten).
 - **Python-Teile außerhalb des Scanners:** Streamlit, E-Mail, Screener, Radar und Backtests rechnen weiter mit der Python-Fassung.
 - **Kopien:** Die Kopien unter `risk_precompute/src/lib` müssen identisch mit valueapp-cf bleiben (Arbeitsstandard).
+
+## Peers im Composite und im EV/EBITDA-Multiple (13.11.2026)
+
+Erste Risikodaten in der Bewertung. Peers sind dieselbe Auswahl wie im Peer-Vergleich und im Risikoscore (`selectPeers`, bis zu 8 Titel aus `cf_universum.json`). Im Scanner wählt der App-Code sie aus dem kompletten Exportuniversum, frischen und übernommenen Zeilen.
+
+| Regel | Wert | Begründung |
+|---|---|---|
+| Composite-Kennzahl gegen Peers | Perzentil, wenn mindestens 5 Peers einen gültigen Wert haben (`PEER_PERCENTILE_MIN`), sonst die bisherige feste Skala | Entscheidung des Nutzers. Bei 5 Werten verschiebt ein Peer das Perzentil höchstens um 20 Punkte. |
+| Peer-Kennzahlen | EV/EBITDA, KBV, Forward-KGV, Eigenkapitalrendite, Bruttomarge, Umsatzwachstum, Nettoschulden/EBITDA | Diese Felder enthält die Universumszeile (Prozentfelder werden zu Anteilen). Die übrigen 6 Kennzahlen bleiben auf der Skala. |
+| Negative Multiples von Peers | zählen nicht | Ein negatives KGV, KBV oder EV/EBITDA ist nicht vergleichbar. |
+| EV/EBITDA-Ausgangsmultiple | Mittel aus Peer-Median und Sektortabelle bei mindestens 5 gültigen Peer-Multiples (0–60x), sonst nur Tabelle (`EV_EBITDA_PEER_SHARE = 0,5`) | Entscheidung des Nutzers. Der Peer-Median lag im Median 36 % über der Tabelle (15,5x gegen 12x; Rohstoffe +68 %, Energie +61 %). Das Mittel dämpft, dass ein teurer Markt sich selbst als fair bestätigt. Vorher genügte ein einziger Peer; Peers wurden aber nie übergeben. |
+| Szenarien und Bewertungsrisiko | dieselben Peers (`_peer_funds`) | Sonst passt Base nicht zum Fair Value. |
+
+**Kennzeichnung:**
+- Scanner-Felder `peer_count`, `composite_peer_metrics` und `ev_ebitda_anchor`.
+- Die Einzelanalyse zeigt an der Composite-Kachel, wie viele Kennzahlen gegen wie viele Peers bewertet wurden.
+- Beim Fair Value nennt sie den EV/EBITDA-Anker samt Peer-Median und Tabellenwert.
+
+**Messung:** 1.157 Titel mit identischen Eingängen und echtem Universum, ohne gegen mit Peers.
+- Mindestens 5 Peers: 1.055 Titel.
+- Mindestens eine Kennzahl gegen Peers: 1.053; alle sechs möglichen: 760.
+- EV/EBITDA mit Peer-Anteil: 943.
+
+| Größe | Median | P90 | Mittel |
+|---|---:|---:|---:|
+| Composite | 2 Pkt. | 5 | +0,6 |
+| Fair Value | 0,6 % | 10,7 % | +3,2 % |
+| Quantum | 1,0 Pkt. | 4,1 | +0,9 |
+
+Kauf-Urteile 58 → 56, „beobachten“ 130 → 156, „meiden“ 969 → 945.
+
+**Verzerrung:**
+- Perzentile bewerten relativ zur Peergruppe. In einer teuren Branche wirkt ein Titel, der nur günstiger ist als seine Peers, gut. Das ist gewollt (Vergleich unter Gleichen), heißt aber nicht, dass der Titel absolut günstig ist.
+- Der Fair Value steigt im Mittel um 3,2 %. Das kommt vom Peer-Anteil am EV/EBITDA-Multiple; ohne das Mittel aus Peer und Tabelle wären es 4,9 %.
+- Die Peers sind nach Branche und Größe ausgewählt, nicht als direkte Wettbewerber geprüft.
+
+**Grenze:** Die Peer-Werte stammen aus dem Export (Pipeline-Daten), die eigenen Werte in der Einzelanalyse aus dem ROIC-Bundle. Die Einheiten sind gleich, die Quellen verschieden (siehe Abschnitt „Grenzen“).

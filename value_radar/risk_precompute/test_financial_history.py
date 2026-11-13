@@ -72,6 +72,15 @@ class HistoryTests(unittest.TestCase):
   for series in a['series'].values():
    for p in series['periods'].values():self.assertEqual(p['firstObservedAt'],self.now.isoformat())
   again,_=build(c,self.u,a,self.now,self.backfill());self.assertEqual(a['series'],again['series'])
+ def test_cash_conversion_attached_only_with_matching_identity(self):
+  cc={'state':'available','method':'sum_fcf_over_sum_net_income_v1','value':0.9,'raw':0.9,'clamped':False,'years':3,'currency':'USD','sumFcf':27,'sumNetIncome':30,
+      'periods':[{'end':'2023-12-31','fcf':9,'netIncome':10},{'end':'2024-12-31','fcf':9,'netIncome':10},{'end':'2025-12-31','fcf':9,'netIncome':10}]}
+  bf=self.backfill();bf['stocks']['NYSE:EX']['cashConversion']=cc
+  _,r=build(self.coverage(),self.u,{},self.now,bf);self.assertEqual(r['stocks'][0]['domains']['balance']['cashConversion'],cc)
+  bf['stocks']['NYSE:EX']['inputIdentity']['isin']='US5949181045'
+  _,r=build(self.coverage(),self.u,{},self.now,bf);self.assertEqual(r['stocks'][0]['domains']['balance']['cashConversion']['state'],'missing')
+  bf=self.backfill();bf['stocks']['NYSE:EX']['cashConversion']={**cc,'method':'other'}
+  _,r=build(self.coverage(),self.u,{},self.now,bf);self.assertEqual(r['stocks'][0]['domains']['balance']['cashConversion']['state'],'missing')
  def test_stale_or_wrong_identity_backfill_is_not_borrowed(self):
   for kind in ('identity','timestamp','schema'):
    bf=self.backfill()

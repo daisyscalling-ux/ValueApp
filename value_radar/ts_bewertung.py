@@ -16,8 +16,8 @@ ALT = "python-v1"
 FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_value", "upside", "entry", "quantum",
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil",
-          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor")
-PRIVAT_ERLAUBT = {"_analyst_trend", "_ist_zyklisch"}
+          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source")
+PRIVAT_ERLAUBT = {"_analyst_trend", "_ist_zyklisch", "_cash_conversion_history"}
 
 
 def _sauber(x):
@@ -67,10 +67,34 @@ def rechnen(eingaben, js, node="node", timeout=900, universum=None):
             return None
 
 
-def anwenden(rows, js=None, node="node"):
+def risikodaten(pfad=None):
+    """Gepruefte Bilanzdaten der Risikopipeline je Notierung (cf_risk_coverage.json): heute die Cash-Conversion.
+    Der App-Code prueft sie erneut (verifiedCashConversion); hier nur Zuordnung nach listing_symbol."""
+    pfad = pfad or os.path.join(os.path.dirname(os.path.abspath(__file__)), "daten", "cf_risk_coverage.json")
+    try:
+        with open(pfad, encoding="utf-8") as fh:
+            daten = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for row in daten.get("stocks") or []:
+        b = ((row or {}).get("domains") or {}).get("balance") or {}
+        if isinstance(row.get("symbol"), str) and isinstance(b.get("cashConversion"), dict):
+            out[row["symbol"]] = {"_cash_conversion_history": b["cashConversion"]}
+    return out
+
+
+def anwenden(rows, js=None, node="node", risiko=None):
     """Ersetzt in frisch gescannten Zeilen (mit _ts_input) die Bewertungsfelder durch die TS-Werte."""
     js = js if js is not None else os.environ.get("SCANNER_EVAL_JS")
-    offen = {r["ticker"]: r.pop("_ts_input") for r in rows if isinstance(r.get("_ts_input"), dict)}
+    if risiko is None:
+        risiko = risikodaten() if any(isinstance(r.get("_ts_input"), dict) for r in rows) else {}
+    offen = {}
+    for r in rows:
+        if isinstance(r.get("_ts_input"), dict):
+            eingang = r.pop("_ts_input")
+            eingang.update(_sauber(risiko.get(r.get("listing_symbol")) or {}))
+            offen[r["ticker"]] = eingang
     ergebnis = rechnen(offen, js, node, universum=rows) if offen else {}
     stat = {"ts": 0, "python_v1": 0, "fehler": 0, "ausfall": ergebnis is None}
     for r in rows:

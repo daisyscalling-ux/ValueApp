@@ -5,6 +5,7 @@ from collections import Counter
 from news_identity import valid_isin
 from yahoo_sector import recent,save
 IDENTITY=('listing_symbol','ticker','isin','currency','security_type','share_class')
+CASH_CONVERSION_METHOD='sum_fcf_over_sum_net_income_v1'  # Spiegel von cash-conversion.ts
 ANNUAL=('cashAfterPpeIntangiblesAssets','cashAfterProductiveAssets','cashAfterPpeAssets','netDebtAssets','fcfAssets','bookEquityAssets','netIncomeEndingAssets','operatingCashflowAssets','cashAssets')
 def digest(v):return hashlib.sha256(json.dumps(v,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 def finite(v):return isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
@@ -66,11 +67,15 @@ def build(coverage,universe,previous,now=None,backfill=None):
   seen.add(s);r=inputs.get(s,{});b=row.get('domains',{}).get('balance',{})
   summary={'state':'missing','reason':'qualified_identity_or_observations_missing','metrics':[],'pointInTimeUsable':False}
   b['history']=summary
+  b['cashConversion']={'state':'missing','method':CASH_CONVERSION_METHOD,'reason':'Keine geprüfte ROIC-Historie zu dieser Notierung.'}
   if s in duplicates or row.get('domains',{}).get('identity',{}).get('state')!='available' or not valid_isin(r.get('isin')):continue
   identity={k:r.get(k) for k in IDENTITY};identity_hash=digest(identity)
   historical=[];archive_input=(backfill or {}).get('stocks',{}).get(s,{})
   if (backfill or {}).get('method')=='roic-history-balances-v1' and (backfill or {}).get('schema')==1 and recent((backfill or {}).get('generatedAt'),now,1.5) and archive_input.get('inputIdentity')==identity:
    for old_balance in archive_input.get('balances',[]):historical.extend(observations(old_balance,now,8*366,45))
+   # Mehrjaehrige Cash-Conversion (export-history-backfill.ts) fuer den DCF; App und Scanner pruefen erneut.
+   cc=archive_input.get('cashConversion')
+   if isinstance(cc,dict) and cc.get('method')==CASH_CONVERSION_METHOD:b['cashConversion']=cc
   current_observations=observations(b,now);views={}
   for observation in sorted(historical,key=lambda x:x['period'])+current_observations:
    if stamp(observation['sourceRetrievedAt'])>now or date(observation['period'])>now.date():continue

@@ -1,6 +1,7 @@
 name: bundle-compare
 # Messung Datenweg (13.11.2026): fuer eine feste Stichprobe dasselbe Bundle wie die Einzelanalyse abrufen und mit den
 # Scanner-Zeilen vergleichen. Nur manuell, schreibt nichts ins Repo; Ergebnis als Artefakt und Zusammenfassung.
+# Nicht parallel zu precompute-3tage starten (gemeinsames ROIC-Limit).
 on:
   workflow_dispatch:
     inputs:
@@ -12,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6

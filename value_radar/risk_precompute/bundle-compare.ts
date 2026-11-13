@@ -34,15 +34,19 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
   const sym=u.listing_symbol;
   try{
    const raw=await fetchRawBundle(sym,env,{prepared},fetch);
-   const fund=bundleLight(raw as any) as Row;fund.ticker=sym;
+   // Leere ROIC-Bloecke getrennt zaehlen: Abrufgrenze oder Ausfall, keine echte Datenluecke der App.
+   const roicEmpty=['profile','quote','enterprise_value','ratios','liquidity','multiples','income','balance','cashflow'].filter(k=>(raw as Row)[k]==null);
+   const fund=bundleLight(raw as any) as Row;fund.ticker=sym;fund._roic_empty=roicEmpty;
    if(!(typeof fund.price==='number'&&fund.price>0))throw new Error('Kein Kurs im App-Bundle (Abruf fehlgeschlagen oder Notierung unbekannt)');
    const peers=selectPeers(u,universe);
    const app=scannerFields(fund as any,peers,coverage.get(sym)??null,dist) as Row;
    const inputs=Object.fromEntries(INPUTS.map(([k,fa,fu])=>[k,{app:fa(fund)??null,scanner:fu(u)??null,relDiff:rel(fa(fund),fu(u))}]));
    const outputs=Object.fromEntries(OUTPUTS.map(k=>[k,{app:app[k]??null,scanner:u[k]??null}]));
-   rows.push({symbol:sym,inputs,outputs,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues});
+   rows.push({symbol:sym,inputs,outputs,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
   }catch(e){rows.push({symbol:sym,error:String(e).slice(0,200)})}
-  await new Promise(r=>setTimeout(r,1100));   // Finnhub-Grenze (60/min) bei 4 Abrufen je Titel
+  // 4,5 s je Titel: ROIC 9 Abrufe (120/min, Plan 300/min, Rest fuer parallele Laeufe), Finnhub 4 Abrufe (53/min, Grenze 60/min).
+  // Der erste Lauf (13.11.2026, 1,1 s, parallel zu precompute) lief in Abrufgrenzen; Felder fehlten dadurch scheinbar.
+  await new Promise(r=>setTimeout(r,4500));
  }
  const ok=rows.filter(r=>!r.error),q=(xs:number[],p:number)=>{const s=[...xs].sort((a,b)=>a-b);return s.length?s[Math.floor(p*(s.length-1))]:null};
  const inputSummary=Object.fromEntries(INPUTS.map(([k])=>{const d=ok.map(r=>r.inputs[k].relDiff).filter((x:any)=>x!==null) as number[];
@@ -50,7 +54,8 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
  const num=(k:string)=>{const d=ok.map(r=>[r.outputs[k].app,r.outputs[k].scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>k==='fair_value'||k==='target_12m'?Math.abs(a/b-1)*100:Math.abs(a-b));return {compared:d.length,median:q(d,.5),p90:q(d,.9)}};
  const outputSummary={composite:num('composite'),fair_value_pct:num('fair_value'),upside_pp:num('upside'),quantum:num('quantum'),target_12m_pct:num('target_12m'),health:num('health'),
   playbookDiffers:ok.filter(r=>r.outputs.playbook.app!==r.outputs.playbook.scanner).length,verdictDiffers:ok.filter(r=>r.outputs.kauf_urteil.app!==r.outputs.kauf_urteil.scanner).length,
-  appBlocked:ok.filter(r=>r.appBlocked).length,scannerBlocked:ok.filter(r=>r.outputs.kauf_urteil.scanner==='Daten prüfen').length};
+  appBlocked:ok.filter(r=>r.appBlocked).length,scannerBlocked:ok.filter(r=>r.outputs.kauf_urteil.scanner==='Daten prüfen').length,
+  titlesWithEmptyRoicBlocks:ok.filter(r=>(r.roicEmpty||[]).length).length};
  const report={schema:1,method:'bundle-vs-scanner-v1',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
  fs.writeFileSync(output,JSON.stringify(report,null,1));
  console.log(JSON.stringify({sample:report.sample,fetched:report.fetched,errors:report.errors,outputSummary},null,1));

@@ -629,6 +629,16 @@ def _roic_zuerst(ticker: str) -> dict:
     return b
 
 
+def _band_aktuell(reihe, max_tage: int = 10) -> bool:
+    """52-Wochen-Band nur aus einer Reihe, deren juengster Kurs hoechstens max_tage alt ist (Befund K52)."""
+    import datetime as _dt
+    try:
+        letzter = _dt.date.fromisoformat(str(reihe[-1][0])[:10])
+    except (IndexError, ValueError, TypeError):
+        return False
+    return 0 <= (_dt.date.today() - letzter).days <= max_tage
+
+
 def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
     """Kombiniert mehrere Datenquellen feldweise zu einem moeglichst verlaesslichen
     Kennzahlen-Dict.
@@ -800,9 +810,11 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         # nicht rechtfertigt. roic hat die Kurse, also nehmen wir sie von dort.
         if deep:
             try:
-                _reihe = _roic.schlusskurse(ticker, tage=260)   # ~1 Handelsjahr
+                # Unbereinigte Schlusskurse des juengsten Handelsjahres; das Band muss zum
+                # aktuellen (unbereinigten) Kurs passen. Juengster Kurs hoechstens 10 Tage alt.
+                _reihe = _roic.schlusskurse(ticker, tage=260, adjustiert=False)   # ~1 Handelsjahr
                 _kurse = [k for _, k in _reihe if k]
-                if len(_kurse) >= 30:               # genug Datenpunkte
+                if len(_kurse) >= 30 and _band_aktuell(_reihe):
                     _r_hi, _r_lo = max(_kurse), min(_kurse)
                     # roic-Kurse ggf. in anderer Einheit als der Anzeigekurs -
                     # denselben gemessenen Faktor anwenden wie oben.

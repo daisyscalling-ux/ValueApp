@@ -156,3 +156,20 @@ Entscheidung des Nutzers: alle Profile, als Rang im Profil.
 - Kauf-Urteile 58 → 72, „beobachten“ 145 → 150, „meiden“ 954 → 935.
 
 **Verzerrung:** Die verbleibende Anhebung kommt daher, dass die alte Bilanz nach unten verzerrt war: Median 42, weil feste Ersatzskalen und ein fehlender Liquiditätsgrad 50 bzw. niedrige Werte ergaben. Der Rang ist per Konstruktion mittig. Er bewertet relativ zum Profil; ein schwach finanziertes Profil insgesamt erscheint dadurch nicht schlechter.
+
+## Gleichlauf der App-Kopien (13.11.2026)
+
+`risk_precompute/app-copies.json` listet die 36 Kopien aus valueapp-cf mit SHA-256 des App-Originals.
+
+**Prüfung:**
+- Pipeline: `app_copies.py` / `test_app_copies.py`, in daily-risk über die Testsuite und in precompute-3tage als eigener Schritt.
+- App: `npm run check-copies` gegen dieselbe öffentliche Liste.
+
+**Erlaubte Abweichung:** nur die Importpfade in `worker/risk-benchmark.ts` (`normalize`).
+
+**Abgleich nach einer App-Änderung:** `python value_radar/risk_precompute/app_copies.py abgleichen <pfad-zu-valueapp-cf>`.
+
+**Bestand 13.11.2026:**
+- 36 Kopien identisch.
+- `insurer-solvency.ts` (Wurzel) wich nur in einem Kommentar ab und ist jetzt identisch.
+- Die App-Ordner `risk-export/` und `fundamental-export/` sind alte Schnappschüsse von Pipeline-Dateien und keine App-Kopien; sie stehen nicht in der Liste.

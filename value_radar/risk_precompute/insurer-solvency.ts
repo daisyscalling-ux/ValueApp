@@ -5,7 +5,7 @@ const date=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.i
 const num=(v:any)=>typeof v==='number'&&Number.isFinite(v);
 const url=(v:any)=>{try{return typeof v==='string'&&new URL(v).protocol==='https:'}catch{return false}};
 export const insurerRequirements=['eligible_own_funds','solvency_requirement','jurisdiction_and_regulatory_scope'];
-// Vergleichbare Gruppen-Solvenzsysteme: Eigenmittel / Solvenzkapitalanforderung, 100 % = Mindestanforderung. Spiegel von REGIMES in regulatory_insurer.py.
+// Vergleichbare Gruppen-Solvenzsysteme: Eigenmittel / Solvenzkapitalanforderung, 100 % = Mindestanforderung. Spiegel von REGIMES in regulatory_insurer.py (ValueApp).
 export const INSURER_REGIMES=['Solvency II|DE|BaFin','Solvency II|FR|ACPR','Solvency II|NL|DNB','Solvency II|FI|FIN-FSA','Solvency II|IT|IVASS','Solvency II|NO|Finanstilsynet','Solvency II|DK|Finanstilsynet','Solvency II|ES|DGSFP','Solvency II|BE|NBB','Solvency II|PL|KNF','Solvency UK|GB|PRA'];
 const CURRENCIES=['EUR','GBP','NOK','PLN','DKK'];
 export function verifiedInsurer(r:Row|undefined|null,now:number){

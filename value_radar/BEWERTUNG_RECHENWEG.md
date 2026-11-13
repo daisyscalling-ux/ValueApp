@@ -202,3 +202,48 @@ Entscheidung des Nutzers: alle Profile, als Rang im Profil.
 - 36 Kopien identisch.
 - `insurer-solvency.ts` (Wurzel) wich nur in einem Kommentar ab und ist jetzt identisch.
 - Die App-Ordner `risk-export/` und `fundamental-export/` sind alte Schnappschüsse von Pipeline-Dateien und keine App-Kopien; sie stehen nicht in der Liste.
+
+## Börsenwert = Kurs × Aktienzahl, Prüfung gegen den Jahresabschluss (13.11.2026)
+
+**Anlass:** 51 Titel standen auf „Daten prüfen“. Ursache war jedes Mal der Börsenwert. Der ROIC-Wert stammt aus der Enterprise-Value-Zeile zum Berichtsstichtag. Bei starken Kursbewegungen ist er veraltet: Micron 130 Mrd. gegen 873 Mrd. USD. Bei nordischen Werten ist er in USD angegeben, die Notierung in NOK/SEK/DKK (Verhältnis um 0,1).
+
+**Methode (Entscheidung des Nutzers):** Börsenwert = Kurs × Aktienzahl, markiert `market_cap_source: kurs_x_aktien`. Der Anbieterwert bleibt als `market_cap_provider` mit Stichtag und Währung erhalten. `normalizeMarketCap` und `valuationDataCheck` (valuation-data.ts) prüfen die Aktienzahl in dieser Reihenfolge:
+
+| Stufe | Vergleich | Bedingung | Abweichung > Faktor 2 |
+|---|---|---|---|
+| 1 | Anbieter-Börsenwert | Stichtag ≤ 120 Tage (`MCAP_PROVIDER_MAX_AGE_DAYS`), gleiche Währung | sperrt |
+| 2 | Aktienzahl im Jahresabschluss (`weighted_shares`) | Abschluss ≤ 550 Tage (`ANNUAL_SHARES_MAX_AGE_DAYS`), gleiche Währung (GBP = GBp) oder geprüfte Aktienbasis (`share_basis`, ADR-Verhältnis) | sperrt |
+| 3 | älterer Anbieter-Börsenwert | kein Jahresabschluss | sperrt; andere Währung sperrt immer |
+| 4 | kein Vergleichswert | – | nur Warnung „Aktienzahl nicht gegengeprüft“ |
+
+**Datenweg:**
+- `ts_bewertung.ersatzdaten` liest `daten/fundamentals/<listing_symbol>.json`, dieselbe Datei wie die App.
+- Die Datei gilt nur, wenn `symbol == listing_symbol`.
+- Übergeben werden nur die Aktienzahl, Stichtag, Währungen und `share_basis`.
+- Die App prüft Symbol (`_supplement_symbol`), Alter und Basis erneut. Ohne `_supplement_symbol` verwirft sie die Datei.
+- `market_cap` und `market_cap_source` kommen aus dem App-Rechenweg in die Universumszeile.
+
+**Messung (Stand: Universum 13.11.2026, 1.340 Titel):**
+- 1.292 Titel haben eine Jahresaktienzahl, die prüfbar ist:
+  - 1.141 in gleicher Währung,
+  - 79 GBP/GBp,
+  - 67 Stammaktien mit Basis,
+  - 5 ADR mit geprüftem Verhältnis.
+- Offen bleiben 48 Titel:
+  - 30 ohne `weighted_shares`,
+  - 17 ohne Datei,
+  - 1 mit abweichender Berichtswährung ohne Basis (PDD).
+- Von den 51 gesperrten Titeln hat bei 50 die ROIC-Aktienzahl dieselbe Größe wie der Jahresabschluss (Faktor 0,94–1,16). Sie werden frei, sobald ihr Anbieterwert älter als 120 Tage ist oder eine andere Währung hat. Das genaue Alter steht nur im Lauf; die Zahl folgt nach dem nächsten precompute.
+- PDD bleibt gesperrt (Stufe 3: Anbieterwert Faktor 10, kein Jahresabschluss in USD).
+
+**Nebenbefund Einzelanalyse:** Die App übernimmt bei frischen Ersatzdaten die Yahoo-Aktienzahl. Gegen den Jahresabschluss liegen 23 von 1.291 außerhalb Faktor 2:
+- Mehrfach-Gattungen: GOOG 0,46, GOOGL 0,48, VOW3 0,41, HEN3 0,37, MAERSK_B 0,32, NWS 0,32, SCHP, LISP, UHR.
+- ADR in Stammaktien gezählt: VOD 9,6, WPP 5,0.
+- Offensichtliche Anbieterfehler: MCD, TSE:8015.
+
+Bisher ging das still in den Börsenwert ein, weil der Börsenwert aus derselben Aktienzahl gerechnet wurde. Jetzt sperrt Stufe 2.
+
+**Verzerrung und Grenzen:**
+- Faktor 2 erkennt Fehler in der Größenordnung, nicht eine Gattung mit 60 % Anteil. Solche Börsenwerte bleiben bis 40 % zu niedrig, und das EV/EBITDA wirkt dann günstiger.
+- `weighted_shares` ist der Jahresdurchschnitt verwässert. Rückkäufe oder Kapitalerhöhungen danach verschieben das Verhältnis, Faktor 2 lässt dafür Raum.
+- Ein veralteter Anbieterwert sperrt nicht mehr, wenn der Jahresabschluss die Aktienzahl bestätigt. Das bevorzugt keine Firmengruppe: Es betrifft Titel mit starker Kursbewegung seit dem Stichtag in beide Richtungen (Verhältnis 0,05–4,5).

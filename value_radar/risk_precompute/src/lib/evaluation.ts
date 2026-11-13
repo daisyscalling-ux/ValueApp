@@ -5,6 +5,7 @@ import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
 import {verifiedCashConversion} from './cash-conversion';
+import {normalizeMarketCap} from './valuation-data';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
 
 /** One evaluation path; scoring always uses the native statement units. */
@@ -14,6 +15,8 @@ import {financialHealth,healthProfile,healthRank,type HealthDistribution} from '
 /** healthDistribution: Rohwerte der Bilanz je Profil im Universum (Rang statt absoluter Skala). */
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
  const fund={...input};
+ // Börsenwert = Kurs × Aktienzahl (idempotent; Scanner übergibt die Ergänzungsdatei als _fundamental_supplement).
+ normalizeMarketCap(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
  const cc=verifiedCashConversion(fund._cash_conversion_history);
  if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' (ROIC, geprüft)'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}

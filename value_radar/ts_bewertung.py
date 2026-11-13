@@ -8,6 +8,7 @@ darauf hin. Siehe BEWERTUNG_RISIKODATEN.md.
 import json
 import math
 import os
+import re
 import subprocess
 import tempfile
 
@@ -16,8 +17,10 @@ ALT = "python-v1"
 FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_value", "upside", "entry", "quantum",
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil",
-          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile")
-PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality"}
+          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile",
+          "market_cap", "market_cap_source")
+PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality",
+                  "_fundamental_supplement", "_supplement_symbol"}
 
 
 def _sauber(x):
@@ -106,7 +109,33 @@ def risikodaten(pfad=None):
     return out
 
 
-def anwenden(rows, js=None, node="node", risiko=None):
+def ersatzdaten(row, ordner=None):
+    """Aktienzahl aus dem Jahresabschluss je Notierung (daten/fundamentals/<listing_symbol>.json, wie die App sie
+    laedt) fuer die Pruefung von Kurs x Aktienzahl (normalizeMarketCap). Nur die noetigen Felder; die Datei muss
+    zur Notierung gehoeren (symbol == listing_symbol), sonst wird sie nicht verwendet. Der App-Code prueft Symbol,
+    Alter und Aktienbasis erneut."""
+    ordner = ordner or os.path.join(os.path.dirname(os.path.abspath(__file__)), "daten", "fundamentals")
+    sym = row.get("listing_symbol") or row.get("ticker")
+    if not isinstance(sym, str) or not sym:
+        return {}
+    try:
+        with open(os.path.join(ordner, re.sub(r"[^A-Za-z0-9._-]", "_", sym) + ".json"), encoding="utf-8") as fh:
+            s = json.load(fh)
+    except (ValueError, OSError):
+        return {}
+    a = s.get("annual") if isinstance(s, dict) else None
+    if not isinstance(a, dict) or s.get("symbol") != sym:
+        return {}
+    w = (a.get("fields") or {}).get("weighted_shares")
+    return {"_supplement_symbol": sym,
+            "_fundamental_supplement": {"schema": s.get("schema"), "symbol": s.get("symbol"),
+                                        "annual": {"end": a.get("end"), "currency": a.get("currency"),
+                                                   "source": a.get("source"), "fields": {"weighted_shares": w}},
+                                        "market": {"currency": (s.get("market") or {}).get("currency")},
+                                        "share_basis": s.get("share_basis")}}
+
+
+def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
     """Ersetzt in frisch gescannten Zeilen (mit _ts_input) die Bewertungsfelder durch die TS-Werte."""
     js = js if js is not None else os.environ.get("SCANNER_EVAL_JS")
     if risiko is None:
@@ -116,6 +145,7 @@ def anwenden(rows, js=None, node="node", risiko=None):
         if isinstance(r.get("_ts_input"), dict):
             eingang = r.pop("_ts_input")
             eingang.update(_sauber(risiko.get(r.get("listing_symbol")) or {}))
+            eingang.update(_sauber(ersatzdaten(r, ordner)))
             offen[r["ticker"]] = eingang
     ergebnis = rechnen(offen, js, node, universum=rows) if offen else {}
     stat = {"ts": 0, "python_v1": 0, "fehler": 0, "ausfall": ergebnis is None}

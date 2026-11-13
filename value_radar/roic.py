@@ -373,6 +373,24 @@ def enterprise_value(t: str):
     return _first(_get(f"fundamental/enterprise-value/{_sym(t)}"))
 
 
+def risk_financial(t: str):
+    """Spiegel von financialRiskInput (valueapp-cf, src/lib/risk-score.ts): juengste datierte Zeile des
+    Enterprise-Value-Endpunkts mit Stichtag und Waehrung derselben Zeile. Kein zusaetzlicher Abruf (Cache von
+    enterprise_value). Die App prueft Alter, Waehrung und Werte beim Lesen erneut (riskScore)."""
+    import re as _re
+    d = _get(f"fundamental/enterprise-value/{_sym(t)}")
+    rows = d if isinstance(d, list) else ((d or {}).get("data") if isinstance(d, dict) else None) or []
+    datiert = [r for r in rows if isinstance(r, dict)
+               and _re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("period_end_date") or r.get("date") or ""))]
+    if not datiert:
+        return None
+    r = sorted(datiert, key=lambda x: str(x.get("period_end_date") or x.get("date")), reverse=True)[0]
+    return {"asof": r.get("period_end_date") or r.get("date"), "currency": r.get("currency"),
+            "source": "ROIC Enterprise Value · dieselbe Berichtszeile",
+            "debt": r.get("short_and_long_term_debt"), "cash": r.get("bs_cash_near_cash_item"),
+            "ebitda": r.get("ttm_ebitda"), "fcff": r.get("ttm_free_cash_flow_firm"), "revenue": r.get("ttm_net_sales")}
+
+
 def multiples(t: str):
     return _first(_get(f"fundamental/multiples/{_sym(t)}"))
 
@@ -608,6 +626,7 @@ def bundle(t: str) -> dict:
 
     out = {
         "_src": "roic",
+        "risk_financial": risk_financial(t),
         **__import__("peer_metadata").metadata(prof, aufloesen(t) or {}),
         # --- Stammdaten (Profil liefert auch den AKTUELLEN Kurs -
         #     prices/latest gibt es im Plan nicht)
@@ -1859,6 +1878,7 @@ def bundle_light(t: str) -> dict:
 
     out = {
         "_src": "roic_light",
+        "risk_financial": risk_financial(t),
         **__import__("peer_metadata").metadata(prof, aufloesen(t) or {}),
         "name": _g(prof, "name", "company_name"),
         "isin": _g(prof, "isin") or (aufloesen(t) or {}).get("isin"),

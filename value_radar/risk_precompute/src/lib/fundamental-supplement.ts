@@ -110,3 +110,50 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  }
  for(const {source,fields:provided} of additions.values())f.data_sources.push({source:source.source,url:source.source_url,period_end:source.end,published_at:source.published_at,retrieved_at:s.annual_retrieved_at??s.retrieved_at,basis:`Ergänzt und periodenabgeglichen: ${provided.join(', ')}`});
 }
+
+/**
+ * Geprüfte Prognose-EPS (seit 14.11.2026, Entscheidung des Nutzers): Analystenkonsens als 12-Monats-Mix aus laufendem
+ * (0y) und nächstem Geschäftsjahr (+1y), gewichtet nach Restlaufzeit des laufenden Jahres. Gilt nur, wenn
+ * – der Block zur Notierung gehört und höchstens ESTIMATE_MAX_AGE_DAYS alt ist,
+ * – beide Jahre mindestens FORWARD_MIN_ANALYSTS Analysten haben und das laufende Jahr noch nicht abgelaufen ist,
+ * – die Währung gleich, Pfund/Pence oder per frischem EZB-Kurs überleitbar ist (ADR mit Verhältnis ≠ 1: offen),
+ * – das Ergebnis höchstens Faktor FORWARD_MAX_FACTOR vom berichteten EPS abweicht (Schutz gegen bereinigte Gewinne).
+ * Sonst bleibt eps_forward offen (eps_forward_status nennt den Grund); ungeprüfte Anbieterwerte und die mechanische
+ * Fortschreibung werden entfernt, damit Scanner und Einzelanalyse dieselbe Prognose verwenden.
+ */
+export const FORWARD_METHOD='consensus_ntm_blend_v1';
+export const ESTIMATE_SOURCE_METHOD='consensus_0y_1y_v1';
+export const FORWARD_MIN_ANALYSTS=3, FORWARD_MAX_FACTOR=2, ESTIMATE_MAX_AGE_DAYS=7;
+export function applyForwardEstimate(f:Row,s:Row|null|undefined,now=Date.now(),symbol?:string|null):void{
+ const open=(reason:string)=>{delete f.eps_forward;delete f.eps_forward_estimate;f.eps_forward_source=null;f.eps_forward_method=null;f.eps_forward_status=reason;};
+ const e=s?.estimates;
+ if(!s||s.schema!==1||(symbol!=null&&s.symbol!==symbol))return open('Keine Konsensschätzung für diese Notierung');
+ if(!e||e.method!==ESTIMATE_SOURCE_METHOD)return open('Konsensschätzung fehlt (noch nicht im geprüften Format)');
+ if(!e.usable)return open('Konsensschätzung unvollständig: '+(e.reason??'ohne Grund'));
+ if(!age(e.as_of,now,ESTIMATE_MAX_AGE_DAYS*DAY))return open('Konsensschätzung veraltet oder ungültig datiert');
+ const p0=e.periods?.['0y'],p1=e.periods?.['+1y'];
+ if(!finite(p0?.avg)||!finite(p1?.avg))return open('Konsens für laufendes oder nächstes Geschäftsjahr fehlt');
+ if(!(finite(p0.analysts)&&p0.analysts>=FORWARD_MIN_ANALYSTS&&finite(p1.analysts)&&p1.analysts>=FORWARD_MIN_ANALYSTS))return open(`Weniger als ${FORWARD_MIN_ANALYSTS} Analysten je Geschäftsjahr`);
+ const end0=Date.parse(p0.fiscal_end),end1=Date.parse(p1.fiscal_end);
+ if(!Number.isFinite(end0)||!Number.isFinite(end1)||end1<=end0)return open('Geschäftsjahresende der Schätzung fehlt');
+ if(end0<=now)return open('Laufendes Geschäftsjahr abgelaufen, Konsens noch nicht fortgeschrieben');
+ const w0=Math.min(1,(end0-now)/(365*DAY));
+ const ntm=w0*p0.avg+(1-w0)*p1.avg;
+ const b=s.share_basis;
+ if(b?.kind==='ADR'&&sharesPerUnit(b)!==1)return open('ADR: Aktienbasis der Konsensschätzung ungeklärt');
+ let scale=unitRate(e.currency,f.currency);
+ if(scale===null){
+  const fx=s.fx,base=['GBp','GBX'].includes(f.currency)?'GBP':f.currency;
+  if(!fx||fx.base!=='EUR'||!age(fx.observed_at,now,7*DAY)||fx.source_url!=='https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml')return open(`Schätzung in ${e.currency}, Notierung in ${f.currency}: kein aktueller EZB-Kurs`);
+  const from=fx.rates?.[e.currency],to=fx.rates?.[base];
+  if(!finite(from)||from<=0||!finite(to)||to<=0)return open(`Schätzung in ${e.currency}, Notierung in ${f.currency}: Kurs fehlt`);
+  scale=to/from*(base===f.currency?1:100);
+ }
+ const value=ntm*scale,t=f.eps_trailing;
+ if(!(finite(t)&&t>0))return open('Prognose nicht prüfbar: berichtetes EPS fehlt oder ≤ 0');
+ if(!(value>0))return open('Konsens erwartet keinen Gewinn');
+ if(Math.max(value/t,t/value)>FORWARD_MAX_FACTOR)return open(`Konsens weicht mehr als Faktor ${FORWARD_MAX_FACTOR} vom berichteten EPS ab (bereinigte Gewinnbasis oder Sondereffekt)`);
+ f.eps_forward=value;f.eps_forward_method=FORWARD_METHOD;f.eps_forward_status=null;
+ f.eps_forward_estimate={weight_0y:Math.round(w0*1000)/1000,avg_0y:p0.avg,avg_1y:p1.avg,analysts_0y:p0.analysts,analysts_1y:p1.analysts,currency:e.currency,as_of:e.as_of,fiscal_end_0y:p0.fiscal_end,source_url:e.source_url};
+ f.eps_forward_source=`Analystenkonsens 12 Monate (${e.source}; ${Math.round(w0*100)} % laufendes, ${100-Math.round(w0*100)} % nächstes Geschäftsjahr; ${p0.analysts}/${p1.analysts} Analysten; Stand ${String(e.as_of).slice(0,10)})`;
+}

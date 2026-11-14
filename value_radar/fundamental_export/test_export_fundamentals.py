@@ -228,4 +228,22 @@ class IdentityTests(unittest.TestCase):
   self.assertEqual(rows,[{'ticker':'PKO.WA','listing_symbol':'GPW:PKO'}])
   self.assertEqual(index['identity_rejected']['PKO.WA']['rejected_listing'],'NYSE:PKO')
 
+class EstimateTests(unittest.TestCase):
+ # Micron 14.11.2026: lastFiscalYearEnd 2026-09-03, nextFiscalYearEnd 2027-09-03
+ INFO={'financialCurrency':'USD','lastFiscalYearEnd':1788393600,'nextFiscalYearEnd':1819929600}
+ TABLE={'0y':{'avg':176.50168,'low':161,'high':214.7,'yearAgoEps':75.52,'numberOfAnalysts':36},'+1y':{'avg':207.76048,'low':136,'high':335.5,'yearAgoEps':176.5,'numberOfAnalysts':36}}
+ def test_both_fiscal_years_with_analysts_currency_and_fiscal_end(self):
+  from export_fundamentals import consensus_estimates,ESTIMATE_METHOD
+  e=consensus_estimates(self.TABLE,self.INFO,'MU',dt.datetime(2026,11,14,tzinfo=dt.timezone.utc))
+  self.assertEqual((e['method'],e['usable'],e['currency']),(ESTIMATE_METHOD,True,'USD'))
+  self.assertEqual(e['periods']['0y']['fiscal_end'],'2027-09-03');self.assertEqual(e['periods']['+1y']['analysts'],36)
+  self.assertEqual(e['source_url'],'https://finance.yahoo.com/quote/MU/analysis/');self.assertNotIn('eps_forward',e,'no blended value; the app computes and checks it')
+ def test_incomplete_blocks_marked_unusable(self):
+  from export_fundamentals import consensus_estimates
+  for info,table,reason in [({**self.INFO,'financialCurrency':None},self.TABLE,'Waehrung'),
+                            ({**self.INFO,'nextFiscalYearEnd':None},self.TABLE,'Geschaeftsjahresende'),
+                            ({**self.INFO,'nextFiscalYearEnd':1788393600},self.TABLE,'Geschaeftsjahresende'),
+                            (self.INFO,{'0y':self.TABLE['0y']},'Konsens'),(self.INFO,{},'Konsens')]:
+   e=consensus_estimates(table,info,'MU');self.assertFalse(e['usable']);self.assertIn(reason,e['reason'])
+
 if __name__=='__main__':unittest.main()

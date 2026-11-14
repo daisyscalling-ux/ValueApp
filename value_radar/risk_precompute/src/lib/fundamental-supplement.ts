@@ -1,4 +1,4 @@
-import {latestRows,period} from './valuation-data';
+import {latestRows,period,annualUnitsPerListingUnit} from './valuation-data';
 type Row=Record<string,any>;
 const DAY=86400000;
 const finite=(x:unknown):x is number=>typeof x==='number'&&Number.isFinite(x);
@@ -23,7 +23,7 @@ export function sharesPerUnit(b:Row|undefined):number|null{
 }
 function verifiedFxScale(s:Row,target:string,now:number):number|null{
  const fx=s.fx,b=s.share_basis,a=s.annual;
- if(!a||!b||b.symbol!==s.symbol||b.report_currency!==a.currency||b.quote_currency!==s.market?.currency||b.annual_eps_basis!=='ordinary'||sharesPerUnit(b)===null||!['ADR','ordinary'].includes(b.kind)||!age(b.reviewed_at,now,180*DAY)||!String(b.source_url??'').startsWith('https://'))return null;
+ if(!a||!b||b.symbol!==s.symbol||b.report_currency!==a.currency||b.quote_currency!==s.market?.currency||annualUnitsPerListingUnit(s)===null||!['ADR','ordinary'].includes(b.kind)||!age(b.reviewed_at,now,180*DAY)||!String(b.source_url??'').startsWith('https://'))return null;
  if(!fx||fx.base!=='EUR'||!age(fx.observed_at,now,7*DAY)||fx.source_url!=='https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml')return null;
  const baseTarget=['GBp','GBX'].includes(target)?'GBP':target;
  const from=fx.rates?.[a.currency],to=fx.rates?.[baseTarget];
@@ -67,7 +67,9 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  if(!finite(fields.revenue)||fields.revenue<=0)return;
  for(const key of ['eps_trailing','revenue','net_income','gross_profit','ebit','ebitda','cash','total_debt','total_assets','equity','operating_cashflow','capex'])if(finite(fields[key]))fields[key]*=annualScale;
  // Gewinn je Aktie gilt je Stammaktie; je ADR-Einheit mal Verhältnis. Firmenweite Beträge bleiben, die Aktienzahl ist bereits in ADR-Einheiten.
- const perUnit=unitScale===null?sharesPerUnit(s.share_basis)??1:1;
+ // Einheit des Abschlusses je ADR wird gegen die Aktienzahlen geprüft (annualUnitsPerListingUnit), nicht nur behauptet.
+ const perUnit=unitScale===null?annualUnitsPerListingUnit(s)??1:1;
+ const ratio=unitScale===null?sharesPerUnit(s.share_basis)??1:1;
  if(finite(fields.eps_trailing))fields.eps_trailing*=perUnit;
  // Replace a coherent annual block, not isolated numbers from different years.
  for(const k of FINANCIAL)delete f[k];
@@ -87,9 +89,9 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  f.eps_trailing_comparable=finite(fields.eps_trailing);
  if(!finite(fields.eps_trailing))f.supplement_status+=' · Jahreszahlen übernommen; EPS fehlt, KGV-Modell nicht verfügbar';
  if(unitScale===null){
-  f.supplement_status+=` · Umrechnung ${a.currency} → ${f.currency} zum EZB-Referenzkurs ${s.fx.observed_at}; `+(perUnit===1?'Aktienbasis 1:1 geprüft':`1 ADR = ${+perUnit.toFixed(4)} Stammaktien (aus Aktienzahl und Kurs abgeleitet)`);
+  f.supplement_status+=` · Umrechnung ${a.currency} → ${f.currency} zum EZB-Referenzkurs ${s.fx.observed_at}; `+(ratio===1?'Aktienbasis 1:1 geprüft':`1 ADR = ${+ratio.toFixed(4)} Stammaktien (aus Aktienzahl und Kurs abgeleitet)`+(perUnit===1?'; Abschluss bereits je ADR (Aktienzahl geprüft), EPS unverändert':''));
   f.data_sources.push({source:s.fx.source,url:s.fx.source_url,observed_at:s.fx.observed_at,basis:`Bewertungsumrechnung ${a.currency} → ${f.currency}, Faktor ${annualScale}; keine historische Neuberechnung des Abschlusses`});
-  f.data_sources.push({source:'Aktienbasis · Emittent',url:s.share_basis.source_url,observed_at:s.share_basis.reviewed_at,basis:perUnit===1?'1 handelbare Einheit = 1 gewöhnliche Aktie; Zuordnung zeitlich befristet geprüft':`1 ADR = ${+perUnit.toFixed(4)} Stammaktien; doppelt geprüft über Aktienzahl (${s.share_basis.evidence.byShareCount}) und Kurs (${s.share_basis.evidence.byPrice}) gegenüber ${s.share_basis.evidence.homeListing}`});
+  f.data_sources.push({source:'Aktienbasis · Emittent',url:s.share_basis.source_url,observed_at:s.share_basis.reviewed_at,basis:ratio===1?'1 handelbare Einheit = 1 gewöhnliche Aktie; Zuordnung zeitlich befristet geprüft':`1 ADR = ${+ratio.toFixed(4)} Stammaktien; Abschluss ${perUnit===1?'je ADR':'je Stammaktie'} (Aktienzahl geprüft); doppelt geprüft über Aktienzahl (${s.share_basis.evidence.byShareCount}) und Kurs (${s.share_basis.evidence.byPrice}) gegenüber ${s.share_basis.evidence.homeListing}`});
  }else if(annualScale!==1||quoteScale!==null&&quoteScale!==1)f.supplement_status+=' · Pfund/Pence-Einheiten abgeglichen (1 GBP = 100 Pence)';
  f.annual_supplement_applied=true;
  f.supplement_annual_end=a.end;

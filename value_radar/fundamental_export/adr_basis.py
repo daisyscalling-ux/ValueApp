@@ -25,6 +25,24 @@ def save(path, data):
     tmp.replace(path)
 STANDARD = [0.01, 0.02, 0.04, 0.05, 0.1, 0.2, 0.25, 1 / 3, 0.5, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25, 30, 40, 50, 100]
 SHARE_TOLERANCE, PRICE_TOLERANCE, REFRESH_DAYS = .02, .10, 90
+# Einheit des Jahresabschlusses (seit 14.11.2026 gemessen statt fest 'ordinary'): Yahoo liefert fuer die US-Notierung
+# teils je ADR (GSK, VOD, WPP: verwaesserte Aktienzahl ~ ADR-Anzahl). Toleranz wie in der App (ANNUAL_UNIT_TOLERANCE).
+ANNUAL_UNIT_TOLERANCE = .15
+
+
+def annual_unit(annual, adr_units, ratio):
+    """'per_unit' (Abschluss je ADR), 'ordinary' (je Stammaktie) oder None, aus Aktienzahl im Abschluss / ADR-Anzahl."""
+    if ratio == 1:
+        return 'ordinary'
+    w = ((annual or {}).get('fields') or {}).get('weighted_shares')
+    if not positive(w) or not positive(adr_units):
+        return None
+    q = w / adr_units
+    if abs(q - 1) <= ANNUAL_UNIT_TOLERANCE:
+        return 'per_unit'
+    if abs(q / ratio - 1) <= ANNUAL_UNIT_TOLERANCE:
+        return 'ordinary'
+    return None
 
 
 def positive(x):
@@ -56,12 +74,15 @@ def adr_basis(dr_row, dr_file, home_row, home_file, today):
         return None, 'share_count_not_standard_ratio'
     if abs(by_price / ratio - 1) > PRICE_TOLERANCE:
         return None, 'price_disagrees_with_share_count'
+    unit = annual_unit(annual, sa, ratio)
+    if unit is None:
+        return None, 'annual_share_unit_unclear'
     ratio = round(ratio, 6)
     entry = {'symbol': dr_row['listing_symbol'], 'kind': 'ADR', 'ordinary_shares_per_unit': ratio, 'report_currency': annual['currency'],
-             'quote_currency': ((dr_file.get('market') or {}).get('currency')), 'annual_eps_basis': 'ordinary', 'reviewed_at': today.isoformat(),
+             'quote_currency': ((dr_file.get('market') or {}).get('currency')), 'annual_eps_basis': unit, 'reviewed_at': today.isoformat(),
              'source_url': (dr_file.get('market') or {}).get('source_url'), 'method': METHOD,
              'evidence': {'homeListing': home_row['listing_symbol'], 'byShareCount': round(by_shares, 4), 'byPrice': round(by_price, 4),
-                          'drQuoteAt': qa, 'homeQuoteAt': qh, 'fxObservedAt': (dr_file.get('fx') or {}).get('observed_at')}}
+                          'annualSharesPerUnit': (round(((annual.get('fields') or {}).get('weighted_shares') or 0) / sa, 4) or None), 'drQuoteAt': qa, 'homeQuoteAt': qh, 'fxObservedAt': (dr_file.get('fx') or {}).get('observed_at')}}
     if not str(entry['source_url'] or '').startswith('https://'):
         return None, 'source_url_missing'
     return entry, ''
@@ -120,7 +141,7 @@ def apply(folder, universe, manual, today=None, outside=None):
                 save(folder / (s.replace(':', '_') + '.json'), d)
             continue
         report['ratio_set'] += 1
-        same = old and old.get('method') == METHOD and old.get('ordinary_shares_per_unit') == entry['ordinary_shares_per_unit'] and old.get('report_currency') == entry['report_currency']
+        same = old and old.get('method') == METHOD and old.get('ordinary_shares_per_unit') == entry['ordinary_shares_per_unit'] and old.get('report_currency') == entry['report_currency'] and old.get('annual_eps_basis') == entry['annual_eps_basis']
         if same and (today - dt.date.fromisoformat(old['reviewed_at'])).days < REFRESH_DAYS:
             continue   # unveraendert bestaetigt; Datum erst nach 90 Tagen erneuern (weniger Commits)
         d['share_basis'] = entry

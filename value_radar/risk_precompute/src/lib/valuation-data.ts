@@ -39,6 +39,26 @@ function unitsFromBasis(b: Row|undefined): number|null {
   return r;
 }
 /**
+ * Einheit des Jahresabschlusses je Notierungseinheit (k), seit 14.11.2026. Yahoo liefert für die US-Notierung eines ADR
+ * den Abschluss teils je ADR (GSK, VOD, WPP: verwässerte Aktienzahl ≈ ADR-Anzahl), teils je Stammaktie. Die Pipeline
+ * gibt die Einheit in share_basis.annual_eps_basis an ('per_unit' oder 'ordinary'); hier wird sie gegen die Daten geprüft:
+ * Aktienzahl im Abschluss / Aktienzahl der Notierung muss bei 'per_unit' ≈ 1, bei 'ordinary' ≈ Verhältnis liegen
+ * (± ANNUAL_UNIT_TOLERANCE). Widerspricht die Angabe den Daten, gilt der Abschluss nicht (null), er wird nicht umgedeutet.
+ * EPS je Notierungseinheit = EPS im Abschluss × k; Aktienzahl in Notierungseinheiten = Aktienzahl im Abschluss / k.
+ */
+export const ANNUAL_UNIT_TOLERANCE = 0.15;
+export function annualUnitsPerListingUnit(s: Row|null|undefined): number|null {
+  const b = s?.share_basis, r = unitsFromBasis(b);
+  if (r === null) return null;
+  const claim = b.annual_eps_basis;
+  const expected = claim==='per_unit' ? 1 : claim==='ordinary' ? r : null;
+  if (expected === null) return null;
+  if (r === 1) return 1;
+  const w = s?.annual?.fields?.weighted_shares, sa = s?.market?.fields?.shares_out;
+  if (!positive(w) || !positive(sa)) return null;
+  return Math.abs((w/sa)/expected-1) <= ANNUAL_UNIT_TOLERANCE ? expected : null;
+}
+/**
  * Börsenwert aktuell (seit 13.11.2026, Entscheidung des Nutzers): ROIC liefert market_cap zum Stichtag des letzten
  * Abschlusses und bei Nordic-Titeln in USD (Micron: 130 statt 873 Mrd. USD). Börsenwert = Kurs × Aktienzahl,
  * gekennzeichnet; der Anbieterwert bleibt mit Stichtag/Währung (risk_financial, dieselbe Zeile) für die Prüfung erhalten.
@@ -52,7 +72,7 @@ export function normalizeMarketCap(f: Row, supplement?: Row|null, now = Date.now
   if (s && s.schema===1 && (symbol==null || s.symbol===symbol) && positive(w) && typeof a.end==='string' && Number.isFinite(Date.parse(a.end)) && now-Date.parse(a.end)<=ANNUAL_SHARES_MAX_AGE_DAYS*86400000) {
     // Aktienzahl ist einheitenfrei; Pfund und Pence (GBP/GBp/GBX) gelten deshalb als dieselbe Währung.
     const cur = (x: unknown) => (x==='GBp'||x==='GBX') ? 'GBP' : x;
-    const units = s.share_basis ? unitsFromBasis(s.share_basis) : (a.currency && cur(a.currency)===cur(s.market?.currency) ? 1 : null);
+    const units = s.share_basis ? annualUnitsPerListingUnit(s) : (a.currency && cur(a.currency)===cur(s.market?.currency) ? 1 : null);
     if (units) f.annual_shares = { value: w/units, end: a.end, source: a.source ?? null };
   }
   if (!(positive(f.price) && positive(f.shares_out))) return;
@@ -82,7 +102,7 @@ export function valuationDataCheck(f: Row, raw?: Row) {
   }
   // Börsenwert = Kurs × Aktienzahl (normalizeMarketCap). Gegengeprüft wird die Aktienbasis, in dieser Reihenfolge:
   // 1. Anbieterwert, wenn Stichtag ≤ 120 Tage und gleiche Währung; 2. Aktienzahl im Jahresabschluss (≤ 550 Tage);
-  // 3. älterer Anbieterwert (andere Währung sperrt); 4. ohne jeden Vergleichswert nur Warnung.
+  // 3. älterer Anbieterwert, nur Größenordnung; 4. ohne jeden Vergleichswert nur Warnung.
   if (positive(f.price) && positive(f.shares_out)) {
     const own = f.price*f.shares_out, prov = f.market_cap_provider, ann = f.annual_shares;
     const provOk = prov && positive(prov.value) && typeof prov.asof==='string' && Number.isFinite(Date.parse(prov.asof)) && Date.now()-Date.parse(prov.asof)<=MCAP_PROVIDER_MAX_AGE_DAYS*86400000 && prov.currency===f.currency;
@@ -95,9 +115,10 @@ export function valuationDataCheck(f: Row, raw?: Row) {
     } else if (prov && positive(prov.value)) {
       // Kein belegter Jahresabschluss: dann bleibt der Anbieterwert der Prüfmaßstab, auch wenn er älter ist (offen statt falsch).
       const ratio = prov.value/own;
-      if (prov.currency && prov.currency!==f.currency) issues.push('Aktienzahl nicht belegt: Anbieter-Börsenwert in '+prov.currency+', Notierung in '+f.currency+', kein passender Jahresabschluss. Aktienbasis (ADR?) ungeklärt.');
-      else if (ratio<0.5 || ratio>2) issues.push('Börsenwert des Anbieters (Stichtag '+(prov.asof??'unbekannt')+') passt nicht zu Kurs × Aktienzahl (Abweichung über Faktor 2), kein Jahresabschluss zur Gegenprüfung. Aktienbasis ungeklärt.');
-      else warnings.push('Aktienzahl nur gegen älteren Anbieterwert geprüft (Stichtag '+(prov.asof??'unbekannt')+').');
+      // Die Währungskennung ist die Berichtswährung der ROIC-Zeile, nicht sicher die des Börsenwerts (Experian, Novartis:
+      // Kennung USD, Wert passt zur Notierung). Deshalb nur Größenordnung (Faktor 2); Nordic-Werte in USD (~0,1) sperren weiter.
+      if (ratio<0.5 || ratio>2) issues.push('Börsenwert des Anbieters (Stichtag '+(prov.asof??'unbekannt')+') passt nicht zu Kurs × Aktienzahl (Abweichung über Faktor 2), kein Jahresabschluss zur Gegenprüfung. Aktienbasis ungeklärt.');
+      else warnings.push('Aktienzahl nur gegen älteren Anbieterwert geprüft (Stichtag '+(prov.asof??'unbekannt')+(prov.currency&&prov.currency!==f.currency?', Kennung '+prov.currency:'')+').');
     } else if (positive(f.market_cap) && f.market_cap_source!=='kurs_x_aktien') {
       const ratio = f.market_cap/own;
       if (ratio<0.5 || ratio>2) issues.push('Börsenwert passt nicht zu Kurs × Aktienzahl (Abweichung über Faktor 2). Stichtag/Aktienbasis ungeklärt.');

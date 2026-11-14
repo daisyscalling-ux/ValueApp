@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-14T17:14:22.353421+00:00",
+ "generatedAt": "2026-11-14T22:55:13.605199+00:00",
  "listings": 1340,
  "overallAverageWeight": {
-  "filled": 82.2,
-  "missing": 1.0,
+  "filled": 82.1,
+  "missing": 1.1,
   "app_only": 14.2,
   "by_design": 2.6
  },
@@ -65,8 +65,8 @@
   "corporate": {
    "listings": 1126,
    "averageWeight": {
-    "filled": 84.4,
-    "missing": 0.6,
+    "filled": 84.3,
+    "missing": 0.7,
     "app_only": 15.0,
     "by_design": 0.0
    },
@@ -97,11 +97,11 @@
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 9.93,
-     "missing": 0.07,
+     "filled": 9.9,
+     "missing": 0.1,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.993
+     "filledShareOfMeasurable": 0.99
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -274,6 +274,19 @@
   },
   {
    "profile": "corporate",
+   "block": "Bewertungsrisiko",
+   "metric": "Erwartungslücke Reverse DCF",
+   "weight": 10,
+   "missingListings": 11,
+   "filledListings": 1115,
+   "weightedGap": 110,
+   "reasons": {
+    "Kein positiver Cashflow und kein positives EV/EBITDA": 7,
+    "Währungskonflikt: ADR oder unklare Aktienbasis": 4
+   }
+  },
+  {
+   "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
    "weight": 5,
@@ -309,19 +322,6 @@
    "weightedGap": 82.5,
    "reasons": {
     "Geprüfte LCR fehlt": 11
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Bewertungsrisiko",
-   "metric": "Erwartungslücke Reverse DCF",
-   "weight": 10,
-   "missingListings": 8,
-   "filledListings": 1118,
-   "weightedGap": 80,
-   "reasons": {
-    "Kein positiver Cashflow und kein positives EV/EBITDA": 7,
-    "Währungskonflikt: ADR oder unklare Aktienbasis": 1
    }
   },
   {

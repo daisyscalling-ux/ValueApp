@@ -6,6 +6,7 @@ import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
 import {verifiedCashConversion} from './cash-conversion';
 import {normalizeMarketCap} from './valuation-data';
+import {applyForwardEstimate} from './fundamental-supplement';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
 
 /** One evaluation path; scoring always uses the native statement units. */
@@ -17,6 +18,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const fund={...input};
  // Börsenwert = Kurs × Aktienzahl (idempotent; Scanner übergibt die Ergänzungsdatei als _fundamental_supplement).
  normalizeMarketCap(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
+ // Scanner: Prognose-EPS wie in der Einzelanalyse nur als geprüfter Konsens (Einzelanalyse: bereits in bundleLight).
+ if('_fundamental_supplement' in fund)applyForwardEstimate(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
  const cc=verifiedCashConversion(fund._cash_conversion_history);
  if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' (ROIC, geprüft)'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}

@@ -273,3 +273,40 @@ Bisher ging das still in den Börsenwert ein, weil der Börsenwert aus derselben
 **Grenze:** Liegt der Wechselkurs nahe 1 (USD, EUR, CHF), erkennt Faktor 2 eine falsche Währung nicht.
 
 **Erwartung nach dieser Korrektur:** 19 − 8 = 11 Sperren (VOD und WPP nach dem nächsten fundamentals-daily-Lauf).
+
+## Geprüfte Prognose-EPS (14.11.2026)
+
+**Anlass:**
+- Bisher kam `eps_forward` im Scanner aus Yahoos `forwardEps` (gegen eine Trendfortschreibung geblendet). In der Einzelanalyse kam es aus Finnhub `epsForward` oder aus einer mechanischen Fortschreibung.
+- Keiner dieser Werte hatte einen ausgewiesenen Horizont. `forwardEps` ist meist das **nächste** Geschäftsjahr (+1y). Bei japanischen Titeln ist es ein unklarer Wert (8053: 443 statt 149 laut Konsenstabelle).
+- Die App hatte bei 43 von 49 verglichenen Titeln gar keine Prognose. Das war der Haupttreiber der Fair-Value-Lücke.
+
+**Methode (Entscheidung des Nutzers):** 12-Monats-Mix aus laufendem (0y) und nächstem Geschäftsjahr (+1y), gewichtet nach der Restlaufzeit des laufenden Jahres. Bei Dezember-Abschluss sind das am 14.11. 13 % 0y und 87 % +1y. Gerechnet und geprüft wird nur in der App (`applyForwardEstimate`, fundamental-supplement.ts). Die Pipeline liefert die Rohdaten (`consensus_estimates`, export_fundamentals.py, Methode `consensus_0y_1y_v1`): Mittelwert, Spanne, Analystenzahl und Geschäftsjahresende je Jahr, Währung, Quelle und Abrufzeit.
+
+| Regel | Konstante | sonst offen mit Grund |
+|---|---|---|
+| Datei gehört zur Notierung | – | „Keine Konsensschätzung für diese Notierung“ |
+| Abruf ≤ 7 Tage | `ESTIMATE_MAX_AGE_DAYS` | „veraltet“ |
+| ≥ 3 Analysten je Jahr | `FORWARD_MIN_ANALYSTS` | „Weniger als 3 Analysten“ |
+| laufendes Jahr nicht abgelaufen | – | „Konsens noch nicht fortgeschrieben“ |
+| Währung gleich, GBP/GBp oder EZB-Kurs ≤ 7 Tage; ADR mit Verhältnis ≠ 1 offen | – | Währungs- bzw. ADR-Grund |
+| ≤ Faktor 2 zum berichteten EPS, beide > 0 | `FORWARD_MAX_FACTOR` | „bereinigte Gewinnbasis oder Sondereffekt“ |
+
+**Weitere Änderungen:**
+- Ungeprüfte Anbieterwerte und die mechanische Fortschreibung als Prognose entfallen in beiden Wegen.
+- Das 12M-Kursziel behält seine gekennzeichnete Ersatzrechnung („Realisierter Gewinn x Wachstum (kein Konsens)“).
+- Die Peers nutzen das Forward-KGV nur aus Zeilen mit `eps_forward_method: consensus_ntm_blend_v1`. Im ersten Lauf nach dem Merge hat keine Peer-Zeile diese Kennung; erst der zweite Lauf füllt das Forward-KGV der Peers.
+- `eps_forward`, `eps_forward_method`, `eps_forward_source` und `eps_forward_status` gehen in die Universumszeile. Die Einzelanalyse zeigt den Grund unter „Forward-Gewinn offen“.
+
+**Verzerrung:**
+- Konsensschätzungen sind oft bereinigt (ohne Aktienvergütung, Sondereffekte). Die Grenze gegen das berichtete EPS verhindert, dass stark bereinigende Firmen im Forward-KGV zu billig wirken.
+- Sie lässt aber auch echte Gewinnsprünge offen, etwa Wachstum über ×2 nach einem schwachen Jahr. Das trifft eher Wachstumswerte (ARM, ServiceNow) und Zykliker im Aufschwung (Micron: 12-Monats-Konsens etwa ×2,7 zum Vorjahr). Sie verlieren dann die Forward-Methoden, statt optimistisch bewertet zu werden.
+
+**Messung (Stichprobe, 30 zufällige Titel des Universums, Abruf 14.11.):**
+- 21 geprüft, 3 mit unter 3 Analysten (INVH, PLD, GPW:MIL), 6 über Faktor 2 (ASM, EDPR, ARM, ANET, NOW, NOD).
+- Abweichung zum bisherigen Scannerwert (alle 21 geprüften):
+  - Median −1 %;
+  - große Fehler im alten Wert: VOE alt 1,43 / neu 4,37; TSE:8053 alt 285 / neu 146; TSE:8331 alt 116 / neu 196; DAL alt 10,13 / neu 7,04.
+- Hochgerechnet auf das Universum: etwa 70 % mit geprüfter Prognose. Die genaue Zahl folgt nach fundamentals-daily und precompute.
+
+**Nebenbefund (offen, nicht Teil dieser Änderung):** Nordische Zeilen mit USD-Bericht führen das ROIC-EPS in USD bei NOK/SEK-Kurs. OSL:NOD: EPS 0,085, KGV 2.124. Die neue Prüfung lässt die Prognose dort offen, das Trailing-KGV bleibt aber falsch. Umfang und Behebung sind ein eigenes Thema.

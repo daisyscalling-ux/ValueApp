@@ -185,6 +185,39 @@ def native_risk_annual(annual,symbol):
  block.update(symbol=symbol,purpose='standalone_balance_risk_context')
  return block
 
+ESTIMATE_METHOD='consensus_0y_1y_v1'
+def consensus_estimates(table,info,ys,now=None):
+ """Analystenkonsens je Geschaeftsjahr (Yahoo earnings estimate, 0y = laufendes, +1y = naechstes GJ) mit Analystenzahl,
+ Waehrung und Geschaeftsjahresende. Keine Mischung und kein Gate hier: die App rechnet den 12-Monats-Mix und prueft
+ (forward-estimate.ts). usable=False mit Grund, wenn der Block unvollstaendig ist."""
+ now=now or dt.datetime.now(UTC)
+ out={'method':ESTIMATE_METHOD,'source':'Yahoo Finance earnings estimate','source_url':f'https://finance.yahoo.com/quote/{ys}/analysis/',
+      'as_of':now.isoformat(),'currency':info.get('financialCurrency'),'periods':{},'usable':False,'reason':None}
+ nfy=info.get('nextFiscalYearEnd');lfy=info.get('lastFiscalYearEnd')
+ try:
+  end0=dt.datetime.fromtimestamp(nfy,UTC).date() if nfy else None
+  last=dt.datetime.fromtimestamp(lfy,UTC).date() if lfy else None
+ except (TypeError,ValueError,OSError):end0=last=None
+ rows=table if isinstance(table,dict) else {}
+ end1=end0+dt.timedelta(days=365) if end0 else None
+ for key,end in (('0y',end0),('+1y',end1)):
+  r=rows.get(key) or {}
+  out['periods'][key]={'avg':number(r.get('avg')),'low':number(r.get('low')),'high':number(r.get('high')),'analysts':number(r.get('numberOfAnalysts')),
+                       'year_ago_eps':number(r.get('yearAgoEps')),'fiscal_end':end.isoformat() if end else None}
+ p0,p1=out['periods']['0y'],out['periods']['+1y']
+ if not out['currency']:out['reason']='Waehrung der Schaetzung fehlt'
+ elif not end0 or not last or end0<=last:out['reason']='Geschaeftsjahresende fehlt oder widerspruechlich'
+ elif p0['avg'] is None or p1['avg'] is None:out['reason']='Konsens fuer laufendes oder naechstes Geschaeftsjahr fehlt'
+ else:out['usable']=True
+ return out
+
+def estimate_table(t):
+ """earnings_estimate als {Periode: Felder}; Ausfall ergibt {} (Block bleibt offen, nie geschaetzt)."""
+ try:
+  frame=t.earnings_estimate
+  return {} if frame is None else json.loads(frame.to_json(orient='index'))
+ except Exception:return {}
+
 def collect(row):
  import yfinance as yf
  ys=yahoo_symbol(row); t=yf.Ticker(ys); info=t.get_info()
@@ -227,7 +260,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':{'eps_forward':number(info.get('forwardEps')),'horizon':None,'usable':False,'reason':'info response does not provide an explicit EPS forecast period'},'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':consensus_estimates(estimate_table(t),info,ys),'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

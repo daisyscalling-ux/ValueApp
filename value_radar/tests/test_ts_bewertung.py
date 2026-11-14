@@ -43,11 +43,12 @@ class Eingabe(unittest.TestCase):
             e=T.ersatzdaten({'listing_symbol':'NASDAQ:MU','ticker':'MU'},d)
             self.assertEqual(e['_supplement_symbol'],'NASDAQ:MU')
             self.assertEqual(e['_fundamental_supplement']['annual']['fields'],{'weighted_shares':1.12e9},'only the share count is passed')
-            self.assertEqual(T.ersatzdaten({'listing_symbol':'NASDAQ:AMD'},d),{},'file of another listing')
-            self.assertEqual(T.ersatzdaten({'listing_symbol':'NYSE:XX'},d),{},'no file')
+            leer={'_fundamental_supplement':None,'_supplement_symbol':None}
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'NASDAQ:AMD'},d),leer,'file of another listing')
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'NYSE:XX'},d),leer,'no file')
             Path(d,'NYSE_NA.json').write_text(json.dumps({**datei,'symbol':'NYSE:NA','annual':None}))
-            self.assertEqual(T.ersatzdaten({'listing_symbol':'NYSE:NA'},d),{},'no annual block')
-            self.assertEqual(T.ersatzdaten({'listing_symbol':'../x'},d),{},'path characters are replaced')
+            self.assertIsNone(T.ersatzdaten({'listing_symbol':'NYSE:NA'},d)['_fundamental_supplement']['annual'],'no annual block, estimates still passed')
+            self.assertEqual(T.ersatzdaten({'listing_symbol':'../x'},d),leer,'path characters are replaced')
             ein=T.eingabe({**JUMBO,**e});self.assertIn('_fundamental_supplement',ein);self.assertIn('_supplement_symbol',ein)
 
     def test_without_ts_build_python_values_stay_and_are_marked(self):

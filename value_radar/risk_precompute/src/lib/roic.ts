@@ -1,4 +1,4 @@
-import { applySupplement } from './fundamental-supplement';
+import { applySupplement, applyForwardEstimate } from './fundamental-supplement';
 import { normalizeFinancialRows, normalizeMarketCap, valuationDataCheck } from './valuation-data';
 import {financialRiskInput} from './risk-score';
 /**
@@ -299,12 +299,7 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
     const lo = num(gval(metricObj, "52WeekLow"));
     if (hi) out["52w_high"] = hi;
     if (lo) out["52w_low"] = lo;
-    // Finnhub liefert hier oft auch das Forward-EPS
-    const epsFwd = num(gval(metricObj, "epsForward"));
-    if (epsFwd && epsFwd > 0) {
-      out.eps_forward = epsFwd;
-      out.eps_forward_source = 'Forward-EPS des Datenanbieters';
-    }
+    // Forward-EPS kommt nur noch aus dem geprüften Konsens (applyForwardEstimate), nicht aus epsForward ohne Horizont.
   }
 
   // Earnings-Surprise: schlaegt die Firma regelmaessig ihre Schaetzungen?
@@ -330,15 +325,7 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   if (!out["52w_high"] && raw._yahoo_52w_high) out["52w_high"] = raw._yahoo_52w_high;
   if (!out["52w_low"] && raw._yahoo_52w_low) out["52w_low"] = raw._yahoo_52w_low;
 
-  // eps_forward-Rueckfall: aus TTM-EPS und Gewinnwachstum, wenn kein Konsens.
-  if (!out.eps_forward) {
-    const epsT = out.eps_trailing as number | null;
-    const g = out.earnings_growth as number | null;
-    if (epsT && epsT > 0 && g !== null && g !== undefined) {
-      out.eps_forward = epsT * (1 + Math.max(Math.min(g, 0.30), -0.20));
-      out.eps_forward_source = 'mechanische Fortschreibung des realisierten EPS, kein Analystenkonsens';
-    }
-  }
+  // Keine mechanische Fortschreibung als Prognose mehr (seit 14.11.2026): fehlt ein geprüfter Konsens, bleibt eps_forward offen.
 
   // Rohreihen fuer die Forensik (scores.ts): income+balance+cashflow je Jahr
   // gemischt, damit piotroskiF/altmanZ/beneishM ihre Felder finden.
@@ -401,6 +388,8 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
 
   applySupplement(out, raw);
   normalizeMarketCap(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
+  // Prognose-EPS nur als geprüfter 12-Monats-Konsens (ersetzt Finnhub-Wert und mechanische Fortschreibung).
+  applyForwardEstimate(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
   out.valuation_data = valuationDataCheck(out, raw);
   const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(out)) {

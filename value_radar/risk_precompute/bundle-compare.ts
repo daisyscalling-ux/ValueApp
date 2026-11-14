@@ -23,7 +23,7 @@ const env={ROIC_API_KEY:process.env.ROIC_API_KEY,FINNHUB_API_KEY:process.env.FIN
 // Eingaenge im Universum (Prozentfelder des Exports) gegen das App-Bundle in gleicher Einheit
 const INPUTS:[string,(f:Row)=>number|null,(u:Row)=>number|null][]=[
  ['price',f=>f.price,u=>u.price],['52w_high',f=>f['52w_high'],u=>u['52w_high']],['52w_low',f=>f['52w_low'],u=>u['52w_low']],
- ['eps_trailing',f=>f.eps_trailing,u=>u.eps_trailing],['eps_forward',f=>f.eps_forward,u=>u.eps_forward],['target_mean',f=>f.target_mean,u=>u.target_mean],
+ ['eps_trailing',f=>f.eps_trailing,u=>u.eps_trailing],['eps_forward',f=>f.eps_forward,u=>u.eps_forward_method==='consensus_ntm_blend_v1'?u.eps_forward:null],['target_mean',f=>f.target_mean,u=>u.target_mean],
  ['revenue_growth_pct',f=>typeof f.revenue_growth==='number'?f.revenue_growth*100:null,u=>u.revenue_growth],['roe_pct',f=>typeof f.roe==='number'?f.roe*100:null,u=>u.roe],
  ['ev_ebitda',f=>f.ev_ebitda,u=>u.ev_ebitda],['market_cap',f=>f.market_cap,u=>u.market_cap]];
 const OUTPUTS=['playbook','composite','fair_value','upside','quantum','target_12m','health','kauf_urteil'];
@@ -38,8 +38,12 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
    const roicEmpty=['profile','quote','enterprise_value','ratios','liquidity','multiples','income','balance','cashflow'].filter(k=>(raw as Row)[k]==null);
    const fund=bundleLight(raw as any) as Row;fund.ticker=sym;fund._roic_empty=roicEmpty;
    if(!(typeof fund.price==='number'&&fund.price>0))throw new Error('Kein Kurs im App-Bundle (Abruf fehlgeschlagen oder Notierung unbekannt)');
+   // Wie die Einzelanalyse (einzelanalyse.ts): Zyklik aus der eigenen Universumszeile, Cash-Conversion aus der Bilanzpruefung.
+   // Ohne diese Eingaenge meldete der Vergleich falsche Playbook- und DCF-Unterschiede (11 Playbooks im Lauf 13.11.).
+   fund._cyclicality=u.cyclicality??null;
+   const cov=coverage.get(sym)??null;if(cov?.balance)fund._cash_conversion_history=cov.balance.cashConversion??null;
    const peers=selectPeers(u,universe);
-   const app=scannerFields(fund as any,peers,coverage.get(sym)??null,dist) as Row;
+   const app=scannerFields(fund as any,peers,cov,dist) as Row;
    const inputs=Object.fromEntries(INPUTS.map(([k,fa,fu])=>[k,{app:fa(fund)??null,scanner:fu(u)??null,relDiff:rel(fa(fund),fu(u))}]));
    const outputs=Object.fromEntries(OUTPUTS.map(k=>[k,{app:app[k]??null,scanner:u[k]??null}]));
    rows.push({symbol:sym,inputs,outputs,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});

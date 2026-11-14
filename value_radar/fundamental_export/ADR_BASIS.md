@@ -24,3 +24,25 @@ Der erste Lauf löste nur 1 von 50 ISINs auf (SK hynix → `KRX:000660`), denn d
 3. den Emittentennamen.
 
 Das entspricht der Suche bei den Kurshistorien (`export-home-histories.ts`). Die Auswahlregel bleibt unverändert: genau eine Hauptnotierung mit exakt derselben ISIN. Jeder Eintrag trägt jetzt eine Diagnose mit den Anfragen, der Zahl der Treffer und den Kandidaten derselben ISIN. Mit der neuen Methodenkennung werden die 49 zwischengespeicherten Fehlanzeigen sofort neu aufgelöst, statt 30 Tage zu warten. `adr_basis.py` prüft dieselbe Kennung (`HOME_METHOD`), ein Test sichert die Gleichheit.
+
+## Einheit des Jahresabschlusses je ADR (14. November 2026)
+
+**Fehler im eigenen Code:** `adr_basis.py` hat `annual_eps_basis: 'ordinary'` fest gesetzt, also ungeprüft angenommen, der Jahresabschluss gelte je Stammaktie. Yahoo liefert für die US-Notierung aber teils je ADR: Die verwässerte Aktienzahl entspricht der ADR-Anzahl, und das EPS ist dann Gewinn / ADR. Die App hat dieses EPS deshalb noch einmal mit dem Verhältnis multipliziert.
+
+| ADR | Verhältnis | Aktienzahl Abschluss / ADR-Anzahl | EPS in der App bisher | richtig |
+|---|---|---|---|---|
+| GSK | 2 | 1,027 | 7,34 USD | 3,67 USD |
+| VOD | 10 | 1,037 | −1,82 USD | −0,18 USD |
+| WPP | 5 | 0,998 | −6,61 USD | −1,32 USD |
+
+Betroffen war nur die Einzelanalyse. Der Scanner rechnet mit ROIC-Werten. ASML, SAP und UL (Verhältnis 1) sind nicht betroffen.
+
+**Neue Regel:**
+- Die Einheit wird gemessen: Aktienzahl im Abschluss / ADR-Anzahl ≈ 1 ergibt `per_unit`, ≈ Verhältnis ergibt `ordinary` (Toleranz ± 15 %, `ANNUAL_UNIT_TOLERANCE`).
+- Sonst wird keine Basis gesetzt (Grund `annual_share_unit_unclear`). Bei Verhältnis 1 ist keine Messung nötig.
+- Der Messwert steht als `evidence.annualSharesPerUnit` in der Basis.
+- Eine geänderte Einheit erneuert die Basis sofort, auch innerhalb der 90-Tage-Frist.
+
+Die App prüft die Angabe gegen dieselben Aktienzahlen (`annualUnitsPerListingUnit`, valuation-data.ts). Widerspricht sie den Daten, wird der Jahresblock verworfen, nicht umgedeutet. Bis zum nächsten fundamentals-daily-Lauf sind GSK, VOD und WPP in der Einzelanalyse deshalb ohne Ersatz-Jahresblock statt mit falschem EPS.
+
+**Probelauf auf einer Kopie von main:** 5 Basen gesetzt, 6 ohne Heimatnotierung (unverändert). GSK, VOD und WPP erhalten `per_unit`.

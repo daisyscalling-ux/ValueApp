@@ -213,7 +213,7 @@ Entscheidung des Nutzers: alle Profile, als Rang im Profil.
 |---|---|---|---|
 | 1 | Anbieter-Börsenwert | Stichtag ≤ 120 Tage (`MCAP_PROVIDER_MAX_AGE_DAYS`), gleiche Währung | sperrt |
 | 2 | Aktienzahl im Jahresabschluss (`weighted_shares`) | Abschluss ≤ 550 Tage (`ANNUAL_SHARES_MAX_AGE_DAYS`), gleiche Währung (GBP = GBp) oder geprüfte Aktienbasis (`share_basis`, ADR-Verhältnis) | sperrt |
-| 3 | älterer Anbieter-Börsenwert | kein Jahresabschluss | sperrt; andere Währung sperrt immer |
+| 3 | älterer Anbieter-Börsenwert | kein Jahresabschluss | sperrt (nur Größenordnung, siehe Nachtrag 14.11.) |
 | 4 | kein Vergleichswert | – | nur Warnung „Aktienzahl nicht gegengeprüft“ |
 
 **Datenweg:**
@@ -247,3 +247,29 @@ Bisher ging das still in den Börsenwert ein, weil der Börsenwert aus derselben
 - Faktor 2 erkennt Fehler in der Größenordnung, nicht eine Gattung mit 60 % Anteil. Solche Börsenwerte bleiben bis 40 % zu niedrig, und das EV/EBITDA wirkt dann günstiger.
 - `weighted_shares` ist der Jahresdurchschnitt verwässert. Rückkäufe oder Kapitalerhöhungen danach verschieben das Verhältnis, Faktor 2 lässt dafür Raum.
 - Ein veralteter Anbieterwert sperrt nicht mehr, wenn der Jahresabschluss die Aktienzahl bestätigt. Das bevorzugt keine Firmengruppe: Es betrifft Titel mit starker Kursbewegung seit dem Stichtag in beide Richtungen (Verhältnis 0,05–4,5).
+
+### Nachtrag nach dem Lauf (14.11.2026)
+
+**Ergebnis precompute 14.11.:**
+- „Daten prüfen“ 51 → 19.
+- 50 Titel sind frei geworden, wie im Probelauf gemessen.
+- 18 Titel sind neu gesperrt, PDD bleibt gesperrt.
+- 1.339 von 1.340 Zeilen tragen `kurs_x_aktien`.
+- Börsenwert neu/alt: Median 1,10; 109 Titel über ×1,5, 61 unter ×0,67.
+- Urteile ohne Sperrwechsel: 6 Änderungen.
+
+**Die 18 neuen Sperren:**
+
+| Ursache | Titel | Bewertung |
+|---|---|---|
+| Aktienzahl einer Gattung statt aller Aktien | HEN3 0,37, VOW3 0,41, TKO 0,40, CVNA 3,17, TIT 3,55 | richtig gesperrt |
+| Aktienzahl des Anbieters fraglich | DD 0,33, HON 0,49 | richtig gesperrt, Ursache offen |
+| Fehler in der Jahresaktienzahl (Einheit) | MCD (716,4 statt 716 Mio.), TSE:8015 (Tausend), SYENS (×10) | gesperrt, Vergleichswert falsch; offen statt falsch |
+| ADR-Einheit (eigener Fehler, siehe `fundamental_export/ADR_BASIS.md`) | VOD, WPP | behoben: Abschluss je ADR |
+| Währungskennung | EXPN, GALD, NOVN, PAF, PRX, ZEG | behoben, siehe unten |
+
+**Währungskennung:** `risk_financial.currency` ist die Berichtswährung der ROIC-Zeile, nicht sicher die Währung des Börsenwerts. Bei Experian oder Novartis steht USD, der Wert passt aber zur Notierung (Verhältnis 1,03–1,26). Stufe 3 prüft deshalb nur die Größenordnung (Faktor 2) und nennt die abweichende Kennung als Warnung. Nordic-Werte in USD (Verhältnis um 0,1) sperren ohne Jahresabschluss weiter.
+
+**Grenze:** Liegt der Wechselkurs nahe 1 (USD, EUR, CHF), erkennt Faktor 2 eine falsche Währung nicht.
+
+**Erwartung nach dieser Korrektur:** 19 − 8 = 11 Sperren (VOD und WPP nach dem nächsten fundamentals-daily-Lauf).

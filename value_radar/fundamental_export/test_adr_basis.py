@@ -2,9 +2,9 @@ import datetime as dt,json,tempfile,unittest
 from pathlib import Path
 from adr_basis import adr_basis,apply,METHOD
 D=dt.date(2026,11,10);FX={'base':'EUR','observed_at':'2026-11-09','rates':{'EUR':1,'USD':1.12,'GBP':.83}}
-def files(ratio_shares=2.0,adr_price=None):
+def files(ratio_shares=2.0,adr_price=None,weighted=None):
  home={'market':{'currency':'EUR','fields':{'price':30.0,'shares_out':2000.0},'quote_at':'2026-11-09'}}
- adr={'annual':{'currency':'EUR'},'fx':FX,'market':{'currency':'USD','source_url':'https://finance.yahoo.com/quote/SHEL/','quote_at':'2026-11-09','fields':{'price':adr_price or 30*1.12*2,'shares_out':2000.0/ratio_shares}}}
+ adr={'annual':{'currency':'EUR','fields':{'weighted_shares':weighted if weighted is not None else 2000.0/ratio_shares}},'fx':FX,'market':{'currency':'USD','source_url':'https://finance.yahoo.com/quote/SHEL/','quote_at':'2026-11-09','fields':{'price':adr_price or 30*1.12*2,'shares_out':2000.0/ratio_shares}}}
  return adr,home
 DR={'listing_symbol':'NYSE:SHEL','security_type':'dr','isin':'GB00BP6MXD84'};HOME={'listing_symbol':'EURONEXT:SHELL','security_type':'stock','isin':'GB00BP6MXD84'}
 class AdrBasis(unittest.TestCase):
@@ -12,6 +12,21 @@ class AdrBasis(unittest.TestCase):
   adr,home=files();e,r=adr_basis(DR,adr,HOME,home,D)
   self.assertEqual((e['ordinary_shares_per_unit'],e['kind'],e['method'],e['report_currency'],e['quote_currency']),(2,'ADR',METHOD,'EUR','USD'))
   self.assertEqual(e['evidence']['homeListing'],'EURONEXT:SHELL')
+ def test_annual_unit_measured_not_assumed(self):
+  # GSK/VOD/WPP bei Yahoo: Abschluss je ADR (Aktienzahl ~ ADR-Anzahl)
+  adr,home=files(weighted=1030.0);self.assertEqual(adr_basis(DR,adr,HOME,home,D)[0]['annual_eps_basis'],'per_unit')
+  self.assertEqual(adr_basis(DR,adr,HOME,home,D)[0]['evidence']['annualSharesPerUnit'],1.03)
+  adr,home=files(weighted=1980.0);self.assertEqual(adr_basis(DR,adr,HOME,home,D)[0]['annual_eps_basis'],'ordinary')
+  adr,home=files(weighted=1500.0);self.assertEqual(adr_basis(DR,adr,HOME,home,D),(None,'annual_share_unit_unclear'))
+  adr,home=files();del adr['annual']['fields'];self.assertEqual(adr_basis(DR,adr,HOME,home,D),(None,'annual_share_unit_unclear'))
+  adr,home=files(ratio_shares=1.0,adr_price=30*1.12,weighted=0);self.assertEqual(adr_basis(DR,adr,HOME,home,D)[0]['annual_eps_basis'],'ordinary','1:1 needs no unit evidence')
+ def test_old_ordinary_claim_rewritten_within_refresh_window(self):
+  with tempfile.TemporaryDirectory() as d:
+   d=Path(d);adr,home=files()
+   adr['share_basis']={'symbol':'NYSE:SHEL','kind':'ADR','ordinary_shares_per_unit':2,'report_currency':'EUR','annual_eps_basis':'ordinary','reviewed_at':'2026-11-09','method':METHOD}
+   (d/'NYSE_SHEL.json').write_text(json.dumps(adr));(d/'EURONEXT_SHELL.json').write_text(json.dumps(home))
+   apply(d,{'kandidaten':[DR,HOME]},{},D)
+   self.assertEqual(json.loads((d/'NYSE_SHEL.json').read_text())['share_basis']['annual_eps_basis'],'per_unit')
  def test_disagreement_or_odd_ratio_rejected(self):
   adr,home=files(adr_price=30*1.12*2.5);self.assertEqual(adr_basis(DR,adr,HOME,home,D)[1],'price_disagrees_with_share_count')
   adr,home=files(ratio_shares=2.7);self.assertEqual(adr_basis(DR,adr,HOME,home,D)[1],'share_count_not_standard_ratio')

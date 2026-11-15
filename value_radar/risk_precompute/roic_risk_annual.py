@@ -92,9 +92,14 @@ def normalize(row,payloads,now=None,max_age_days=550):
   else:
    names=('cf_purchase_of_fixed_prod_assets','cf_acquisition_of_intang_assets');values=[number(cashflow.get(k)) for k in names]
    if all(v is not None and v<=0 for v in values):capex=sum(values);parts=dict(zip(names,values))
+   elif values[0] is not None and values[0]<=0 and values[1] is None:
+    # Entscheidung des Nutzers (16.11.2026): Fehlt die Zeile fuer immaterielle Werte, reichen die Sachanlagenkaeufe,
+    # gekennzeichnet. Vorher fielen so die ganzen Investitionen weg (ADM, Micron, OMC); leichte Ueberschaetzung des
+    # freien Cashflows moeglich, wenn doch Immaterielles gekauft wurde.
+    capex=values[0];parts={names[0]:values[0],'intangibles':'not_reported'}
  else:parts={'cf_cap_expenditures':capex}
  fields['capex']=-capex if capex is not None and capex<=0 else None
- if fields['capex'] is not None:sources['capex']={'source':'ROIC v3 annual statements','source_url':urls['cashflow'],'end':end,'currency':currency,'derivation':'negative_cash_outflow_to_positive_spend','components':parts}
+ if fields['capex'] is not None:sources['capex']={'source':'ROIC v3 annual statements','source_url':urls['cashflow'],'end':end,'currency':currency,'derivation':'ppe_only_intangibles_not_reported' if parts.get('intangibles')=='not_reported' else 'negative_cash_outflow_to_positive_spend','components':parts}
  # Providers may expose next fiscal-year headers before populating any
  # financial values. Never overwrite useful archived observations with these.
  if all(v is None for v in fields.values()):

@@ -16,7 +16,7 @@
   {
    "app": "src/lib/cash-conversion.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/cash-conversion.ts",
-   "sha256": "7d849383b27114fe942e7081494bc890dda66bde255def192c27f988d082334d"
+   "sha256": "d89b2adf261cb18987a9767b1cc50028c748ec035c859f098b08822d3f70b129"
   },
   {
    "app": "src/lib/currency.ts",
@@ -41,7 +41,7 @@
   {
    "app": "src/lib/evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
-   "sha256": "227400f0c4685c8dc309b08a624a761d4729bb954be4c6a1273ff7dd3fc8f485"
+   "sha256": "68d3b5f89ea378b13904e882841f35cd502f573fe4540c56d5b97cea6876066c"
   },
   {
    "app": "src/lib/financial-health.ts",
@@ -106,7 +106,7 @@
   {
    "app": "src/lib/scanner-evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/scanner-evaluation.ts",
-   "sha256": "5b95fd44cbf76064d770b031cd9e6372629025307a78693fa2e15654390a5b6d"
+   "sha256": "073f6fa25beaaaf7913a3e32baa0779924079953ada01b85b795771b230a7368"
   },
   {
    "app": "src/lib/scores.ts",
@@ -192,7 +192,7 @@
   {
    "app": "src/lib/roic.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
-   "sha256": "9c7dbe07566c6d29ba956b8db0701b1dfe3fbcbb4ce0405e82297596cd074ff3"
+   "sha256": "9055558df82de9ac761606d9c7478f8733f8076edde7d2ef1c80fe567d1506f3"
   },
   {
    "app": "src/lib/fundamental-supplement.ts",

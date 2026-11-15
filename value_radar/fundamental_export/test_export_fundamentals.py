@@ -228,11 +228,29 @@ class IdentityTests(unittest.TestCase):
   self.assertEqual(rows,[{'ticker':'PKO.WA','listing_symbol':'GPW:PKO'}])
   self.assertEqual(index['identity_rejected']['PKO.WA']['rejected_listing'],'NYSE:PKO')
 
+class CashHistoryTests(unittest.TestCase):
+ def test_years_with_ocf_capex_and_net_income_only(self):
+  from export_fundamentals import yahoo_cash_history,CASH_HISTORY_METHOD
+  inc={'2026-08-31T00:00:00.000':{'Net Income':85.0},'2025-08-31T00:00:00.000':{'Net Income':8.5},'2024-08-31T00:00:00.000':{'Net Income':0.8},'2023-08-31T00:00:00.000':{'Net Income':-5.8}}
+  cf={'2026-08-31T00:00:00.000':{'Operating Cash Flow':89.7,'Capital Expenditure':-30.7},
+      '2025-08-31T00:00:00.000':{'Operating Cash Flow':17.5,'Purchase Of PPE':-15.0,'Purchase Of Intangibles':-0.9},
+      '2024-08-31T00:00:00.000':{'Operating Cash Flow':8.5,'Net Investing Cash Flow':-8.4},
+      '2023-08-31T00:00:00.000':{'Operating Cash Flow':1.6,'Capital Expenditure':2.0}}
+  h=yahoo_cash_history({'income':inc,'cashflow':cf},{'financialCurrency':'USD','symbol':'MU'})
+  self.assertEqual(h['method'],CASH_HISTORY_METHOD)
+  self.assertEqual([a['end'] for a in h['annuals']],['2025-08-31','2026-08-31'],'net investing flow and positive capex never used')
+  self.assertEqual(h['annuals'][1]['fields'],{'operating_cashflow':89.7,'capex':30.7,'net_income':85.0})
+  self.assertAlmostEqual(h['annuals'][0]['fields']['capex'],15.9);self.assertEqual(h['annuals'][0]['capex_derivation'],'sum_of_reported_components')
+  self.assertEqual(yahoo_cash_history({},{'financialCurrency':'USD','symbol':'X'})['annuals'],[])
+
 class SplitTests(unittest.TestCase):
  def test_recent_splits_with_date_and_ratio_failure_gives_empty(self):
-  import pandas as pd
+  # Ohne pandas (Testumgebung von fundamentals-daily): Zeitstempel mit to_pydatetime wie bei yfinance.
   from export_fundamentals import recent_splits
-  class T: splits=pd.Series([2.39,1/3,4.0],index=pd.to_datetime(['2025-11-03','2026-06-24','2015-01-02'],utc=True))
+  class Ts(dt.datetime):
+   def to_pydatetime(self):return self
+  class Splits(dict):pass
+  class T: splits=Splits({Ts(2025,11,3,tzinfo=dt.timezone.utc):2.39,Ts(2026,6,24,tzinfo=dt.timezone.utc):1/3,Ts(2015,1,2,tzinfo=dt.timezone.utc):4.0})
   self.assertEqual(recent_splits(T()),[{'date':'2025-11-03','ratio':2.39},{'date':'2026-06-24','ratio':0.333333}])
   class Bad:
    @property

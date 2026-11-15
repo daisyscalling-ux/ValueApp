@@ -53,3 +53,16 @@ export function verifiedCashConversion(x:unknown,now=Date.now()):(CashConversion
  if(Math.abs(r.raw-c.raw)>1e-9||Math.abs(value-c.value)>1e-9||c.years!==c.periods.length||c.clamped!==(value!==r.raw))return null;
  return c as CashConversion&{state:'available'};
 }
+
+/**
+ * Ersatzquelle (seit 16.11.2026, Entscheidung des Nutzers): Liefert ROIC keine drei vollständigen Geschäftsjahre,
+ * gilt die Yahoo-Jahreshistorie derselben Ergänzungsdatei (export_fundamentals.yahoo_cash_history). Gleiche Methode,
+ * gleiche Prüfung (3–5 aufeinanderfolgende Jahre, eine Währung, ≤ 550 Tage, Deckel 1,5); gekennzeichnet über origin.
+ */
+export const CASH_HISTORY_SUPPLEMENT_METHOD='yahoo_annual_cash_history_v1';
+export function cashConversionFromSupplement(history:unknown,now=Date.now()):(CashConversion&{origin:string})|null{
+ const h=history as Row;
+ if(!h||h.method!==CASH_HISTORY_SUPPLEMENT_METHOD||!Array.isArray(h.annuals))return null;
+ const r=cashConversionFromAnnuals(h.annuals,now);
+ return {...r,origin:'yahoo_annual_history'};
+}

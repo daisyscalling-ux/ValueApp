@@ -18,7 +18,8 @@ FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_va
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil",
           "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile",
-          "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "expectation_gap")
+          "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "expectation_gap",
+          "report_fx", "report_fx_status")
 PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality",
                   "_fundamental_supplement", "_supplement_symbol"}
 
@@ -162,6 +163,11 @@ def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
         if isinstance(neu, dict) and not neu.get("error") and neu.get("scanner_method") == METHODE:
             for k in FELDER:
                 r[k] = neu.get(k)
+            # Berichtswaehrung umgerechnet (EZB): Anzeige- und Peer-Kennzahlen der Zeile aus demselben Rechenweg,
+            # sonst blieben EPS, KGV, KBV, EV/EBITDA unumgerechnet (Equinor KGV 209,6 statt ~22).
+            for k, v in (neu.get("report_converted") or {}).items():
+                if v is not None:
+                    r[k] = v
             # Gesperrte Bewertung: Rohwerte und Herkunft mitschreiben, damit die Ursache ohne neuen Abruf klar wird.
             if r.get("kauf_urteil") == "Daten prüfen":
                 r["valuation_check_inputs"] = offen[r["ticker"]].get("_pruef_eingang") or {}

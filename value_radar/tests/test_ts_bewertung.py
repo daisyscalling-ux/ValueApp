@@ -117,6 +117,10 @@ class AppRechenweg(unittest.TestCase):
             ohne=[{**zeile('OSL:EQNR',eq),'listing_symbol':'OSL:EQNR'}];T.anwenden(ohne,risiko={},ordner=d+'/fehlt')
         self.assertNotEqual(mit[0]['kauf_urteil'],'Daten prüfen');self.assertGreater(mit[0]['fair_value'],100)
         self.assertEqual(ohne[0]['kauf_urteil'],'Daten prüfen');self.assertIn('EZB',' '.join(ohne[0]['valuation_issues']))
+        # Zeilenwerte fuer Anzeige und Peers umgerechnet und gekennzeichnet; ohne Kurs bleiben sie, mit Status
+        self.assertAlmostEqual(mit[0]['eps_trailing'],2.8*11.09/1.16,places=2);self.assertEqual(mit[0]['report_fx']['from'],'USD')
+        self.assertAlmostEqual(mit[0]['pe'],407.6/(2.8*11.09/1.16),places=0)
+        self.assertNotIn('report_converted',mit[0]);self.assertIn('EZB',ohne[0]['report_fx_status'])
 
     def test_peers_from_the_whole_universe(self):
         peers=[{'ticker':f'ATHEX:P{i}','listing_symbol':f'ATHEX:P{i}','isin':f'GRS00000000{i}','name':f'Peer {i}','name_full':f'Peer {i}','currency':'EUR',

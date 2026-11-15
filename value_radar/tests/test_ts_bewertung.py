@@ -79,6 +79,9 @@ class AppRechenweg(unittest.TestCase):
         # Diagnose nur bei gesperrten Zeilen: Rohwerte fuer die Ursachensuche
         self.assertEqual(b['valuation_check_inputs']['price'],80.0);self.assertEqual(b['valuation_check_inputs']['52w_high'],28.7)
         self.assertNotIn('valuation_check_inputs',a)
+        # Erwartungsluecke nur als Kontext (scoreContribution 0), gesperrte Zeile mit Grund
+        self.assertEqual(a['expectation_gap']['scoreContribution'],0);self.assertIsInstance(a['expectation_gap']['gap_pp'],float)
+        self.assertEqual(b['expectation_gap']['status'],'Bewertungsdaten gesperrt')
 
 
     def test_market_cap_price_times_shares_with_annual_check(self):

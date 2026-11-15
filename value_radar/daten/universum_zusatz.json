@@ -1,0 +1,19 @@
+{
+ "schema": 1,
+ "method": "curated-additions-v1",
+ "note": "Vom Nutzer benannte Titel ausserhalb der Indizes. Identitaet wird im Export gegen die ROIC-Aufloesung geprueft; Pruefung jaehrlich erneuern.",
+ "titles": [
+  {
+   "ticker": "MFC",
+   "listing_symbol": "NYSE:MFC",
+   "isin": "CA56501R1064",
+   "currency": "USD",
+   "security_type": "stock",
+   "name": "Manulife Financial Corporation",
+   "reason": "Auf Wunsch des Nutzers: kanadischer Lebensversicherer, in keinem Index des Universums (S&P 500, Nasdaq-100, STOXX 600, Nikkei 225, DAX). Stammaktie an der NYSE (keine ADR), Bericht in CAD.",
+   "added_on": "2026-11-15",
+   "reviewed_on": "2026-11-15",
+   "review_expires": "2027-11-15"
+  }
+ ]
+}

@@ -1590,17 +1590,27 @@ def export_universum() -> list:
     dax = [t if "." in t else t + ".DE" for t in DAX40]
     tk.extend(dax)
 
+    # Zusatztitel (daten/universum_zusatz.json, vom Nutzer benannt, mit Pruefdatum); Identitaet prueft export_cf.
+    import universe_additions as _ua
+    zusatz, zusatz_probleme = _ua.load()
+    zu = list(zusatz)
+    tk.extend(zu)
+    _log(f"[universum] Zusatztitel: {len(zu)}" + (f" (verworfen: {'; '.join(zusatz_probleme)})" if zusatz_probleme else ""))
+
     def _ist_ticker(t):
         return bool(t) and " " not in t and 0 < len(t) <= 14
 
     liste = [t for t in dict.fromkeys(tk) if _ist_ticker(t)]
     _log(f"[universum] GESAMT entdoppelt: {len(liste)} Titel")
     _EXPORT_CACHE["scope"] = _im.scope(
-        {"SP500": sp, "NDX": nd, "STOXX600": st, "NIKKEI225": nk, "DAX": dax},
+        {"SP500": sp, "NDX": nd, "STOXX600": st, "NIKKEI225": nk, "DAX": dax, _ua.INDEX: zu},
         {"SP500": sp_quelle, "NDX": {"kind": "slickcharts_or_wikipedia", "count": len(nd)},
          "STOXX600": {"kind": "fixed_list", "file": "stoxx600_liste.txt", "count": len(st)},
          "NIKKEI225": {"kind": "fixed_list", "file": "nikkei225_liste.txt", "count": len(nk)},
-         "DAX": {"kind": "code_constant", "count": len(dax)}})
+         "DAX": {"kind": "code_constant", "count": len(dax)},
+         _ua.INDEX: {"kind": "curated_list", "file": "daten/universum_zusatz.json", "method": _ua.METHOD,
+                     "count": len(zu), "problems": zusatz_probleme}})
+    _EXPORT_CACHE["zusatz"] = zusatz
     _EXPORT_CACHE["liste"] = liste
     return liste
 

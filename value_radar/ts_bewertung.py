@@ -18,7 +18,7 @@ FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_va
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil",
           "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile",
-          "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status")
+          "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "expectation_gap")
 PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality",
                   "_fundamental_supplement", "_supplement_symbol"}
 

@@ -106,7 +106,7 @@
   {
    "app": "src/lib/scanner-evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/scanner-evaluation.ts",
-   "sha256": "29fd9f6d038fc745566b99937fb4bf2826745097c6d4e453f217001d94575728"
+   "sha256": "b5464daac85e54d679de7527e3d46975209f699fb4f7c9ccc72f6aefb2180413"
   },
   {
    "app": "src/lib/scores.ts",

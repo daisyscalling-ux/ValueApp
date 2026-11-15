@@ -5,7 +5,7 @@
  * BEWERTUNG_RISIKODATEN.md). Identische Kopie unter ValueApp/value_radar/risk_precompute/src/lib.
  */
 import {evaluateStock} from './evaluation';
-import {analystTarget,type Fund} from './valuation';
+import {analystTarget,reverseDcfImpliedGrowth,type Fund} from './valuation';
 import {valuationDataCheck} from './valuation-data';
 import type {HealthDistribution} from './financial-health';
 
@@ -13,6 +13,25 @@ export const SCANNER_METHOD='ts-evaluate-v1';
 type Row=Record<string,any>;
 const r1=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v*10)/10:null;
 const r2=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v*100)/100:null;
+
+/**
+ * Erwartungslücke als Kontext (seit 15.11.2026, Entscheidung des Nutzers: nur anzeigen, scoreContribution 0).
+ * Wie im Risikoscore (risk-construct.ts, valuationMetrics): Reverse DCF (vom Kurs vorausgesetztes Cashflow-Wachstum)
+ * minus Umsatzwachstum des letzten Geschäftsjahres. Banken, Versicherer und Spezialfinanzierer: eigenes Finanzmodell in
+ * der Risikokarte, hier offen. Kein Einfluss auf Quantum, Composite, Fair Value oder Urteil: unkalibriert, und hohe
+ * Investitionen drücken den freien Cashflow (kapitalintensive Firmen erschienen sonst systematisch zu teuer).
+ */
+export const EXPECTATION_GAP_METHOD='reverse_dcf_minus_revenue_growth_v1';
+export function expectationGap(fund:Fund&Row,profile:string|null,blocked:boolean){
+ const base={method:EXPECTATION_GAP_METHOD,scoreContribution:0 as const};
+ if(blocked)return {...base,status:'Bewertungsdaten gesperrt'};
+ if(profile==='bank'||profile==='insurer'||profile==='specialist_financial')return {...base,status:'Finanzmodell: siehe Risikokarte der Einzelanalyse'};
+ if(!(typeof fund.free_cashflow==='number'&&fund.free_cashflow>0))return {...base,status:'Freier Cashflow negativ oder nicht berichtet, Reverse DCF nicht anwendbar'};
+ const implied=reverseDcfImpliedGrowth(fund),g=fund.revenue_growth;
+ if(typeof implied!=='number'||!Number.isFinite(implied))return {...base,status:'Reverse DCF liefert kein eindeutiges vorausgesetztes Wachstum'};
+ if(typeof g!=='number'||!Number.isFinite(g)||g<=-0.9||g>=5)return {...base,status:'Gültiges Umsatzwachstum fehlt'};
+ return {...base,status:null,implied_growth:r1(implied*100),revenue_growth:r1(g*100),gap_pp:r1((implied-g)*100)};
+}
 
 /** Kauf-Urteil wie bisher in der Pipeline: Abschlag UND Qualitaet UND keine Value-Trap, nur auf geprueften Daten. */
 export function kaufUrteil(x:{blocked:boolean;fallback:boolean;upside:number|null;quality:number|null;composite:number|null;valueTrap:boolean}):'kauf'|'beobachten'|'meiden'|'Daten prüfen'{
@@ -43,6 +62,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
   valuation_issues:blocked?check.issues:[],
   market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,
+  expectation_gap:expectationGap(norm,(e.scores as Row)._health_profile??null,blocked),
   eps_forward:typeof e.fund.eps_forward==='number'?Math.round(e.fund.eps_forward*10000)/10000:null,eps_forward_method:e.fund.eps_forward_method??null,
   eps_forward_source:e.fund.eps_forward_source??null,eps_forward_status:e.fund.eps_forward_status??null,
   peer_count:e.peerCount,composite_peer_metrics:Object.entries((e.scores as Row).metric_source??{}).filter(([,v])=>v==='peers').map(([k])=>k).sort(),

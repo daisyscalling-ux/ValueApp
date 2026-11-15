@@ -41,3 +41,28 @@ Nicht gemessen: Unterschiede der Datenquellen beider Wege (Pipeline: `providers.
 1. Befund PB1 beheben (erledigt, siehe oben).
 2. Einheitlicher Rechenweg: Python-Teile, die nur dort existieren, nach TS übernehmen; Pipeline schreibt Scanner-Werte aus `evaluateStock`.
 3. Risikodaten je Zielgröße, jeweils mit Messung, Tests und Probelauf.
+
+## Erwartungslücke: nur Kontext (15.11.2026)
+
+**Letzter Baustein des Plans vom 12.11.:** die Erwartungslücke aus dem Risikoscore. Sie ist das vom Kurs vorausgesetzte Cashflow-Wachstum (Reverse DCF) minus dem Umsatzwachstum des letzten Geschäftsjahres.
+
+**Messung (786 Titel, Cashflow aus den Jahresabschlüssen der Ergänzungsdateien, gleiche Berichts- und Handelswährung):**
+- Spearman zur Bewertung (Upside): −0,29, zum Quantum: −0,38. Die Lücke bringt also eigene Information.
+- Verteilung: P10 −12,3, Median +4,0, P90 +17,8 Prozentpunkte. 115 Titel liegen über 15 Pp.
+- Als Value-Trap-Signal (Upside > 25 % und Lücke > 15 Pp) träfe sie 17 Titel. 12 davon haben schon ein anderes Warnsignal, 11 sind japanische, kapitalintensive Firmen.
+
+**Entscheidung des Nutzers:** nur anzeigen, `scoreContribution: 0`. Quantum, Composite, Fair Value und Urteil bleiben unverändert.
+
+**Begründung:**
+- Die Schwelle wäre unkalibriert.
+- Hohe Investitionen drücken den freien Cashflow; kapitalintensive Firmen erschienen dann systematisch zu teuer (Verzerrung).
+
+**Umsetzung:**
+- `expectationGap` (scanner-evaluation.ts, Methode `reverse_dcf_minus_revenue_growth_v1`) schreibt `expectation_gap` in die Universumszeile: vorausgesetztes Wachstum, Umsatzwachstum und Lücke in Pp, oder einen Grund, warum die Lücke offen ist.
+- Für Banken, Versicherer und Spezialfinanzierer steht die Lücke in der Risikokarte (Finanzmodell).
+- Der Screener zeigt die Spalte „Erw.-Lücke“ mit der Erklärung im Tooltip.
+- In der Einzelanalyse steht die Lücke bereits in der Risikokarte (Block „Bewertungsrisiko“).
+
+**Grenze:** Die Messung nutzt operativen Cashflow minus Investitionen aus dem Jahresabschluss. Im Lauf zählt der FCFF aus ROIC, die Werte weichen deshalb ab.
+
+Damit ist der Plan vom 12.11. abgeschlossen: 7 Bausteine fließen in die Bewertung ein, die Erwartungslücke ist bewusst nur Kontext.

@@ -38,11 +38,13 @@ class Eingabe(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as d:
             datei={'schema':1,'symbol':'NASDAQ:MU','annual':{'end':'2025-08-28','currency':'USD','source':'Yahoo annual statements',
-                   'fields':{'weighted_shares':1.12e9,'revenue':3.7e10}},'market':{'currency':'USD','fields':{'price':1}},'share_basis':None}
+                   'fields':{'weighted_shares':1.12e9,'revenue':3.7e10}},'market':{'currency':'USD','fields':{'price':1}},'share_basis':None,
+                   'risk_annual':{'end':'2025-08-28'}}
             Path(d,'NASDAQ_MU.json').write_text(json.dumps(datei));Path(d,'NASDAQ_AMD.json').write_text(json.dumps({**datei,'symbol':'NASDAQ:MUX'}))
             e=T.ersatzdaten({'listing_symbol':'NASDAQ:MU','ticker':'MU'},d)
             self.assertEqual(e['_supplement_symbol'],'NASDAQ:MU')
-            self.assertEqual(e['_fundamental_supplement']['annual']['fields'],{'weighted_shares':1.12e9},'only the share count is passed')
+            self.assertEqual(e['_fundamental_supplement']['annual']['fields']['weighted_shares'],1.12e9,'full supplement as in the single analysis')
+            self.assertNotIn('risk_annual',e['_fundamental_supplement'])
             leer={'_fundamental_supplement':None,'_supplement_symbol':None}
             self.assertEqual(T.ersatzdaten({'listing_symbol':'NASDAQ:AMD'},d),leer,'file of another listing')
             self.assertEqual(T.ersatzdaten({'listing_symbol':'NYSE:XX'},d),leer,'no file')
@@ -68,7 +70,7 @@ class Eingabe(unittest.TestCase):
 class AppRechenweg(unittest.TestCase):
     def test_values_replaced_by_app_path(self):
         rows=[zeile('ATHEX:BELA',JUMBO),zeile('BLOCK',{**JUMBO,'price':80.0})]
-        st=T.anwenden(rows)
+        st=T.anwenden(rows,ordner=tempfile.mkdtemp())  # ohne Ergaenzungsdatei: reine Zeilenwerte
         self.assertEqual((st['ts'],st['ausfall']),(2,False))
         a,b=rows
         self.assertEqual(a['scanner_method'],T.METHODE);self.assertEqual(a['playbook'],'quality');self.assertNotEqual(a['composite'],11)
@@ -129,7 +131,7 @@ class AppRechenweg(unittest.TestCase):
         subject={**zeile('ATHEX:BELA',JUMBO),'listing_symbol':'ATHEX:BELA','isin':'GRS282183003','name':'Jumbo S.A.','currency':'EUR',
                  'sector':'Retail trade','industry':'Specialty stores','market_cap':3.7e9}
         rows=[subject,*peers]
-        st=T.anwenden(rows)
+        st=T.anwenden(rows,ordner=tempfile.mkdtemp())  # ohne Ergaenzungsdatei: reine Zeilenwerte
         self.assertEqual(st['ts'],1)
         self.assertGreaterEqual(subject['peer_count'],5);self.assertEqual(subject['ev_ebitda_anchor'],'peers')
         self.assertIn('roe',subject['composite_peer_metrics'])

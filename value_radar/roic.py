@@ -603,6 +603,18 @@ def _yr(inc):
                    "is_sales_and_services_revenues"))
 
 
+def _income_period(inc):
+    """Stichtag und Waehrung der juengsten datierten Jahres-GuV (fuer den App-Rechenweg: applySupplement entscheidet
+    damit, ob der Jahresabschluss der Ergaenzungsdatei gleich alt oder neuer ist). None ohne gueltiges Datum."""
+    import re as _re
+    rows = [r for r in (inc or []) if isinstance(r, dict)
+            and _re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("period_end_date") or ""))]
+    if not rows:
+        return None
+    r = max(rows, key=lambda x: str(x.get("period_end_date")))
+    return {"income_period": r.get("period_end_date"), "income_currency": r.get("currency") or r.get("reporting_currency")}
+
+
 def bundle(t: str) -> dict:
     """Kennzahlen im providers-Format.
 
@@ -779,6 +791,7 @@ def bundle(t: str) -> dict:
             # roic liefert teils als Faktor (0.05), teils als Prozent (5.0)
             out["fcf_yield"] = _fcy / 100.0 if abs(_fcy) > 1.5 else _fcy
 
+    out.update(_income_period(inc) or {})
     return {k: v for k, v in out.items() if v is not None or k == "_src"}
 
 
@@ -1937,6 +1950,7 @@ def bundle_light(t: str) -> dict:
         if out.get("eps_trailing") is None and e0 is not None:
             out["eps_trailing"] = e0
 
+    out.update(_income_period(inc) or {})
     return {k: v for k, v in out.items() if v is not None or k == "_src"}
 
 

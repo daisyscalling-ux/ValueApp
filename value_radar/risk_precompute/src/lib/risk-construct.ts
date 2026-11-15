@@ -2,7 +2,7 @@
 // riskScore (Version 0.3) bleibt unverändert und wird für Kurs-, Finanz- und Umfeldblock wiederverwendet.
 import {riskScore,type RiskMetric} from './risk-score';
 import {contextMetrics} from './risk-context';
-import {reverseDcfImpliedGrowth,szenarioMatrix,type FairValueResult,type Fund} from './valuation';
+import {reverseDcfImpliedGrowth,reverseDcfInput,szenarioMatrix,type FairValueResult,type Fund} from './valuation';
 import {valuationRisk} from './valuation-risk';
 import {capitalRequirementPresentation} from '../risk_capital_requirement_view';
 import {verifiedLiquidity,verifiedLiquidityExemption,liquiditySourceLabel} from '../holding-liquidity';
@@ -101,13 +101,14 @@ export function valuationMetrics(fund:Fund&Row,fv:FairValueResult|undefined,prof
  const B:Block='Bewertungsrisiko',gapName='Erwartungslücke · vorausgesetztes Wachstum minus Umsatzwachstum',bearName='Abstand des Kurses über dem Bear-Szenario';
  if(profile==='bank'||profile==='insurer')return financialValuationMetrics(fund,fv);
  if(profile==='specialist_financial')return specialistValuationMetrics(fund,fv);
- const noFcf=!(finite(fund.free_cashflow)&&fund.free_cashflow>0),fallbackWhy='Freier Cashflow negativ oder nicht berichtet, Reverse DCF nicht anwendbar.';
+ // Seit 16.11.2026 dieselbe Cashflow-Basis wie der DCF (Gewinn × geprüfte Cash-Conversion, sonst berichteter FCFF).
+ const rdcf=reverseDcfInput(fund),noFcf=!rdcf,fallbackWhy='Weder Gewinn × geprüfte Cash-Conversion noch berichteter freier Cashflow positiv, Reverse DCF nicht anwendbar.';
  if(!fv)return [noFcf?evEbitdaFallback(reference,peerRows,fallbackWhy):open(B,gapName,10,'Fair-Value-Berechnung fehlt.'),open(B,bearName,5,'Fair-Value-Berechnung fehlt.')];
  const out:ConstructMetric[]=[];
- const implied=reverseDcfImpliedGrowth(fund),growth=fund.revenue_growth;
+ const implied=rdcf?reverseDcfImpliedGrowth(rdcf.fund):null,growth=fund.revenue_growth;
  if(!finite(implied))out.push(noFcf?evEbitdaFallback(reference,peerRows,fallbackWhy):open(B,gapName,10,'Reverse DCF liefert kein eindeutiges vorausgesetztes Wachstum.'));
  else if(!finite(growth)||growth<=-0.9||growth>=5)out.push(open(B,gapName,10,'Gültiges Umsatzwachstum des letzten Geschäftsjahres fehlt.'));
- else{const gap=implied-growth;out.push(metric(B,gapName,10,lin(gap,0,.15),pct(implied)+' vorausgesetzt · '+pct(growth)+' Umsatzwachstum','Reverse DCF (Cashflow-Wachstum) gegen Umsatzwachstum des letzten Geschäftsjahres. 0 Punkte ohne Lücke, 100 Punkte ab 15 Prozentpunkten. Verschiedene Größen: Hinweis auf hohe Erwartungen, kein Beweis.'))}
+ else{const gap=implied-growth;out.push(metric(B,gapName,10,lin(gap,0,.15),pct(implied)+' vorausgesetzt · '+pct(growth)+' Umsatzwachstum','Reverse DCF (Cashflow-Wachstum'+(rdcf?.quelle==='normalisiert'?', Basis Gewinn × geprüfte Cash-Conversion wie im DCF':', Basis berichteter freier Cashflow')+') gegen Umsatzwachstum des letzten Geschäftsjahres. 0 Punkte ohne Lücke, 100 Punkte ab 15 Prozentpunkten. Verschiedene Größen: Hinweis auf hohe Erwartungen, kein Beweis.'))}
  const r=valuationRisk(fund.price,fv,szenarioMatrix(fund,(fund as Row)._peer_funds??null,fv.playbook));
  if(r.reason||!r.values)out.push(open(B,bearName,5,r.reason||'Szenarien fehlen.'));
  else{const down=Math.max(0,1-r.values.bear/(fund.price as number));out.push(metric(B,bearName,5,lin(down,0,.6),down>0?pct(down)+' Abstand':'Kurs auf oder unter Bear','Rückgang bis zum Bear-Rechenwert derselben Kernmethoden. 0 Punkte auf oder unter Bear, 100 Punkte ab 60 % Abstand. Modellabstand, keine Kursprognose.'))}

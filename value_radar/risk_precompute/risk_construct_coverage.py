@@ -404,6 +404,11 @@ def metrics(x):
                                                                    (growth is not None and abs(growth) > .5, 'Umsatzsprung über ±50 %'))))
     else:
         fcf = f['operating_cashflow'] - abs(f['capex']) if finite(f.get('operating_cashflow')) and finite(f.get('capex')) else None
+        # Seit 16.11.2026 wie der DCF (reverseDcfInput, valueapp-cf): Gewinn x gepruefte Cash-Conversion, sonst FCF.
+        cc = (b or {}).get('cashConversion') or {}
+        ni = f.get('net_income')
+        if cc.get('state') == 'available' and finite(cc.get('value')) and cc['value'] > 0 and finite(ni) and ni > 0:
+            fcf = ni * cc['value']
         if fcf is None or fcf <= 0:
             # Ersatz in der App (Version 0.9): EV/EBITDA gegenüber dem Median von mindestens drei Peers.
             own = u.get('ev_ebitda')

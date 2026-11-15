@@ -5,7 +5,7 @@
  * BEWERTUNG_RISIKODATEN.md). Identische Kopie unter ValueApp/value_radar/risk_precompute/src/lib.
  */
 import {evaluateStock} from './evaluation';
-import {analystTarget,reverseDcfImpliedGrowth,type Fund} from './valuation';
+import {analystTarget,reverseDcfImpliedGrowth,reverseDcfInput,type Fund} from './valuation';
 import {valuationDataCheck} from './valuation-data';
 import type {HealthDistribution} from './financial-health';
 
@@ -26,11 +26,12 @@ export function expectationGap(fund:Fund&Row,profile:string|null,blocked:boolean
  const base={method:EXPECTATION_GAP_METHOD,scoreContribution:0 as const};
  if(blocked)return {...base,status:'Bewertungsdaten gesperrt'};
  if(profile==='bank'||profile==='insurer'||profile==='specialist_financial')return {...base,status:'Finanzmodell: siehe Risikokarte der Einzelanalyse'};
- if(!(typeof fund.free_cashflow==='number'&&fund.free_cashflow>0))return {...base,status:'Freier Cashflow negativ oder nicht berichtet, Reverse DCF nicht anwendbar'};
- const implied=reverseDcfImpliedGrowth(fund),g=fund.revenue_growth;
+ const inp=reverseDcfInput(fund);
+ if(!inp)return {...base,status:'Weder Gewinn × geprüfte Cash-Conversion noch berichteter freier Cashflow positiv, Reverse DCF nicht anwendbar'};
+ const implied=reverseDcfImpliedGrowth(inp.fund),g=fund.revenue_growth;
  if(typeof implied!=='number'||!Number.isFinite(implied))return {...base,status:'Reverse DCF liefert kein eindeutiges vorausgesetztes Wachstum'};
  if(typeof g!=='number'||!Number.isFinite(g)||g<=-0.9||g>=5)return {...base,status:'Gültiges Umsatzwachstum fehlt'};
- return {...base,status:null,implied_growth:r1(implied*100),revenue_growth:r1(g*100),gap_pp:r1((implied-g)*100)};
+ return {...base,status:null,implied_growth:r1(implied*100),revenue_growth:r1(g*100),gap_pp:r1((implied-g)*100),cashflow_basis:inp.quelle};
 }
 
 /** Kauf-Urteil wie bisher in der Pipeline: Abschlag UND Qualitaet UND keine Value-Trap, nur auf geprueften Daten. */
@@ -52,7 +53,8 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
  const e=evaluateStock({...input},null,peerRows,riskCoverage,healthDistribution),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
  // Prüfung auf dem bewerteten Fund (Börsenwert, Berichtswährung und Prognose bereits normalisiert wie in der Einzelanalyse).
  const norm=e.fund as Fund&Row;
- const check=input.valuation_data??valuationDataCheck(norm),blocked=!!check.blocked;
+ // Gewinnstichtag der ROIC-Zeile als Rohdaten-Ersatz: dieselben Periodenprüfungen wie in der Einzelanalyse.
+ const check=input.valuation_data??valuationDataCheck(norm,norm.income_period?{income:[{period_end_date:norm.income_period,period_type:'annual',currency:norm.income_currency}]}:undefined),blocked=!!check.blocked;
  const upside=blocked?null:displayUpside(e.fund as Fund&Row,fv);
  const composite=blocked?null:e.scores.composite;
  return {
@@ -62,6 +64,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
   valuation_issues:blocked?check.issues:[],
   market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,share_count_basis:norm.share_count_basis??null,
+  annual_supplement_applied:!!norm.annual_supplement_applied,supplement_annual_end:norm.supplement_annual_end??null,
   expectation_gap:expectationGap(norm,(e.scores as Row)._health_profile??null,blocked),
   // Umgerechnete Kennzahlen für Anzeige und Peers der Universumszeile (nur wenn umgerechnet; sonst bleiben die Pipeline-Werte).
   report_fx:norm.report_fx??null,report_fx_status:norm.report_fx_status??null,

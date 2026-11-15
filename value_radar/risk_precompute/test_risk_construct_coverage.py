@@ -118,6 +118,10 @@ class EvEbitdaFallbackTests(unittest.TestCase):
   uni['kandidaten'][0]['ev_ebitda']=-4
   g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:N1':{'statistics':STATS}},ann)['largestGaps']}
   self.assertEqual(g[('corporate','Erwartungslücke Reverse DCF')]['reasons'],{'Kein positiver Cashflow und kein positives EV/EBITDA':1})
+  # Seit 16.11.2026 wie der DCF: Gewinn x gepruefte Cash-Conversion reicht, auch wenn CFO - Capex im Jahr negativ ist
+  sh['NYSE:N1']['balance']['cashConversion']={'state':'available','value':0.8}
+  g={(x['profile'],x['metric']):x for x in cc.build(uni,sh,{'NYSE:N1':{'statistics':STATS}},ann)['largestGaps']}
+  self.assertNotIn(('corporate','Erwartungslücke Reverse DCF'),g)
 
 class ShortHistoryTests(unittest.TestCase):
  def test_short_history_fills_es_and_vol_but_not_drawdown(self):

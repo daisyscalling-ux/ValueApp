@@ -442,3 +442,34 @@ Die Prognose-EPS hat keinen Einfluss: Das Playbook „cyclical“ hat keine Forw
 **Bewertung:** Im Sinne der Methode ist das plausibel. Bei Zyklikern im Hoch bremst sie bewusst; Gipfelgewinne sollen nicht billig wirken. Dagegen spricht der Konsens: Er erwartet für 2027 ein EPS von 176. Hält der Speicherzyklus an, ist 622 zu niedrig.
 
 **Nebenbefund, offen:** Der Scanner rechnet für Micron noch mit dem ROIC-Geschäftsjahr 2025 (EPS 7,65, Fair Value 404,63). Den neueren Jahresblock der Ergänzungsdatei nutzt bisher nur die Einzelanalyse (`applySupplement`). In der ROIC-Risikohistorie liegen 28 von 392 Titeln ein Geschäftsjahr zurück (u. a. AAPL, V, QCOM, SBUX).
+
+## Screener nutzt den Jahresblock wie die Einzelanalyse (16.11.2026)
+
+**Befund:**
+- Die Einzelanalyse ersetzt die ROIC-Jahreszahlen durch den Jahresabschluss der Ergänzungsdatei (`applySupplement`), sobald dieser gleich alt oder neuer ist. Der Screener nutzte immer ROIC.
+- Bei 12 Titeln liegt ROIC ein Geschäftsjahr zurück: ACN, BEN, COST, CPRT, FDS, MU, ROK, SBUX, SMIN, SWKS, TDG, TEL. Beispiel Micron: Screener mit EPS 7,65 (Geschäftsjahr 2025), Einzelanalyse mit 74,33 (2026).
+
+**Entscheidung des Nutzers:** Der Screener ruft denselben Schritt auf.
+- Die Pipeline gibt den ROIC-Gewinnstichtag (`income_period`, `income_currency`, aus `roic.bundle`/`bundle_light`) und die vollständige Ergänzungsdatei mit; nur `risk_annual` und `annual_diagnostics` bleiben weg.
+- Die Prüfung ist dieselbe wie in der Einzelanalyse: Notierung, Abruf ≤ 7 Tage, Abschluss ≤ 460 Tage, Währung, ADR-Basis.
+- Die Datenprüfung des Screeners prüft jetzt auch „Anbieter meldet ein neueres Geschäftsjahr“.
+
+**Folge 1 – der Cashflow:**
+- Nach dem Jahresblock gibt es keinen berichteten FCFF mehr; operativer Cashflow minus Investitionen ist kein FCFF.
+- Der DCF rechnet mit Gewinn × geprüfter Cash-Conversion, wie in der Einzelanalyse. Ohne Conversion bleibt er offen.
+
+**Folge 2 – der Reverse DCF (Entscheidung des Nutzers):** Er nutzt jetzt dieselbe Basis wie der DCF: Gewinn × geprüfte Cash-Conversion, sonst berichteter FCFF (`reverseDcfInput`, valuation.ts). Das gilt für die Erwartungslücke im Screener (`cashflow_basis`) und in der Risikokarte. Die Abdeckungsmessung (`risk_construct_coverage.py`) zählt entsprechend.
+
+**Messung (Daten vom 16.11.):**
+
+| Gruppe | Titel |
+|---|---|
+| Screener übernimmt den Jahresblock | 1.316 von 1.340 |
+| davon mit ROIC-Conversion | 915 |
+| davon ohne ROIC-Conversion (DCF über den Yahoo-Ersatz aus #208, sonst offen) | 401 |
+| ohne Jahresblock | 15 |
+| Datei älter als 7 Tage | 5 |
+| ohne Datei | 3 |
+| Währung ohne Basis | 1 |
+
+Die Wirkung auf Fair Value und Urteil zeigt der nächste precompute. Erwartung: große Änderungen bei den 12 Titeln mit neuerem Geschäftsjahr, kleine bei den übrigen (Jahreswerte statt ROIC-TTM).

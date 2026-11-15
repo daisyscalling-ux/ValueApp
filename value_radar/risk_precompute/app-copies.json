@@ -126,7 +126,7 @@
   {
    "app": "src/lib/valuation-data.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/valuation-data.ts",
-   "sha256": "d81bfe4481f94f00fe86d8b45c1aa8a1aabcff5ecff36d69d412dd0f4891a33c"
+   "sha256": "2c42489964a273eed4ec0e758c968d5ffeefe69dad480c66bcc3bcd28ee424ea"
   },
   {
    "app": "src/lib/valuation-risk.ts",

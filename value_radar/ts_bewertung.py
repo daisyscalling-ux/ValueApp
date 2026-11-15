@@ -136,7 +136,9 @@ def ersatzdaten(row, ordner=None):
     return {"_supplement_symbol": sym,
             "_fundamental_supplement": {"schema": s.get("schema"), "symbol": s.get("symbol"), "annual": annual,
                                         "market": {"currency": m.get("currency"),
-                                                   "fields": {"shares_out": (m.get("fields") or {}).get("shares_out")}},
+                                                   "fields": {"shares_out": (m.get("fields") or {}).get("shares_out"),
+                                                              "implied_shares_out": (m.get("fields") or {}).get("implied_shares_out")}},
+                                        "splits": s.get("splits"),
                                         "share_basis": s.get("share_basis"), "fx": s.get("fx"),
                                         "estimates": s.get("estimates")}}
 

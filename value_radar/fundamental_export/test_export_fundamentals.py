@@ -228,6 +228,17 @@ class IdentityTests(unittest.TestCase):
   self.assertEqual(rows,[{'ticker':'PKO.WA','listing_symbol':'GPW:PKO'}])
   self.assertEqual(index['identity_rejected']['PKO.WA']['rejected_listing'],'NYSE:PKO')
 
+class SplitTests(unittest.TestCase):
+ def test_recent_splits_with_date_and_ratio_failure_gives_empty(self):
+  import pandas as pd
+  from export_fundamentals import recent_splits
+  class T: splits=pd.Series([2.39,1/3,4.0],index=pd.to_datetime(['2025-11-03','2026-06-24','2015-01-02'],utc=True))
+  self.assertEqual(recent_splits(T()),[{'date':'2025-11-03','ratio':2.39},{'date':'2026-06-24','ratio':0.333333}])
+  class Bad:
+   @property
+   def splits(self):raise RuntimeError('down')
+  self.assertEqual(recent_splits(Bad()),[])
+
 class EstimateTests(unittest.TestCase):
  # Micron 14.11.2026: lastFiscalYearEnd 2026-09-03, nextFiscalYearEnd 2027-09-03
  INFO={'financialCurrency':'USD','lastFiscalYearEnd':1788393600,'nextFiscalYearEnd':1819929600}

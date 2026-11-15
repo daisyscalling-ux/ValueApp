@@ -345,3 +345,35 @@ Folge:
 - Fair Value bei London-USD-Berichtern etwa −24 % (Faktor 0,756), bei Nordics Größenordnung korrigiert.
 - Ein Teil der 14 Kaufurteile fällt weg.
 - Die genaue Wirkung zeigt der nächste precompute.
+
+## Aktiengattungen, Splits und Einheitenfehler bei der Aktienzahl (15.11.2026)
+
+**Befund:** 7 der 11 Sperren aus dem Lauf vom 14.11. haben ihre Ursache in der Aktienzahl.
+
+| Titel | Zeile | Jahresabschluss | Ursache |
+|---|---|---|---|
+| HEN3, VOW3, TKO | nur diese Gattung (151 / 206 / 78 Mio.) | alle Gattungen (414 / 501 / 194 Mio.) | mehrere Gattungen |
+| CVNA | 711 Mio. | 224 Mio. (nur Klasse A) | 5:1-Split am 08.05.2026 |
+| DD | 136 Mio. | 419 Mio. | 1:3-Zusammenlegung am 24.06.2026 |
+| HON | 318 Mio. | 643 Mio. | nur Abspaltungsfaktoren (1,061; 0,9535), keine Erklärung |
+| TIT | 7,55 Mrd. | 2,13 Mrd. (Yahoo, bereits bereinigt) | Zeile falsch |
+
+Bei 3 weiteren Titeln stimmt die Aktie, aber der Vergleichswert hat einen Einheitenfehler der Quelle: MCD 716,4 (Mio. statt Stück), TSE:8015 (Tausend), SYENS (×10).
+
+**Methode (Entscheidungen des Nutzers):**
+1. **Alle Gattungen, gekennzeichnet.**
+   - Liegt die Gesamtzahl aller Gattungen (Yahoo `impliedSharesOutstanding`) mehr als 15 % über der Zahl der notierten Gattung und passt sie zum Jahresabschluss (± 15 %, mit oder ohne Split-Bereinigung), gilt sie als Aktienzahl.
+   - Der Börsenwert ist dann Kurs dieser Gattung × alle Aktien (`share_count_basis: alle_gattungen`). Der Hinweis nennt beide Zahlen.
+   - Ein Anbieter-Börsenwert, der nur die Gattung abbildet, sperrt dann nicht.
+2. **Split-Bereinigung.** Die Jahresaktienzahl wird um belegte Standard-Splits nach dem Stichtag bereinigt (1:20 bis 20:1, Export `splits`). Abspaltungsfaktoren zählen nicht. Die Prüfung gilt als bestanden, wenn die Zahl mit oder ohne Bereinigung passt, weil Yahoo Abschlüsse teils rückwirkend bereinigt.
+3. **Einheitenfehler.** Weicht die Jahresaktienzahl um eine Zehnerpotenz ab (± 3 %, 10^1 bis 10^6), wird sie als Vergleich verworfen, mit Hinweis. Dann prüft der Börsenwert des Anbieters (Größenordnung).
+
+**Verzerrung und Grenzen:**
+- Kursunterschiede zwischen den Gattungen gehen nicht ein (VW Stamm/Vorzug etwa 5–15 %). Der Börsenwert ist eine Näherung zum Kurs der notierten Gattung.
+- Bei Up-C-Strukturen (Carvana) zählen Abschluss und Zeile nur Klasse A. Es wird dann nicht umgestellt, das EPS bezieht sich auf das Klasse-A-Ergebnis.
+- Honeywell, Telecom Italia und PDD bleiben gesperrt, mit Grund.
+
+**Erwartung:**
+- Nach fundamentals-daily (liefert `splits` und `implied_shares_out`) und precompute werden 8 Titel frei: HEN3, VOW3, TKO, CVNA, DD, MCD, 8015, SYENS.
+- Gesperrt bleiben 5: HON, TIT, PDD, BGEO, TBCG.
+- MCD, 8015 und SYENS werden schon ohne neue Exportdaten frei.

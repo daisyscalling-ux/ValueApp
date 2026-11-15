@@ -4,7 +4,7 @@ import {altmanZ,type Row} from './scores';
 import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
-import {verifiedCashConversion} from './cash-conversion';
+import {verifiedCashConversion,cashConversionFromSupplement} from './cash-conversion';
 import {normalizeMarketCap,convertReportCurrency} from './valuation-data';
 import {applyForwardEstimate} from './fundamental-supplement';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
@@ -22,9 +22,14 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  if('_fundamental_supplement' in fund)convertReportCurrency(fund,fund._fundamental_supplement?.fx??null);
  if('_fundamental_supplement' in fund)applyForwardEstimate(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
- const cc=verifiedCashConversion(fund._cash_conversion_history);
- if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' (ROIC, geprüft)'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}
- else{fund.cash_conversion=null;fund.cash_conversion_source=null;}
+ // Ersatz aus der Yahoo-Jahreshistorie derselben Ergänzungsdatei, nur wenn ROIC keine gültige Conversion liefert (gekennzeichnet).
+ // Scanner: _fundamental_supplement.cash_history; Einzelanalyse: _fundamental_cash_history (bundleLight, Identität geprüft).
+ const roicCc=verifiedCashConversion(fund._cash_conversion_history);
+ const supCc=roicCc?null:cashConversionFromSupplement(fund._fundamental_supplement?.cash_history??fund._fundamental_cash_history);
+ const cc=roicCc??(supCc?verifiedCashConversion(supCc):null);
+ const origin=roicCc?'ROIC, geprüft':'Yahoo-Jahresabschlüsse, Ersatz für fehlende ROIC-Historie';
+ if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_origin=roicCc?'roic_history':'yahoo_annual_history';fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' ('+origin+')'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}
+ else{fund.cash_conversion=null;fund.cash_conversion_source=null;fund.cash_conversion_origin=null;}
  const playbook=classifyPlaybook(fund);
  const peers=peerFundsFromRows(peerRows),peerArg=peers.length?peers:null;
  const nativeValue=fairValue(fund,peerArg,playbook);

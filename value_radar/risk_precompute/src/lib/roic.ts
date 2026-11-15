@@ -387,6 +387,9 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   }
 
   applySupplement(out, raw);
+  // Yahoo-Cashflow-Historie für den Cash-Conversion-Ersatz (evaluation.ts), nur bei gleicher Notierung.
+  { const sup = raw.fundamental_supplement as Record<string, any> | null;
+    if (sup && sup.schema === 1 && sup.symbol === raw.resolved_symbol && sup.cash_history) out._fundamental_cash_history = sup.cash_history; }
   // ROIC-Beträge in der Berichtswährung → Handelswährung (EZB-Kurs der Ergänzungsdatei), vor Prognose und Prüfung.
   convertReportCurrency(out, (raw.fundamental_supplement as Record<string, any> | null)?.fx ?? null);
   normalizeMarketCap(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');

@@ -115,6 +115,25 @@ def yahoo_annual(frames,info,now=None):
   if prior_rev and prior_rev>0: fields['revenue_growth']=fields['revenue']/prior_rev-1
   return {'end':str(end),'period_type':'annual','currency':info.get('financialCurrency'),'source':'Yahoo annual statements','source_url':source_url,'published_at':None,'field_sources':field_sources,'missing_fields':[k for k in ('eps_trailing','total_debt','operating_cashflow','capex') if fields.get(k) is None],'fields':fields}
  return None
+CASH_HISTORY_METHOD='yahoo_annual_cash_history_v1'
+def yahoo_cash_history(frames,info,years=5):
+ """Mehrjaehrige Cashflow-Historie fuer die Cash-Conversion (Ersatz, wenn ROIC keine drei vollstaendigen Jahre hat;
+ Entscheidung des Nutzers 16.11.2026). Je Geschaeftsjahr nur mit operativem Cashflow, Investitionen (gemeldete Summe oder
+ Sachanlagen + Immaterielle; nie Netto-Investitions-Cashflow) und Jahresueberschuss desselben Datums. Investitionen als
+ positive Ausgabe. Keine Rechnung hier: die App rechnet und prueft (cash-conversion.ts)."""
+ inc,cf=frames.get('income',{}),frames.get('cashflow',{});out=[]
+ for date in sorted(set(inc)&set(cf),reverse=True)[:years]:
+  c,i=cf.get(date,{}),inc.get(date,{})
+  ocf=number(c.get('Operating Cash Flow'));ni=number(i.get('Net Income'))
+  capex=number(c.get('Capital Expenditure'));how='reported_total'
+  if capex is None:
+   capex=number(c.get('Capital Expenditure Reported'));how='reported_alternative_label'
+  if capex is None:
+   parts=[number(c.get(k)) for k in ('Purchase Of PPE','Purchase Of Intangibles')]
+   if all(v is not None and v<=0 for v in parts):capex=sum(parts);how='sum_of_reported_components'
+  if ocf is None or ni is None or capex is None or capex>0:continue
+  out.append({'end':date[:10],'currency':info.get('financialCurrency'),'fields':{'operating_cashflow':ocf,'capex':-capex,'net_income':ni},'capex_derivation':how})
+ return {'method':CASH_HISTORY_METHOD,'source':'Yahoo annual statements','source_url':'https://finance.yahoo.com/quote/'+str(info.get('symbol'))+'/cash-flow/','annuals':sorted(out,key=lambda a:a['end'])}
 # Gesamtumsatz zuerst (11.11.2026): RevenueFromContractWithCustomer... (ASC 606) enthaelt keine Miet-, Leasing-, Zins- oder
 # Praemienertraege; bei United Rentals, ADM, GM, REITs und Banken war der Umsatz dadurch bis zu 99 % zu niedrig.
 TAGS={'revenue':['Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet'],'net_income':['NetIncomeLoss'],'eps_trailing':['EarningsPerShareDiluted'],'gross_profit':['GrossProfit'],'ebit':['OperatingIncomeLoss'],'weighted_shares':['WeightedAverageNumberOfDilutedSharesOutstanding'],'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],'capex':['PaymentsToAcquirePropertyPlantAndEquipment'],'cash':['CashAndCashEquivalentsAtCarryingValue'],'total_assets':['Assets'],'equity':['StockholdersEquity']}
@@ -268,7 +287,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':consensus_estimates(estimate_table(t),info,ys),'splits':recent_splits(t),'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'splits':recent_splits(t),'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

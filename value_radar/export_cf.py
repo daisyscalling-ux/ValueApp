@@ -117,6 +117,9 @@ def main() -> int:
     attempted = 0
     ergebnisse = []
     identity_rejected = []
+    import universe_additions
+    _cache = getattr(roic, "_EXPORT_CACHE", None)
+    zusatz = _cache.get("zusatz") if isinstance(_cache, dict) and isinstance(_cache.get("zusatz"), dict) else {}
     uebersprungen = 0
     for i, ticker in enumerate(universum):
         verbraucht = (time.time() - start) / 60.0
@@ -145,6 +148,13 @@ def main() -> int:
         if schlank.get('listing_reference_status') in ('expired','input_mismatch'):
             identity_rejected.append({'ticker':ticker,'rejected_listing':schlank.get('listing_symbol'),'reason':schlank['listing_reference_status']})
             continue
+        # Zusatztitel: Notierung, ISIN und Waehrung muessen zum gepflegten Eintrag passen, sonst verworfen.
+        if ticker in zusatz:
+            grund = universe_additions.check_row(schlank, zusatz[ticker])
+            if grund:
+                identity_rejected.append({'ticker':ticker,'rejected_listing':schlank.get('listing_symbol'),'reason':grund})
+                continue
+            universe_additions.mark(schlank, zusatz[ticker])
         ergebnisse.append(schlank)
 
         if (i + 1) % 50 == 0:

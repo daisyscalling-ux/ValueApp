@@ -63,3 +63,34 @@ Neu hinzu kommen in Europa unter anderem SAP.DE, TTE.PA, AIR.PA, SAN.MC, BBVA.MC
 Diagnose ab dem nächsten Lauf:
 - `retryState` in `cf_risk.json` speichert den Klartextgrund. Gespeichert wird nur bei bekannten, unbedenklichen Meldungen, ohne URLs.
 - Findet `roic.py` keine eindeutige Notierung, schreibt es die angebotenen Kandidaten ins Export-Log: Symbol, Art, Hauptnotierung, ISIN-Land. Daraus wird nichts übernommen.
+
+## Zusatztitel (seit 15.11.2026)
+
+Titel außerhalb der Indizes, die der Nutzer benennt, stehen in `daten/universum_zusatz.json` (Methode `curated-additions-v1`, Modul `universe_additions.py`).
+
+**Eintrag:** Ticker in Export-Schreibweise, `listing_symbol`, `isin`, `currency`, `security_type`, Name, Grund, `added_on`, `reviewed_on`, `review_expires`.
+
+**Aufnahme:**
+- `roic.export_universum` hängt gültige Einträge an.
+- In `index_scope` erscheinen sie als Index `ZUSATZ` mit Quelle und Problemliste.
+- Nicht aufgenommen werden Einträge mit fehlenden Feldern, ungültigem Symbol, falscher ISIN-Prüfziffer, Prüfdatum in der Zukunft oder abgelaufener Prüfung. Der Grund steht in `index_scope.sources.ZUSATZ.problems`.
+
+**Identität:**
+- Im Export müssen `listing_symbol`, `isin` und `currency` der Zeile (ROIC-Auflösung) zum Eintrag passen.
+- Sonst wird die Zeile verworfen (`identity_rejected`, Grund `curated_addition_mismatch:<feld>`), nicht angepasst.
+- Gültige Zeilen tragen `universe_addition` (Grund, Prüfdatum, Ablauf) und `index_membership: ["ZUSATZ"]`.
+
+**Wirkung (Entscheidung des Nutzers):** Zusatztitel zählen wie Indexwerte als Peers, in den Rängen (Bilanz), im Screener und in allen Läufen (fundamentals-daily, daily-risk, precompute).
+
+**Ablauf je neuem Titel:**
+1. Identität und Datenlage prüfen: Notierung, ISIN, Währung, Wertpapierart; ROIC, Yahoo, SEC; Profil.
+2. Eintrag mit Begründung in `universum_zusatz.json`.
+3. Nach dem Merge: precompute. Die Zeile entsteht; neue Titel werden zuerst gescannt.
+4. Dann fundamentals-daily und daily-risk, dann noch einmal precompute für Peers und Rang.
+
+Banken und Versicherer brauchen für das Finanzprofil zusätzlich ihre Aufsichtskennzahlen. Fehlen diese, bleiben die Kennzahlen offen, mit Grund.
+
+**Erster Titel:** Manulife (NYSE:MFC, ISIN CA56501R1064, Stammaktie an der NYSE, Bericht in CAD).
+- Die Bewertung rechnet mit dem EZB-Kurs um (CAD → USD).
+- Die Solvenzquote nach kanadischer Aufsicht (LICAT) ist nicht angebunden; die Versicherer-Kennzahl bleibt offen.
+- Die ISIN prüft der erste Exportlauf gegen ROIC.

@@ -39,6 +39,39 @@ function unitsFromBasis(b: Row|undefined): number|null {
   return r;
 }
 /**
+ * Berichtswährung → Handelswährung (seit 15.11.2026, Entscheidung des Nutzers). ROIC liefert Beträge in der
+ * Berichtswährung der Zeile (risk_financial.currency, z. B. USD bei Prudential, EUR bei Vestas), der Kurs steht in der
+ * Handelswährung. Umgerechnet wird mit dem EZB-Referenzkurs (≤ REPORT_FX_MAX_AGE_DAYS Tage) und gekennzeichnet
+ * (report_fx); ohne passenden Kurs bleibt die Bewertung gesperrt (report_fx_status). Kursabhängige Verhältnisse
+ * (KGV, KBV, EV/EBITDA) werden danach aus umgerechneten Werten neu gebildet. Ersetzt die ungekennzeichnete Umrechnung
+ * über das Kursverhältnis (_roic_fx) der Pipeline. Ein bereits umgerechneter Jahresblock (applySupplement) bleibt.
+ */
+export const REPORT_FX_METHOD = 'ecb_reference_v1';
+export const REPORT_FX_MAX_AGE_DAYS = 7;
+export const ECB_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';
+const REPORT_AMOUNTS = ['revenue','ebitda','ebit','free_cashflow','net_income','cash','total_debt','net_debt','enterprise_value','total_assets','operating_cashflow','reported_equity_fcf','eps_trailing','book_value_ps'];
+const baseCur = (x: unknown) => (x==='GBp'||x==='GBX') ? 'GBP' : x;
+export function convertReportCurrency(f: Row, fx: Row|null|undefined, now = Date.now()): void {
+  if (f.report_fx || f.report_fx_status || f.annual_supplement_applied) return;
+  const rc = f.risk_financial?.currency, lc = f.currency;
+  if (typeof rc !== 'string' || !rc || typeof lc !== 'string' || !lc || baseCur(rc) === baseCur(lc)) return;
+  const at = Date.parse(fx?.observed_at), from = fx?.rates?.[baseCur(rc) as string], to = fx?.rates?.[baseCur(lc) as string];
+  if (!fx || fx.base!=='EUR' || fx.source_url!==ECB_URL || !Number.isFinite(at) || now-at<0 || now-at>REPORT_FX_MAX_AGE_DAYS*86400000 || !positive(from) || !positive(to)) {
+    f.report_fx_status = `Abschluss in ${rc}, Notierung in ${lc}: kein aktueller EZB-Referenzkurs, Umrechnung offen`;
+    return;
+  }
+  const rate = to/from*((lc==='GBp'||lc==='GBX')?100:1);
+  for (const k of REPORT_AMOUNTS) if (typeof f[k]==='number' && Number.isFinite(f[k])) f[k] *= rate;
+  const p = f.price;
+  if (positive(p)) {
+    f.pe_trailing = positive(f.eps_trailing) ? p/f.eps_trailing : null;
+    f.pb = positive(f.book_value_ps) ? p/f.book_value_ps : null;
+  }
+  f.ev_ebitda = positive(f.market_cap) && typeof f.net_debt==='number' && positive(f.ebitda) ? (f.market_cap+f.net_debt)/f.ebitda : null;
+  f.report_fx = { method: REPORT_FX_METHOD, from: rc, to: lc, rate, observed_at: fx.observed_at, source_url: ECB_URL };
+  f.report_fx_note = `Abschluss in ${rc}, umgerechnet in ${lc} zum EZB-Referenzkurs vom ${fx.observed_at} (Faktor ${+rate.toPrecision(5)})`;
+}
+/**
  * Einheit des Jahresabschlusses je Notierungseinheit (k), seit 14.11.2026. Yahoo liefert für die US-Notierung eines ADR
  * den Abschluss teils je ADR (GSK, VOD, WPP: verwässerte Aktienzahl ≈ ADR-Anzahl), teils je Stammaktie. Die Pipeline
  * gibt die Einheit in share_basis.annual_eps_basis an ('per_unit' oder 'ordinary'); hier wird sie gegen die Daten geprüft:
@@ -127,7 +160,12 @@ export function valuationDataCheck(f: Row, raw?: Row) {
   if (raw && incomeDate === null) issues.push('Berichtsperiode der Gewinnzahlen fehlt; Aktualität nicht belegt.');
   if(incomeDate!==null&&f.provider_latest_fiscal_end&&Date.parse(f.provider_latest_fiscal_end)-incomeDate>35*86400000)issues.push('Anbieter meldet ein neueres abgeschlossenes Geschäftsjahr als die verfügbaren Gewinnzahlen. Ersatzbericht noch ausstehend.');
   if (incomeDate !== null && Date.now()-incomeDate>460*86400000) issues.push('Jahresabschluss älter als 460 Tage; neuere Daten erforderlich.');
-  if (!f.annual_supplement_applied && income && (income.currency??income.reporting_currency) && (income.currency??income.reporting_currency)!==f.currency) issues.push('Berichtswährung und Handelswährung unterscheiden sich; Umrechnung fehlt.');
+  const incomeCur = income ? (income.currency??income.reporting_currency) : null;
+  if (f.report_fx_status) issues.push(f.report_fx_status+'.');
+  else if (f.report_fx) {
+    if (incomeCur && baseCur(incomeCur)!==baseCur(f.report_fx.from)) issues.push('Berichtswährung uneinheitlich: Gewinnbericht in '+incomeCur+', Finanzzeile in '+f.report_fx.from+'.');
+    else warnings.push(f.report_fx_note+'.');
+  } else if (!f.annual_supplement_applied && incomeCur && baseCur(incomeCur)!==baseCur(f.currency)) issues.push('Berichtswährung und Handelswährung unterscheiden sich; Umrechnung fehlt.');
   if(f.annual_supplement_applied)warnings.push('Datierter Jahresblock ersetzt ältere Kennzahlen. Nicht belegter FCFF und Prognose-EPS bleiben leer.');
   return {blocked:issues.length>0, issues, warnings, income_period:incomeDate === null?null:new Date(incomeDate).toISOString().slice(0,10), enterprise_period:evDate === null?null:new Date(evDate).toISOString().slice(0,10)};
 }

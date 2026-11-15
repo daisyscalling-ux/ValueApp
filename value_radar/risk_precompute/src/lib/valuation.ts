@@ -170,6 +170,15 @@ export function fcfBasis(fund: Fund, conversion?: number | null): FcfBasis {
   return { basis, gemeldet, normalisiert: normal, conversion: conv, quelle };
 }
 
+/** Cashflow-Basis für den Reverse DCF (Erwartungslücke), seit 16.11.2026 dieselbe wie im DCF (Entscheidung des Nutzers):
+ *  Gewinn × geprüfte Cash-Conversion, sonst berichteter FCFF. Nach einem übernommenen Jahresblock gibt es keinen
+ *  berichteten FCFF mehr (CFO − Capex ist kein FCFF); ohne beide bleibt die Lücke offen. */
+export function reverseDcfInput(fund: Fund): { fund: Fund; quelle: "normalisiert" | "gemeldet" } | null {
+  const b = fcfBasis(fund);
+  if (!(b.basis && b.basis > 0)) return null;
+  return { fund: { ...fund, free_cashflow: b.basis }, quelle: b.quelle };
+}
+
 export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
   conversion?: number | null): number | null {
   if (preset === "cyclical") return null;

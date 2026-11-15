@@ -6,7 +6,7 @@ import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
 import {verifiedCashConversion,cashConversionFromSupplement} from './cash-conversion';
 import {normalizeMarketCap,convertReportCurrency} from './valuation-data';
-import {applyForwardEstimate} from './fundamental-supplement';
+import {applyForwardEstimate,applySupplement} from './fundamental-supplement';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
 
 /** One evaluation path; scoring always uses the native statement units. */
@@ -16,6 +16,10 @@ import {financialHealth,healthProfile,healthRank,type HealthDistribution} from '
 /** healthDistribution: Rohwerte der Bilanz je Profil im Universum (Rang statt absoluter Skala). */
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
  const fund={...input};
+ // Scanner: derselbe Jahresblock-Schritt wie die Einzelanalyse (bundleLight → applySupplement; Entscheidung des Nutzers
+ // 16.11.2026). Der ROIC-Gewinnstichtag (income_period) entscheidet, ob der Abschluss der Ergänzungsdatei gleich alt oder neuer ist.
+ if('_fundamental_supplement' in fund)applySupplement(fund,{fundamental_supplement:fund._fundamental_supplement,resolved_symbol:fund._supplement_symbol,
+  income:fund.income_period?[{period_end_date:fund.income_period,period_type:'annual',currency:fund.income_currency}]:null});
  // Börsenwert = Kurs × Aktienzahl (idempotent; Scanner übergibt die Ergänzungsdatei als _fundamental_supplement).
  normalizeMarketCap(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Scanner: Berichtswährung umrechnen und Prognose-EPS nur als geprüfter Konsens (Einzelanalyse: bereits in bundleLight).

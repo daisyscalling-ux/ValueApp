@@ -128,21 +128,11 @@ def ersatzdaten(row, ordner=None):
         return leer
     if not isinstance(s, dict) or s.get("symbol") != sym:
         return leer
-    a = s.get("annual") if isinstance(s.get("annual"), dict) else None
-    annual = None
-    if a:
-        annual = {"end": a.get("end"), "currency": a.get("currency"), "source": a.get("source"),
-                  "fields": {"weighted_shares": (a.get("fields") or {}).get("weighted_shares")}}
-    m = s.get("market") or {}
+    # Vollstaendige Ergaenzungsdatei wie in der Einzelanalyse (applySupplement: Jahresblock, Markt, EZB-Kurse,
+    # Aktienbasis, Konsens, Cashflow-Historie, Splits); nur die Risiko-Diagnoseteile bleiben weg.
+    weg = {"risk_annual", "annual_diagnostics"}
     return {"_supplement_symbol": sym,
-            "_fundamental_supplement": {"schema": s.get("schema"), "symbol": s.get("symbol"), "annual": annual,
-                                        "market": {"currency": m.get("currency"),
-                                                   "fields": {"shares_out": (m.get("fields") or {}).get("shares_out"),
-                                                              "implied_shares_out": (m.get("fields") or {}).get("implied_shares_out")}},
-                                        "splits": s.get("splits"),
-                                        "share_basis": s.get("share_basis"), "fx": s.get("fx"),
-                                        "estimates": s.get("estimates"),
-                                        "cash_history": s.get("cash_history")}}
+            "_fundamental_supplement": {k: v for k, v in s.items() if k not in weg}}
 
 
 def anwenden(rows, js=None, node="node", risiko=None, ordner=None):

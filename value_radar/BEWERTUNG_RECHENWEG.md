@@ -338,10 +338,33 @@ Folge:
 - Der Kurs ist der des letzten EZB-Tages, nicht der des Berichtsstichtags. Für Bewertungen gegen den heutigen Kurs ist das richtig.
 - Die historischen Reihen (Margen, Wachstum) sind einheitenlos und bleiben unberührt.
 - Die Python-Bewertung (Streamlit, E-Mail) liest die Beträge jetzt unumgerechnet. Sie steht auf der Liste der noch umzustellenden Verbraucher.
-- 48 Ergänzungsdateien haben einen EZB-Kurs vom 22.10. Betroffene Titel bleiben gesperrt, bis fundamentals-daily sie erneuert.
+- ~~48 Ergänzungsdateien haben einen EZB-Kurs vom 22.10.~~ Korrektur 15.11.: Die 80 Dateien mit altem Kurs gehören zu keinem Titel im Universum; es ist kein Titel betroffen.
 
 **Erwartung:**
 - Die 66 gemessenen Titel bekommen umgerechnete Werte.
 - Fair Value bei London-USD-Berichtern etwa −24 % (Faktor 0,756), bei Nordics Größenordnung korrigiert.
 - Ein Teil der 14 Kaufurteile fällt weg.
 - Die genaue Wirkung zeigt der nächste precompute.
+
+### Nachtrag nach dem Lauf (15.11.2026, 17:20 UTC)
+
+**Ergebnis:**
+- „Daten prüfen“ 11 → 13: neu gesperrt sind BGEO und TBCG. Ihr Abschluss ist in GEL, und dafür veröffentlicht die EZB keinen Referenzkurs; die Bewertung bleibt dauerhaft offen.
+- Urteile: kauf 107 → 105, beobachten 265 → 254, meiden 957 → 968.
+- Die 75 Titel mit abweichender Berichtswährung (ohne ADR): Fair Value im Median −7,9 %.
+- Die London-USD-Berichter fallen um etwa 21 % (Faktor 0,756).
+- Die Nordics steigen um Faktor 3–5, z. B. Equinor 148 → 709 NOK: Mit umgerechnetem EBITDA wirkt Öl im EV/EBITDA günstig.
+
+| Gruppe | Anzahl |
+|---|---|
+| von 14 Kaufurteilen weiter kauf | 9 |
+| davon jetzt beobachten (EXPN, FRES, TEMN) | 3 |
+| davon jetzt meiden (NOVN, NSIS_B) | 2 |
+| neu kauf (u. a. STO:EVO) | 2 |
+
+- Auch ADRs sind betroffen, die nicht in der Liste standen. ASML (Abschluss EUR, Notierung USD): Fair Value +10 %. GSK: 48,7 → 61,7 USD, jetzt kauf; das EPS je ADR in GBP wird nun in USD umgerechnet.
+
+**Lücke, mit dieser Änderung behoben:** Die angezeigten Kennzahlen der Zeile kamen weiter aus der Python-Seite und waren unumgerechnet (Equinor: EPS 1,94 USD bei KGV 209,6, KBV 25). Die Peers anderer Titel lesen diese Felder.
+- Neu übernimmt die Zeile aus dem App-Rechenweg `eps_trailing`, `book_value_ps`, `pe`, `pb` und `ev_ebitda`, sobald umgerechnet wurde.
+- Dazu kommen `report_fx` (Kennzeichnung) und `report_fx_status` (Grund, wenn offen).
+- Wirkt ab dem nächsten precompute; die Peer-Kennzahlen stimmen danach für alle Titel.

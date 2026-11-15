@@ -400,3 +400,45 @@ Bei 3 weiteren Titeln stimmt die Aktie, aber der Vergleichswert hat einen Einhei
 - Nach fundamentals-daily (liefert `splits` und `implied_shares_out`) und precompute werden 8 Titel frei: HEN3, VOW3, TKO, CVNA, DD, MCD, 8015, SYENS.
 - Gesperrt bleiben 5: HON, TIT, PDD, BGEO, TBCG.
 - MCD, 8015 und SYENS werden schon ohne neue Exportdaten frei.
+
+## Cash-Conversion: ROIC-Investitionen und Ersatz aus Yahoo (16.11.2026)
+
+**Befund:** 414 Titel ohne Cash-Conversion, davon 301 mit „weniger als drei geprüfte Geschäftsjahre“ (200 US, 101 nicht-US). Ursache: In 20 % aller ROIC-Jahresabschlüsse fehlen die Investitionen, z. B. ADM 2021–2025, Micron, OMC.
+
+**Fehler im eigenen Code:** `roic_risk_annual.py` verlangte ohne `cf_cap_expenditures` beide Bestandteile, also Sachanlagen- **und** Immaterialienkäufe. Fehlt die Zeile für immaterielle Werte, gingen die ganzen Investitionen verloren.
+
+**Entscheidungen des Nutzers:**
+1. **Sachanlagenkäufe allein reichen**, wenn die Zeile für immaterielle Werte fehlt. Kennzeichnung `derivation: ppe_only_intangibles_not_reported`. Positive Werte bleiben offen. Wirkt ab dem nächsten ROIC-Historienlauf.
+2. **Ersatzquelle Yahoo**, wenn ROIC keine gültige Conversion liefert:
+   - `export_fundamentals.yahoo_cash_history` schreibt bis zu 5 Geschäftsjahre mit operativem Cashflow, Investitionen und Jahresüberschuss desselben Datums in die Ergänzungsdatei (`cash_history`, Methode `yahoo_annual_cash_history_v1`).
+   - Investitionen: gemeldete Summe, sonst Sachanlagen + Immaterielle, nie der Netto-Investitions-Cashflow.
+   - Die App rechnet mit derselben Methode und denselben Prüfungen: 3–5 aufeinanderfolgende Jahre, eine Währung, ≤ 550 Tage, Deckel 1,5 (`cashConversionFromSupplement`, cash-conversion.ts).
+   - ROIC hat Vorrang. Der Ersatz ist gekennzeichnet (`cash_conversion_origin: yahoo_annual_history`, Text „Yahoo-Jahresabschlüsse, Ersatz für fehlende ROIC-Historie“).
+
+**Stichprobe** (30 von 301, Yahoo-Abruf 16.11.):
+- 24 Titel mit mindestens 3 Jahren; hochgerechnet etwa 240 Titel.
+- Ohne Investitionen auch bei Yahoo: REITs (BBOX, REG), Versicherer/Banken (CB, USB), TUB, TEF.
+
+Die genaue Zahl zeigt der Lauf nach fundamentals-daily.
+
+**Grenze:** Yahoo-Abschlüsse sind standardisiert und nicht zeitpunktgenau. Der Ersatz ist deshalb gekennzeichnet und überschreibt nie eine gültige ROIC-Conversion.
+
+## Micron: Fair Value 1.119 → 622 in der Einzelanalyse (Prüfung 16.11.2026)
+
+**Ursache:** Seit dem Deploy übernimmt die Einzelanalyse die Zyklik aus der Universumszeile. Micron gilt dort als zyklisch: Nettomargen +23 %, +3 %, −38 %, +28 %, Variationskoeffizient 6,2. Damit wechselt das Playbook von „inflection“ zu „cyclical“. Nachgerechnet mit dem App-Code auf dem SEC-Abschluss 2026 (EPS 74,33):
+
+| Playbook | Fair Value |
+|---|---|
+| inflection | 1.119 |
+| cyclical | 622 |
+
+Die Prognose-EPS hat keinen Einfluss: Das Playbook „cyclical“ hat keine Forward-KGV-Methode.
+
+**Bestandteile im Playbook „cyclical“:**
+- EV/EBITDA mit höchstens 8,5× (Deckel für Zykliker).
+- Ertragskraft (EPV, ohne Wachstum): 460.
+- KBV (220) und Analystenziel (1.562) sind verworfen, weil sie mehr als Faktor 2 vom Median abweichen.
+
+**Bewertung:** Im Sinne der Methode ist das plausibel. Bei Zyklikern im Hoch bremst sie bewusst; Gipfelgewinne sollen nicht billig wirken. Dagegen spricht der Konsens: Er erwartet für 2027 ein EPS von 176. Hält der Speicherzyklus an, ist 622 zu niedrig.
+
+**Nebenbefund, offen:** Der Scanner rechnet für Micron noch mit dem ROIC-Geschäftsjahr 2025 (EPS 7,65, Fair Value 404,63). Den neueren Jahresblock der Ergänzungsdatei nutzt bisher nur die Einzelanalyse (`applySupplement`). In der ROIC-Risikohistorie liegen 28 von 392 Titeln ein Geschäftsjahr zurück (u. a. AAPL, V, QCOM, SBUX).

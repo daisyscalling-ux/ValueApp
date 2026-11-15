@@ -17,7 +17,7 @@ ALT = "python-v1"
 FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_value", "upside", "entry", "quantum",
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil", "share_count_basis",
-          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "health_source", "health_parts", "health_raw", "health_profile",
+          "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "cash_conversion_origin", "health_source", "health_parts", "health_raw", "health_profile",
           "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "expectation_gap",
           "report_fx", "report_fx_status")
 PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality",
@@ -141,7 +141,8 @@ def ersatzdaten(row, ordner=None):
                                                               "implied_shares_out": (m.get("fields") or {}).get("implied_shares_out")}},
                                         "splits": s.get("splits"),
                                         "share_basis": s.get("share_basis"), "fx": s.get("fx"),
-                                        "estimates": s.get("estimates")}}
+                                        "estimates": s.get("estimates"),
+                                        "cash_history": s.get("cash_history")}}
 
 
 def anwenden(rows, js=None, node="node", risiko=None, ordner=None):

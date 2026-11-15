@@ -154,9 +154,16 @@ class Tests(unittest.TestCase):
    p=payloads();p['balance']['data'][0]['bs_st_borrow']=v
    self.assertIsNone(normalize(ROW,p,NOW)['fields']['total_debt'])
  def test_capex_aggregates_and_components(self):
-  for extra,expected in [({'cf_acquis_fxd_and_intang_detailed':-4},4),({'cf_purchase_of_fixed_prod_assets':-4,'cf_acquisition_of_intang_assets':0},4),({'cf_purchase_of_fixed_prod_assets':-4},None),({'cf_cash_from_inv':-4},None),({'cf_purchase_of_fixed_prod_assets':-4,'cf_acquisition_of_intang_assets':1},None)]:
+  for extra,expected in [({'cf_acquis_fxd_and_intang_detailed':-4},4),({'cf_purchase_of_fixed_prod_assets':-4,'cf_acquisition_of_intang_assets':0},4),({'cf_purchase_of_fixed_prod_assets':-4},4),({'cf_purchase_of_fixed_prod_assets':3},None),({'cf_acquisition_of_intang_assets':-4},None),({'cf_cash_from_inv':-4},None),({'cf_purchase_of_fixed_prod_assets':-4,'cf_acquisition_of_intang_assets':1},None)]:
    p=payloads();r=p['cashflow']['data'][0];r.pop('cf_cap_expenditures');r.update(extra)
    self.assertEqual(normalize(ROW,p,NOW)['fields']['capex'],expected)
+ def test_capex_ppe_only_is_flagged(self):
+  # Entscheidung 16.11.2026: Sachanlagenkaeufe allein, wenn die Zeile fuer immaterielle Werte fehlt; gekennzeichnet.
+  p=payloads();r=p['cashflow']['data'][0];r.pop('cf_cap_expenditures');r.update(cf_purchase_of_fixed_prod_assets=-4)
+  src=normalize(ROW,p,NOW)['field_sources']['capex']
+  self.assertEqual(src['derivation'],'ppe_only_intangibles_not_reported');self.assertEqual(src['components']['intangibles'],'not_reported')
+  p=payloads();r=p['cashflow']['data'][0];r.pop('cf_cap_expenditures');r.update(cf_purchase_of_fixed_prod_assets=-4,cf_acquisition_of_intang_assets=-1)
+  self.assertEqual(normalize(ROW,p,NOW)['field_sources']['capex']['derivation'],'negative_cash_outflow_to_positive_spend')
  def test_capex_invalid_positive_is_not_abs(self):
   p=payloads();p['cashflow']['data'][0].update(cf_cap_expenditures=3,cf_acquis_fxd_and_intang_detailed=-4)
   self.assertIsNone(normalize(ROW,p,NOW)['fields']['capex'])

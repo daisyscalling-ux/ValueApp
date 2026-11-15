@@ -1,5 +1,5 @@
 import { applySupplement, applyForwardEstimate } from './fundamental-supplement';
-import { normalizeFinancialRows, normalizeMarketCap, valuationDataCheck } from './valuation-data';
+import { normalizeFinancialRows, normalizeMarketCap, valuationDataCheck, convertReportCurrency } from './valuation-data';
 import {financialRiskInput} from './risk-score';
 /**
  * roic.ts - Datenanbindung: rohe roic-API-Antworten -> Fund-Objekt.
@@ -387,6 +387,8 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   }
 
   applySupplement(out, raw);
+  // ROIC-Beträge in der Berichtswährung → Handelswährung (EZB-Kurs der Ergänzungsdatei), vor Prognose und Prüfung.
+  convertReportCurrency(out, (raw.fundamental_supplement as Record<string, any> | null)?.fx ?? null);
   normalizeMarketCap(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
   // Prognose-EPS nur als geprüfter 12-Monats-Konsens (ersetzt Finnhub-Wert und mechanische Fortschreibung).
   applyForwardEstimate(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');

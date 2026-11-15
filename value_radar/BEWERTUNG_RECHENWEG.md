@@ -310,3 +310,38 @@ Bisher ging das still in den Börsenwert ein, weil der Börsenwert aus derselben
 - Hochgerechnet auf das Universum: etwa 70 % mit geprüfter Prognose. Die genaue Zahl folgt nach fundamentals-daily und precompute.
 
 **Nebenbefund (offen, nicht Teil dieser Änderung):** Nordische Zeilen mit USD-Bericht führen das ROIC-EPS in USD bei NOK/SEK-Kurs. OSL:NOD: EPS 0,085, KGV 2.124. Die neue Prüfung lässt die Prognose dort offen, das Trailing-KGV bleibt aber falsch. Umfang und Behebung sind ein eigenes Thema.
+
+## Berichtswährung → Handelswährung mit EZB-Kurs (15.11.2026)
+
+**Befund (Messung 15.11., 1.340 Titel):**
+- Bei 75 Titeln weicht die Berichtswährung (Jahresabschluss der Ergänzungsdatei) von der Handelswährung ab. ADRs sind nicht mitgezählt; für sie gibt es eine eigene Prüfung.
+- Bei 66 davon führt die Scanner-Zeile das EPS unumgerechnet in der Berichtswährung: Verhältnis Zeile/Abschluss 1,0 statt des Wechselkurses. 8 Titel sind nicht messbar, 1 ist unklar (ROCK_B).
+- Ursache: `providers.py` rechnete nur über das Verhältnis zweier Kurse um, ohne Kennzeichnung und nur bei Faktor 0,2–5. ROIC notiert diese Titel meist in Handelswährung, deshalb ist das Kursverhältnis ≈ 1 und es wurde nichts umgerechnet.
+
+Folge:
+- 20 nordische Titel liegen um Faktor 7–11 daneben (Equinor, Mærsk, Vestas …).
+- 53 Titel liegen um 5–30 % daneben; bei London-Titeln mit USD-Bericht ist der Fair Value etwa 32 % zu hoch.
+- Darunter waren 14 Kaufurteile (Prudential, Wise, Fresnillo, Novartis, Temenos …).
+- Die Einzelanalyse sperrte solche Titel („Berichtswährung und Handelswährung unterscheiden sich“), der Scanner prüfte das nicht.
+
+**Methode (Entscheidung des Nutzers):** `convertReportCurrency` (valuation-data.ts) in beiden Wegen.
+- Die Berichtswährung ist `risk_financial.currency`, also dieselbe ROIC-Zeile wie die Beträge.
+- Umgerechnet wird mit dem EZB-Referenzkurs der Ergänzungsdatei (≤ 7 Tage, `REPORT_FX_MAX_AGE_DAYS`). Bei Pence-Notierung zusätzlich ×100.
+- Umgerechnet werden alle Beträge und Je-Aktie-Werte. KGV, KBV und EV/EBITDA werden aus den umgerechneten Werten neu gebildet.
+- Kennzeichnung: `report_fx` und der Hinweis „Abschluss in USD, umgerechnet in GBP zum EZB-Referenzkurs vom …“ unter den Datenhinweisen.
+- Ohne gültigen Kurs bleibt die Bewertung gesperrt, mit Grund.
+- Ein bereits umgerechneter Jahresblock der Ergänzungsdatei wird nicht noch einmal umgerechnet.
+- Weicht in der Einzelanalyse die Währung des Gewinnberichts von der Finanzzeile ab, sperrt das („Berichtswährung uneinheitlich“).
+- Die Pipeline rechnet nicht mehr um; das Kursverhältnis bleibt nur als Diagnose (`_roic_kursverhaeltnis`). Der Scanner prüft jetzt auf dem bewerteten Fund, also wie die App.
+
+**Grenzen:**
+- Der Kurs ist der des letzten EZB-Tages, nicht der des Berichtsstichtags. Für Bewertungen gegen den heutigen Kurs ist das richtig.
+- Die historischen Reihen (Margen, Wachstum) sind einheitenlos und bleiben unberührt.
+- Die Python-Bewertung (Streamlit, E-Mail) liest die Beträge jetzt unumgerechnet. Sie steht auf der Liste der noch umzustellenden Verbraucher.
+- 48 Ergänzungsdateien haben einen EZB-Kurs vom 22.10. Betroffene Titel bleiben gesperrt, bis fundamentals-daily sie erneuert.
+
+**Erwartung:**
+- Die 66 gemessenen Titel bekommen umgerechnete Werte.
+- Fair Value bei London-USD-Berichtern etwa −24 % (Faktor 0,756), bei Nordics Größenordnung korrigiert.
+- Ein Teil der 14 Kaufurteile fällt weg.
+- Die genaue Wirkung zeigt der nächste precompute.

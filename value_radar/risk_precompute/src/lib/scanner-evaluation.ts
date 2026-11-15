@@ -6,7 +6,7 @@
  */
 import {evaluateStock} from './evaluation';
 import {analystTarget,type Fund} from './valuation';
-import {valuationDataCheck,normalizeMarketCap} from './valuation-data';
+import {valuationDataCheck} from './valuation-data';
 import type {HealthDistribution} from './financial-health';
 
 export const SCANNER_METHOD='ts-evaluate-v1';
@@ -31,7 +31,8 @@ export function displayUpside(fund:Fund&Row,fv:{upside_pct:number|null;capped:bo
 
 export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCoverage:Row|null=null,healthDistribution:HealthDistribution|null=null){
  const e=evaluateStock({...input},null,peerRows,riskCoverage,healthDistribution),fv=e.fv,cats=e.scores.category_scores as Record<string,number>;
- const norm={...input};normalizeMarketCap(norm,input._fundamental_supplement??null,Date.now(),input._supplement_symbol??'');
+ // Prüfung auf dem bewerteten Fund (Börsenwert, Berichtswährung und Prognose bereits normalisiert wie in der Einzelanalyse).
+ const norm=e.fund as Fund&Row;
  const check=input.valuation_data??valuationDataCheck(norm),blocked=!!check.blocked;
  const upside=blocked?null:displayUpside(e.fund as Fund&Row,fv);
  const composite=blocked?null:e.scores.composite;

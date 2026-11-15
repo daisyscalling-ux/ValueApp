@@ -5,7 +5,7 @@ import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
 import {verifiedCashConversion} from './cash-conversion';
-import {normalizeMarketCap} from './valuation-data';
+import {normalizeMarketCap,convertReportCurrency} from './valuation-data';
 import {applyForwardEstimate} from './fundamental-supplement';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
 
@@ -18,7 +18,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const fund={...input};
  // Börsenwert = Kurs × Aktienzahl (idempotent; Scanner übergibt die Ergänzungsdatei als _fundamental_supplement).
  normalizeMarketCap(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
- // Scanner: Prognose-EPS wie in der Einzelanalyse nur als geprüfter Konsens (Einzelanalyse: bereits in bundleLight).
+ // Scanner: Berichtswährung umrechnen und Prognose-EPS nur als geprüfter Konsens (Einzelanalyse: bereits in bundleLight).
+ if('_fundamental_supplement' in fund)convertReportCurrency(fund,fund._fundamental_supplement?.fx??null);
  if('_fundamental_supplement' in fund)applyForwardEstimate(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
  const cc=verifiedCashConversion(fund._cash_conversion_history);

@@ -19,8 +19,8 @@ def zeile(ticker,fund):
 class Eingabe(unittest.TestCase):
     def test_json_safe_and_private_fields(self):
         d=T.eingabe({'price':float('nan'),'x':float('inf'),'reihe_ebitda':[{'jahr':2024,'wert':float('nan')}],'_quelle':'roic','_analyst_trend':{'richtung':'fallend'},
-                     '_ist_zyklisch':True,'obj':object(),'_roic_fx':0.0065,'market_cap':5e9},{'buy':3,'hold':1,'sell':0})
-        self.assertEqual(d['_pruef_eingang'],{'market_cap':5e9,'_quelle':'roic','_roic_fx':0.0065,'price':None})
+                     '_ist_zyklisch':True,'obj':object(),'_roic_kursverhaeltnis':0.0065,'market_cap':5e9},{'buy':3,'hold':1,'sell':0})
+        self.assertEqual(d['_pruef_eingang'],{'market_cap':5e9,'_quelle':'roic','_roic_kursverhaeltnis':0.0065,'price':None})
         self.assertIsNone(d['price']);self.assertIsNone(d['x']);self.assertIsNone(d['reihe_ebitda'][0]['wert']);self.assertIsNone(d['obj'])
         self.assertNotIn('_quelle',d);self.assertEqual(d['_analyst_trend'],{'richtung':'fallend'});self.assertNotIn('_ist_zyklisch',d,'unchecked flag replaced by _cyclicality (13.11.2026)')
         self.assertEqual((d['analyst_buy'],d['analyst_hold'],d['analyst_sell']),(3,1,0))
@@ -98,6 +98,22 @@ class AppRechenweg(unittest.TestCase):
         self.assertAlmostEqual(mit[0]['market_cap'],778.31*1.122e9,delta=1)
         self.assertEqual(ohne[0]['kauf_urteil'],'Daten prüfen','without annual report the stale provider value stays the yardstick')
         self.assertEqual(falsch[0]['kauf_urteil'],'Daten prüfen');self.assertIn('Jahresabschluss',' '.join(falsch[0]['valuation_issues']))
+
+    def test_report_currency_converted_with_ecb_rate(self):
+        import json,datetime as dt
+        # Equinor: ROIC-Betraege in USD (risk_financial.currency), Notierung NOK
+        eq={**JUMBO,'ticker':'OSL:EQNR','currency':'NOK','price':407.6,'shares_out':2.6e9,'market_cap':407.6*2.6e9,'eps_trailing':2.8,
+            'book_value_ps':15.0,'revenue':1e11,'ebitda':3.5e10,'ebit':2.5e10,'net_income':7e9,'net_debt':1e10,'free_cashflow':8e9,'total_debt':3e10,
+            '52w_high':450,'52w_low':300,'risk_financial':{'asof':'2026-06-30','currency':'USD','source':'ROIC Enterprise Value · dieselbe Berichtszeile'}}
+        gestern=(dt.date.today()-dt.timedelta(days=1)).isoformat()
+        datei={'schema':1,'symbol':'OSL:EQNR','annual':None,'market':{'currency':'NOK'},'share_basis':None,
+               'fx':{'base':'EUR','observed_at':gestern,'source_url':'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml','rates':{'EUR':1,'USD':1.16,'NOK':11.09}}}
+        with tempfile.TemporaryDirectory() as d:
+            Path(d,'OSL_EQNR.json').write_text(json.dumps(datei))
+            mit=[{**zeile('OSL:EQNR',eq),'listing_symbol':'OSL:EQNR'}];T.anwenden(mit,risiko={},ordner=d)
+            ohne=[{**zeile('OSL:EQNR',eq),'listing_symbol':'OSL:EQNR'}];T.anwenden(ohne,risiko={},ordner=d+'/fehlt')
+        self.assertNotEqual(mit[0]['kauf_urteil'],'Daten prüfen');self.assertGreater(mit[0]['fair_value'],100)
+        self.assertEqual(ohne[0]['kauf_urteil'],'Daten prüfen');self.assertIn('EZB',' '.join(ohne[0]['valuation_issues']))
 
     def test_peers_from_the_whole_universe(self):
         peers=[{'ticker':f'ATHEX:P{i}','listing_symbol':f'ATHEX:P{i}','isin':f'GRS00000000{i}','name':f'Peer {i}','name_full':f'Peer {i}','currency':'EUR',

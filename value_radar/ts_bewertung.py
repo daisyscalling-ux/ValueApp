@@ -42,7 +42,7 @@ def _sauber(x):
 
 # Rohwerte und Herkunft fuer gesperrte Zeilen (Datenpruefung der App): nur Diagnose, fliesst in keine Rechnung.
 DIAGNOSE = ("price", "currency", "shares_out", "market_cap", "enterprise_value", "52w_high", "52w_low", "eps_trailing",
-            "_quelle", "_roic_fx", "_roic_felder", "_pence_normalised", "_src")
+            "_quelle", "_roic_kursverhaeltnis", "_roic_felder", "_pence_normalised", "_src")
 
 
 ZYKLIK_METHODE = "margin_cv_v1"

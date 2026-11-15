@@ -730,13 +730,14 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             "net_debt", "revenue", "ebitda", "ebit", "free_cashflow",
             "net_income", "book_value_ps", "eps_trailing",
         }
+        # Seit 15.11.2026: keine Umrechnung mehr ueber das Kursverhaeltnis (ungekennzeichnet, nur 0,2-5, Nordics
+        # mit Faktor ~10 blieben gemischt). Die Betraege bleiben in der Berichtswaehrung der ROIC-Zeile
+        # (risk_financial.currency); der App-Rechenweg rechnet sie mit dem EZB-Referenzkurs um und kennzeichnet das
+        # (convertReportCurrency, valuation-data.ts). Das Kursverhaeltnis bleibt nur als Diagnose.
         _px_y, _px_r = merged.get("price"), R.get("price")
         _faktor = 1.0
-        if _px_y and _px_r and _px_r > 0:
-            _q = _px_y / _px_r
-            if 0.2 <= _q <= 5.0 and abs(_q - 1.0) > 0.02:
-                _faktor = _q          # verschiedene Waehrungen/Einheiten
-                merged["_roic_fx"] = round(_q, 4)
+        if _px_y and _px_r and _px_r > 0 and abs(_px_y / _px_r - 1.0) > 0.02:
+            merged["_roic_kursverhaeltnis"] = round(_px_y / _px_r, 4)
         _roic_felder = []
         for k, v in R.items():
             if k in ("price", "currency", "_src") or v is None:

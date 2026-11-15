@@ -61,7 +61,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   fair_value:blocked?null:r2(fv.fair_value),upside:r1(upside),entry:blocked?null:r2(fv.entry_price),
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
   valuation_issues:blocked?check.issues:[],
-  market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,
+  market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,share_count_basis:norm.share_count_basis??null,
   expectation_gap:expectationGap(norm,(e.scores as Row)._health_profile??null,blocked),
   eps_forward:typeof e.fund.eps_forward==='number'?Math.round(e.fund.eps_forward*10000)/10000:null,eps_forward_method:e.fund.eps_forward_method??null,
   eps_forward_source:e.fund.eps_forward_source??null,eps_forward_status:e.fund.eps_forward_status??null,

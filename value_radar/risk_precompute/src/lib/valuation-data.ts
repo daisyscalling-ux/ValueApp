@@ -99,6 +99,13 @@ export function annualUnitsPerListingUnit(s: Row|null|undefined): number|null {
  * ohne sie nur bei gleicher Berichts- und Handelswährung, sonst keine Prüfung). Idempotent.
  */
 // symbol: erwartete Notierung der Ersatzdatei (Identität); weicht sie ab, wird die Datei für die Aktienzahl verworfen.
+export const SHARE_CLASS_TOLERANCE = 0.15;
+const STANDARD_SPLITS=[1/20,1/10,1/8,1/5,1/4,1/3,1/2,2/3,3/2,2,3,4,5,8,10,20];
+// Einheitenfehler der Quelle: Jahresaktienzahl weicht um eine Zehnerpotenz (± 3 %) ab (McDonald's 716,4 statt 716 Mio.).
+export function decadeError(ratio:number):number|null{
+  for (let k=1;k<=6;k++) for (const e of [k,-k]) if (Math.abs(ratio/Math.pow(10,e)-1)<=0.03) return e;
+  return null;
+}
 export function normalizeMarketCap(f: Row, supplement?: Row|null, now = Date.now(), symbol?: string|null): void {
   if (f.market_cap_source === 'kurs_x_aktien') return;
   const s = supplement, a = s?.annual, w = a?.fields?.weighted_shares;
@@ -106,7 +113,25 @@ export function normalizeMarketCap(f: Row, supplement?: Row|null, now = Date.now
     // Aktienzahl ist einheitenfrei; Pfund und Pence (GBP/GBp/GBX) gelten deshalb als dieselbe Währung.
     const cur = (x: unknown) => (x==='GBp'||x==='GBX') ? 'GBP' : x;
     const units = s.share_basis ? annualUnitsPerListingUnit(s) : (a.currency && cur(a.currency)===cur(s.market?.currency) ? 1 : null);
-    if (units) f.annual_shares = { value: w/units, end: a.end, source: a.source ?? null };
+    if (units) {
+      // Belegte Standard-Splits nach dem Abschlussstichtag (Abspaltungsfaktoren wie 2,39 zählen nicht).
+      const end=Date.parse(a.end);let factor=1;const used:Row[]=[];
+      for (const sp of Array.isArray(s.splits)?s.splits:[]) {
+        const d=Date.parse(sp?.date),r=sp?.ratio;
+        if (Number.isFinite(d)&&d>end&&d<=now&&positive(r)&&STANDARD_SPLITS.some(x=>Math.abs(x/r-1)<1e-4)) {factor*=r;used.push({date:sp.date,ratio:r});}
+      }
+      f.annual_shares = { value: w/units*factor, unadjusted: w/units, split_factor: factor, splits: used, end: a.end, source: a.source ?? null };
+    }
+    // Mehrere Aktiengattungen (Entscheidung des Nutzers, 15.11.2026): Zählt die Notierung nur ihre Gattung
+    // (Henkel Vz. 151 Mio.), die Firma aber alle (414 Mio.), gilt die Gesamtzahl aller Gattungen, wenn sie zum
+    // Jahresabschluss passt (± SHARE_CLASS_TOLERANCE, mit oder ohne Split-Bereinigung). Börsenwert = Kurs dieser
+    // Gattung × alle Aktien; Kursunterschiede zwischen den Gattungen bleiben unberücksichtigt (gekennzeichnet).
+    const impl=s.market?.fields?.implied_shares_out,ann=f.annual_shares;
+    if (ann && positive(impl) && positive(f.shares_out) && impl/f.shares_out>1+SHARE_CLASS_TOLERANCE
+        && [ann.value,ann.unadjusted].some((v:number)=>Math.abs(impl/v-1)<=SHARE_CLASS_TOLERANCE)) {
+      f.shares_out_listed_class=f.shares_out;f.shares_out=impl;f.share_count_basis='alle_gattungen';
+      f.share_count_note=`Aktienzahl aller Gattungen (${Math.round(impl/1e6)} Mio. statt ${Math.round(f.shares_out_listed_class/1e6)} Mio. dieser Gattung), Börsenwert zum Kurs dieser Gattung; Kursunterschiede zwischen den Gattungen unberücksichtigt`;
+    }
   }
   if (!(positive(f.price) && positive(f.shares_out))) return;
   const rf = f.risk_financial;
@@ -136,16 +161,21 @@ export function valuationDataCheck(f: Row, raw?: Row) {
   // Börsenwert = Kurs × Aktienzahl (normalizeMarketCap). Gegengeprüft wird die Aktienbasis, in dieser Reihenfolge:
   // 1. Anbieterwert, wenn Stichtag ≤ 120 Tage und gleiche Währung; 2. Aktienzahl im Jahresabschluss (≤ 550 Tage);
   // 3. älterer Anbieterwert, nur Größenordnung; 4. ohne jeden Vergleichswert nur Warnung.
+  if (f.share_count_basis==='alle_gattungen'&&f.share_count_note) warnings.push(f.share_count_note+'.');
   if (positive(f.price) && positive(f.shares_out)) {
     const own = f.price*f.shares_out, prov = f.market_cap_provider, ann = f.annual_shares;
     const provOk = prov && positive(prov.value) && typeof prov.asof==='string' && Number.isFinite(Date.parse(prov.asof)) && Date.now()-Date.parse(prov.asof)<=MCAP_PROVIDER_MAX_AGE_DAYS*86400000 && prov.currency===f.currency;
     if (provOk) {
-      const ratio = prov.value/own;
-      if (ratio<0.5 || ratio>2) issues.push('Börsenwert des Anbieters (Stichtag '+prov.asof+') passt nicht zu Kurs × Aktienzahl (Abweichung über Faktor 2). Aktienbasis ungeklärt.');
-    } else if (ann && positive(ann.value)) {
-      const ratio = f.shares_out/ann.value;
-      if (ratio<0.5 || ratio>2) issues.push('Aktienzahl passt nicht zum Jahresabschluss '+ann.end+' (Abweichung über Faktor 2). Aktienbasis ungeklärt.');
+      // Bei allen Gattungen darf der Anbieterwert auch nur diese Gattung abbilden (ROIC-Börsenwert Henkel Vz.).
+      const ratio = prov.value/own, ratioListed = positive(f.shares_out_listed_class) ? prov.value/(f.price*f.shares_out_listed_class) : null;
+      if ((ratio<0.5 || ratio>2) && !(ratioListed!==null && ratioListed>=0.5 && ratioListed<=2)) issues.push('Börsenwert des Anbieters (Stichtag '+prov.asof+') passt nicht zu Kurs × Aktienzahl (Abweichung über Faktor 2). Aktienbasis ungeklärt.');
+    } else if (ann && positive(ann.value) && decadeError(f.shares_out/(ann.unadjusted??ann.value))===null) {
+      // Bestanden, wenn die Zahl mit oder ohne Split-Bereinigung passt (Yahoo bereinigt Abschlüsse teils rückwirkend).
+      const ok=(v:number)=>positive(v)&&f.shares_out/v>=0.5&&f.shares_out/v<=2;
+      if (!ok(ann.value)&&!ok(ann.unadjusted??ann.value)) issues.push('Aktienzahl passt nicht zum Jahresabschluss '+ann.end+' (Abweichung über Faktor 2'+(ann.split_factor&&ann.split_factor!==1?', auch nach Split-Bereinigung':'')+'). Aktienbasis ungeklärt.');
+      else if (ann.split_factor&&ann.split_factor!==1&&ok(ann.value)&&!ok(ann.unadjusted??ann.value)) warnings.push('Jahresaktienzahl um Split nach dem Stichtag bereinigt (Faktor '+(+ann.split_factor.toPrecision(4))+').');
     } else if (prov && positive(prov.value)) {
+      if (ann && positive(ann.value)) warnings.push('Jahresaktienzahl weicht um Faktor 10^'+decadeError(f.shares_out/(ann.unadjusted??ann.value))+' ab (Einheitenfehler der Quelle); Vergleich verworfen, geprüft gegen den Börsenwert des Anbieters.');
       // Kein belegter Jahresabschluss: dann bleibt der Anbieterwert der Prüfmaßstab, auch wenn er älter ist (offen statt falsch).
       const ratio = prov.value/own;
       // Die Währungskennung ist die Berichtswährung der ROIC-Zeile, nicht sicher die des Börsenwerts (Experian, Novartis:

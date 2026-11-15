@@ -61,7 +61,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   fair_value:blocked?null:r2(fv.fair_value),upside:r1(upside),entry:blocked?null:r2(fv.entry_price),
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
   valuation_issues:blocked?check.issues:[],
-  market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,
+  market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,share_count_basis:norm.share_count_basis??null,
   expectation_gap:expectationGap(norm,(e.scores as Row)._health_profile??null,blocked),
   // Umgerechnete Kennzahlen für Anzeige und Peers der Universumszeile (nur wenn umgerechnet; sonst bleiben die Pipeline-Werte).
   report_fx:norm.report_fx??null,report_fx_status:norm.report_fx_status??null,

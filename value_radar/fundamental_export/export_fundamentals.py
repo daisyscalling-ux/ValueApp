@@ -211,6 +211,14 @@ def consensus_estimates(table,info,ys,now=None):
  else:out['usable']=True
  return out
 
+def recent_splits(t,years=5):
+ """Aktiensplits der letzten Jahre (Datum, neue Aktien je alte), fuer die Bereinigung der Jahresaktienzahl. yfinance
+ fuehrt auch Abspaltungsfaktoren als Split (DuPont 2,39); die App nutzt nur Standardverhaeltnisse. Ausfall: []."""
+ try:
+  cut=dt.datetime.now(UTC)-dt.timedelta(days=365*years)
+  return [{'date':k.date().isoformat(),'ratio':round(float(v),6)} for k,v in t.splits.items() if k.to_pydatetime().astimezone(UTC)>=cut and number(float(v)) and float(v)>0]
+ except Exception:return []
+
 def estimate_table(t):
  """earnings_estimate als {Periode: Felder}; Ausfall ergibt {} (Block bleibt offen, nie geschaetzt)."""
  try:
@@ -252,7 +260,7 @@ def collect(row):
  elif annual['fields'].get('eps_trailing') is None: errors.append('Current annual statements available; diluted EPS missing, earnings multiple excluded')
  diagnostics=annual_diagnostics(annual,frames,info)
  currency=info.get('currency'); observed=info.get('regularMarketTime')
- market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta'}.items()}
+ market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta','implied_shares_out':'impliedSharesOutstanding'}.items()}
  references={}
  reference_path=os.getenv('FUNDAMENTAL_REFERENCES_PATH')
  if reference_path:
@@ -260,7 +268,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':consensus_estimates(estimate_table(t),info,ys),'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'estimates':consensus_estimates(estimate_table(t),info,ys),'splits':recent_splits(t),'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

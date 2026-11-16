@@ -538,3 +538,25 @@ Bewertungsrelevant offen bleiben 47 Titel:
 - 16 Japaner ohne aktuelles Jahr bei Yahoo/ROIC (EDINET folgt als eigenes Paket);
 - 10 Versorger, REITs und Beteiligungen ohne gemeldete Investitionen;
 - 8 sonstige.
+
+### Nachtrag nach dem Lauf (16.11.2026, 11:25 UTC; mit #210, #212, #213)
+
+| Größe | vorher (00:24) | nachher |
+|---|---|---|
+| kauf | 86 | 103 |
+| beobachten | 193 | 232 |
+| meiden | 1.051 | 996 |
+| Daten prüfen | 11 | 10 |
+| Finanzwerte mit kauf | 21 | 32 |
+| Fair Value | | Median ±0 %, 89 Titel über ±25 % |
+
+- **Felder behalten:** Hartford 124,6 → 164,8 (kauf), PZU 65 → 83 (kauf), Ameriprise 434 → 605 (kauf). Jahresblock bei 1.312 Titeln, davon 1.301 mit beibehaltenen ROIC-Feldern desselben Geschäftsjahres.
+- **Prognose-EPS:** 958 geprüft (909 innerhalb Faktor 2, 49 bei gleicher Gewinnbasis bis ×3). Micron: Prognose 182,9 jetzt geprüft; der Fair Value bleibt 621,87, weil das Zykliker-Modell keine Forward-Methode hat.
+- **Anzeige:** Equinor KGV 22,0 statt 209,6, Micron EPS 74,33.
+- **Toyota Tsusho** ist frei (Toleranz ± 15 %).
+- **Cash-Conversion:** 926 ROIC, 245 Yahoo, 123 „nicht benötigt“, 47 offen.
+- **Erwartungslücke** mit Wert: 1.010.
+
+**Noch nicht wirksam:** das SEC-Umsatzwachstum aus #211. fundamentals-daily lief vor dem Merge (Hartford noch ohne Wachstum im Abschluss).
+
+**Korrektur Anzeige:** Fehlt dem Jahresblock ein Wert (Costco: kein EPS im Yahoo-Abschluss), zeigte die Zeile weiter den alten ROIC-Wert des Vorjahres (EPS 18,24). Jetzt werden die Rechenwerte auch leer übernommen.

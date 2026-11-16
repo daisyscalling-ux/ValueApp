@@ -40,6 +40,16 @@ jobs:
         run: |
           git config user.name "value-radar-bot"
           git config user.email "bot@value-radar"
+          test -s daten/cf_earnings.json || exit 1
           git add daten/cf_earnings.json
-          git commit -m "Earnings-Calls aktualisiert [skip ci]" || echo "keine Aenderung"
-          git push || echo "push uebersprungen"
+          if git diff --cached --quiet; then echo "keine Aenderung"; exit 0; fi
+          git commit -m "Earnings-Calls aktualisiert [skip ci]"
+          # Andere Laeufe pushen parallel nach main; ohne Rebase wurde der Push
+          # seit 20.10.2026 taeglich abgelehnt und still uebersprungen.
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::Push von cf_earnings.json nach 4 Versuchen abgelehnt"
+          exit 1

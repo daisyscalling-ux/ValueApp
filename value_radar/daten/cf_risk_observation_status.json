@@ -1,1 +1,1 @@
-{"state": "retained_first_daily_observation", "file": "2026-11-15.json.gz", "observedAt": "2026-11-15T12:21:02.725217+00:00", "sha256": "a2b510b3e09e27741b391417f7bed20e1ee94191a096bd4cbac22028e2e0b258"}
+{"state": "recorded", "file": "2026-11-16.json.gz", "observedAt": "2026-11-16T00:41:02.567261+00:00", "sha256": "523cd63ccfd9063fd854d5f121bcbff7112d1dd0a696c36949fc69c9244682fd", "bytes": 929, "listings": 1341}

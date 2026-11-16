@@ -27,6 +27,9 @@ const INPUTS:[string,(f:Row)=>number|null,(u:Row)=>number|null][]=[
  ['revenue_growth_pct',f=>typeof f.revenue_growth==='number'?f.revenue_growth*100:null,u=>u.revenue_growth],['roe_pct',f=>typeof f.roe==='number'?f.roe*100:null,u=>u.roe],
  ['ev_ebitda',f=>f.ev_ebitda,u=>u.ev_ebitda],['market_cap',f=>f.market_cap,u=>u.market_cap]];
 const OUTPUTS=['playbook','composite','fair_value','upside','quantum','target_12m','health','kauf_urteil'];
+// Seit 16.11.2026: Kennzeichnungen der neuen Datenwege; gleiche Werte heissen gleicher Rechenweg in App und Screener.
+const LABELS=['annual_supplement_applied','cash_conversion_origin','eps_forward_check','share_count_basis','market_cap_source'];
+const gapOf=(x:Row)=>typeof x?.expectation_gap?.gap_pp==='number'?x.expectation_gap.gap_pp:null;
 const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFinite(a)&&Number.isFinite(b)&&b!==0?Math.abs(a/b-1):null;
 (async()=>{
  const rows:Row[]=[];
@@ -46,7 +49,10 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
    const app=scannerFields(fund as any,peers,cov,dist) as Row;
    const inputs=Object.fromEntries(INPUTS.map(([k,fa,fu])=>[k,{app:fa(fund)??null,scanner:fu(u)??null,relDiff:rel(fa(fund),fu(u))}]));
    const outputs=Object.fromEntries(OUTPUTS.map(k=>[k,{app:app[k]??null,scanner:u[k]??null}]));
-   rows.push({symbol:sym,inputs,outputs,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
+   const labels=Object.fromEntries(LABELS.map(k=>[k,{app:app[k]??null,scanner:u[k]??null}]));
+   const forward={app:typeof app.eps_forward==='number'?app.eps_forward:null,scanner:u.eps_forward_method?u.eps_forward:null};
+   const gap={app:gapOf(app),scanner:gapOf(u)};
+   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
   }catch(e){rows.push({symbol:sym,error:String(e).slice(0,200)})}
   // 4,5 s je Titel: ROIC 9 Abrufe (120/min, Plan 300/min, Rest fuer parallele Laeufe), Finnhub 4 Abrufe (53/min, Grenze 60/min).
   // Der erste Lauf (13.11.2026, 1,1 s, parallel zu precompute) lief in Abrufgrenzen; Felder fehlten dadurch scheinbar.
@@ -59,8 +65,12 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
  const outputSummary={composite:num('composite'),fair_value_pct:num('fair_value'),upside_pp:num('upside'),quantum:num('quantum'),target_12m_pct:num('target_12m'),health:num('health'),
   playbookDiffers:ok.filter(r=>r.outputs.playbook.app!==r.outputs.playbook.scanner).length,verdictDiffers:ok.filter(r=>r.outputs.kauf_urteil.app!==r.outputs.kauf_urteil.scanner).length,
   appBlocked:ok.filter(r=>r.appBlocked).length,scannerBlocked:ok.filter(r=>r.outputs.kauf_urteil.scanner==='Daten prüfen').length,
-  titlesWithEmptyRoicBlocks:ok.filter(r=>(r.roicEmpty||[]).length).length};
- const report={schema:1,method:'bundle-vs-scanner-v1',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
+  titlesWithEmptyRoicBlocks:ok.filter(r=>(r.roicEmpty||[]).length).length,
+  labelsDiffer:Object.fromEntries(LABELS.map(k=>[k,ok.filter(r=>(r.labels?.[k]?.app??null)!==(r.labels?.[k]?.scanner??null)).length])),
+  forwardEps:(()=>{const both=ok.filter(r=>typeof r.forward?.app==='number'&&typeof r.forward?.scanner==='number');const d=both.map(r=>Math.abs(r.forward.app/r.forward.scanner-1));
+   return {compared:both.length,appOnly:ok.filter(r=>typeof r.forward?.app==='number'&&r.forward?.scanner==null).length,scannerOnly:ok.filter(r=>r.forward?.app==null&&typeof r.forward?.scanner==='number').length,medianRel:q(d,.5),over5pct:d.filter(x=>x>.05).length}})(),
+  expectationGapPp:(()=>{const d=ok.map(r=>[r.gap?.app,r.gap?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));return {compared:d.length,median:q(d,.5),p90:q(d,.9)}})()};
+ const report={schema:1,method:'bundle-vs-scanner-v2',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
  fs.writeFileSync(output,JSON.stringify(report,null,1));
  console.log(JSON.stringify({sample:report.sample,fetched:report.fetched,errors:report.errors,outputSummary},null,1));
 })();

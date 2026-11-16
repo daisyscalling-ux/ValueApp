@@ -17,6 +17,10 @@ def zeile(ticker,fund):
 
 
 class Eingabe(unittest.TestCase):
+    def test_value_inputs_reach_the_universe_row(self):
+        # Peers lesen Forward-KGV, PEG und FCF-Rendite aus der Zeile (value-inputs.ts, seit 17.11.2026).
+        self.assertIn('value_inputs',T.FELDER);self.assertIn('eps_forward_no_profit',T.FELDER)
+
     def test_json_safe_and_private_fields(self):
         d=T.eingabe({'price':float('nan'),'x':float('inf'),'reihe_ebitda':[{'jahr':2024,'wert':float('nan')}],'_quelle':'roic','_analyst_trend':{'richtung':'fallend'},
                      '_ist_zyklisch':True,'obj':object(),'_roic_kursverhaeltnis':0.0065,'market_cap':5e9},{'buy':3,'hold':1,'sell':0})

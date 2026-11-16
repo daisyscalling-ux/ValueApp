@@ -578,3 +578,38 @@ Bewertungsrelevant offen bleiben 47 Titel:
 - 6 Titel nur in der App gesperrt: L'Oréal, EssilorLuxottica, Randstad, Umicore, AB InBev, mBank. Ursache war die Handelswährung aus dem ROIC-Profil statt aus der Kurszeile; korrigiert in `roic.ts` (Kopie aus valueapp-cf).
 - Unilever: Jahresblock nur in der App. F5: Prognose nur im Screener. Ursache jeweils noch offen.
 - PTC ist in beiden Wegen gesperrt (neueres Geschäftsjahr).
+
+## Bewertungskennzahlen gleich gerechnet; fehlende Kennzahlen offen statt 50 (17.11.2026)
+
+**Befund (bundle-compare v4, 16.11.2026, 50 Titel).**
+- Die Kategorie Bewertung wich im Median um 8,8 Punkte ab. Ursache war ein Fehler im eigenen Code: Die Einzelanalyse berechnete Forward-KGV, PEG und FCF-Rendite nie. Bei 38 von 38 Titeln standen dort keine Eingänge, und die Teilnoten zählten neutral mit 50.
+- Der Screener nahm dafür Yahoo `forwardPE` und `pegRatio` sowie die ROIC-FCF-Rendite (Teilnoten im Median 30, 32 und 20 Punkte anders).
+
+**Methode `value_inputs_v1` (`src/lib/value-inputs.ts`, Entscheidungen des Nutzers).** Beide Wege rufen dieselbe Funktion in `evaluateStock` auf. Fremdwerte aus Yahoo und ROIC werden überschrieben.
+
+| Kennzahl | Rechnung | Offen (zählt nicht) | Schlechteste Note (0) |
+|---|---|---|---|
+| Forward-KGV | Kurs / geprüftes 12M-Prognose-EPS (`consensus_ntm_blend_v1`) | kein geprüfter Konsens (mit dessen Grund), Kurs fehlt | geprüfter Konsens erwartet keinen Gewinn |
+| PEG | Forward-KGV / (Prognose-EPS ÷ berichtetes EPS − 1) in % | wie Forward-KGV; berichtetes EPS ≤ 0 | kein Gewinn erwartet; Prognose-EPS ≤ berichtetes EPS |
+| FCF-Rendite | FCFF / (Börsenwert + Nettoschulden) | Abschlusswährung nicht umgerechnet; FCFF, Börsenwert oder Nettoschulden fehlen; Unternehmenswert ≤ 0 | – |
+
+- **FCF-Rendite gegen den Unternehmenswert, nicht gegen den Börsenwert.** `free_cashflow` ist in beiden Wegen der Cashflow des Unternehmens vor Zinsen (ROIC `ttm_free_cash_flow_firm`). Geteilt durch den Börsenwert ließe er verschuldete Firmen systematisch billig erscheinen.
+- **Schlechteste Note statt Lücke (Verzerrung).** Ohne diese Regel stünden Firmen mit erwartetem Verlust oder schrumpfendem Gewinn durch die fehlende Kennzahl besser da als Firmen mit hohem, aber positivem KGV. Bisher galt dasselbe über negative Yahoo-Werte. Dafür prüft `applyForwardEstimate` „Konsens erwartet keinen Gewinn“ jetzt vor dem berichteten EPS und setzt `eps_forward_no_profit`.
+- **Fehlende Kennzahlen (alle Kategorien).** Sie zählen nicht mehr, statt neutral 50. Die Kategorie mittelt die vorhandenen Werte. Hat sie keinen, bleibt sie offen (`null`, `cat_neutral`) und fällt aus dem Composite; die Gewichte werden renormalisiert. Dasselbe gilt für Momentum ohne 52-Wochen-Spanne und Katalysator ohne Signal. `metric_open` nennt je Kennzahl den Grund.
+- **Peers.** Sie lesen `value_inputs` ihrer Universumszeile nur mit Methode `value_inputs_v1`. Bis zum nächsten Precompute haben die Zeilen keine PEG- und FCF-Werte; diese Kennzahlen laufen dann auf der festen Skala (gekennzeichnet als `scale`).
+- **Anzeige.** Die Einzelanalyse zeigt unter der Scoring-Matrix offene Kennzahlen und schlechteste Noten mit Grund; eine offene Kategorie erscheint als „offen“. Die Screener-Zeile trägt `value_inputs`, `eps_forward_no_profit` und in `score_diagnostics` Grund und Maßstab `open`.
+
+**Messung am Universum vom 16.11.2026 (1.341 Titel), vor der Änderung.**
+- Forward-KGV künftig gefüllt bei 963 Titeln, offen bei 377, schlechteste Note bei mindestens 1. Weitere Verlustfälle unter den 90 Titeln mit berichtetem EPS ≤ 0 zeigt erst der Precompute.
+- PEG gefüllt bei 852, offen bei 377, schlechteste Note bei 112 (Prognose ≤ berichtetes EPS oder kein Gewinn).
+- Bisher hatte der Screener Yahoo-Werte bei 1.103 (KGV) bzw. 1.006 (PEG) Titeln.
+- FCF-Rendite: Der Bestand lässt sich aus den Universumszeilen nicht messen (FCFF und Nettoschulden stehen nicht darin). Messung im nächsten Precompute.
+
+**Grenzen.**
+- PEG nutzt das 12-Monats-Wachstum, nicht Yahoos 5-Jahres-Schätzung. Es ist kurzfristiger, dafür nachvollziehbar.
+- Bei Banken und Versicherern ist FCFF wenig aussagekräftig; die Kennzahl bleibt wie bisher Teil der Bewertung.
+- Das Composite kann sich im ganzen Universum verschieben, weil 50er-Platzhalter wegfallen. Die Wirkung misst der nächste Precompute mit Bundle-Compare. Ein Probelauf der vollen Kette ist offline nicht möglich, weil die Scanner-Eingänge nur im Precompute entstehen.
+
+**Tests.** `tests/value-inputs.test.mjs` mit 9 Fällen (gefüllt, offen mit Grund, Verlust und kein Wachstum, FCF offen, Fremdwerte überschrieben, Konsens-Flag, Kategorien und Composite, Peers mit/ohne Methode, Screener-Zeile). `tests/peer-valuation.test.mjs` ist angepasst. `npm test` 272/272.
+
+**Pipeline.** `ts_bewertung.FELDER` übernimmt `value_inputs` und `eps_forward_no_profit` in die Universumszeile, damit die Peers dieselben Kennzahlen lesen. `value-inputs.ts` steht in `app-copies.json` (41 Dateien, identisch).

@@ -140,6 +140,7 @@ export const FORWARD_METHOD='consensus_ntm_blend_v1';
 export const ESTIMATE_SOURCE_METHOD='consensus_0y_1y_v1';
 export const FORWARD_MIN_ANALYSTS=3, FORWARD_MAX_FACTOR=2, ESTIMATE_MAX_AGE_DAYS=7, FORWARD_BASIS_TOLERANCE=0.25, FORWARD_MAX_GROWTH=3;
 export function applyForwardEstimate(f:Row,s:Row|null|undefined,now=Date.now(),symbol?:string|null):void{
+ delete f.eps_forward_no_profit;
  const open=(reason:string)=>{delete f.eps_forward;delete f.eps_forward_estimate;delete f.eps_forward_check;f.eps_forward_source=null;f.eps_forward_method=null;f.eps_forward_status=reason;};
  const e=s?.estimates;
  if(!s||s.schema!==1||(symbol!=null&&s.symbol!==symbol))return open('Keine Konsensschätzung für diese Notierung');
@@ -165,8 +166,10 @@ export function applyForwardEstimate(f:Row,s:Row|null|undefined,now=Date.now(),s
   scale=to/from*(base===f.currency?1:100);
  }
  const value=ntm*scale,t=f.eps_trailing;
+ // Seit 17.11.2026 vor der EPS-Prüfung: Ein geprüfter Konsens ohne erwarteten Gewinn ist eine Aussage für sich
+ // (value-inputs.ts: schlechteste Note für Forward-KGV und PEG), auch wenn das berichtete EPS ≤ 0 ist.
+ if(!(value>0)){open('Konsens erwartet keinen Gewinn');f.eps_forward_no_profit=true;return;}
  if(!(finite(t)&&t>0))return open('Prognose nicht prüfbar: berichtetes EPS fehlt oder ≤ 0');
- if(!(value>0))return open('Konsens erwartet keinen Gewinn');
  // Seit 16.11.2026 (Entscheidung des Nutzers): über Faktor 2 gültig, wenn das Vorjahres-Ist der Analysten zum berichteten
  // EPS passt (± FORWARD_BASIS_TOLERANCE, gleiche Gewinnbasis, nicht bereinigt) und der Konsens höchstens
  // FORWARD_MAX_GROWTH-mal so hoch ist (Micron: Ist 75,52 zu 74,33 berichtet, Konsens 182 = ×2,4).

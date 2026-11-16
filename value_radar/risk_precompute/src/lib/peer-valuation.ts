@@ -6,6 +6,7 @@
  * Identische Kopie unter ValueApp/value_radar/risk_precompute/src/lib.
  */
 import type {Fund} from './valuation';
+import {VALUE_INPUTS_METHOD} from './value-inputs';
 export const PEER_PERCENTILE_MIN=5;
 type Row=Record<string,unknown>;
 const n=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?v:null;
@@ -14,8 +15,12 @@ const pct=(v:unknown)=>{const x=n(v);return x===null?null:x/100};
 export function peerFundFromRow(r:Row):Fund&Row{
  // Forward-KGV der Peers nur aus geprüftem Konsens (eps_forward_method, seit 14.11.2026); ältere Zeilen bleiben offen.
  const price=n(r.price),epsF=r.eps_forward_method==='consensus_ntm_blend_v1'?n(r.eps_forward):null;
+ // Seit 17.11.2026: Forward-KGV, PEG und FCF-Rendite so, wie die Zeile sie mit value-inputs.ts gerechnet hat (gleiche
+ // Methode wie der bewertete Titel). Zeilen ohne diese Methode: Forward-KGV wie bisher, PEG und FCF-Rendite offen.
+ const vi=r.value_inputs&&typeof r.value_inputs==='object'&&(r.value_inputs as Row).method===VALUE_INPUTS_METHOD?r.value_inputs as Row:null;
  return {ticker:String(r.listing_symbol??r.ticker??''),ev_ebitda:n(r.ev_ebitda),pb:n(r.pb),
-  pe_forward:price&&price>0&&epsF&&epsF>0?price/epsF:null,roe:pct(r.roe),gross_margin:pct(r.gross_margin),
+  pe_forward:vi?n(vi.pe_forward):price&&price>0&&epsF&&epsF>0?price/epsF:null,peg:vi?n(vi.peg):null,fcf_yield:vi?n(vi.fcf_yield):null,
+  roe:pct(r.roe),gross_margin:pct(r.gross_margin),
   revenue_growth:pct(r.revenue_growth),net_debt_ebitda:n(r.net_debt_ebitda)};
 }
 export function peerFundsFromRows(rows:Row[]|null|undefined):(Fund&Row)[]{return Array.isArray(rows)?rows.filter(r=>r&&typeof r==='object').map(peerFundFromRow):[]}

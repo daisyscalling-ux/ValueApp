@@ -88,7 +88,9 @@ export interface ScoreResult {
   value_trap: boolean;
   breakdown: Record<string, number>;
   /** Je Kennzahl: "peers" = Perzentil gegen >= PEER_PERCENTILE_MIN Peers, "scale" = feste Ersatzskala. */
-  metric_source: Record<string, "peers" | "scale">;
+  metric_source: Record<string, "peers" | "scale" | "rule">;
+  /** Offene Kennzahlen mit Grund; zählen nicht in ihre Kategorie (seit 17.11.2026). */
+  metric_open: Record<string, string>;
   _inputs?: Record<string, number | null>;
   peer_count: Record<string, number>;
 }
@@ -106,13 +108,24 @@ export function scoreStock(
   const catValues: Record<string, number[]> = {};
   for (const k of Object.keys(weights)) catValues[k] = [];
   const breakdown: Record<string, number> = {};
-  const metricSource: Record<string, "peers" | "scale"> = {};
+  const metricSource: Record<string, "peers" | "scale" | "rule"> = {};
   const peerCount: Record<string, number> = {};
 
+  const metricOpen: Record<string, string> = {};
+  const vi = (fund as { value_inputs?: { worst?: Record<string, string>; open?: Record<string, string> } }).value_inputs;
   for (const [metric, [cat, hib]] of Object.entries(METRIC_MAP)) {
-    const val = (fund as Record<string, number | null>)[metric] ?? null;
+    const raw = (fund as Record<string, unknown>)[metric];
+    const val = typeof raw === "number" && Number.isFinite(raw) ? raw : null;
     let s: number;
-    if (PATHOLOGICAL_IF_NEGATIVE.has(metric) && val !== null && val <= 0) {
+    if (vi?.worst?.[metric]) {
+      // Schlechteste Note mit Grund (value-inputs.ts), z. B. Konsens erwartet keinen Gewinn.
+      s = 0.0; metricSource[metric] = "rule";
+    } else if (val === null) {
+      // Seit 17.11.2026 (Entscheidung des Nutzers): fehlende Kennzahl zählt nicht, statt neutral 50.
+      metricOpen[metric] = vi?.open?.[metric] ?? "Keine Daten";
+      breakdown[metric] = null as unknown as number;
+      continue;
+    } else if (PATHOLOGICAL_IF_NEGATIVE.has(metric) && val <= 0) {
       s = 0.0;
     } else {
       // Peer-Perzentil nur mit mindestens PEER_PERCENTILE_MIN gueltigen Peer-Werten (negative Multiples sind nicht vergleichbar).
@@ -130,11 +143,12 @@ export function scoreStock(
     catValues[cat].push(s);
   }
 
-  const catScores: Record<string, number> = {};
+  // Kategorie ohne vorhandene Kennzahl bleibt offen (null) und zählt nicht ins Composite (seit 17.11.2026).
+  const catScores: Record<string, number | null> = {};
   const catNeutral: Record<string, boolean> = {};
   for (const cat of Object.keys(weights)) {
     const vals = catValues[cat] ?? [];
-    catScores[cat] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 50.0;
+    catScores[cat] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     catNeutral[cat] = !vals.length;
   }
 
@@ -146,18 +160,19 @@ export function scoreStock(
     catScores.momentum = pos;
     breakdown.price_position_52w = Math.round(pos * 10) / 10;
   } else {
-    catScores.momentum = 50.0;
+    catScores.momentum = null;   // ohne 52-Wochen-Spanne offen statt 50 (seit 17.11.2026)
   }
-  if (!("catalyst" in catScores)) catScores.catalyst = fund._catalyst_score ?? 50.0;
+  if (!("catalyst" in catScores)) catScores.catalyst = typeof fund._catalyst_score === "number" ? fund._catalyst_score : null;
 
-  let composite = Object.entries(weights).reduce(
-    (s, [c, w]) => s + catScores[c] * w, 0);
+  let num = 0, den = 0;
+  for (const [c, w] of Object.entries(weights)) { const v = catScores[c]; if (typeof v === "number") { num += v * w; den += w; } }
+  let composite = den > 0 ? num / den : 50.0;
   const vt = valueTrap(fund);
   if (vt) composite -= VALUE_TRAP_PENALTY;
   composite = Math.max(0.0, Math.min(100.0, composite));
 
   const roundCats: Record<string, number> = {};
-  for (const [k, v] of Object.entries(catScores)) roundCats[k] = Math.round(v * 10) / 10;
+  for (const [k, v] of Object.entries(catScores)) roundCats[k] = (typeof v === "number" ? Math.round(v * 10) / 10 : null) as number;
 
   return {
     ticker: fund.ticker, name: fund.name, sector: fund.sector,
@@ -167,6 +182,7 @@ export function scoreStock(
     value_trap: vt,
     breakdown,
     metric_source: metricSource,
+    metric_open: metricOpen,
     peer_count: peerCount,
     _inputs: Object.fromEntries(Object.keys(METRIC_MAP).map((m) => [m, (fund as Record<string, number | null>)[m] ?? null])),
   };

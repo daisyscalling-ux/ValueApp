@@ -77,7 +77,11 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   cash_conversion:typeof e.fund.cash_conversion==='number'?Math.round(e.fund.cash_conversion*1000)/1000:null,cash_conversion_source:e.fund.cash_conversion_source??null,cash_conversion_origin:e.fund.cash_conversion_origin??null,fv_confidence:fv.confidence,fv_reliable:fv.reliable,
   // Diagnose (seit 16.11.2026, keine Rechenwirkung): Eingang, Teilnote und Massstab je Bewertungskennzahl sowie die
   // Teile der Katalysator-Note, damit der Abgleich App gegen Screener die Ursache einer Composite-Abweichung zeigt.
-  score_diagnostics:{value:Object.fromEntries(['ev_ebitda','pb','pe_forward','peg','fcf_yield'].map(k=>[k,{input:typeof (e.scores as Row)._inputs?.[k]==='number'?r2((e.scores as Row)._inputs[k]):null,score:(e.scores as Row).breakdown?.[k]??null,basis:(e.scores as Row).metric_source?.[k]??null}])),
+  // Seit 17.11.2026: Forward-KGV, PEG und FCF-Rendite aus value-inputs.ts (gleiche Methode in App und Screener); die Peers
+  // der Universumszeilen lesen sie von hier. Offene Kennzahlen mit Grund, schlechteste Note mit Grund.
+  value_inputs:(()=>{const v=(e.fund as Row).value_inputs;return v?{method:v.method,pe_forward:r2(v.pe_forward),peg:r2(v.peg),fcf_yield:typeof v.fcf_yield==='number'?Math.round(v.fcf_yield*10000)/10000:null,open:v.open,worst:v.worst}:null})(),
+  eps_forward_no_profit:e.fund.eps_forward_no_profit===true,
+  score_diagnostics:{value:Object.fromEntries(['ev_ebitda','pb','pe_forward','peg','fcf_yield'].map(k=>[k,{input:typeof (e.scores as Row)._inputs?.[k]==='number'?r2((e.scores as Row)._inputs[k]):null,score:(e.scores as Row).breakdown?.[k]??null,basis:(e.scores as Row).metric_source?.[k]??((e.scores as Row).metric_open?.[k]?'open':null),open:(e.scores as Row).metric_open?.[k]??null}])),
    catalyst:((e.scores as Row)._catalyst_teile??[]).map(([n,v]:[string,number])=>[n,v])},
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],

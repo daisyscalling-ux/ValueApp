@@ -20,7 +20,7 @@ FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_va
           "annual_supplement_applied", "supplement_annual_end", "supplement_retained_fields", "score_diagnostics",
           "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "cash_conversion_origin", "health_source", "health_parts", "health_raw", "health_profile",
           "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "eps_forward_check", "expectation_gap",
-          "report_fx", "report_fx_status")
+          "report_fx", "report_fx_status", "value_inputs", "eps_forward_no_profit")
 PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality",
                   "_fundamental_supplement", "_supplement_symbol"}
 

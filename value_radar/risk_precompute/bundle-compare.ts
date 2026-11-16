@@ -26,7 +26,9 @@ const INPUTS:[string,(f:Row)=>number|null,(u:Row)=>number|null][]=[
  ['eps_trailing',f=>f.eps_trailing,u=>u.eps_trailing],['eps_forward',f=>f.eps_forward,u=>u.eps_forward_method==='consensus_ntm_blend_v1'?u.eps_forward:null],['target_mean',f=>f.target_mean,u=>u.target_mean],
  ['revenue_growth_pct',f=>typeof f.revenue_growth==='number'?f.revenue_growth*100:null,u=>u.revenue_growth],['roe_pct',f=>typeof f.roe==='number'?f.roe*100:null,u=>u.roe],
  ['ev_ebitda',f=>f.ev_ebitda,u=>u.ev_ebitda],['market_cap',f=>f.market_cap,u=>u.market_cap]];
-const OUTPUTS=['playbook','composite','fair_value','upside','quantum','target_12m','health','kauf_urteil'];
+const OUTPUTS=['playbook','composite','fair_value','upside','quantum','target_12m','health','kauf_urteil','momentum','quality','value','growth','catalyst'];
+// Seit 16.11.2026: die sechs Composite-Kategorien einzeln (Composite wich im Median 3 Punkte ab).
+const CATEGORIES=['momentum','quality','value','growth','catalyst','health'];
 // Seit 16.11.2026: Kennzeichnungen der neuen Datenwege; gleiche Werte heissen gleicher Rechenweg in App und Screener.
 const LABELS=['annual_supplement_applied','cash_conversion_origin','eps_forward_check','share_count_basis','market_cap_source'];
 const gapOf=(x:Row)=>typeof x?.expectation_gap?.gap_pp==='number'?x.expectation_gap.gap_pp:null;
@@ -66,11 +68,13 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
   playbookDiffers:ok.filter(r=>r.outputs.playbook.app!==r.outputs.playbook.scanner).length,verdictDiffers:ok.filter(r=>r.outputs.kauf_urteil.app!==r.outputs.kauf_urteil.scanner).length,
   appBlocked:ok.filter(r=>r.appBlocked).length,scannerBlocked:ok.filter(r=>r.outputs.kauf_urteil.scanner==='Daten prüfen').length,
   titlesWithEmptyRoicBlocks:ok.filter(r=>(r.roicEmpty||[]).length).length,
+  categories:Object.fromEntries(CATEGORIES.map(k=>{const d=ok.map(r=>[r.outputs[k]?.app,r.outputs[k]?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));
+   return [k,{compared:d.length,median:q(d,.5),p90:q(d,.9),over5:d.filter(x=>x>5).length,appOnly:ok.filter(r=>typeof r.outputs[k]?.app==='number'&&typeof r.outputs[k]?.scanner!=='number').length,scannerOnly:ok.filter(r=>typeof r.outputs[k]?.app!=='number'&&typeof r.outputs[k]?.scanner==='number').length}]})),
   labelsDiffer:Object.fromEntries(LABELS.map(k=>[k,ok.filter(r=>(r.labels?.[k]?.app??null)!==(r.labels?.[k]?.scanner??null)).length])),
   forwardEps:(()=>{const both=ok.filter(r=>typeof r.forward?.app==='number'&&typeof r.forward?.scanner==='number');const d=both.map(r=>Math.abs(r.forward.app/r.forward.scanner-1));
    return {compared:both.length,appOnly:ok.filter(r=>typeof r.forward?.app==='number'&&r.forward?.scanner==null).length,scannerOnly:ok.filter(r=>r.forward?.app==null&&typeof r.forward?.scanner==='number').length,medianRel:q(d,.5),over5pct:d.filter(x=>x>.05).length}})(),
   expectationGapPp:(()=>{const d=ok.map(r=>[r.gap?.app,r.gap?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));return {compared:d.length,median:q(d,.5),p90:q(d,.9)}})()};
- const report={schema:1,method:'bundle-vs-scanner-v2',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
+ const report={schema:1,method:'bundle-vs-scanner-v3',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
  fs.writeFileSync(output,JSON.stringify(report,null,1));
  console.log(JSON.stringify({sample:report.sample,fetched:report.fetched,errors:report.errors,outputSummary},null,1));
 })();

@@ -70,7 +70,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   report_fx:norm.report_fx??null,report_fx_status:norm.report_fx_status??null,
   report_converted:(norm.report_fx||norm.annual_supplement_applied)?{eps_trailing:r2(norm.eps_trailing),book_value_ps:r2(norm.book_value_ps),pe:r1(norm.pe_trailing),pb:r2(norm.pb),ev_ebitda:r1(norm.ev_ebitda)}:null,
   eps_forward:typeof e.fund.eps_forward==='number'?Math.round(e.fund.eps_forward*10000)/10000:null,eps_forward_method:e.fund.eps_forward_method??null,
-  eps_forward_source:e.fund.eps_forward_source??null,eps_forward_status:e.fund.eps_forward_status??null,
+  eps_forward_source:e.fund.eps_forward_source??null,eps_forward_status:e.fund.eps_forward_status??null,eps_forward_check:e.fund.eps_forward_check??null,
   peer_count:e.peerCount,composite_peer_metrics:Object.entries((e.scores as Row).metric_source??{}).filter(([,v])=>v==='peers').map(([k])=>k).sort(),
   ev_ebitda_anchor:fv.ev_ebitda_anchor?.source??null,
   health_source:(e.scores as Row)._health_source??null,health_raw:(e.scores as Row)._health_raw??null,health_profile:(e.scores as Row)._health_profile??null,health_parts:((e.scores as Row)._health_risk?.parts??[]).map((p:Row)=>p.name),

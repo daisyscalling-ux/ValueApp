@@ -138,9 +138,9 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  */
 export const FORWARD_METHOD='consensus_ntm_blend_v1';
 export const ESTIMATE_SOURCE_METHOD='consensus_0y_1y_v1';
-export const FORWARD_MIN_ANALYSTS=3, FORWARD_MAX_FACTOR=2, ESTIMATE_MAX_AGE_DAYS=7;
+export const FORWARD_MIN_ANALYSTS=3, FORWARD_MAX_FACTOR=2, ESTIMATE_MAX_AGE_DAYS=7, FORWARD_BASIS_TOLERANCE=0.25, FORWARD_MAX_GROWTH=3;
 export function applyForwardEstimate(f:Row,s:Row|null|undefined,now=Date.now(),symbol?:string|null):void{
- const open=(reason:string)=>{delete f.eps_forward;delete f.eps_forward_estimate;f.eps_forward_source=null;f.eps_forward_method=null;f.eps_forward_status=reason;};
+ const open=(reason:string)=>{delete f.eps_forward;delete f.eps_forward_estimate;delete f.eps_forward_check;f.eps_forward_source=null;f.eps_forward_method=null;f.eps_forward_status=reason;};
  const e=s?.estimates;
  if(!s||s.schema!==1||(symbol!=null&&s.symbol!==symbol))return open('Keine Konsensschätzung für diese Notierung');
  if(!e||e.method!==ESTIMATE_SOURCE_METHOD)return open('Konsensschätzung fehlt (noch nicht im geprüften Format)');
@@ -167,8 +167,18 @@ export function applyForwardEstimate(f:Row,s:Row|null|undefined,now=Date.now(),s
  const value=ntm*scale,t=f.eps_trailing;
  if(!(finite(t)&&t>0))return open('Prognose nicht prüfbar: berichtetes EPS fehlt oder ≤ 0');
  if(!(value>0))return open('Konsens erwartet keinen Gewinn');
- if(Math.max(value/t,t/value)>FORWARD_MAX_FACTOR)return open(`Konsens weicht mehr als Faktor ${FORWARD_MAX_FACTOR} vom berichteten EPS ab (bereinigte Gewinnbasis oder Sondereffekt)`);
- f.eps_forward=value;f.eps_forward_method=FORWARD_METHOD;f.eps_forward_status=null;
- f.eps_forward_estimate={weight_0y:Math.round(w0*1000)/1000,avg_0y:p0.avg,avg_1y:p1.avg,analysts_0y:p0.analysts,analysts_1y:p1.analysts,currency:e.currency,as_of:e.as_of,fiscal_end_0y:p0.fiscal_end,source_url:e.source_url};
- f.eps_forward_source=`Analystenkonsens 12 Monate (${e.source}; ${Math.round(w0*100)} % laufendes, ${100-Math.round(w0*100)} % nächstes Geschäftsjahr; ${p0.analysts}/${p1.analysts} Analysten; Stand ${String(e.as_of).slice(0,10)})`;
+ // Seit 16.11.2026 (Entscheidung des Nutzers): über Faktor 2 gültig, wenn das Vorjahres-Ist der Analysten zum berichteten
+ // EPS passt (± FORWARD_BASIS_TOLERANCE, gleiche Gewinnbasis, nicht bereinigt) und der Konsens höchstens
+ // FORWARD_MAX_GROWTH-mal so hoch ist (Micron: Ist 75,52 zu 74,33 berichtet, Konsens 182 = ×2,4).
+ const ya=finite(p0.year_ago_eps)&&p0.year_ago_eps>0?p0.year_ago_eps*scale:null;
+ let check='faktor_2';
+ if(Math.max(value/t,t/value)>FORWARD_MAX_FACTOR){
+  const sameBasis=ya!==null&&Math.max(ya/t,t/ya)<=1+FORWARD_BASIS_TOLERANCE;
+  if(!sameBasis)return open(`Konsens weicht mehr als Faktor ${FORWARD_MAX_FACTOR} vom berichteten EPS ab, und das Vorjahres-Ist der Analysten passt nicht zum berichteten EPS (bereinigte Gewinnbasis oder Sondereffekt)`);
+  if(Math.max(value/ya!,ya!/value)>FORWARD_MAX_GROWTH)return open(`Konsens mehr als das ${FORWARD_MAX_GROWTH}-Fache des Vorjahres-Ist (gleiche Gewinnbasis); als Prognose nicht übernommen`);
+  check='gleiche_basis_bis_3fach';
+ }
+ f.eps_forward=value;f.eps_forward_method=FORWARD_METHOD;f.eps_forward_status=null;f.eps_forward_check=check;
+ f.eps_forward_estimate={check,year_ago_eps:ya,weight_0y:Math.round(w0*1000)/1000,avg_0y:p0.avg,avg_1y:p1.avg,analysts_0y:p0.analysts,analysts_1y:p1.analysts,currency:e.currency,as_of:e.as_of,fiscal_end_0y:p0.fiscal_end,source_url:e.source_url};
+ f.eps_forward_source=`Analystenkonsens 12 Monate (${e.source}; ${Math.round(w0*100)} % laufendes, ${100-Math.round(w0*100)} % nächstes Geschäftsjahr; ${p0.analysts}/${p1.analysts} Analysten; Stand ${String(e.as_of).slice(0,10)}`+(check==='faktor_2'?')':`; über Faktor 2 zum berichteten EPS, gleiche Gewinnbasis wie das Vorjahres-Ist, höchstens ×${FORWARD_MAX_GROWTH})`);
 }

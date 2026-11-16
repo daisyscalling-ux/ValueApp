@@ -560,3 +560,21 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Noch nicht wirksam:** das SEC-Umsatzwachstum aus #211. fundamentals-daily lief vor dem Merge (Hartford noch ohne Wachstum im Abschluss).
 
 **Korrektur Anzeige:** Fehlt dem Jahresblock ein Wert (Costco: kein EPS im Yahoo-Abschluss), zeigte die Zeile weiter den alten ROIC-Wert des Vorjahres (EPS 18,24). Jetzt werden die Rechenwerte auch leer übernommen.
+
+## Abgleich App gegen Screener nach dem Deploy (bundle-compare v2, 16.11.2026)
+
+50 Titel, alle abgerufen, keine Fehler, keine leeren ROIC-Blöcke.
+
+| Größe | 13.11. | 16.11. |
+|---|---|---|
+| Fair Value, Median der Abweichung | 17 % | 0,01 % (P90 10 %) |
+| 12M-Ziel, Median der Abweichung | 9 % | 6,8 % |
+| Playbook-Unterschiede | 11 | 0 |
+| Prognose-EPS beidseitig gleich | – | 33 von 33 (P90 0,004 %) |
+| Erwartungslücke, Median der Abweichung | – | 0,1 Pp |
+| Cash-Conversion-Herkunft unterschiedlich | – | 0 |
+
+**Restliche Abweichungen:**
+- 6 Titel nur in der App gesperrt: L'Oréal, EssilorLuxottica, Randstad, Umicore, AB InBev, mBank. Ursache war die Handelswährung aus dem ROIC-Profil statt aus der Kurszeile; korrigiert in `roic.ts` (Kopie aus valueapp-cf).
+- Unilever: Jahresblock nur in der App. F5: Prognose nur im Screener. Ursache jeweils noch offen.
+- PTC ist in beiden Wegen gesperrt (neueres Geschäftsjahr).

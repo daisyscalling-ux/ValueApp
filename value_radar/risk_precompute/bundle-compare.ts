@@ -37,8 +37,14 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
  const rows:Row[]=[];
  for(const u of sample){
   const sym=u.listing_symbol;
+  const probe:Row={finnhubSymbol:sym.split(':').pop()??sym,status:null,rows:null,kind:null,error:null};
   try{
-   const raw=await fetchRawBundle(sym,env,{prepared},fetch);
+   // Seit 17.11.2026: Antwort von Finnhub stock/recommendation je Titel mitschreiben (nur Status und Zeilenzahl, nie den
+   // Schlüssel), weil das Analystenvotum im App-Weg bei 38/38 Titeln fehlte. Klärt: Abrufgrenze, Berechtigung, leere Antwort.
+   const fetcher=(async(input:any,init?:any)=>{const u=String(input?.url??input),isRec=u.includes('finnhub.io/api/v1/stock/recommendation');
+    try{const r=await fetch(input,init);if(isRec){probe.status=r.status;try{const j=await r.clone().json();probe.kind=Array.isArray(j)?'array':j===null?'null':typeof j;probe.rows=Array.isArray(j)?j.length:null}catch{probe.kind='no-json'}}return r}
+    catch(e){if(isRec)probe.error=e instanceof Error&&e.name==='TimeoutError'?'timeout':'fetch_failed';throw e}}) as typeof fetch;
+   const raw=await fetchRawBundle(sym,env,{prepared},fetcher);
    // Leere ROIC-Bloecke getrennt zaehlen: Abrufgrenze oder Ausfall, keine echte Datenluecke der App.
    const roicEmpty=['profile','quote','enterprise_value','ratios','liquidity','multiples','income','balance','cashflow'].filter(k=>(raw as Row)[k]==null);
    const fund=bundleLight(raw as any) as Row;fund.ticker=sym;fund._roic_empty=roicEmpty;
@@ -55,8 +61,11 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
    const forward={app:typeof app.eps_forward==='number'?app.eps_forward:null,scanner:u.eps_forward_method?u.eps_forward:null};
    const gap={app:gapOf(app),scanner:gapOf(u)};
    const diag={app:app.score_diagnostics??null,scanner:u.score_diagnostics??null};
-   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,diag,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
-  }catch(e){rows.push({symbol:sym,error:String(e).slice(0,200)})}
+   const vote=(l:any)=>Array.isArray(l)&&l.some(([k]:[string])=>k==='Analystenvotum');
+   const analyst={probe,appCount:typeof fund.analyst_count==='number'?fund.analyst_count:null,scannerCount:typeof u.analyst_count==='number'?u.analyst_count:null,
+    appVote:vote(app.score_diagnostics?.catalyst),scannerVote:vote(u.score_diagnostics?.catalyst)};
+   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,diag,analyst,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
+  }catch(e){rows.push({symbol:sym,error:String(e).slice(0,200),analyst:{probe}})}
   // 4,5 s je Titel: ROIC 9 Abrufe (120/min, Plan 300/min, Rest fuer parallele Laeufe), Finnhub 4 Abrufe (53/min, Grenze 60/min).
   // Der erste Lauf (13.11.2026, 1,1 s, parallel zu precompute) lief in Abrufgrenzen; Felder fehlten dadurch scheinbar.
   await new Promise(r=>setTimeout(r,4500));
@@ -87,8 +96,13 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
   labelsDiffer:Object.fromEntries(LABELS.map(k=>[k,ok.filter(r=>(r.labels?.[k]?.app??null)!==(r.labels?.[k]?.scanner??null)).length])),
   forwardEps:(()=>{const both=ok.filter(r=>typeof r.forward?.app==='number'&&typeof r.forward?.scanner==='number');const d=both.map(r=>Math.abs(r.forward.app/r.forward.scanner-1));
    return {compared:both.length,appOnly:ok.filter(r=>typeof r.forward?.app==='number'&&r.forward?.scanner==null).length,scannerOnly:ok.filter(r=>r.forward?.app==null&&typeof r.forward?.scanner==='number').length,medianRel:q(d,.5),over5pct:d.filter(x=>x>.05).length}})(),
+  // Analystenvotum: Finnhub-Antwort im App-Weg je Status, leere Antworten mit Symbol (seit 17.11.2026).
+  analystProbe:(()=>{const st:Record<string,number>={};for(const r of rows){const p=r.analyst?.probe;const k=p?.error??(p?.status==null?'nicht_abgefragt':String(p.status));st[k]=(st[k]??0)+1}
+   return {status:st,nonEmpty:ok.filter(r=>(r.analyst?.probe?.rows??0)>0).length,appVote:ok.filter(r=>r.analyst?.appVote).length,scannerVote:ok.filter(r=>r.analyst?.scannerVote).length,
+    appCount:ok.filter(r=>typeof r.analyst?.appCount==='number').length,
+    emptyExamples:ok.filter(r=>r.analyst?.probe?.status===200&&!(r.analyst.probe.rows>0)).slice(0,10).map(r=>r.symbol+' -> '+r.analyst.probe.finnhubSymbol)}})(),
   expectationGapPp:(()=>{const d=ok.map(r=>[r.gap?.app,r.gap?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));return {compared:d.length,median:q(d,.5),p90:q(d,.9)}})()};
- const report={schema:1,method:'bundle-vs-scanner-v4',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
+ const report={schema:1,method:'bundle-vs-scanner-v5',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
  fs.writeFileSync(output,JSON.stringify(report,null,1));
  console.log(JSON.stringify({sample:report.sample,fetched:report.fetched,errors:report.errors,outputSummary},null,1));
 })();

@@ -613,3 +613,22 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Tests.** `tests/value-inputs.test.mjs` mit 9 Fällen (gefüllt, offen mit Grund, Verlust und kein Wachstum, FCF offen, Fremdwerte überschrieben, Konsens-Flag, Kategorien und Composite, Peers mit/ohne Methode, Screener-Zeile). `tests/peer-valuation.test.mjs` ist angepasst. `npm test` 272/272.
 
 **Pipeline.** `ts_bewertung.FELDER` übernimmt `value_inputs` und `eps_forward_no_profit` in die Universumszeile, damit die Peers dieselben Kennzahlen lesen. `value-inputs.ts` steht in `app-copies.json` (41 Dateien, identisch).
+
+## Bundle-Compare v5: Analystenvotum im App-Weg messen (17.11.2026)
+
+**Befund v4.** Der Katalysator wich im Median um 15,8 Punkte ab. Das Teilsignal „Analystenvotum“ fehlte im App-Weg bei 38 von 38 Titeln, im Screener war es bei allen 38 vorhanden. Beide Wege fragen Finnhub `stock/recommendation` ab; im App-Weg (`worker/bundle-fetch.ts`) verschluckt `finnhub()` jeden Fehler als `null`.
+
+**Neu in v5 (nur Messung, keine Rechenwirkung).** Je Titel schreibt der Vergleich unter `rows[].analyst` mit:
+- die Finnhub-Antwort: abgefragtes Symbol, HTTP-Status, Zeilenzahl, Typ, Zeitlimit oder Abruffehler; nie den Schlüssel;
+- die Analystenzahl in App und Screener;
+- ob das Analystenvotum in die Katalysator-Note eingeht.
+
+`outputSummary.analystProbe` zählt die Status über alle Titel, auch über gescheiterte. Bis zu 10 Beispiele leerer Antworten stehen mit Symbol dabei.
+
+**Erwartete Ursachen, die der Lauf trennt.**
+- Abrufgrenze: 429.
+- Berechtigung: 401/403.
+- Falsches Symbol: leere Antwort, etwa bei Nicht-US-Notierungen, wo der nackte Ticker übergeben wird.
+- Fehler beim Lesen in `bundleLight`: Antwort gefüllt, Votum trotzdem leer.
+
+**Prüfung.** Build mit esbuild; Lauf mit nachgebildeten Antworten (Finnhub 429) ergibt `status: {"429": 2}` für 2 Titel.

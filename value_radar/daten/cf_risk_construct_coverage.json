@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-16T12:18:00.244692+00:00",
+ "generatedAt": "2026-11-16T16:51:05.540833+00:00",
  "listings": 1341,
  "overallAverageWeight": {
-  "filled": 82.2,
-  "missing": 1.0,
+  "filled": 82.1,
+  "missing": 1.1,
   "app_only": 14.2,
   "by_design": 2.7
  },
@@ -65,8 +65,8 @@
   "corporate": {
    "listings": 1126,
    "averageWeight": {
-    "filled": 84.4,
-    "missing": 0.6,
+    "filled": 84.3,
+    "missing": 0.7,
     "app_only": 15.0,
     "by_design": 0.0
    },
@@ -97,11 +97,11 @@
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 9.92,
-     "missing": 0.08,
+     "filled": 9.9,
+     "missing": 0.1,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.992
+     "filledShareOfMeasurable": 0.99
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -274,6 +274,19 @@
   },
   {
    "profile": "corporate",
+   "block": "Bewertungsrisiko",
+   "metric": "Erwartungslücke Reverse DCF",
+   "weight": 10,
+   "missingListings": 11,
+   "filledListings": 1115,
+   "weightedGap": 110,
+   "reasons": {
+    "Kein positiver Cashflow und kein positives EV/EBITDA": 6,
+    "Währungskonflikt: ADR oder unklare Aktienbasis": 5
+   }
+  },
+  {
+   "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
    "weight": 5,
@@ -297,19 +310,6 @@
    "weightedGap": 105,
    "reasons": {
     "Eigenkapital, Schulden, Kasse oder Bilanzsumme fehlen oder Währungskonflikt": 7
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Bewertungsrisiko",
-   "metric": "Erwartungslücke Reverse DCF",
-   "weight": 10,
-   "missingListings": 9,
-   "filledListings": 1117,
-   "weightedGap": 90,
-   "reasons": {
-    "Kein positiver Cashflow und kein positives EV/EBITDA": 5,
-    "Währungskonflikt: ADR oder unklare Aktienbasis": 4
    }
   },
   {
@@ -526,7 +526,7 @@
    "filledListings": 53,
    "weightedGap": 10,
    "reasons": {
-    "Währungskonflikt: Stammaktie, Aktienbasis noch nicht in der Abschlussdatei": 1
+    "KBV fehlt oder unplausibel": 1
    }
   }
  ],

@@ -473,3 +473,36 @@ Die Prognose-EPS hat keinen Einfluss: Das Playbook „cyclical“ hat keine Forw
 | Währung ohne Basis | 1 |
 
 Die Wirkung auf Fair Value und Urteil zeigt der nächste precompute. Erwartung: große Änderungen bei den 12 Titeln mit neuerem Geschäftsjahr, kleine bei den übrigen (Jahreswerte statt ROIC-TTM).
+
+### Nachtrag nach dem Lauf (16.11.2026, 00:24 UTC)
+
+**Ergebnis** (1.341 Titel, Manulife neu):
+
+| Größe | vorher | nachher |
+|---|---|---|
+| Cash-Conversion | 926 | 1.171 (+245 aus Yahoo) |
+| ohne Cash-Conversion | 414 | 170 |
+| Erwartungslücke mit Wert | – | 848 (841 Basis Gewinn × Conversion) |
+| Daten prüfen | 13 | 11 |
+| kauf | 105 | 86 |
+| meiden | 968 | 1.051 |
+| Fair Value | | Median −1,8 %, 200 Titel über ±25 % |
+
+- Micron: 404,63 → 621,87, jetzt gleich wie in der Einzelanalyse.
+- Gesperrt neu (wie in der Einzelanalyse): Anbieter meldet ein neueres Geschäftsjahr ohne verfügbaren Abschluss (TSE:4751, TSE:9983, BDX, DHI, IGG, PTC).
+- Frei geworden: u. a. HEN3, TIT.
+
+**Fehler im eigenen Code (seit Einführung des Jahresblocks, wirkte schon in der Einzelanalyse):**
+- `applySupplement` löschte den ganzen Kennzahlenblock und setzte nur die Felder neu, die der Abschluss liefert.
+- SEC-Abschlüsse liefern kein Wachstum, Versicherer keine Bruttomarge und kein EBIT; diese Felder fielen ersatzlos weg.
+- Beispiel Hartford: begründetes KGV 203 → 127, Fair Value 221 → 125. Betroffen waren vor allem Versicherer und Banken; von 38 verlorenen Kaufurteilen viele Finanzwerte (HIG, GL, PZU, AMP, ISP, PKO …).
+
+**Korrektur:**
+- Bei gleichem Geschäftsjahr (Stichtage ≤ 35 Tage auseinander) bleiben aus der ROIC-Zeile derselben Periode erhalten: Wachstum (Umsatz, Gewinn), Brutto- und operative Marge, ROIC, EV/EBITDA. Bei gleicher Währung zusätzlich berichteter FCFF, Nettoschulden, Cash, Schulden und EBITDA/EBIT (nur mit Nettoschulden).
+- Kennzeichnung: `supplement_retained_fields` und Hinweis im Status.
+- Der Abschluss hat immer Vorrang.
+- Bei neuerem Geschäftsjahr bleibt nichts aus dem Vorjahr.
+- KGV und KBV werden aus den übernommenen Werten neu gebildet.
+- Hartford im Nachbau: 117,8 → 134,6. Ohne Jahresblock wären es 154,3; der Rest ist ein echter Datenunterschied (Eigenkapitalrendite 20,2 % statt 22 %).
+
+**Anzeige:** Nach Jahresblock oder Umrechnung übernimmt die Zeile EPS, Buchwert je Aktie, KGV, KBV und EV/EBITDA aus dem Rechenweg. Dazu kommt die Kennzeichnung `annual_supplement_applied`, `supplement_annual_end`, `supplement_retained_fields`. Bisher zeigte die Zeile alte Werte (Micron EPS 7,65, Equinor KGV 209,6).

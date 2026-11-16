@@ -192,7 +192,7 @@
   {
    "app": "src/lib/roic.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
-   "sha256": "9055558df82de9ac761606d9c7478f8733f8076edde7d2ef1c80fe567d1506f3"
+   "sha256": "854272516920b822ff48f2062e46da20598b392052b695a95d6ca8f2cd90e4d6"
   },
   {
    "app": "src/lib/fundamental-supplement.ts",

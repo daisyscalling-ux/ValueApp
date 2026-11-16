@@ -142,7 +142,10 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
     sector: gval(prof, "sector"),
     industry: gval(prof, "industry"),
     country: gval(prof, "country_code"),
-    currency: (gval(prof, "trading_currency", "currency") as string | null)
+    // Handelswährung zuerst aus der Kurszeile (wie die Pipeline, roic.bundle_light; seit 16.11.2026). Das Profil führt
+    // bei einigen Euronext-/Warschau-Titeln eine andere Währung; die App sperrte dann L'Oréal, AB InBev, Umicore u. a.
+    currency: (gval(quote, "currency") as string | null)
+              || (gval(prof, "trading_currency", "currency") as string | null)
               || waehrungAusSymbol(gval(ev, "symbol") as string ?? gval(prof, "symbol") as string)
               || waehrungAusSymbol(gval(quote, "symbol") as string),
     price: num(gval(quote, "close", "adj_close")) ?? num(gval(prof, "price")),

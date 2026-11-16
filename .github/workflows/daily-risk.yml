@@ -78,6 +78,11 @@ jobs:
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_risk_app_export.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_regulatory*.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_fed_capital_requirements.py'
+      - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_review_deadlines.py'
+      # Prüffristen der nächsten 60 Tage in die Zusammenfassung des Laufs (nur lesen, kein Abruf)
+      - run: |
+          echo "## Prüffristen (nächste 60 Tage)" >> "$GITHUB_STEP_SUMMARY"
+          python value_radar/risk_precompute/review_deadlines.py 60 >> "$GITHUB_STEP_SUMMARY"
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_financial_history.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_history_backfill.py'
       - run: python -m unittest discover -s value_radar/risk_precompute -p 'test_sec*.py'

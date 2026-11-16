@@ -8,6 +8,9 @@ SOURCES = {
  'investing': ('Investing.com', 'https://www.investing.com/rss/news_25.rss', 'Publisher-RSS · Stock Market News'),
  # Financial Times: oeffentliche Rubriken-Feeds; nur Titel, Datum, Originallink zu ft.com (kein Text, keine Umleitung).
  'ft': ('Financial Times', ['https://www.ft.com/markets?format=rss','https://www.ft.com/companies?format=rss','https://www.ft.com/technology?format=rss'], 'Publisher-RSS · Märkte, Unternehmen, Technologie'),
+ # Bloomberg und Wall Street Journal (seit 16.11.2026): oeffentliche Rubriken-Feeds der Verlage; nur Titel, Datum, Originallink.
+ 'bloomberg': ('Bloomberg', ['https://www.bloomberg.com/feeds/markets/news.rss','https://www.bloomberg.com/feeds/business/news.rss','https://www.bloomberg.com/feeds/economics/news.rss','https://www.bloomberg.com/feeds/technology/news.rss'], 'Publisher-RSS · Märkte, Wirtschaft, Konjunktur, Technologie'),
+ 'wsj': ('The Wall Street Journal', ['https://feeds.content.dowjones.io/public/rss/RSSMarketsMain','https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness','https://feeds.content.dowjones.io/public/rss/socialeconomyfeed','https://feeds.content.dowjones.io/public/rss/RSSWSJD'], 'Publisher-RSS · Märkte, US-Wirtschaft, Konjunktur, Technologie'),
  'yahoo': ('Yahoo Finance', 'https://news.google.com/rss/search?' + urllib.parse.urlencode({'q':'site:finance.yahoo.com (markets OR stocks OR earnings OR economy) when:3d','hl':'en-US','gl':'US','ceid':'US:en'}), 'Google-News-Index · Link über Google')
 }
 def clean(value):

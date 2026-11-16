@@ -27,3 +27,15 @@ After merge: run daily-risk on main. No Cloudflare code change or redeployment i
 **Probelauf 16.11.:** 55 Artikel (75 Einträge, 20 doppelt über Rubriken).
 
 **Tests:** `scripts/test_export_market_news.py` (im Workflow market-news).
+
+## Bloomberg und Wall Street Journal (16.11.2026)
+
+`scripts/export_market_news.py` exportiert zwei neue Quellen mit je vier öffentlichen Rubriken-Feeds, als Rückfall für den Worker-Marktfeed (valueapp-cf):
+- `bloomberg`: Märkte, Wirtschaft, Konjunktur, Technologie unter `www.bloomberg.com/feeds/…`.
+- `wsj`: Märkte, US-Wirtschaft, Konjunktur, Technologie, Dow-Jones-Feeds.
+
+Exportiert werden nur Titel, Datum und Originallink; Artikel älter als 7 Tage fallen weg. Fallen alle Rubriken aus, steht der HTTP-Grund im Export, und es werden keine Artikel ergänzt. Die URLs sind identisch mit `worker/market-feed.ts`.
+
+Livetest 16.11.2026, ca. 19:30 UTC: je 80 Artikel, neuester 19:05 UTC (Bloomberg) bzw. 19:17 UTC (WSJ). Tests: `scripts/test_export_market_news.py` mit 2 neuen Fällen.
+
+Hinweis: Der stündlich geplante Lauf `market-news` startet bei GitHub derzeit nur alle 4–8 Stunden (13.–16.11.: 12 Läufe in 3 Tagen).

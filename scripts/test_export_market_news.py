@@ -28,4 +28,22 @@ class FT(unittest.TestCase):
             key,status=M.retrieve('ft',old,now)
         self.assertEqual(status['error'],'HTTP 503');self.assertEqual(len(status['items']),1)
 
+class BloombergWSJ(unittest.TestCase):
+    def test_four_sections_each_and_same_urls_as_worker(self):
+        for key,name,host in (('bloomberg','Bloomberg','https://www.bloomberg.com/feeds/'),('wsj','The Wall Street Journal','https://feeds.content.dowjones.io/public/rss/')):
+            n,urls,via=M.SOURCES[key]
+            self.assertEqual(n,name);self.assertEqual(len(urls),4);self.assertTrue(all(u.startswith(host) for u in urls))
+    def test_original_links_old_items_dropped_failure_without_invented_items(self):
+        now=time.time();fmt=lambda t:time.strftime("%a, %d %b %Y %H:%M:%S GMT",time.gmtime(t))
+        def opener(req,timeout=0):
+            if '/feeds/markets/' in req.full_url:
+                return io.BytesIO(feed(f'<item><title>Stocks rise</title><link>https://www.bloomberg.com/news/articles/x</link><pubDate>{fmt(now-600)}</pubDate></item>',
+                                       f'<item><title>Old</title><link>https://www.bloomberg.com/news/articles/old</link><pubDate>{fmt(now-8*86400)}</pubDate></item>'))
+            raise urllib.error.HTTPError(req.full_url,403,'x',{},None)
+        with mock.patch.object(M.urllib.request,'urlopen',opener):
+            _,b=M.retrieve('bloomberg',{},now);_,w=M.retrieve('wsj',{},now)
+        self.assertIsNone(b['error']);self.assertEqual([a['url'] for a in b['items']],['https://www.bloomberg.com/news/articles/x'])
+        self.assertEqual(b['items'][0]['publisher'],'Bloomberg')
+        self.assertEqual(w['error'],'HTTP 403');self.assertEqual(w['items'],[])
+
 if __name__=='__main__':unittest.main()

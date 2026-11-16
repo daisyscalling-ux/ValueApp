@@ -35,6 +35,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_origin=roicCc?'roic_history':'yahoo_annual_history';fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' ('+origin+')'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}
  else{fund.cash_conversion=null;fund.cash_conversion_source=null;fund.cash_conversion_origin=null;}
  const playbook=classifyPlaybook(fund);
+ // Finanz- und Zykliker-Modell rechnen keinen DCF: fehlende Cash-Conversion ist dort kein Datenmangel (seit 16.11.2026).
+ if(fund.cash_conversion==null&&(playbook==='financial'||playbook==='cyclical')){fund.cash_conversion_origin='not_required';fund.cash_conversion_source='nicht benötigt: '+(playbook==='financial'?'Finanzmodell':'Zykliker-Modell')+' ohne DCF';}
  const peers=peerFundsFromRows(peerRows),peerArg=peers.length?peers:null;
  const nativeValue=fairValue(fund,peerArg,playbook);
  fund._fv_wert=nativeValue.fair_value;

@@ -514,3 +514,27 @@ Die Wirkung auf Fair Value und Urteil zeigt der nächste precompute. Erwartung: 
 **Regel:** `sec_revenue_growth` nimmt den Vorjahresumsatz aus **derselben** Einreichung (Vergleichszahlen des 10-K) und mit **demselben** XBRL-Tag. Jahresdauer 330–400 Tage, Vorjahresende 330–400 Tage vor dem Stichtag, beide Umsätze positiv. Kennzeichnung `field_sources.revenue_growth.derivation = same_filing_prior_year` mit Tag und Vorjahresende. Ein Vorjahr aus einer anderen Einreichung oder mit anderem Tag zählt nicht.
 
 **Wirkung:** Ab dem nächsten fundamentals-daily für die 68 Titel.
+
+## Prognose-EPS über Faktor 2 bei gleicher Gewinnbasis (16.11.2026)
+
+**Entscheidung des Nutzers:** Neben „höchstens Faktor 2 zum berichteten EPS“ gilt der Konsens auch dann, wenn zwei Bedingungen erfüllt sind:
+- Das Vorjahres-Ist der Analysten (`year_ago_eps`) liegt höchstens 25 % neben dem berichteten EPS (`FORWARD_BASIS_TOLERANCE`). Dann ist es dieselbe Gewinnbasis, nicht bereinigt.
+- Der 12-Monats-Konsens ist höchstens das Dreifache dieses Ist-Werts (`FORWARD_MAX_GROWTH`).
+
+Kennzeichnung `eps_forward_check: gleiche_basis_bis_3fach` und Hinweis im Quellentext.
+
+**Messung (1.121 prüfbare Titel):** gültig 896 → 944 (+48), u. a. Micron (Ist 75,52 zu 74,33, Konsens ×2,4), Advantest, Furukawa Electric. Weiter offen sind:
+- über ×3, z. B. Kioxia ×12,9 und Aker BP ×16,7;
+- bereinigte Basis, z. B. ServiceNow.
+
+**Verzerrung:** Einmalgewinne im Konsens (Sapporo ×2,9) gehen bis ×3 durch. Die Basis-Prüfung schließt nur bereinigte Gewinne aus, keine Einmaleffekte in der Prognose.
+
+## Cash-Conversion „nicht benötigt“ (16.11.2026)
+
+Von den 170 Titeln ohne Cash-Conversion laufen 123 im Finanz- oder Zykliker-Modell. Beide Modelle haben keinen DCF. Sie tragen jetzt `cash_conversion_origin: not_required` mit Grund („nicht benötigt: Finanzmodell ohne DCF“) statt eines fehlenden Werts.
+
+Bewertungsrelevant offen bleiben 47 Titel:
+- 13 Verlustfirmen (DCF bewusst offen);
+- 16 Japaner ohne aktuelles Jahr bei Yahoo/ROIC (EDINET folgt als eigenes Paket);
+- 10 Versorger, REITs und Beteiligungen ohne gemeldete Investitionen;
+- 8 sonstige.

@@ -578,3 +578,22 @@ Bewertungsrelevant offen bleiben 47 Titel:
 - 6 Titel nur in der App gesperrt: L'Oréal, EssilorLuxottica, Randstad, Umicore, AB InBev, mBank. Ursache war die Handelswährung aus dem ROIC-Profil statt aus der Kurszeile; korrigiert in `roic.ts` (Kopie aus valueapp-cf).
 - Unilever: Jahresblock nur in der App. F5: Prognose nur im Screener. Ursache jeweils noch offen.
 - PTC ist in beiden Wegen gesperrt (neueres Geschäftsjahr).
+
+## Bundle-Compare v5: Analystenvotum im App-Weg messen (17.11.2026)
+
+**Befund v4.** Der Katalysator wich im Median um 15,8 Punkte ab. Das Teilsignal „Analystenvotum“ fehlte im App-Weg bei 38 von 38 Titeln, im Screener war es bei allen 38 vorhanden. Beide Wege fragen Finnhub `stock/recommendation` ab; im App-Weg (`worker/bundle-fetch.ts`) verschluckt `finnhub()` jeden Fehler als `null`.
+
+**Neu in v5 (nur Messung, keine Rechenwirkung).** Je Titel schreibt der Vergleich unter `rows[].analyst` mit:
+- die Finnhub-Antwort: abgefragtes Symbol, HTTP-Status, Zeilenzahl, Typ, Zeitlimit oder Abruffehler; nie den Schlüssel;
+- die Analystenzahl in App und Screener;
+- ob das Analystenvotum in die Katalysator-Note eingeht.
+
+`outputSummary.analystProbe` zählt die Status über alle Titel, auch über gescheiterte. Bis zu 10 Beispiele leerer Antworten stehen mit Symbol dabei.
+
+**Erwartete Ursachen, die der Lauf trennt.**
+- Abrufgrenze: 429.
+- Berechtigung: 401/403.
+- Falsches Symbol: leere Antwort, etwa bei Nicht-US-Notierungen, wo der nackte Ticker übergeben wird.
+- Fehler beim Lesen in `bundleLight`: Antwort gefüllt, Votum trotzdem leer.
+
+**Prüfung.** Build mit esbuild; Lauf mit nachgebildeten Antworten (Finnhub 429) ergibt `status: {"429": 2}` für 2 Titel.

@@ -75,6 +75,10 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   ev_ebitda_anchor:fv.ev_ebitda_anchor?.source??null,
   health_source:(e.scores as Row)._health_source??null,health_raw:(e.scores as Row)._health_raw??null,health_profile:(e.scores as Row)._health_profile??null,health_parts:((e.scores as Row)._health_risk?.parts??[]).map((p:Row)=>p.name),
   cash_conversion:typeof e.fund.cash_conversion==='number'?Math.round(e.fund.cash_conversion*1000)/1000:null,cash_conversion_source:e.fund.cash_conversion_source??null,cash_conversion_origin:e.fund.cash_conversion_origin??null,fv_confidence:fv.confidence,fv_reliable:fv.reliable,
+  // Diagnose (seit 16.11.2026, keine Rechenwirkung): Eingang, Teilnote und Massstab je Bewertungskennzahl sowie die
+  // Teile der Katalysator-Note, damit der Abgleich App gegen Screener die Ursache einer Composite-Abweichung zeigt.
+  score_diagnostics:{value:Object.fromEntries(['ev_ebitda','pb','pe_forward','peg','fcf_yield'].map(k=>[k,{input:typeof (e.scores as Row)._inputs?.[k]==='number'?r2((e.scores as Row)._inputs[k]):null,score:(e.scores as Row).breakdown?.[k]??null,basis:(e.scores as Row).metric_source?.[k]??null}])),
+   catalyst:((e.scores as Row)._catalyst_teile??[]).map(([n,v]:[string,number])=>[n,v])},
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],
   kauf_urteil:kaufUrteil({blocked,fallback:fv.used_fallback,upside,quality:cats.quality??null,composite,valueTrap:!!e.scores.value_trap}),

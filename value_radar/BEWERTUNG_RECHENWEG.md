@@ -389,7 +389,7 @@ Bei 3 weiteren Titeln stimmt die Aktie, aber der Vergleichswert hat einen Einhei
    - Der Börsenwert ist dann Kurs dieser Gattung × alle Aktien (`share_count_basis: alle_gattungen`). Der Hinweis nennt beide Zahlen.
    - Ein Anbieter-Börsenwert, der nur die Gattung abbildet, sperrt dann nicht.
 2. **Split-Bereinigung.** Die Jahresaktienzahl wird um belegte Standard-Splits nach dem Stichtag bereinigt (1:20 bis 20:1, Export `splits`). Abspaltungsfaktoren zählen nicht. Die Prüfung gilt als bestanden, wenn die Zahl mit oder ohne Bereinigung passt, weil Yahoo Abschlüsse teils rückwirkend bereinigt.
-3. **Einheitenfehler.** Weicht die Jahresaktienzahl um eine Zehnerpotenz ab (± 3 %, 10^1 bis 10^6), wird sie als Vergleich verworfen, mit Hinweis. Dann prüft der Börsenwert des Anbieters (Größenordnung).
+3. **Einheitenfehler.** Weicht die Jahresaktienzahl um eine Zehnerpotenz ab (± 3 %, seit 16.11. ± 15 %, 10^1 bis 10^6), wird sie als Vergleich verworfen, mit Hinweis. Dann prüft der Börsenwert des Anbieters (Größenordnung).
 
 **Verzerrung und Grenzen:**
 - Kursunterschiede zwischen den Gattungen gehen nicht ein (VW Stamm/Vorzug etwa 5–15 %). Der Börsenwert ist eine Näherung zum Kurs der notierten Gattung.

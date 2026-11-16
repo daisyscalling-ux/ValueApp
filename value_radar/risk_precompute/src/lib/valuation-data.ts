@@ -101,9 +101,12 @@ export function annualUnitsPerListingUnit(s: Row|null|undefined): number|null {
 // symbol: erwartete Notierung der Ersatzdatei (Identität); weicht sie ab, wird die Datei für die Aktienzahl verworfen.
 export const SHARE_CLASS_TOLERANCE = 0.15;
 const STANDARD_SPLITS=[1/20,1/10,1/8,1/5,1/4,1/3,1/2,2/3,3/2,2,3,4,5,8,10,20];
-// Einheitenfehler der Quelle: Jahresaktienzahl weicht um eine Zehnerpotenz (± 3 %) ab (McDonald's 716,4 statt 716 Mio.).
+// Einheitenfehler der Quelle: Jahresaktienzahl weicht um eine Zehnerpotenz ab (McDonald's 716,4 statt 716 Mio.).
+// Toleranz ± 15 % (Entscheidung des Nutzers 16.11.2026, vorher ± 3 %): eigene Aktien und Rückkäufe verschieben das
+// Verhältnis zusätzlich (Toyota Tsusho: Abschluss in Tausend, 1.056 Tsd. gegen 938 Mio. ausstehende Aktien).
+export const DECADE_TOLERANCE = 0.15;
 export function decadeError(ratio:number):number|null{
-  for (let k=1;k<=6;k++) for (const e of [k,-k]) if (Math.abs(ratio/Math.pow(10,e)-1)<=0.03) return e;
+  for (let k=1;k<=6;k++) for (const e of [k,-k]) if (Math.abs(ratio/Math.pow(10,e)-1)<=DECADE_TOLERANCE) return e;
   return null;
 }
 export function normalizeMarketCap(f: Row, supplement?: Row|null, now = Date.now(), symbol?: string|null): void {

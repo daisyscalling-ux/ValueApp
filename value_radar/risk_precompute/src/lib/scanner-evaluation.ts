@@ -64,11 +64,11 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   quantum:blocked?null:e.q.score,target_12m:blocked?null:r2(e.kz?.ziel),
   valuation_issues:blocked?check.issues:[],
   market_cap:r2(norm.market_cap),market_cap_source:norm.market_cap_source??null,share_count_basis:norm.share_count_basis??null,
-  annual_supplement_applied:!!norm.annual_supplement_applied,supplement_annual_end:norm.supplement_annual_end??null,
+  annual_supplement_applied:!!norm.annual_supplement_applied,supplement_annual_end:norm.supplement_annual_end??null,supplement_retained_fields:norm.supplement_retained_fields??null,
   expectation_gap:expectationGap(norm,(e.scores as Row)._health_profile??null,blocked),
   // Umgerechnete Kennzahlen für Anzeige und Peers der Universumszeile (nur wenn umgerechnet; sonst bleiben die Pipeline-Werte).
   report_fx:norm.report_fx??null,report_fx_status:norm.report_fx_status??null,
-  report_converted:norm.report_fx?{eps_trailing:r2(norm.eps_trailing),book_value_ps:r2(norm.book_value_ps),pe:r1(norm.pe_trailing),pb:r2(norm.pb),ev_ebitda:r1(norm.ev_ebitda)}:null,
+  report_converted:(norm.report_fx||norm.annual_supplement_applied)?{eps_trailing:r2(norm.eps_trailing),book_value_ps:r2(norm.book_value_ps),pe:r1(norm.pe_trailing),pb:r2(norm.pb),ev_ebitda:r1(norm.ev_ebitda)}:null,
   eps_forward:typeof e.fund.eps_forward==='number'?Math.round(e.fund.eps_forward*10000)/10000:null,eps_forward_method:e.fund.eps_forward_method??null,
   eps_forward_source:e.fund.eps_forward_source??null,eps_forward_status:e.fund.eps_forward_status??null,
   peer_count:e.peerCount,composite_peer_metrics:Object.entries((e.scores as Row).metric_source??{}).filter(([,v])=>v==='peers').map(([k])=>k).sort(),

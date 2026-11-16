@@ -17,6 +17,7 @@ ALT = "python-v1"
 FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_value", "upside", "entry", "quantum",
           "target_12m", "fv_confidence", "fv_reliable", "valuation_issues", "momentum", "quality", "value", "growth",
           "catalyst", "health", "cat_neutral", "value_trap", "vt_warnung", "kauf_urteil", "share_count_basis",
+          "annual_supplement_applied", "supplement_annual_end", "supplement_retained_fields",
           "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "cash_conversion_origin", "health_source", "health_parts", "health_raw", "health_profile",
           "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "expectation_gap",
           "report_fx", "report_fx_status")
@@ -156,8 +157,8 @@ def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
         if isinstance(neu, dict) and not neu.get("error") and neu.get("scanner_method") == METHODE:
             for k in FELDER:
                 r[k] = neu.get(k)
-            # Berichtswaehrung umgerechnet (EZB): Anzeige- und Peer-Kennzahlen der Zeile aus demselben Rechenweg,
-            # sonst blieben EPS, KGV, KBV, EV/EBITDA unumgerechnet (Equinor KGV 209,6 statt ~22).
+            # Berichtswaehrung umgerechnet (EZB) oder Jahresblock uebernommen: Anzeige- und Peer-Kennzahlen der Zeile aus
+            # demselben Rechenweg, sonst blieben EPS, KGV, KBV, EV/EBITDA alt (Equinor KGV 209,6, Micron EPS 7,65).
             for k, v in (neu.get("report_converted") or {}).items():
                 if v is not None:
                     r[k] = v

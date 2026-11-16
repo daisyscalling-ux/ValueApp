@@ -124,6 +124,24 @@ class AppRechenweg(unittest.TestCase):
         self.assertAlmostEqual(mit[0]['pe'],407.6/(2.8*11.09/1.16),places=0)
         self.assertNotIn('report_converted',mit[0]);self.assertIn('EZB',ohne[0]['report_fx_status'])
 
+    def test_newer_fiscal_year_from_supplement_reaches_the_row(self):
+        import json,datetime as dt
+        jetzt=dt.datetime.now(dt.timezone.utc)
+        mu={**JUMBO,'ticker':'NASDAQ:MU','currency':'USD','price':778.31,'shares_out':1.122e9,'market_cap':8.7e11,'eps_trailing':7.65,'52w_high':1183,'52w_low':196,
+            'income_period':'2025-08-28','income_currency':'USD'}
+        datei={'schema':1,'symbol':'NASDAQ:MU','retrieved_at':jetzt.isoformat(),'annual_retrieved_at':jetzt.isoformat(),'latest_fiscal_end':'2026-09-03',
+               'market':{'currency':'USD','quote_at':(jetzt-dt.timedelta(days=1)).isoformat(),'fields':{'price':778.31,'shares_out':1.122e9}},
+               'annual':{'end':'2026-09-03','period_type':'annual','currency':'USD','source':'SEC companyfacts / US-GAAP',
+                         'fields':{'eps_trailing':74.33,'revenue':1.33188e11,'net_income':8.4969e10,'equity':1.1e11,'cash':4.8e10,'total_debt':1.5e10,'ebitda':1e11,'ebit':9e10}},
+               'share_basis':None,'risk_annual':{'end':'2026-08-31'}}
+        with tempfile.TemporaryDirectory() as d:
+            Path(d,'NASDAQ_MU.json').write_text(json.dumps(datei))
+            rows=[{**zeile('NASDAQ:MU',mu),'listing_symbol':'NASDAQ:MU','eps_trailing':7.65,'pe':101.7}];T.anwenden(rows,risiko={},ordner=d)
+        r=rows[0]
+        self.assertTrue(r['annual_supplement_applied']);self.assertEqual(r['supplement_annual_end'],'2026-09-03')
+        self.assertAlmostEqual(r['eps_trailing'],74.33);self.assertAlmostEqual(r['pe'],778.31/74.33,places=1)
+        self.assertIsNone(r['supplement_retained_fields'],'newer fiscal year: nothing kept from the old ROIC year')
+
     def test_peers_from_the_whole_universe(self):
         peers=[{'ticker':f'ATHEX:P{i}','listing_symbol':f'ATHEX:P{i}','isin':f'GRS00000000{i}','name':f'Peer {i}','name_full':f'Peer {i}','currency':'EUR',
                 'sector':'Retail trade','industry':'Specialty stores','market_cap':3e9,'price':50,'eps_forward':2.5,'ev_ebitda':8+i,'pb':2+i/10,

@@ -72,6 +72,7 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  const ratio=unitScale===null?sharesPerUnit(s.share_basis)??1:1;
  if(finite(fields.eps_trailing))fields.eps_trailing*=perUnit;
  // Replace a coherent annual block, not isolated numbers from different years.
+ const before:Row={...f};
  for(const k of FINANCIAL)delete f[k];
  delete f.reported_equity_fcf;
  for(const k of ['eps_trailing','net_income','revenue','ebit','ebitda','cash','total_debt','total_assets','revenue_growth'])if(finite(fields[k]))f[k]=fields[k];
@@ -84,6 +85,20 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  if(finite(fields.equity)&&finite(f.shares_out)&&f.shares_out>0)f.book_value_ps=fields.equity/f.shares_out;
  if(finite(f.net_debt)&&finite(f.ebitda)&&f.ebitda>0)f.net_debt_ebitda=f.net_debt/f.ebitda;
  if(finite(fields.operating_cashflow)&&finite(fields.capex))f.reported_equity_fcf=fields.operating_cashflow-Math.abs(fields.capex);
+ // Gleiches Geschäftsjahr (Stichtage ≤ 35 Tage auseinander, seit 16.11.2026): Felder, die der Abschluss nicht liefert
+ // (SEC: kein Wachstum, Versicherer: keine Bruttomarge/EBIT), bleiben aus der ROIC-Zeile derselben Periode erhalten.
+ // Vorher fielen sie ersatzlos weg (Hartford: begründetes KGV 203 → 127). Beträge nur bei gleicher Währung (Faktor 1),
+ // EBITDA/EBIT nur mit Nettoschulden. Bei neuerem Geschäftsjahr gehören die ROIC-Werte zum Vorjahr und bleiben weg.
+ const sameYear=primaryDate!==null&&Math.abs(candidate-primaryDate)<=35*DAY;
+ if(sameYear){
+  const kept:string[]=[];
+  const keep=(k:string)=>{if(!finite(f[k])&&finite(before[k])){f[k]=before[k];kept.push(k);}};
+  for(const k of ['revenue_growth','earnings_growth','gross_margin','operating_margin','roic','ev_ebitda'])keep(k);
+  if(annualScale===1){for(const k of ['free_cashflow','cash','total_debt','net_debt'])keep(k);if(finite(f.net_debt))for(const k of ['ebitda','ebit'])keep(k);}
+  if(!finite(f.net_debt_ebitda)&&finite(f.net_debt)&&finite(f.ebitda)&&f.ebitda>0)f.net_debt_ebitda=f.net_debt/f.ebitda;
+  if(kept.length){f.supplement_retained_fields=kept;f.supplement_status+=` · Aus der ROIC-Zeile desselben Geschäftsjahres beibehalten: ${kept.join(', ')}`;}
+ }
+ if(finite(f.price)&&f.price>0){if(finite(f.eps_trailing)&&f.eps_trailing>0)f.pe_trailing=f.price/f.eps_trailing;if(finite(f.book_value_ps)&&f.book_value_ps>0)f.pb=f.price/f.book_value_ps;}
  // CFO-capex is not unlevered FCFF. Never insert it in the existing EV-DCF.
  f.eps_trailing_basis=finite(fields.eps_trailing)?`Jahresabschluss ${a.end} · verwässert · ${a.source}`:`Jahresabschluss ${a.end} · verwässertes EPS nicht gemeldet`;
  f.eps_trailing_comparable=finite(fields.eps_trailing);

@@ -2,7 +2,8 @@ name: precompute-3tage
 
 # Taeglicher grosser Lauf: Fundamentaldaten, Fair Value, Scores fuer das
 # grosse Universum (S&P500 + NASDAQ100 + STOXX600 + Nikkei225, ~1350 Titel).
-# Schreibt ins Google Sheet (Streamlit) UND als JSON (Cloudflare).
+# Schreibt das JSON fuer Cloudflare. Der fruehere Streamlit-Nachtlauf (Google Sheet, ~80 min) ist seit
+# 16.11.2026 entfernt: der Nutzer arbeitet nur noch in Cloudflare, und der Export las nichts daraus.
 #
 # 01:17 UTC. Der historische Workflowname bleibt fuer bestehende Aufrufer erhalten.
 on:
@@ -103,25 +104,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 1) Streamlit-Nachtlauf (Sheet) - das grosse Universum
-      - name: Streamlit-Daten berechnen
-        working-directory: value_radar
-        env:
-          UNIVERSE_SIZE: "600"
-          MOM_UNIVERSE_SIZE: "400"
-          RADAR_MARKT: "200"
-          PRECOMPUTE_BUDGET_MIN: "80"
-          NETZ_TIMEOUT_S: "20"
-          TRANSKRIPT_DECKEL: "0"     # Earnings laeuft im taeglichen Workflow
-          GSHEET_ID: ${{ secrets.GSHEET_ID }}
-          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
-          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
-        run: python precompute.py
 
-      # 2a) Bewertung im App-Rechenweg (evaluateStock) bauen; export_cf.py ruft ihn ueber ts_bewertung.py auf
+      # 1) Bewertung im App-Rechenweg (evaluateStock) bauen; export_cf.py ruft ihn ueber ts_bewertung.py auf
       - name: App-Rechenweg bauen
         run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/scanner-evaluate.ts --bundle --platform=node --format=esm --outfile=value_radar/risk_precompute/.build/scanner-evaluate.mjs
       # 2) Cloudflare-Export (JSON) - dasselbe Universum, schlank

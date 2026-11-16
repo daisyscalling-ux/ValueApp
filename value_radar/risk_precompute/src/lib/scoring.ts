@@ -89,6 +89,7 @@ export interface ScoreResult {
   breakdown: Record<string, number>;
   /** Je Kennzahl: "peers" = Perzentil gegen >= PEER_PERCENTILE_MIN Peers, "scale" = feste Ersatzskala. */
   metric_source: Record<string, "peers" | "scale">;
+  _inputs?: Record<string, number | null>;
   peer_count: Record<string, number>;
 }
 
@@ -167,6 +168,7 @@ export function scoreStock(
     breakdown,
     metric_source: metricSource,
     peer_count: peerCount,
+    _inputs: Object.fromEntries(Object.keys(METRIC_MAP).map((m) => [m, (fund as Record<string, number | null>)[m] ?? null])),
   };
 }
 

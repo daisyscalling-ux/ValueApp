@@ -54,7 +54,8 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
    const labels=Object.fromEntries(LABELS.map(k=>[k,{app:app[k]??null,scanner:u[k]??null}]));
    const forward={app:typeof app.eps_forward==='number'?app.eps_forward:null,scanner:u.eps_forward_method?u.eps_forward:null};
    const gap={app:gapOf(app),scanner:gapOf(u)};
-   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
+   const diag={app:app.score_diagnostics??null,scanner:u.score_diagnostics??null};
+   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,diag,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
   }catch(e){rows.push({symbol:sym,error:String(e).slice(0,200)})}
   // 4,5 s je Titel: ROIC 9 Abrufe (120/min, Plan 300/min, Rest fuer parallele Laeufe), Finnhub 4 Abrufe (53/min, Grenze 60/min).
   // Der erste Lauf (13.11.2026, 1,1 s, parallel zu precompute) lief in Abrufgrenzen; Felder fehlten dadurch scheinbar.
@@ -70,11 +71,24 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
   titlesWithEmptyRoicBlocks:ok.filter(r=>(r.roicEmpty||[]).length).length,
   categories:Object.fromEntries(CATEGORIES.map(k=>{const d=ok.map(r=>[r.outputs[k]?.app,r.outputs[k]?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));
    return [k,{compared:d.length,median:q(d,.5),p90:q(d,.9),over5:d.filter(x=>x>5).length,appOnly:ok.filter(r=>typeof r.outputs[k]?.app==='number'&&typeof r.outputs[k]?.scanner!=='number').length,scannerOnly:ok.filter(r=>typeof r.outputs[k]?.app!=='number'&&typeof r.outputs[k]?.scanner==='number').length}]})),
+  // Je Bewertungskennzahl: Abweichung von Eingang und Teilnote, Massstab (Peers/Skala) verschieden; Katalysator-Teile.
+  valueMetrics:Object.fromEntries(['ev_ebitda','pb','pe_forward','peg','fcf_yield'].map(m=>{
+   const pairs=ok.map(r=>[r.diag?.app?.value?.[m],r.diag?.scanner?.value?.[m]]).filter(([a,b])=>a&&b);
+   const sd=pairs.filter(([a,b])=>typeof a.score==='number'&&typeof b.score==='number').map(([a,b])=>Math.abs(a.score-b.score));
+   const id=pairs.filter(([a,b])=>typeof a.input==='number'&&typeof b.input==='number'&&b.input!==0).map(([a,b])=>Math.abs(a.input/b.input-1));
+   return [m,{compared:pairs.length,scoreMedian:q(sd,.5),scoreP90:q(sd,.9),inputMedianRel:q(id,.5),inputOver10pct:id.filter(x=>x>.1).length,
+    inputAppOnly:pairs.filter(([a,b])=>typeof a.input==='number'&&typeof b.input!=='number').length,inputScannerOnly:pairs.filter(([a,b])=>typeof a.input!=='number'&&typeof b.input==='number').length,
+    basisDiffers:pairs.filter(([a,b])=>a.basis!==b.basis).length}]})),
+  catalystParts:(()=>{const names=new Set<string>();ok.forEach(r=>[...(r.diag?.app?.catalyst||[]),...(r.diag?.scanner?.catalyst||[])].forEach(([n]:[string])=>names.add(n)));
+   return Object.fromEntries([...names].map(n=>{const g=(l:any[])=>{const f=(l||[]).find(([k]:[string])=>k===n);return f?f[1]:null};
+    const app=ok.map(r=>g(r.diag?.app?.catalyst)),sc=ok.map(r=>g(r.diag?.scanner?.catalyst));
+    const d=app.map((a,i)=>typeof a==='number'&&typeof sc[i]==='number'?Math.abs(a-(sc[i] as number)):null).filter((x):x is number=>x!==null);
+    return [n,{both:d.length,appOnly:app.filter((a,i)=>a!==null&&sc[i]===null).length,scannerOnly:app.filter((a,i)=>a===null&&sc[i]!==null).length,median:q(d,.5)}]}))})(),
   labelsDiffer:Object.fromEntries(LABELS.map(k=>[k,ok.filter(r=>(r.labels?.[k]?.app??null)!==(r.labels?.[k]?.scanner??null)).length])),
   forwardEps:(()=>{const both=ok.filter(r=>typeof r.forward?.app==='number'&&typeof r.forward?.scanner==='number');const d=both.map(r=>Math.abs(r.forward.app/r.forward.scanner-1));
    return {compared:both.length,appOnly:ok.filter(r=>typeof r.forward?.app==='number'&&r.forward?.scanner==null).length,scannerOnly:ok.filter(r=>r.forward?.app==null&&typeof r.forward?.scanner==='number').length,medianRel:q(d,.5),over5pct:d.filter(x=>x>.05).length}})(),
   expectationGapPp:(()=>{const d=ok.map(r=>[r.gap?.app,r.gap?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));return {compared:d.length,median:q(d,.5),p90:q(d,.9)}})()};
- const report={schema:1,method:'bundle-vs-scanner-v3',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
+ const report={schema:1,method:'bundle-vs-scanner-v4',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
  fs.writeFileSync(output,JSON.stringify(report,null,1));
  console.log(JSON.stringify({sample:report.sample,fetched:report.fetched,errors:report.errors,outputSummary},null,1));
 })();

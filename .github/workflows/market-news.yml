@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Export testen
+        run: cd scripts && python -m unittest -v test_export_market_news
       - name: Public RSS feeds exportieren
         run: python scripts/export_market_news.py
       - name: Export speichern

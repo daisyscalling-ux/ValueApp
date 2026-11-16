@@ -141,6 +141,12 @@ class AppRechenweg(unittest.TestCase):
         self.assertTrue(r['annual_supplement_applied']);self.assertEqual(r['supplement_annual_end'],'2026-09-03')
         self.assertAlmostEqual(r['eps_trailing'],74.33);self.assertAlmostEqual(r['pe'],778.31/74.33,places=1)
         self.assertIsNone(r['supplement_retained_fields'],'newer fiscal year: nothing kept from the old ROIC year')
+        # Jahresblock ohne EPS: die Zeile zeigt kein altes EPS mehr
+        datei['annual']['fields'].pop('eps_trailing')
+        with tempfile.TemporaryDirectory() as d:
+            Path(d,'NASDAQ_MU.json').write_text(json.dumps(datei))
+            rows=[{**zeile('NASDAQ:MU',mu),'listing_symbol':'NASDAQ:MU','eps_trailing':7.65,'pe':101.7}];T.anwenden(rows,risiko={},ordner=d)
+        self.assertIsNone(rows[0]['eps_trailing']);self.assertIsNone(rows[0]['pe'])
 
     def test_peers_from_the_whole_universe(self):
         peers=[{'ticker':f'ATHEX:P{i}','listing_symbol':f'ATHEX:P{i}','isin':f'GRS00000000{i}','name':f'Peer {i}','name_full':f'Peer {i}','currency':'EUR',

@@ -159,9 +159,10 @@ def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
                 r[k] = neu.get(k)
             # Berichtswaehrung umgerechnet (EZB) oder Jahresblock uebernommen: Anzeige- und Peer-Kennzahlen der Zeile aus
             # demselben Rechenweg, sonst blieben EPS, KGV, KBV, EV/EBITDA alt (Equinor KGV 209,6, Micron EPS 7,65).
+            # Auch leere Werte uebernehmen: fehlt dem Jahresblock z. B. das EPS (Costco), darf die Zeile nicht das alte
+            # ROIC-EPS des Vorjahres zeigen, mit dem gar nicht gerechnet wurde (offen statt falsch).
             for k, v in (neu.get("report_converted") or {}).items():
-                if v is not None:
-                    r[k] = v
+                r[k] = v
             # Gesperrte Bewertung: Rohwerte und Herkunft mitschreiben, damit die Ursache ohne neuen Abruf klar wird.
             if r.get("kauf_urteil") == "Daten prüfen":
                 r["valuation_check_inputs"] = offen[r["ticker"]].get("_pruef_eingang") or {}

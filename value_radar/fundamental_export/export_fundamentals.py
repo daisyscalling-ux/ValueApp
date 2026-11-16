@@ -137,6 +137,22 @@ def yahoo_cash_history(frames,info,years=5):
 # Gesamtumsatz zuerst (11.11.2026): RevenueFromContractWithCustomer... (ASC 606) enthaelt keine Miet-, Leasing-, Zins- oder
 # Praemienertraege; bei United Rentals, ADM, GM, REITs und Banken war der Umsatz dadurch bis zu 99 % zu niedrig.
 TAGS={'revenue':['Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet'],'net_income':['NetIncomeLoss'],'eps_trailing':['EarningsPerShareDiluted'],'gross_profit':['GrossProfit'],'ebit':['OperatingIncomeLoss'],'weighted_shares':['WeightedAverageNumberOfDilutedSharesOutstanding'],'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],'capex':['PaymentsToAcquirePropertyPlantAndEquipment'],'cash':['CashAndCashEquivalentsAtCarryingValue'],'total_assets':['Assets'],'equity':['StockholdersEquity']}
+def sec_revenue_growth(facts,accn,end):
+ """{'value','tag','prior_end'} oder None: aktueller und Vorjahresumsatz mit demselben Tag aus derselben Einreichung."""
+ for tag in TAGS['revenue']:
+  cur=prior=None;prior_end=None
+  for f in facts.get(tag,{}).get('units',{}).get('USD',[]):
+   try:
+    if f.get('accn')!=accn or f.get('form') not in ('10-K','10-K/A'):continue
+    e=dt.date.fromisoformat(f['end']);st=dt.date.fromisoformat(f['start'])
+    if not 330<=(e-st).days<=400:continue
+    v=number(f.get('val'))
+    if v is None:continue
+    if e==end:cur=v
+    elif 330<=(end-e).days<=400:prior,prior_end=v,str(e)
+   except (KeyError,ValueError):continue
+  if cur is not None and prior and prior>0 and cur>0:return {'value':cur/prior-1,'tag':tag,'prior_end':prior_end}
+ return None
 def sec_annual(data,cik,now=None):
  today=now or dt.datetime.now(UTC).date(); facts=data.get('facts',{}).get('us-gaap',{}); groups={}
  if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'): return None
@@ -154,7 +170,14 @@ def sec_annual(data,cik,now=None):
  eligible=[(k,v) for k,v in groups.items() if all(x in v for x in ('revenue','eps_trailing','net_income'))]
  if not eligible: return None
  (end,accn,filed),fields=max(eligible,key=lambda x:(x[0][0],x[0][2]))
- return {'end':end,'published_at':filed,'accession':accn,'period_type':'annual','currency':'USD','source':'SEC companyfacts / US-GAAP','source_url':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accn.replace("-","")}/','fields':fields}
+ # Umsatzwachstum aus dem Vorjahreswert DERSELBEN Einreichung und desselben XBRL-Tags (Vergleichszahlen des 10-K,
+ # seit 16.11.2026). Vorher fehlte es bei SEC-Abschluessen ohne passenden Yahoo-Abschluss (68 Titel, u. a. MU, HIG).
+ sources={}
+ growth=sec_revenue_growth(facts,accn,dt.date.fromisoformat(end))
+ if growth:
+  fields={**fields,'revenue_growth':growth['value']}
+  sources['revenue_growth']={'source':'SEC companyfacts / US-GAAP','derivation':'same_filing_prior_year','tag':growth['tag'],'prior_end':growth['prior_end'],'accession':accn}
+ return {'field_sources':sources,'end':end,'published_at':filed,'accession':accn,'period_type':'annual','currency':'USD','source':'SEC companyfacts / US-GAAP','source_url':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accn.replace("-","")}/','fields':fields}
 def enrich_matching_annual(primary,secondary):
  # Exact period/currency and two independent matching observations required.
  # Missing EPS must not discard a verified balance sheet. It must also never

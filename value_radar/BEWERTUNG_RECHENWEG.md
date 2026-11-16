@@ -506,3 +506,11 @@ Die Wirkung auf Fair Value und Urteil zeigt der nächste precompute. Erwartung: 
 - Hartford im Nachbau: 117,8 → 134,6. Ohne Jahresblock wären es 154,3; der Rest ist ein echter Datenunterschied (Eigenkapitalrendite 20,2 % statt 22 %).
 
 **Anzeige:** Nach Jahresblock oder Umrechnung übernimmt die Zeile EPS, Buchwert je Aktie, KGV, KBV und EV/EBITDA aus dem Rechenweg. Dazu kommt die Kennzeichnung `annual_supplement_applied`, `supplement_annual_end`, `supplement_retained_fields`. Bisher zeigte die Zeile alte Werte (Micron EPS 7,65, Equinor KGV 209,6).
+
+## Umsatzwachstum aus SEC-Abschlüssen (16.11.2026)
+
+**Befund:** 68 von 386 SEC-Jahresabschlüssen hatten kein Umsatzwachstum (Yahoo: 14 von 1.326). Betroffen sind u. a. Micron und Hartford. Das Wachstum kam bisher nur, wenn ein Yahoo-Abschluss mit exakt gleichem Stichtag dazu passte. Seit dem Behalten der ROIC-Felder (#210) zählt das bei Titeln mit **neuerem** Geschäftsjahr: Ohne den Wert fehlt dort das Wachstum ganz.
+
+**Regel:** `sec_revenue_growth` nimmt den Vorjahresumsatz aus **derselben** Einreichung (Vergleichszahlen des 10-K) und mit **demselben** XBRL-Tag. Jahresdauer 330–400 Tage, Vorjahresende 330–400 Tage vor dem Stichtag, beide Umsätze positiv. Kennzeichnung `field_sources.revenue_growth.derivation = same_filing_prior_year` mit Tag und Vorjahresende. Ein Vorjahr aus einer anderen Einreichung oder mit anderem Tag zählt nicht.
+
+**Wirkung:** Ab dem nächsten fundamentals-daily für die 68 Titel.

@@ -187,6 +187,22 @@ class Tests(unittest.TestCase):
   data['facts']['us-gaap']['Revenues']['units']['USD'][0]['start']='2026-06-01'
   self.assertIsNone(sec_annual(data,'123',NOW))
 
+ def test_sec_revenue_growth_from_same_filing_and_tag(self):
+  # Micron 10-K GJ 2026 mit Vorjahresvergleich (Umsatz 37,4 -> 133,2 Mrd. USD)
+  def fact(v,end,start,acc='A'):return {'val':v,'start':start,'end':end,'filed':'2026-10-01','form':'10-K','accn':acc}
+  cur=lambda v:fact(v,'2026-08-31','2025-09-01')
+  g={'Revenues':{'units':{'USD':[cur(133.188e9),fact(37.378e9,'2025-08-28','2024-08-30')]}},
+     'EarningsPerShareDiluted':{'units':{'USD/shares':[cur(74.33)]}},'NetIncomeLoss':{'units':{'USD':[cur(84.969e9)]}}}
+  r=sec_annual({'cik':123,'facts':{'us-gaap':g}},'123',NOW)
+  self.assertAlmostEqual(r['fields']['revenue_growth'],133.188/37.378-1)
+  self.assertEqual(r['field_sources']['revenue_growth']['derivation'],'same_filing_prior_year')
+  # Vorjahr aus anderer Einreichung oder mit anderem Tag zaehlt nicht
+  g['Revenues']['units']['USD'][1]['accn']='B'
+  self.assertNotIn('revenue_growth',sec_annual({'cik':123,'facts':{'us-gaap':g}},'123',NOW)['fields'])
+  g['Revenues']['units']['USD'].pop(1)
+  g['RevenueFromContractWithCustomerExcludingAssessedTax']={'units':{'USD':[fact(37.0e9,'2025-08-28','2024-08-30')]}}
+  self.assertNotIn('revenue_growth',sec_annual({'cik':123,'facts':{'us-gaap':g}},'123',NOW)['fields'])
+
 
 class ReferenceTests(unittest.TestCase):
  def test_ecb_cross_rates_and_dates(self):

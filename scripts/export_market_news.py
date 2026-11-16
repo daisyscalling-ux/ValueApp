@@ -6,6 +6,8 @@ SOURCES = {
  'marketwatch': ('MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories', 'Publisher-RSS'),
  'fool': ('The Motley Fool', 'https://www.fool.com/feeds/index.aspx', 'Publisher-RSS'),
  'investing': ('Investing.com', 'https://www.investing.com/rss/news_25.rss', 'Publisher-RSS · Stock Market News'),
+ # Financial Times: oeffentliche Rubriken-Feeds; nur Titel, Datum, Originallink zu ft.com (kein Text, keine Umleitung).
+ 'ft': ('Financial Times', ['https://www.ft.com/markets?format=rss','https://www.ft.com/companies?format=rss','https://www.ft.com/technology?format=rss'], 'Publisher-RSS · Märkte, Unternehmen, Technologie'),
  'yahoo': ('Yahoo Finance', 'https://news.google.com/rss/search?' + urllib.parse.urlencode({'q':'site:finance.yahoo.com (markets OR stocks OR earnings OR economy) when:3d','hl':'en-US','gl':'US','ceid':'US:en'}), 'Google-News-Index · Link über Google')
 }
 def clean(value):
@@ -35,10 +37,20 @@ def parse_rss(raw, name, via, now):
 def retrieve(key, old, now):
  name,url,via=SOURCES[key]
  try:
-  request=urllib.request.Request(url,headers={'Accept':'application/rss+xml, application/xml','User-Agent':'ValueRadar-News/1.0 (public RSS reader)'})
-  with urllib.request.urlopen(request,timeout=20) as response: raw=response.read(2000001)
-  articles=parse_rss(raw,name,via,now)
-  if not articles: raise ValueError('Keine aktuellen Artikel')
+  # Mehrere Feeds einer Quelle (FT-Rubriken): zusammenfuehren, jeden Link nur einmal; Fehler nur, wenn keiner liefert.
+  articles=[];seen=set();errors=[]
+  for one in (url if isinstance(url,list) else [url]):
+   try:
+    request=urllib.request.Request(one,headers={'Accept':'application/rss+xml, application/xml','User-Agent':'ValueRadar-News/1.0 (public RSS reader)'})
+    with urllib.request.urlopen(request,timeout=20) as response: raw=response.read(2000001)
+    for a in parse_rss(raw,name,via,now):
+     if a['url'] not in seen: seen.add(a['url']);articles.append(a)
+   except Exception as exc:
+    errors.append(exc)
+  articles=sorted(articles,key=lambda a:a['publishedAt'],reverse=True)[:80]
+  if not articles:
+   if errors: raise errors[0]
+   raise ValueError('Keine aktuellen Artikel')
   return key,dict(name=name,via=via,checkedAt=int(now*1000),successAt=int(now*1000),error=None,items=articles)
  except Exception as exc:
   # Only status/type, never arbitrary response text.

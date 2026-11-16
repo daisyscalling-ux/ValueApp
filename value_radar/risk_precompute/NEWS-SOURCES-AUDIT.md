@@ -14,3 +14,16 @@ Validation: 15 Python tests, including false matches, old/future dates, invalid 
 
 After merge: run daily-risk on main. No Cloudflare code change or redeployment is needed for this change; the existing provider label supports the added source.
 
+
+## Financial Times (16.11.2026)
+
+**Quelle:** die öffentlichen RSS-Feeds der FT-Rubriken Märkte, Unternehmen und Technologie (`https://www.ft.com/<rubrik>?format=rss`), je 25 Einträge.
+- Die Feeds werden zusammengeführt; derselbe Link erscheint nur einmal.
+- Übernommen werden wie bei den anderen Quellen nur Titel, Datum, Herausgeber und der **Originallink zu ft.com**.
+- Kein Artikeltext und keine Umleitung über Dritte. FT-Artikel sind teils kostenpflichtig; der Link öffnet die FT-Seite selbst.
+
+**Teilausfall:** Fällt eine Rubrik aus, liefern die anderen weiter. Erst wenn keine liefert, gilt die Quelle als gestört; die Artikel der letzten 7 Tage bleiben dann erhalten, mit Grund.
+
+**Probelauf 16.11.:** 55 Artikel (75 Einträge, 20 doppelt über Rubriken).
+
+**Tests:** `scripts/test_export_market_news.py` (im Workflow market-news).

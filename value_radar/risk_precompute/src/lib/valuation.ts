@@ -463,6 +463,9 @@ export interface FairValueResult {
   entry_price: number | null;
   target_12m: number | null;
   methods: Record<string, number>;
+  /** Alle positiven Methodenwerte des Playbooks vor Plausibilitäts- und Medianfilter (seit 17.11.2026). Szenarien rechnen
+   *  damit dieselben Kernmethoden wie der Fair Value; `methods` ist nur die Anzeige der drei nächsten. */
+  method_values: Record<string, number>;
   verworfen: Record<string, { wert: number; vs_kurs: number | null; grund: string }>;
   confidence: "hoch" | "mittel" | "niedrig";
   reliable: boolean;
@@ -642,6 +645,7 @@ export function fairValue(
     entry_price: entry ? Math.round(entry * 100) / 100 : null,
     target_12m: target12m ? Math.round(target12m * 100) / 100 : null,
     methods: Object.fromEntries(Object.entries(avail).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    method_values: dataCheck.blocked ? {} : Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     verworfen,
     confidence, reliable,
     spread_pct: spread,
@@ -1111,16 +1115,24 @@ export function szenarioMatrix(
 
   const phase = analysePhase(fund);
   const weights = phaseWeights(fund, preset, WEIGHTS[preset], phase);
+  // Seit 17.11.2026: je Szenario dieselben Kernmethoden wie im Base-Fair-Value (core_methods ohne Rückfall), Werte aus
+  // method_values. Vorher kamen sie aus `methods` (Anzeige der drei nächsten Methoden); bei vier Kernmethoden fehlte eine
+  // in allen Szenarien, und das Bewertungsrisiko blieb offen (META, MSFT).
+  const runs: Partial<Record<string, FairValueResult>> = {};
   for (const sz of SZENARIEN) {
     const fSz = szenarioFund(fund, sz, gDelta, opDelta, bewDelta, betaDelta);
     let v: FairValueResult | null = null;
     try { v = fairValue(fSz, peerFunds, preset, phase); } catch { v = null; }
     if (!v) { blend[sz] = null; upside[sz] = null; continue; }
+    runs[sz] = v;
     blend[sz] = v.fair_value;
     upside[sz] = v.upside_pct;
-    for (const [k, val] of Object.entries(v.methods)) {
-      (methoden[k] ??= {})[sz] = val;
-    }
+  }
+  const kern = Object.keys(runs.base?.core_methods ?? {}).filter((k) => k !== "fallback");
+  for (const sz of SZENARIEN) {
+    const v = runs[sz];
+    if (!v) continue;
+    for (const k of kern) (methoden[k] ??= {})[sz] = v.method_values?.[k] ?? null;
   }
 
   // Methoden ohne Base-Wert entfernen

@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-17T13:55:06.972953+00:00",
+ "generatedAt": "2026-11-17T17:30:16.619872+00:00",
  "listings": 1341,
  "overallAverageWeight": {
   "filled": 82.0,
@@ -105,11 +105,11 @@
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
-     "filled": 4.96,
-     "missing": 0.04,
+     "filled": 4.95,
+     "missing": 0.05,
      "app_only": 10.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.992
+     "filledShareOfMeasurable": 0.99
     }
    }
   },
@@ -353,11 +353,11 @@
    "block": "Wettbewerbsanfälligkeit",
    "metric": "EBITDA-Marge gegenüber Peers",
    "weight": 5,
-   "missingListings": 9,
-   "filledListings": 1117,
-   "weightedGap": 45,
+   "missingListings": 11,
+   "filledListings": 1115,
+   "weightedGap": 55,
    "reasons": {
-    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 9
+    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 11
    }
   },
   {
@@ -406,6 +406,18 @@
    "weightedGap": 15,
    "reasons": {
     "EBITDA, Schulden oder Kasse fehlen": 1
+   }
+  },
+  {
+   "profile": "corporate",
+   "block": "Umfeldstress",
+   "metric": "Peer-Stress",
+   "weight": 5,
+   "missingListings": 3,
+   "filledListings": 1123,
+   "weightedGap": 15,
+   "reasons": {
+    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 3
    }
   },
   {
@@ -479,18 +491,6 @@
    "weightedGap": 10,
    "reasons": {
     "Weniger als drei Peers ausgewählt": 2
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Umfeldstress",
-   "metric": "Peer-Stress",
-   "weight": 5,
-   "missingListings": 2,
-   "filledListings": 1124,
-   "weightedGap": 10,
-   "reasons": {
-    "Keine Peers ausgewählt (keine Geschäftsfamilie oder Unterbranche)": 2
    }
   },
   {

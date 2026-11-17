@@ -12,3 +12,14 @@ Die QA-Analyse prüfte 100 Titel aus 18 Ländern und 22 Sektoren auf plausible F
 
 - Bei verlässlichem Fair Value ist das fundamentale Teilziel Kurs + (Fair Value − Kurs) / 3 (`KURSZIEL_FV_ANTEIL`), statt das heutige KGV zu halten. Analysten- und Momentum-Teil bleiben; ohne verlässlichen Fair Value gilt die KGV-Rechnung.
 - Offline aus den Teilzielen der Diagnose nachgerechnet (1.176 Titel, 747 mit verlässlichem Fair Value): Median des 12M-Ziels +12,2 % → +6,0 %. Gegenläufig zum Fair Value: 382 → 215 Titel.
+
+## Punkt 4: Zins je Währung aus amtlichen Quellen, relativer Boden
+
+- `scripts/export_rates.py` (Workflow `rates-daily`, Montag bis Samstag 05:23 UTC) schreibt `daten/cf_rates.json` (`gov_10y_v1`): Rendite 10-jähriger Staatsanleihen mit Wert, Stichtag, Quelle, Quell-URL, sha256 und Abrufzeit. Fehlt eine Quelle oder ist der Wert älter als 7 Tage, steht die Währung mit Grund unter `issues`.
+  - Quellen: US-Treasury (USD), EZB AAA-Kurve (EUR), Finanzministerium Japan (JPY), Bank of England IUDMNZC (GBP), Riksbank SEGVB10YC (SEK), Norges Bank GOVT_GENERIC_RATES 10Y (NOK).
+  - Ohne aktuelle Tagesquelle: CHF (SNB-Reihe endet am 31.07.2025), DKK und PLN (bei der EZB nur Monatswerte).
+- `ts_bewertung.anwenden` reicht die Datei als `_rates` an jeden Eingang; der App-Code (`riskFree`) prüft Methode, Alter und Wertebereich und setzt den Boden der Kapitalkosten auf Zins + 4 Prozentpunkte. Ohne gültigen Wert bleibt es bei 4,2 % und 8,5 %, gekennzeichnet (Zeile `risk_free`).
+- Livetest 17.11.2026: USD 5,120 %, EUR 3,422 %, JPY 2,927 %, GBP 5,322 %, SEK 3,110 %, NOK 4,385 %.
+- Wirkung (offline geschätzt): WACC-Median EUR 8,50 → 7,42 %, JPY 8,50 → 7,00 %, SEK 8,50 → 7,36 %, USD 8,80 → 9,72 %, GBP 8,50 → 9,32 %; CHF, DKK, PLN unverändert.
+- Tests: `scripts/test_export_rates.py` (Parser je Quelle, Frische, Fehler), `test_ts_bewertung` (Weitergabe an jeden Eingang).
+- **Reihenfolge nach dem Merge:** zuerst `rates-daily` starten, dann Precompute. Ohne Zinsdatei rechnet alles wie bisher mit dem gekennzeichneten Ersatz.

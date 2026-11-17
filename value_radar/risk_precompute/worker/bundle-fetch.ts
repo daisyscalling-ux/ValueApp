@@ -29,6 +29,11 @@ export async function fmp(path: string, sym: string, env: Env, fetcher: typeof f
 }
 
 /** Rohdaten zu einer bereits aufgeloesten Notierung (z. B. NASDAQ:AAPL). */
+// Rendite 10-jähriger Staatsanleihen je Währung (Pipeline, seit 17.11.2026); geprüft in valuation.ts riskFree.
+export const RATES_URL='https://raw.githubusercontent.com/daisyscalling-ux/ValueApp/main/value_radar/daten/cf_rates.json';
+export async function fetchRates(fetcher: typeof fetch = fetch): Promise<unknown> {
+  try { const r = await fetcher(RATES_URL, { signal: AbortSignal.timeout(8000), cf: { cacheTtl: 3600, cacheEverything: true } } as RequestInit); if (!r.ok) return null; const t = await r.text(); return t.length > 200000 ? null : JSON.parse(t); } catch { return null; }
+}
 export async function fetchRawBundle(sym: string, env: Env, deps: BundleDeps = {}, fetcher: typeof fetch = fetch): Promise<Record<string, unknown>> {
   const paths: Record<string, string> = {
     profile: `company/profile/${sym}`,
@@ -58,6 +63,7 @@ export async function fetchRawBundle(sym: string, env: Env, deps: BundleDeps = {
     (async () => { raw.metric = await finnhub("stock/metric", sym, env, "&metric=all", fetcher); })(),
     (async () => { raw.earnings_surprise = await finnhub("stock/earnings", sym, env, "", fetcher); })(),
     (async () => { raw.fmp_target = await fmp("price-target-consensus", sym, env, fetcher); })(),
+    (async () => { raw.rates = await fetchRates(fetcher); })(),
   ]);
 
   // Kurs-Fallback: hat roic keinen Kurs (quote+profile leer), aus Yahoo

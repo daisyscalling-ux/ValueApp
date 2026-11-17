@@ -540,6 +540,54 @@ def schlusskurse(t: str, tage: int = 260, adjustiert: bool = True):
     return out
 
 
+# Seit 17.11.2026 (QA-Befund): Das 52-Wochen-Band aus unbereinigten Schlusskursen (K52) enthielt bei Aktiensplits im
+# Fenster die Kurse vor dem Split (Netflix: Hoch 1.157,50 bei Kurs 59,85 nach dem 10:1-Split; 10 Titel, 7 in Japan).
+# Splits werden aus derselben ROIC-Reihe erkannt: Das Verhaeltnis adj_close/close springt an einem Split um den
+# Splitfaktor, an Dividenden nur um wenige Prozent. Spruenge ueber SPLIT_SPRUNG gelten als Split; nur diese werden
+# herausgerechnet, Dividenden bleiben unbereinigt wie bisher.
+SPLIT_SPRUNG = 0.25
+SPLIT_METHODE = "adj_close_ratio_step_v1"
+
+
+def split_bereinigen(reihen):
+    """[(datum, close, adj_close)] aelteste zuerst -> ([(datum, kurs)], [{date, factor}]).
+
+    kurs = close / Produkt der Splitfaktoren NACH diesem Tag (heutige Aktienbasis). factor > 1: Split (10 = 10:1),
+    < 1: Zusammenlegung. Tage ohne adj_close gehen unbereinigt ein; liegt ein Split in einer solchen Luecke, wird er
+    nicht erkannt."""
+    splits, letzte = [], None
+    for i, (d, k, a) in enumerate(reihen):
+        if not (k and a and k > 0 and a > 0):
+            continue
+        r = a / k
+        if letzte is not None and abs(r / letzte[1] - 1) > SPLIT_SPRUNG:
+            splits.append({"index": i, "date": d, "factor": round(r / letzte[1], 6)})
+        letzte = (i, r)
+    out = []
+    for i, (d, k, a) in enumerate(reihen):
+        if not k:
+            continue
+        f = 1.0
+        for sp in splits:
+            if sp["index"] > i:
+                f *= sp["factor"]
+        out.append((d, k / f))
+    return out, [{"date": sp["date"], "factor": sp["factor"]} for sp in splits]
+
+
+def kursband(t: str, tage: int = 260):
+    """Juengste `tage` Schlusskurse fuer das 52-Wochen-Band: unbereinigt, nur um Splits bereinigt.
+    Rueckgabe ([(datum, kurs)] aelteste zuerst, [{date, factor}])."""
+    reihen = []
+    for z in reversed(prices_history(t, limit=tage, order="DESC") or []):
+        if not isinstance(z, dict):
+            continue
+        d = str(_g(z, "date") or "")[:10]
+        if d:
+            reihen.append((d, _num(_g(z, "close")), _num(_g(z, "adj_close"))))
+    return split_bereinigen(reihen)
+
+
 def monatsende(t: str, jahre: int = 20):
     """Monatsschlusskurse - fuer Saisonalitaet und Backtest.
 

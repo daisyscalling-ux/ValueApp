@@ -41,6 +41,22 @@ class Eingabe(unittest.TestCase):
             self.assertIsNone(roic.rohbloecke('AAPL'))
         self.assertIn('roic_history_status',T.FELDER)
         self.assertIn('eps_basis',T.FELDER,'Sondereffekt-Kennzeichnung in der Zeile (17.11.2026)')
+        self.assertIn('risk_free',T.FELDER)
+
+    def test_rates_file_reaches_every_input(self):
+        # cf_rates.json (scripts/export_rates.py) unveraendert an jeden Eingang; App prueft (valuation.ts riskFree).
+        import tempfile,json as _j,os as _o
+        doc={'schema':1,'method':'gov_10y_v1','rates':{'USD':{'value':0.0512,'as_of':'2026-11-16'}},'issues':{}}
+        with tempfile.TemporaryDirectory() as d:
+            p=_o.path.join(d,'r.json');open(p,'w').write(_j.dumps(doc))
+            self.assertEqual(T.zinsen(p),doc);self.assertIsNone(T.zinsen(_o.path.join(d,'fehlt.json')))
+        from unittest import mock
+        gesehen=[]
+        def fake(offen,js,node,universum=None,**kw):
+            gesehen.extend(offen.values());return {t:{'scanner_method':T.METHODE} for t in offen}
+        with mock.patch.object(T,'rechnen',fake):
+            T.anwenden([zeile('A',JUMBO)],js='x',risiko={},ordner=tempfile.gettempdir()+'/leer-nicht-vorhanden',zins=doc)
+        self.assertTrue(gesehen and all(g['_rates']==doc for g in gesehen))
 
     def test_bank_margins_from_yahoo_are_dropped(self):
         # KeyCorp 17.11.2026: ROIC ohne Margen, Yahoo grossMargins 0.0 und operatingMargins 0.355 still eingesetzt.

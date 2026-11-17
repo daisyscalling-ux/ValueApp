@@ -752,6 +752,7 @@ export interface Kursziel12m {
  * Schaetzungen (Fundamental mit Guidance-Proxy, Analystenkonsens, Momentum)
  * werden adaptiv gewichtet gemischt; ihre Streuung ergibt Spanne + Konfidenz.
  */
+export const KURSZIEL_FV_ANTEIL = 1 / 3;
 export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel12m | null {
   if ((fund.valuation_data ?? valuationDataCheck(fund)).blocked) return null;
   const kurs = fund.price;
@@ -839,6 +840,16 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
     } else kgvZiel = kgvHist ?? 15;
     kgvAnnahme = kgvZiel;
     zielFund = eps * kgvZiel;
+  }
+
+  // A') Seit 17.11.2026 (Entscheidung des Nutzers nach QA): Bei verlässlichem Fair Value schließt das fundamentale
+  // Teilziel ein Drittel (KURSZIEL_FV_ANTEIL) der Lücke zwischen Kurs und Fair Value, statt das heutige KGV zu halten.
+  // Vorher zeigten Fair Value (Median −9 %) und 12M-Ziel (Median +13 %) bei 29 von 100 Titeln in verschiedene Richtungen.
+  // Ohne verlässlichen Fair Value bleibt die KGV-Rechnung oben. Der Anker kommt aus evaluateStock (_fv_anker).
+  const anker = (fund as Record<string, unknown>)._fv_anker as { value?: number | null; reliable?: boolean } | undefined;
+  if (anker && anker.reliable === true && typeof anker.value === "number" && anker.value > 0) {
+    zielFund = kurs + (anker.value - kurs) * KURSZIEL_FV_ANTEIL;
+    herleitung.push(`Fundamental: ein Drittel des Wegs zum Fair Value ${anker.value.toFixed(2)} -> ${zielFund.toFixed(2)}`);
   }
 
   // B) ANALYSTEN

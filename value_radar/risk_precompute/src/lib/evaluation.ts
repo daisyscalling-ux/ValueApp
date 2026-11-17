@@ -98,6 +98,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const display=fundInEur(fund,eur) as Fund & Record<string,any>;
  const fv=display.currency===fund.currency?nativeValue:fairValue(display,peerArg,playbook);
  const targetFund={...display};
+ // 12M-Ziel: fundamentaler Teil Richtung Fair Value, nur wenn dieser verlässlich ist (seit 17.11.2026).
+ targetFund._fv_anker={value:fv.fair_value,reliable:fv.reliable};
  if(!targetFund.hist_pe_median&&targetFund.pe_trailing)targetFund.hist_pe_median=targetFund.pe_trailing;
  const kz=kursziel12m(targetFund,playbook);
  const analyst=(fund.analyst_buy!==undefined||fund.analyst_hold!==undefined)

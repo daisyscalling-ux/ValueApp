@@ -74,6 +74,36 @@ class Eingabe(unittest.TestCase):
         self.assertTrue(st['ausfall']);self.assertEqual(rows[0]['scanner_method'],T.ALT);self.assertEqual(rows[0]['composite'],11)
         self.assertNotIn('_ts_input',rows[0]);self.assertNotIn('scanner_method',rows[1],'retained rows untouched')
 
+    def test_second_pass_sees_peer_rows_as_the_app_does(self):
+        # Lauf 17.11.2026: alle 1.341 Zeilen frisch, Peers ohne value_inputs -> Forward-KGV/PEG/FCF nur auf fester Skala.
+        from unittest import mock
+        aufrufe=[]
+        def fake(offen,js,node,universum=None,**kw):
+            aufrufe.append([dict(r) for r in universum])
+            n=len(aufrufe)
+            return {t:{'scanner_method':T.METHODE,'composite':10*n,'value_inputs':{'method':'value_inputs_v1','pe_forward':20.0},
+                       'report_converted':{'pe':12.5} if t=='A' else None} for t in offen}
+        rows=[zeile('A',JUMBO),zeile('B',JUMBO),{'ticker':'C','composite':40,'value_inputs':{'method':'alt'}}]
+        with mock.patch.object(T,'rechnen',fake):
+            st=T.anwenden(rows,js='x',risiko={},ordner=tempfile.gettempdir()+'/leer-nicht-vorhanden')
+        self.assertEqual(st['durchgaenge'],2);self.assertEqual(len(aufrufe),2)
+        self.assertNotIn('value_inputs',aufrufe[0][0],'erster Durchgang: frische Zeile ohne App-Felder')
+        self.assertEqual(aufrufe[1][0]['value_inputs']['pe_forward'],20.0,'zweiter Durchgang: Peer-Zeile mit App-Feldern')
+        self.assertEqual(aufrufe[1][0]['pe'],12.5,'umgerechnete Kennzahlen wie in der fertigen Zeile')
+        self.assertEqual(aufrufe[1][2]['value_inputs'],{'method':'alt'},'uebernommene Zeilen unveraendert')
+        self.assertEqual(rows[0]['composite'],20,'Ergebnis aus dem zweiten Durchgang');self.assertEqual(rows[2]['composite'],40)
+
+    def test_second_pass_outage_keeps_first_pass(self):
+        from unittest import mock
+        n=[0]
+        def fake(offen,js,node,universum=None,**kw):
+            n[0]+=1
+            return None if n[0]==2 else {t:{'scanner_method':T.METHODE,'composite':77} for t in offen}
+        rows=[zeile('A',JUMBO)]
+        with mock.patch.object(T,'rechnen',fake):
+            st=T.anwenden(rows,js='x',risiko={},ordner=tempfile.gettempdir()+'/leer-nicht-vorhanden')
+        self.assertEqual(st['durchgaenge'],1);self.assertFalse(st['ausfall']);self.assertEqual(rows[0]['composite'],77)
+
     def test_failing_node_process_counts_as_outage(self):
         with tempfile.TemporaryDirectory() as d:
             js=os.path.join(d,'kaputt.mjs');open(js,'w').write('process.exit(3)')

@@ -36,7 +36,7 @@
    ],
    "market": {
     "currency": "GBP",
-    "quote_at": "2026-11-16T16:39:16+00:00",
+    "quote_at": "2026-11-16T17:07:54+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/GSK.L/",
     "name": "GSK plc",
@@ -92,7 +92,7 @@
    ],
    "market": {
     "currency": "GBP",
-    "quote_at": "2026-11-16T16:35:12+00:00",
+    "quote_at": "2026-11-17T07:20:02+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/ULVR.L/",
     "name": "Unilever PLC",
@@ -215,7 +215,7 @@
    }
   }
  },
- "generatedAt": "2026-11-16T17:10:38.648626+00:00",
+ "generatedAt": "2026-11-17T07:43:23.083200+00:00",
  "report": {
   "targets": 4,
   "resolved": 4,

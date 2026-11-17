@@ -1,4 +1,4 @@
-import { applySupplement, applyForwardEstimate } from './fundamental-supplement';
+import { applySupplement, applyForwardEstimate, applyAnalystRatings } from './fundamental-supplement';
 import { normalizeFinancialRows, normalizeMarketCap, valuationDataCheck, convertReportCurrency } from './valuation-data';
 import {financialRiskInput} from './risk-score';
 /**
@@ -398,6 +398,8 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   normalizeMarketCap(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
   // Prognose-EPS nur als geprüfter 12-Monats-Konsens (ersetzt Finnhub-Wert und mechanische Fortschreibung).
   applyForwardEstimate(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
+  // Analystenempfehlungen nur aus der geprüften Ergänzungsdatei (ersetzt Finnhub, gleiche Quelle wie der Screener).
+  applyAnalystRatings(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
   out.valuation_data = valuationDataCheck(out, raw);
   const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(out)) {

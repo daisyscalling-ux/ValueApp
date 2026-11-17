@@ -675,3 +675,11 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Kosten.** Bis zu 3 zusätzliche ROIC-Abrufe je Titel; die EV-Reihe ist schon im Zwischenspeicher. Der Lauf scannte am 17.11. rund 9 Titel je Minute, die ROIC-Grenze liegt bei 240 Abrufen je Minute. Mehrlaufzeit erwartet im Bereich weniger Minuten; der nächste Lauf misst es.
 
 **Tests.** `test_ts_bewertung`: Pfade und Parameter wie in der App, ohne Schlüssel `None`, FELDER. Alle Precompute-Testschritte OK. App-Kopien: 41 Dateien identisch.
+
+## Screener: auch Margen, Renditen, KBV und Current Ratio nur von ROIC (17.11.2026)
+
+**Befund (bundle-compare v5, 17.11.2026, 17:22 UTC, 50 Titel).** Die Qualität wich bei 7 Titeln um mehr als 5 Punkte ab. Alle sieben sind Banken oder Versicherer: KeyCorp 9,5 gegen 38,3, Danske, CaixaBank, mBank, BPER, Julius Bär und Talanx. ROIC liefert für Banken keine Brutto- und operative Marge. `providers.py` ließ dann still die Yahoo-Werte stehen (Bruttomarge 0 %, operative Marge 35–59 %). Die App hat dort keine Werte.
+
+**Regel.** `NUR_ROIC` umfasst jetzt `free_cashflow`, `ev_ebitda`, `pb`, `roe`, `roa`, `gross_margin`, `operating_margin` und `current_ratio`. Alle liest die App aus denselben ROIC-Feldern (`bundleLight`). Ohne ROIC-Herkunft verwirft der Screener den Wert, und die Kennzahl zählt wie in der App nicht. Ausnahme: `net_debt_ebitda`, das die App selbst aus Nettoschulden und EBITDA rechnet.
+
+**Tests.** `test_ts_bewertung`: Bankfall KeyCorp (Yahoo-Margen verworfen, ROIC-Renditen behalten, `net_debt_ebitda` unberührt). Alle Precompute-Testschritte OK.

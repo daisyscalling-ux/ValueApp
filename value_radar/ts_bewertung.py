@@ -148,6 +148,21 @@ def ersatzdaten(row, ordner=None):
             "_fundamental_supplement": {k: v for k, v in s.items() if k not in weg}}
 
 
+def _gueltig(neu):
+    return isinstance(neu, dict) and not neu.get("error") and neu.get("scanner_method") == METHODE
+
+
+def _uebernehmen(r, neu):
+    for k in FELDER:
+        r[k] = neu.get(k)
+    # Berichtswaehrung umgerechnet (EZB) oder Jahresblock uebernommen: Anzeige- und Peer-Kennzahlen der Zeile aus
+    # demselben Rechenweg, sonst blieben EPS, KGV, KBV, EV/EBITDA alt (Equinor KGV 209,6, Micron EPS 7,65).
+    # Auch leere Werte uebernehmen: fehlt dem Jahresblock z. B. das EPS (Costco), darf die Zeile nicht das alte
+    # ROIC-EPS des Vorjahres zeigen, mit dem gar nicht gerechnet wurde (offen statt falsch).
+    for k, v in (neu.get("report_converted") or {}).items():
+        r[k] = v
+
+
 def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
     """Ersetzt in frisch gescannten Zeilen (mit _ts_input) die Bewertungsfelder durch die TS-Werte."""
     js = js if js is not None else os.environ.get("SCANNER_EVAL_JS")
@@ -160,21 +175,30 @@ def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
             eingang.update(_sauber(risiko.get(r.get("listing_symbol")) or {}))
             eingang.update(_sauber(ersatzdaten(r, ordner)))
             offen[r["ticker"]] = eingang
+    # Zwei Durchgaenge (seit 17.11.2026): Die Peers waehlt der App-Code aus den Zeilen dieses Laufs. Frisch gescannte
+    # Zeilen tragen die App-Felder (value_inputs, gepruefter Konsens, umgerechnete Kennzahlen) aber erst nach der
+    # Bewertung; im ersten Durchgang fehlen sie allen Peers (Lauf 17.11.: 1.341 von 1.341 frisch), Forward-KGV, PEG und
+    # FCF-Rendite liefen deshalb nur auf der festen Skala, waehrend die App gegen Peers des fertigen Universums rechnet.
+    # Der zweite Durchgang rechnet mit Peer-Zeilen in dem Stand, den die App spaeter liest.
     ergebnis = rechnen(offen, js, node, universum=rows) if offen else {}
-    stat = {"ts": 0, "python_v1": 0, "fehler": 0, "ausfall": ergebnis is None}
+    stat = {"ts": 0, "python_v1": 0, "fehler": 0, "ausfall": ergebnis is None, "durchgaenge": 1 if offen else 0}
+    if offen and ergebnis is not None:
+        vorlaeufig = []
+        for r in rows:
+            k = dict(r)
+            neu = ergebnis.get(r["ticker"]) if r["ticker"] in offen else None
+            if _gueltig(neu):
+                _uebernehmen(k, neu)
+            vorlaeufig.append(k)
+        zweit = rechnen(offen, js, node, universum=vorlaeufig)
+        if zweit is not None:
+            ergebnis, stat["durchgaenge"] = zweit, 2
     for r in rows:
         if r["ticker"] not in offen:
             continue
         neu = (ergebnis or {}).get(r["ticker"])
-        if isinstance(neu, dict) and not neu.get("error") and neu.get("scanner_method") == METHODE:
-            for k in FELDER:
-                r[k] = neu.get(k)
-            # Berichtswaehrung umgerechnet (EZB) oder Jahresblock uebernommen: Anzeige- und Peer-Kennzahlen der Zeile aus
-            # demselben Rechenweg, sonst blieben EPS, KGV, KBV, EV/EBITDA alt (Equinor KGV 209,6, Micron EPS 7,65).
-            # Auch leere Werte uebernehmen: fehlt dem Jahresblock z. B. das EPS (Costco), darf die Zeile nicht das alte
-            # ROIC-EPS des Vorjahres zeigen, mit dem gar nicht gerechnet wurde (offen statt falsch).
-            for k, v in (neu.get("report_converted") or {}).items():
-                r[k] = v
+        if _gueltig(neu):
+            _uebernehmen(r, neu)
             # Gesperrte Bewertung: Rohwerte und Herkunft mitschreiben, damit die Ursache ohne neuen Abruf klar wird.
             if r.get("kauf_urteil") == "Daten prüfen":
                 r["valuation_check_inputs"] = offen[r["ticker"]].get("_pruef_eingang") or {}

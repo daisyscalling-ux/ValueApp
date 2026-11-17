@@ -645,3 +645,20 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Wirkung.** Etwas weniger Abdeckung im Screener (in der Stichprobe 10 FCF- und 5 EV/EBITDA-Werte). Dafür rechnen beide Wege dieselbe Definition. Die volle Zahl zeigt der nächste Precompute.
 
 **Tests.** `test_ts_bewertung`: verworfen ohne ROIC-Herkunft, behalten mit ROIC-Herkunft, ohne Herkunftsliste verworfen; das Jumbo-Beispiel trägt die ROIC-Herkunft. 15/15 mit gebautem Scanner.
+
+## Screener: zweiter Durchgang mit fertigen Peer-Zeilen (17.11.2026)
+
+**Befund (bundle-compare v5, 17.11.2026, 10:30 UTC, 50 Titel).**
+- Katalysator, Quantum und Eingänge stimmen jetzt überein: Katalysator im Median 0, Quantum 0,8, Analystenvotum in beiden Wegen 50/50.
+- Die Kategorie Bewertung wich weiter um 4,6 Punkte im Median ab. Ursache: Der Screener bewertete Forward-KGV, PEG und FCF-Rendite immer auf der festen Skala (`scale`), die App gegen Peers (`peers`); betroffen waren 25, 21 und 30 Titel.
+- Der Grund liegt im Ablauf: `ts_bewertung.anwenden` übergibt dem App-Code die Zeilen des laufenden Precompute als Peer-Universum. Diese waren alle frisch gescannt (1.341 von 1.341) und tragen die App-Felder (`value_inputs`, geprüfter Konsens, umgerechnete Kennzahlen) erst nach der Bewertung. Die App liest dagegen das fertige Universum.
+- Das wäre auch mit weiteren Läufen nicht verschwunden; meine Einschätzung vom 17.11. früh („Übergang“) war falsch.
+
+**Regel.**
+- `anwenden` rechnet zweimal. Der erste Durchgang füllt eine vorläufige Kopie der Zeilen mit denselben Übernahmeregeln wie die fertige Zeile (`_uebernehmen`: FELDER und umgerechnete Kennzahlen). Der zweite Durchgang rechnet mit diesen Peer-Zeilen und liefert das Ergebnis.
+- Fällt der zweite Durchgang aus, gilt der erste (`durchgaenge: 1` in der Statistik). Übernommene Zeilen bleiben unverändert.
+- Laufzeit: Die TS-Bewertung dauert nur wenige Minuten des 104-Minuten-Laufs, ein zweiter Durchgang fällt kaum ins Gewicht.
+
+**Tests.** `test_ts_bewertung`: zweiter Durchgang sieht Peer-Zeilen mit App-Feldern und umgerechneten Kennzahlen; übernommene Zeilen unverändert; Ausfall des zweiten Durchgangs behält den ersten. 17/17 mit gebautem Scanner; alle Precompute-Testschritte OK.
+
+**Messung.** Ein Probelauf ist offline nicht möglich, weil die Scanner-Eingänge nur im Precompute entstehen. Erwartung für den nächsten Bundle-Compare: Maßstab `peers` in beiden Wegen; Bewertung im Median nahe 0.

@@ -40,6 +40,7 @@ class Eingabe(unittest.TestCase):
         with mock.patch.object(roic,'_key',lambda:None):
             self.assertIsNone(roic.rohbloecke('AAPL'))
         self.assertIn('roic_history_status',T.FELDER)
+        self.assertIn('eps_basis',T.FELDER,'Sondereffekt-Kennzeichnung in der Zeile (17.11.2026)')
 
     def test_bank_margins_from_yahoo_are_dropped(self):
         # KeyCorp 17.11.2026: ROIC ohne Margen, Yahoo grossMargins 0.0 und operatingMargins 0.355 still eingesetzt.

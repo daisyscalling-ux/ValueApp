@@ -7,3 +7,8 @@ Die QA-Analyse prüfte 100 Titel aus 18 Ländern und 22 Sektoren auf plausible F
 - **Sondereffekt-EPS (`epsBasis`, `valuation.ts`).** Liegt das berichtete EPS mehr als 1,4× über dem geprüften 12M-Konsens, rechnen begründetes KGV und das heutige KGV im 12M-Ziel mit dem Konsens. Betroffen sind 23 Titel im Universum vom 17.11. (Comcast: Fair Value vorher 2,4× Kurs). Kennzeichnung `eps_basis` in der Zeile (FELDER).
 - **Phasenregel.** „Start-up / Hyperwachstum / Rückgang ⇒ vorläufig“ gilt nicht im Finanzmodell. Betroffen sind 30 Banken und Versicherer, z. B. KeyCorp mit „Umsatz“ +66 %.
 - **Messung.** Die tatsächliche Wirkung auf Fair Value und Verlässlichkeit zeigt der nächste Precompute.
+
+## Punkt 5: 12M-Ziel ein Drittel Richtung Fair Value
+
+- Bei verlässlichem Fair Value ist das fundamentale Teilziel Kurs + (Fair Value − Kurs) / 3 (`KURSZIEL_FV_ANTEIL`), statt das heutige KGV zu halten. Analysten- und Momentum-Teil bleiben; ohne verlässlichen Fair Value gilt die KGV-Rechnung.
+- Offline aus den Teilzielen der Diagnose nachgerechnet (1.176 Titel, 747 mit verlässlichem Fair Value): Median des 12M-Ziels +12,2 % → +6,0 %. Gegenläufig zum Fair Value: 382 → 215 Titel.

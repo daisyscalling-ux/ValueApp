@@ -270,7 +270,7 @@ def rendern(fund: dict, v: dict, preset: str = "quality",
         _grp = _sk.segment(fund)
         _eb = "segment"
         if not _grp:
-            _grp, _eb = _sk.normalisieren(fund.get("sector")), "sector"
+            _grp, _eb = _sk.normalisieren(fund.get("sector"), fund.get("industry")), "sector"
         if _grp:
             _verg = _sk.vergleich(_grp, "ev_ebitda", _eb)
             _mult = _sk.anker(_grp, "ev_ebitda", _eb)

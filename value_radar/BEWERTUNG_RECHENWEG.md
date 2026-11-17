@@ -683,3 +683,9 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Regel.** `NUR_ROIC` umfasst jetzt `free_cashflow`, `ev_ebitda`, `pb`, `roe`, `roa`, `gross_margin`, `operating_margin` und `current_ratio`. Alle liest die App aus denselben ROIC-Feldern (`bundleLight`). Ohne ROIC-Herkunft verwirft der Screener den Wert, und die Kennzahl zählt wie in der App nicht. Ausnahme: `net_debt_ebitda`, das die App selbst aus Nettoschulden und EBITDA rechnet.
 
 **Tests.** `test_ts_bewertung`: Bankfall KeyCorp (Yahoo-Margen verworfen, ROIC-Renditen behalten, `net_debt_ebitda` unberührt). Alle Precompute-Testschritte OK.
+
+## Sektor „Industrial services“ nicht mehr pauschal Energie (17.11.2026)
+
+`sektor._SEKTOR_ALIAS` (und die App-Kopie in `valuation.ts`) machte alle 41 Titel von FactSet „Industrial services“ zu „Energy“. Damit liefen sie im Zyklik-Modell und mit Energie-Multiples; Waste Management bekam z. B. einen Fair Value von 0,32× Kurs. Neu gibt `normalisieren(sector, industry)` nur bei Energie-Branchen (oil…, gas, drilling, pipeline) „Energy“ zurück, sonst „Industrials“. Alle Aufrufer geben die Branche mit.
+
+Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (20 → Qualität, 2 → Wachstumswende), 19 bleiben zyklisch (7 Energie, 12 über die Margenschwankung). Tests: `tests/test_sektor_industrial_services.py`, im Workflow `precompute-3tage`; das Muster ist mit der App identisch, per Test geprüft.

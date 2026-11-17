@@ -66,7 +66,7 @@ def _sector(fund, table):
     sek = fund.get("sector")
     try:
         import sektor as _sk
-        sek = _sk.normalisieren(sek) or sek
+        sek = _sk.normalisieren(sek, fund.get("industry")) or sek
     except Exception:
         pass
     return table.get(sek, table["_default"])
@@ -106,7 +106,7 @@ def classify_playbook(fund) -> str:
     # ROIC/FactSet liefert "Finance", "Process industries" usw.; ohne Alias fielen
     # Finanzwerte ins Industrie-Playbook (Fehler, behoben 12.11.2026).
     import sektor as _sektor
-    sector = _sektor.normalisieren(fund.get("sector")) or ""
+    sector = _sektor.normalisieren(fund.get("sector"), fund.get("industry")) or ""
     industry = (fund.get("industry") or "").lower()
 
     # 0) datenbasierte Zyklus-Erkennung (z.B. aus dem Backtest): stark

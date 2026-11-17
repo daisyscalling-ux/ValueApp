@@ -77,6 +77,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_playbook_sector.py -v
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_universe_additions.py -v
+      - working-directory: value_radar
+        run: python -m unittest discover -s tests -p test_sektor_industrial_services.py -v
   precompute:
     concurrency:
       group: roic-bulk-production

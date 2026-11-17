@@ -41,7 +41,7 @@
   {
    "app": "src/lib/evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
-   "sha256": "3c2cf357eaab1b8e33d4fdd8e299b78db434f7b906d47c473095128bb337118d"
+   "sha256": "ffcaa64ebad09a36826ab20ac2f9dea9964b2eb02db8e58863cde091d2f37067"
   },
   {
    "app": "src/lib/financial-health.ts",
@@ -141,7 +141,7 @@
   {
    "app": "src/lib/valuation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/valuation.ts",
-   "sha256": "f263366a22150ecfd62669e8bc19423f9fb5900b1a663740ecd2fdceb6b476ef"
+   "sha256": "1fa5f12f774247c4e63e77c035248ad6d4f488fc3ab441d7f634cd3014cc7371"
   },
   {
    "app": "src/risk_capital_requirement_view.ts",

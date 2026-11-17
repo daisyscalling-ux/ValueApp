@@ -291,4 +291,20 @@ class EstimateTests(unittest.TestCase):
                             (self.INFO,{'0y':self.TABLE['0y']},'Konsens'),(self.INFO,{},'Konsens')]:
    e=consensus_estimates(table,info,'MU');self.assertFalse(e['usable']);self.assertIn(reason,e['reason'])
 
+class AnalystTests(unittest.TestCase):
+ ROWS=[{'period':'0m','strongBuy':6,'buy':20,'hold':13,'sell':3,'strongSell':3},{'period':'-1m','strongBuy':6,'buy':18,'hold':13,'sell':3,'strongSell':3}]
+ def test_current_month_with_source_and_date(self):
+  from export_fundamentals import analyst_recommendations,ANALYST_METHOD
+  now=dt.datetime(2026,11,17,6,0,tzinfo=dt.timezone.utc)
+  a=analyst_recommendations(self.ROWS,'AAPL',now)
+  self.assertTrue(a['usable']);self.assertEqual(a['method'],ANALYST_METHOD);self.assertEqual(a['as_of'],now.isoformat())
+  self.assertEqual((a['strong_buy'],a['buy'],a['hold'],a['sell'],a['strong_sell']),(6,20,13,3,3))
+  self.assertEqual(a['source_url'],'https://finance.yahoo.com/quote/AAPL/analysis/')
+ def test_missing_or_invalid_stays_open(self):
+  from export_fundamentals import analyst_recommendations
+  for rows,reason in [([],'laufenden Monat'),([self.ROWS[1]],'laufenden Monat'),(None,'laufenden Monat'),
+                      ([{**self.ROWS[0],'hold':None}],'ungueltig'),([{**self.ROWS[0],'sell':-1}],'ungueltig'),([{**self.ROWS[0],'buy':2.5}],'ungueltig'),
+                      ([{'period':'0m','strongBuy':0,'buy':0,'hold':0,'sell':0,'strongSell':0}],'Keine Analysten')]:
+   a=analyst_recommendations(rows,'X');self.assertFalse(a['usable']);self.assertIn(reason,a['reason'])
+
 if __name__=='__main__':unittest.main()

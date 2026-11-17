@@ -185,3 +185,23 @@ export function applyForwardEstimate(f:Row,s:Row|null|undefined,now=Date.now(),s
  f.eps_forward_estimate={check,year_ago_eps:ya,weight_0y:Math.round(w0*1000)/1000,avg_0y:p0.avg,avg_1y:p1.avg,analysts_0y:p0.analysts,analysts_1y:p1.analysts,currency:e.currency,as_of:e.as_of,fiscal_end_0y:p0.fiscal_end,source_url:e.source_url};
  f.eps_forward_source=`Analystenkonsens 12 Monate (${e.source}; ${Math.round(w0*100)} % laufendes, ${100-Math.round(w0*100)} % nächstes Geschäftsjahr; ${p0.analysts}/${p1.analysts} Analysten; Stand ${String(e.as_of).slice(0,10)}`+(check==='faktor_2'?')':`; über Faktor 2 zum berichteten EPS, gleiche Gewinnbasis wie das Vorjahres-Ist, höchstens ×${FORWARD_MAX_GROWTH})`);
 }
+
+// Analystenempfehlungen (seit 17.11.2026, Entscheidung des Nutzers): einzige Quelle für App und Screener ist der
+// Yahoo-Empfehlungstrend des laufenden Monats aus der geprüften Ergänzungsdatei derselben Notierung. Vorher nahm die App
+// Finnhub, der Screener (ohne Finnhub-Schlüssel in GitHub) Yahoo; das Analystenvotum fehlte im Abgleich bei 50/50 Titeln.
+// Ersetzt mitgelieferte Werte; ohne gültigen, höchstens ANALYST_MAX_AGE_DAYS alten Block bleibt das Votum offen.
+export const ANALYST_SOURCE_METHOD='yahoo_recommendations_0m_v1', ANALYST_MAX_AGE_DAYS=7;
+export function applyAnalystRatings(f:Row,s:Row|null|undefined,now=Date.now(),symbol?:string|null):void{
+ const open=(reason:string)=>{delete f.analyst_buy;delete f.analyst_hold;delete f.analyst_sell;f.analyst_source=null;f.analyst_method=null;f.analyst_status=reason;};
+ const a=s?.analysts;
+ if(!s||s.schema!==1||(symbol!=null&&s.symbol!==symbol))return open('Keine Analystenempfehlungen für diese Notierung');
+ if(!a||a.method!==ANALYST_SOURCE_METHOD)return open('Analystenempfehlungen fehlen (noch nicht im geprüften Format)');
+ if(!a.usable)return open('Analystenempfehlungen unvollständig: '+(a.reason??'ohne Grund'));
+ if(!age(a.as_of,now,ANALYST_MAX_AGE_DAYS*DAY))return open('Analystenempfehlungen veraltet oder ungültig datiert');
+ const n=['strong_buy','buy','hold','sell','strong_sell'].map(k=>a[k]);
+ if(!n.every(x=>finite(x)&&x>=0&&Number.isInteger(x)))return open('Empfehlungszahlen ungültig');
+ const [sb,b,h,se,ss]=n as number[];
+ if(sb+b+h+se+ss===0)return open('Keine Analystenempfehlungen');
+ f.analyst_buy=sb+b;f.analyst_hold=h;f.analyst_sell=se+ss;f.analyst_method=ANALYST_SOURCE_METHOD;f.analyst_status=null;
+ f.analyst_source=`${a.source}, laufender Monat, Stand ${String(a.as_of).slice(0,10)}: ${sb+b} Kauf, ${h} Halten, ${se+ss} Verkauf`;
+}

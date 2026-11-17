@@ -268,6 +268,33 @@ def estimate_table(t):
   return {} if frame is None else json.loads(frame.to_json(orient='index'))
  except Exception:return {}
 
+ANALYST_METHOD='yahoo_recommendations_0m_v1'
+def analyst_recommendations(frame,ys,now=None):
+ """Analystenempfehlungen des laufenden Monats (Yahoo recommendation trend, Zeile period=0m) als Kauf/Halten/Verkauf
+ mit Stand und Quelle. Einzige Quelle fuer App und Screener (seit 17.11.2026); die App prueft Alter und Notierung
+ erneut. usable=False mit Grund, wenn die Zeile fehlt oder Zahlen ungueltig sind; nie geschaetzt."""
+ now=now or dt.datetime.now(UTC)
+ out={'method':ANALYST_METHOD,'source':'Yahoo Finance recommendation trend','source_url':f'https://finance.yahoo.com/quote/{ys}/analysis/',
+      'as_of':now.isoformat(),'period':'0m','strong_buy':None,'buy':None,'hold':None,'sell':None,'strong_sell':None,'usable':False,'reason':None}
+ rows=frame if isinstance(frame,list) else []
+ row=next((r for r in rows if isinstance(r,dict) and r.get('period')=='0m'),None)
+ if row is None:out['reason']='Keine Empfehlungen fuer den laufenden Monat';return out
+ keys={'strong_buy':'strongBuy','buy':'buy','hold':'hold','sell':'sell','strong_sell':'strongSell'}
+ for k,v in keys.items():
+  x=number(row.get(v))
+  out[k]=int(x) if x is not None and x>=0 and float(x).is_integer() else None
+ if any(out[k] is None for k in keys):out['reason']='Empfehlungszahlen fehlen oder ungueltig'
+ elif sum(out[k] for k in keys)==0:out['reason']='Keine Analystenempfehlungen'
+ else:out['usable']=True
+ return out
+
+def recommendation_rows(t):
+ """recommendations als Liste von Zeilen; Ausfall ergibt [] (Block bleibt offen)."""
+ try:
+  frame=t.recommendations
+  return [] if frame is None else json.loads(frame.to_json(orient='records'))
+ except Exception:return []
+
 def collect(row):
  import yfinance as yf
  ys=yahoo_symbol(row); t=yf.Ticker(ys); info=t.get_info()
@@ -310,7 +337,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'splits':recent_splits(t),'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'splits':recent_splits(t),'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

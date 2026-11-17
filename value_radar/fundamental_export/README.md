@@ -88,3 +88,13 @@ Neu gilt:
 - Eine geänderte Yahoo-Zuordnung löst sofort einen neuen Versuch aus, ohne Wartezeit: `corrected_london_retry` gilt jetzt allgemein, wenn das gespeicherte `mapped_symbol` abweicht.
 
 Geprüft: Alle 41 neuen Symbole liefern bei Yahoo Kurse (HTTP 200), die alten nicht (HTTP 404).
+
+## Analystenempfehlungen `analysts` (17.11.2026)
+
+`analyst_recommendations` schreibt den Yahoo-Empfehlungstrend des laufenden Monats (`recommendations`, Zeile `period=0m`) als Block `analysts`:
+- Inhalt: Methode `yahoo_recommendations_0m_v1`, `as_of` (Abrufzeit), Quell-URL, `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`.
+- `usable=False` mit Grund, wenn die Zeile fehlt, eine Zahl fehlt, negativ oder nicht ganzzahlig ist oder alle null sind. Nichts wird geschätzt.
+
+Das ist die einzige Quelle des Analystenvotums für App und Screener. `applyAnalystRatings` in `fundamental-supplement.ts` prüft Notierung, Methode und Alter (≤ 7 Tage) erneut. Der Grund: Im Abgleich vom 17.11.2026 nahm der Screener Yahoo und die App Finnhub; `FINNHUB_API_KEY` ist im Repo ValueApp leer.
+
+Livetest 17.11.2026: AAPL 6/20/13/3/3, SAP.DE 6/18/5/0/0. Tests: `AnalystTests` in `test_export_fundamentals.py` (1 Positiv-, 7 Negativfälle).

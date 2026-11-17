@@ -36,12 +36,12 @@
    ],
    "market": {
     "currency": "GBP",
-    "quote_at": "2026-11-17T14:21:30+00:00",
+    "quote_at": "2026-11-17T16:35:07+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/GSK.L/",
     "name": "GSK plc",
     "fields": {
-     "price": 18.755,
+     "price": 18.69,
      "shares_out": 4008939182
     }
    }
@@ -92,12 +92,12 @@
    ],
    "market": {
     "currency": "GBP",
-    "quote_at": "2026-11-17T14:21:32+00:00",
+    "quote_at": "2026-11-17T16:37:21+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/ULVR.L/",
     "name": "Unilever PLC",
     "fields": {
-     "price": 49.685,
+     "price": 49.555,
      "shares_out": 2153366959
     }
    }
@@ -160,12 +160,12 @@
    ],
    "market": {
     "currency": "GBP",
-    "quote_at": "2026-11-17T14:20:48+00:00",
+    "quote_at": "2026-11-17T16:46:33+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/VOD.L/",
     "name": "Vodafone Group Public Limited Company",
     "fields": {
-     "price": 1.157,
+     "price": 1.1625,
      "shares_out": 23168639889
     }
    }
@@ -204,18 +204,18 @@
    ],
    "market": {
     "currency": "GBP",
-    "quote_at": "2026-11-17T14:20:31+00:00",
+    "quote_at": "2026-11-17T16:37:42+00:00",
     "source": "Yahoo Finance",
     "source_url": "https://finance.yahoo.com/quote/WPP.L/",
     "name": "WPP plc",
     "fields": {
-     "price": 4.081,
+     "price": 4.0569999999999995,
      "shares_out": 1078525408
     }
    }
   }
  },
- "generatedAt": "2026-11-17T14:36:31.907979+00:00",
+ "generatedAt": "2026-11-17T17:35:21.472057+00:00",
  "report": {
   "targets": 4,
   "resolved": 4,

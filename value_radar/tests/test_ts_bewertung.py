@@ -41,6 +41,16 @@ class Eingabe(unittest.TestCase):
             self.assertIsNone(roic.rohbloecke('AAPL'))
         self.assertIn('roic_history_status',T.FELDER)
 
+    def test_bank_margins_from_yahoo_are_dropped(self):
+        # KeyCorp 17.11.2026: ROIC ohne Margen, Yahoo grossMargins 0.0 und operatingMargins 0.355 still eingesetzt.
+        f={'gross_margin':0.0,'operating_margin':0.355,'roe':0.11,'roa':0.011,'pb':1.1,'current_ratio':None,'net_debt_ebitda':2.0,
+           '_roic':True,'_roic_felder':['roe','roa','pb']}
+        d=T.eingabe(f)
+        self.assertIsNone(d['gross_margin'],'0.0 von Yahoo ist kein Wert der App');self.assertIsNone(d['operating_margin'])
+        self.assertEqual((d['roe'],d['roa'],d['pb']),(0.11,0.011,1.1));self.assertEqual(d['net_debt_ebitda'],2.0,'App rechnet selbst')
+        self.assertEqual(d['_pruef_eingang']['nur_roic_verworfen'],['gross_margin','operating_margin'])
+        self.assertIsNone(T.eingabe({'roe':0.2,'_roic_felder':[]})['roe'])
+
     def test_yahoo_fill_ins_without_roic_are_dropped(self):
         # IBM/Pfizer 16.11.2026: ROIC ohne FCF, Yahoo freeCashflow still eingesetzt; App laesst offen.
         d=T.eingabe({'free_cashflow':5e9,'ev_ebitda':12.0,'revenue':6e10,'_roic':True,'_roic_felder':['revenue']})

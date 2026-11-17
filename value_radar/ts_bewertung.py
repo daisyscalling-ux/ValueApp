@@ -62,7 +62,11 @@ def zyklik(diagnose):
 # Seit 17.11.2026 (Entscheidung des Nutzers): Diese Felder nimmt die App nur von ROIC. Fehlen sie dort, fuellt
 # providers.py sie still aus Yahoo (freeCashflow = Cashflow nach Zinsen, enterpriseToEbitda; ungekennzeichnet, teils
 # andere Waehrung). Der Screener verwirft solche Werte; die Kennzahl bleibt wie in der App offen.
-NUR_ROIC = ("free_cashflow", "ev_ebitda")
+# Seit 17.11.2026 (zweiter Schritt, bundle-compare v5): auch KBV, Renditen, Margen und Current Ratio. Banken hatten im
+# Screener Yahoo-Margen (Brutto 0 %, operativ 35-59 %), die App keine; die Qualitaet wich bei 7 von 50 Titeln um mehr
+# als 5 Punkte ab (KeyCorp 9,5 gegen 38,3). Alle Felder liest die App aus denselben ROIC-Feldern (roic.ts bundleLight).
+# net_debt_ebitda nicht: die App rechnet es selbst aus Nettoschulden und EBITDA.
+NUR_ROIC = ("free_cashflow", "ev_ebitda", "pb", "roe", "roa", "gross_margin", "operating_margin", "current_ratio")
 
 
 def eingabe(f, analyst=None):

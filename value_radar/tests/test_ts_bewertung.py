@@ -19,6 +19,28 @@ def zeile(ticker,fund):
 
 
 class Eingabe(unittest.TestCase):
+    def test_roic_raw_blocks_same_paths_as_the_app(self):
+        # 17.11.2026: KGV-Band, Reihen und Gewinnhistorie aus denselben ROIC-Bloecken wie worker/bundle-fetch.ts.
+        import roic
+        from unittest import mock
+        aufrufe=[]
+        def get(pfad,params=None):
+            aufrufe.append((pfad,params));return [{'pfad':pfad}]
+        with mock.patch.object(roic,'_key',lambda:'x'),mock.patch.object(roic,'_sym',lambda t:'NASDAQ:AAPL'),mock.patch.object(roic,'_get',get):
+            b=roic.rohbloecke('AAPL')
+        self.assertEqual((b['method'],b['symbol']),('roic_raw_blocks_v1','NASDAQ:AAPL'))
+        self.assertIn(('fundamental/multiples/NASDAQ:AAPL',{'period_type':'annual','limit':5}),aufrufe)
+        self.assertIn(('fundamental/enterprise-value/NASDAQ:AAPL',None),aufrufe)
+        self.assertIn(('fundamental/income-statement/NASDAQ:AAPL',{'period_type':'annual','limit':3}),aufrufe)
+        self.assertIn(('fundamental/cash-flow/NASDAQ:AAPL',{'period_type':'annual','limit':3}),aufrufe)
+        app=open(Path(__file__).resolve().parents[1]/'risk_precompute'/'worker'/'bundle-fetch.ts',encoding='utf-8').read()
+        for teil in ('fundamental/multiples/${sym}?period_type=annual&limit=5','fundamental/enterprise-value/${sym}`',
+                     'fundamental/income-statement/${sym}?period_type=annual&limit=3','fundamental/cash-flow/${sym}?period_type=annual&limit=3'):
+            self.assertIn(teil,app,'App-Pfade geaendert: ROH_PFADE anpassen')
+        with mock.patch.object(roic,'_key',lambda:None):
+            self.assertIsNone(roic.rohbloecke('AAPL'))
+        self.assertIn('roic_history_status',T.FELDER)
+
     def test_yahoo_fill_ins_without_roic_are_dropped(self):
         # IBM/Pfizer 16.11.2026: ROIC ohne FCF, Yahoo freeCashflow still eingesetzt; App laesst offen.
         d=T.eingabe({'free_cashflow':5e9,'ev_ebitda':12.0,'revenue':6e10,'_roic':True,'_roic_felder':['revenue']})

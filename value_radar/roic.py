@@ -391,6 +391,30 @@ def risk_financial(t: str):
             "ebitda": r.get("ttm_ebitda"), "fcff": r.get("ttm_free_cash_flow_firm"), "revenue": r.get("ttm_net_sales")}
 
 
+# Seit 17.11.2026 (Entscheidung des Nutzers): dieselben ROIC-Rohbloecke wie die App (worker/bundle-fetch.ts, gleiche
+# Pfade und Parameter), damit der Screener KGV-Band, EBITDA-/Umsatzreihe, Gewinnhistorie (Lebenszyklus) und
+# Ausschuettungsperiode mit denselben TS-Funktionen ableitet (historyFromRoicRaw in roic.ts). Fehlt ein Block, bleibt er
+# None; die App leitet dann nichts daraus ab (offen statt geschaetzt).
+ROH_METHODE = "roic_raw_blocks_v1"
+ROH_PFADE = {
+    "multiples": ("fundamental/multiples/{s}", {"period_type": "annual", "limit": 5}),
+    "enterprise_value": ("fundamental/enterprise-value/{s}", None),
+    "income": ("fundamental/income-statement/{s}", {"period_type": "annual", "limit": 3}),
+    "cashflow": ("fundamental/cash-flow/{s}", {"period_type": "annual", "limit": 3}),
+}
+
+
+def rohbloecke(t: str) -> dict | None:
+    """Rohantworten fuer die Historienfelder des App-Rechenwegs, mit dem ROIC-Symbol. None ohne Schluessel."""
+    if not _key():
+        return None
+    s = _sym(t)
+    out = {"method": ROH_METHODE, "symbol": s}
+    for name, (pfad, params) in ROH_PFADE.items():
+        out[name] = _get(pfad.format(s=s), params)
+    return out
+
+
 def multiples(t: str):
     return _first(_get(f"fundamental/multiples/{_sym(t)}"))
 

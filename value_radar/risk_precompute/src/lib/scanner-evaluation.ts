@@ -82,7 +82,10 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   value_inputs:(()=>{const v=(e.fund as Row).value_inputs;return v?{method:v.method,pe_forward:r2(v.pe_forward),peg:r2(v.peg),fcf_yield:typeof v.fcf_yield==='number'?Math.round(v.fcf_yield*10000)/10000:null,open:v.open,worst:v.worst}:null})(),
   eps_forward_no_profit:e.fund.eps_forward_no_profit===true,
   score_diagnostics:{value:Object.fromEntries(['ev_ebitda','pb','pe_forward','peg','fcf_yield'].map(k=>[k,{input:typeof (e.scores as Row)._inputs?.[k]==='number'?r2((e.scores as Row)._inputs[k]):null,score:(e.scores as Row).breakdown?.[k]??null,basis:(e.scores as Row).metric_source?.[k]??((e.scores as Row).metric_open?.[k]?'open':null),open:(e.scores as Row).metric_open?.[k]??null}])),
-   catalyst:((e.scores as Row)._catalyst_teile??[]).map(([n,v]:[string,number])=>[n,v])},
+   catalyst:((e.scores as Row)._catalyst_teile??[]).map(([n,v]:[string,number])=>[n,v]),
+   // Seit 17.11.2026: Teilziele des 12M-Kursziels, damit der Abgleich App gegen Screener die Ursache zeigt.
+   target:e.kz?{fundamental:r2(e.kz.ziel_fundamental),analyst:r2(e.kz.ziel_analyst),momentum:r2(e.kz.ziel_momentum),eps:r2(e.kz.eps_annahme),kgv:r1(e.kz.kgv_annahme),kgv_hist:r1(e.kz.kgv_hist)}:null},
+  roic_history_status:(e.fund as Row).roic_history_status??null,
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],
   kauf_urteil:kaufUrteil({blocked,fallback:fv.used_fallback,upside,quality:cats.quality??null,composite,valueTrap:!!e.scores.value_trap}),

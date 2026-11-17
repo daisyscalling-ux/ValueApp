@@ -8,6 +8,7 @@ import {verifiedCashConversion,cashConversionFromSupplement} from './cash-conver
 import {normalizeMarketCap,convertReportCurrency} from './valuation-data';
 import {applyForwardEstimate,applySupplement,applyAnalystRatings} from './fundamental-supplement';
 import {applyValueInputs} from './value-inputs';
+import {historyFromRoicRaw,HISTORY_FIELDS,ROIC_RAW_METHOD} from './roic';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
 
 /** One evaluation path; scoring always uses the native statement units. */
@@ -17,6 +18,15 @@ import {financialHealth,healthProfile,healthRank,type HealthDistribution} from '
 /** healthDistribution: Rohwerte der Bilanz je Profil im Universum (Rang statt absoluter Skala). */
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
  const fund={...input};
+ // Scanner (seit 17.11.2026): Historienfelder aus denselben ROIC-Rohblöcken wie bundleLight (historyFromRoicRaw), vor dem
+ // Jahresblock-Schritt wie in der Einzelanalyse. Von der Pipeline mitgelieferte Werte zählen nicht; ohne gültige Blöcke
+ // derselben Notierung bleiben KGV-Band, Reihen und Gewinnhistorie offen.
+ if('_fundamental_supplement' in fund){
+  for(const k of HISTORY_FIELDS)delete fund[k];
+  const rr=fund._roic_raw;delete fund._roic_raw;
+  if(rr&&typeof rr==='object'&&rr.method===ROIC_RAW_METHOD&&typeof rr.symbol==='string'&&rr.symbol===fund._supplement_symbol){Object.assign(fund,historyFromRoicRaw(rr));fund.roic_history_status=null;}
+  else fund.roic_history_status=!rr?'ROIC-Mehrjahresblöcke fehlen':rr.method!==ROIC_RAW_METHOD?'ROIC-Mehrjahresblöcke in unbekanntem Format':'ROIC-Mehrjahresblöcke gehören zu einer anderen Notierung';
+ }
  // Scanner: derselbe Jahresblock-Schritt wie die Einzelanalyse (bundleLight → applySupplement; Entscheidung des Nutzers
  // 16.11.2026). Der ROIC-Gewinnstichtag (income_period) entscheidet, ob der Abschluss der Ergänzungsdatei gleich alt oder neuer ist.
  if('_fundamental_supplement' in fund)applySupplement(fund,{fundamental_supplement:fund._fundamental_supplement,resolved_symbol:fund._supplement_symbol,
@@ -46,6 +56,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const nativeValue=fairValue(fund,peerArg,playbook);
  fund._fv_wert=nativeValue.fair_value;
   const scores = scoreStock(fund as never, peerArg as never, playbook);
+  // Für die Anzeige (Einzelanalyse rendert mit dem Original-Fund, nicht mit dieser Kopie).
+  Object.assign(scores,{_value_inputs:fund.value_inputs??null});
 
   // VERBESSERTE Scores: Bilanz/Momentum/Katalysator mit den reicheren Daten
   // ueberschreiben. Der scoreStock-Kern bleibt, nur diese drei werden ersetzt.

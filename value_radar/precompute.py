@@ -285,7 +285,16 @@ def score_ticker(t: str, deep: bool = True, mit_eingabe: bool = False) -> dict |
     _ts = {}
     if mit_eingabe:
         import ts_bewertung
-        _ts = {"_ts_input": ts_bewertung.eingabe(f, analyst)}
+        _ein = ts_bewertung.eingabe(f, analyst)
+        # ROIC-Rohbloecke wie in der App (KGV-Band, Reihen, Gewinnhistorie; seit 17.11.2026).
+        try:
+            import roic as _roic_roh
+            _roh = _roic_roh.rohbloecke(t) if deep else None
+        except Exception:
+            _roh = None
+        if _roh:
+            _ein["_roic_raw"] = ts_bewertung._sauber(_roh)
+        _ts = {"_ts_input": _ein}
     return {
         **_ts,
         **export_metadata(f),

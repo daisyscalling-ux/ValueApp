@@ -46,7 +46,7 @@ EXPORT_FELDER = (
     "gross_margin", "net_debt_ebitda", "fcff_margin",
     # Fuer die Einzelanalyse-Kursziele (das, was CF sonst fehlt):
     "target_mean", "eps_forward", "eps_trailing", "beta",
-    "52w_high", "52w_low", "hist_pe_median",
+    "52w_high", "52w_low", "52w_split_adjusted", "hist_pe_median",
     # Datenbasierte Zyklik (valuation.ts, dataCyclical), seit 13.11.2026
     "cyclicality",
 )

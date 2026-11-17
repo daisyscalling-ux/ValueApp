@@ -683,3 +683,19 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Regel.** `NUR_ROIC` umfasst jetzt `free_cashflow`, `ev_ebitda`, `pb`, `roe`, `roa`, `gross_margin`, `operating_margin` und `current_ratio`. Alle liest die App aus denselben ROIC-Feldern (`bundleLight`). Ohne ROIC-Herkunft verwirft der Screener den Wert, und die Kennzahl zählt wie in der App nicht. Ausnahme: `net_debt_ebitda`, das die App selbst aus Nettoschulden und EBITDA rechnet.
 
 **Tests.** `test_ts_bewertung`: Bankfall KeyCorp (Yahoo-Margen verworfen, ROIC-Renditen behalten, `net_debt_ebitda` unberührt). Alle Precompute-Testschritte OK.
+
+## 52-Wochen-Band: Aktiensplits herausgerechnet (17.11.2026)
+
+**Befund (QA-Analyse 17.11.2026).** 10 Titel hatten den Kurs auf dem 52-Wochen-Tief und ein Hoch von über 3,5× Kurs: 7 in Japan (u. a. Mitsui Kinzoku 41×, Furukawa Electric 32×, Kioxia 13,6×), dazu Netflix (Hoch 1.157,50 bei Kurs 59,85 nach dem 10:1-Split), CSG und Swissquote. Ursache: Seit K52 (13.11.) entsteht das Band aus unbereinigten ROIC-Schlusskursen, damit Dividenden den Abstand zum Kurs nicht verfälschen. Splits wurden dabei aber auch nicht bereinigt. Das verfälschte Momentum, Momentum-Teilziel und 52-Wochen-Position.
+
+**Regel.**
+- `roic.kursband` liest dieselbe Reihe mit `close` und `adj_close`. Springt das Verhältnis `adj_close/close` zwischen zwei Handelstagen um mehr als 25 % (`SPLIT_SPRUNG`), gilt das als Split (Faktor = Verhältnissprung).
+- Kurse vor dem Split werden durch den Faktor geteilt, auf die heutige Aktienbasis. Dividendenschritte (wenige Prozent) bleiben unbereinigt.
+- Erkannte Splits stehen in der Zeile als `52w_split_adjusted` (`adj_close_ratio_step_v1`, Datum, Faktor).
+
+**Grenzen.**
+- Tage ohne `adj_close` gehen unbereinigt ein; ein Split in einer solchen Lücke wird nicht erkannt.
+- Eine Sonderdividende über 25 % des Kurses würde als Split gewertet.
+- Analystenziele nach einem Split sind nicht Teil dieser Änderung: Bei den japanischen Fällen liegt das Analystenziel teils 2–3× über dem Kurs. Das prüft der nächste Abgleich.
+
+**Tests.** `tests/test_roic_52w.py`: 10:1-Split im Fenster, Dividenden kein Split, Zusammenlegung, fehlendes `adj_close`, Einlesen der jüngsten Tage. Die volle Zahl der betroffenen Titel zeigt der nächste Precompute (Feld `52w_split_adjusted`).

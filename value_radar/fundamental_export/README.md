@@ -98,3 +98,13 @@ Geprüft: Alle 41 neuen Symbole liefern bei Yahoo Kurse (HTTP 200), die alten ni
 Das ist die einzige Quelle des Analystenvotums für App und Screener. `applyAnalystRatings` in `fundamental-supplement.ts` prüft Notierung, Methode und Alter (≤ 7 Tage) erneut. Der Grund: Im Abgleich vom 17.11.2026 nahm der Screener Yahoo und die App Finnhub; `FINNHUB_API_KEY` ist im Repo ValueApp leer.
 
 Livetest 17.11.2026: AAPL 6/20/13/3/3, SAP.DE 6/18/5/0/0. Tests: `AnalystTests` in `test_export_fundamentals.py` (1 Positiv-, 7 Negativfälle).
+
+## Gewinnüberraschungen `surprises` (17.11.2026)
+
+`earnings_surprises` schreibt Yahoos `earnings_history` (die letzten Quartale) als Block `surprises` (`yahoo_earnings_history_v1`), neueste zuerst. Je Quartal stehen Quartalsende, Ist-EPS, Schätzung und `surprise_pct` = (Ist − Schätzung) / |Schätzung| × 100 darin, selbst gerechnet in Prozent. Yahoos `surprisePercent` ist ein Anteil und wird nicht übernommen.
+
+Quartale ohne Ist, ohne Schätzung oder mit Schätzung 0 entfallen. Unter 2 Quartalen ist der Block `usable=False` mit Grund.
+
+Das ist die einzige Quelle für App und Screener. `applyEarningsSurprises` prüft Notierung, Alter (Abruf ≤ 7 Tage, jüngstes Quartal ≤ 200 Tage) und Mindestzahl erneut.
+
+Livetest 17.11.2026: AAPL 4 Quartale, jüngstes 2026-09-30 mit +5,80 %; Toyota (7203.T) +15,79 %. Tests: `SurpriseTests` (Prozentrechnung, Reihenfolge, Verlustquartal, 6 unvollständige Fälle).

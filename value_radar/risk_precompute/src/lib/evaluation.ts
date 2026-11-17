@@ -6,7 +6,7 @@ import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
 import {verifiedCashConversion,cashConversionFromSupplement} from './cash-conversion';
 import {normalizeMarketCap,convertReportCurrency} from './valuation-data';
-import {applyForwardEstimate,applySupplement,applyAnalystRatings} from './fundamental-supplement';
+import {applyForwardEstimate,applySupplement,applyAnalystRatings,applyEarningsSurprises} from './fundamental-supplement';
 import {applyValueInputs} from './value-inputs';
 import {historyFromRoicRaw,HISTORY_FIELDS,ROIC_RAW_METHOD} from './roic';
 import {financialHealth,healthProfile,healthRank,type HealthDistribution} from './financial-health';
@@ -38,6 +38,7 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  if('_fundamental_supplement' in fund)applyForwardEstimate(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Scanner: Analystenempfehlungen aus derselben Ergänzungsdatei (Einzelanalyse: bereits in bundleLight).
  if('_fundamental_supplement' in fund)applyAnalystRatings(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
+ if('_fundamental_supplement' in fund)applyEarningsSurprises(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
  // Ersatz aus der Yahoo-Jahreshistorie derselben Ergänzungsdatei, nur wenn ROIC keine gültige Conversion liefert (gekennzeichnet).
  // Scanner: _fundamental_supplement.cash_history; Einzelanalyse: _fundamental_cash_history (bundleLight, Identität geprüft).

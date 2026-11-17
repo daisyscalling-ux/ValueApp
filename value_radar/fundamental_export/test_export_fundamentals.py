@@ -307,4 +307,21 @@ class AnalystTests(unittest.TestCase):
                       ([{'period':'0m','strongBuy':0,'buy':0,'hold':0,'sell':0,'strongSell':0}],'Keine Analysten')]:
    a=analyst_recommendations(rows,'X');self.assertFalse(a['usable']);self.assertIn(reason,a['reason'])
 
+class SurpriseTests(unittest.TestCase):
+ TABLE={'2025-12-31T00:00:00.000Z':{'epsActual':2.84,'epsEstimate':2.6708},'2026-09-30T00:00:00.000Z':{'epsActual':2.10,'epsEstimate':1.98483},
+        '2026-03-31T00:00:00.000Z':{'epsActual':2.01,'epsEstimate':1.94275},'2026-06-30T00:00:00.000Z':{'epsActual':2.02,'epsEstimate':1.89243}}
+ def test_percent_computed_newest_first(self):
+  from export_fundamentals import earnings_surprises,SURPRISE_METHOD
+  b=earnings_surprises(self.TABLE,'AAPL',dt.datetime(2026,11,17,tzinfo=dt.timezone.utc))
+  self.assertTrue(b['usable']);self.assertEqual(b['method'],SURPRISE_METHOD)
+  self.assertEqual([q['quarter_end'] for q in b['quarters']],['2026-09-30','2026-06-30','2026-03-31','2025-12-31'])
+  self.assertAlmostEqual(b['quarters'][0]['surprise_pct'],(2.10-1.98483)/1.98483*100,places=3,msg='Prozent, nicht Anteil')
+  neg=earnings_surprises({'2026-09-30':{'epsActual':-0.5,'epsEstimate':-0.4},'2026-06-30':{'epsActual':1,'epsEstimate':1}},'X')
+  self.assertAlmostEqual(neg['quarters'][0]['surprise_pct'],-25.0,msg='Verlust groesser als erwartet: negativ')
+ def test_incomplete_quarters_dropped_and_open_below_two(self):
+  from export_fundamentals import earnings_surprises
+  for table in [{},None,{'2026-09-30':{'epsActual':2,'epsEstimate':1.9}},{'2026-09-30':{'epsActual':2,'epsEstimate':1.9},'2026-06-30':{'epsActual':None,'epsEstimate':1}},
+                {'2026-09-30':{'epsActual':2,'epsEstimate':1.9},'2026-06-30':{'epsActual':1,'epsEstimate':0}},{'kaputt':{'epsActual':1,'epsEstimate':1},'2026-09-30':{'epsActual':2,'epsEstimate':1.9}}]:
+   b=earnings_surprises(table,'X');self.assertFalse(b['usable']);self.assertIn('Weniger als 2',b['reason'])
+
 if __name__=='__main__':unittest.main()

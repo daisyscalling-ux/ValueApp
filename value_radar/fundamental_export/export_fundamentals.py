@@ -288,6 +288,34 @@ def analyst_recommendations(frame,ys,now=None):
  else:out['usable']=True
  return out
 
+SURPRISE_METHOD='yahoo_earnings_history_v1'
+def earnings_surprises(table,ys,now=None):
+ """Gewinnueberraschungen der letzten Quartale (Yahoo earnings_history): Quartalsende, Ist-EPS, Schaetzung und daraus
+ selbst gerechnet surprise_pct = (Ist - Schaetzung) / |Schaetzung| * 100 (Prozent wie bisher bei Finnhub; Yahoos
+ surprisePercent ist ein Anteil und wird nicht uebernommen). Neueste zuerst. Quartale ohne Ist, ohne Schaetzung oder
+ mit Schaetzung 0 entfallen. usable=False mit Grund unter 2 Quartalen; die App prueft Alter und Notierung erneut."""
+ now=now or dt.datetime.now(UTC)
+ out={'method':SURPRISE_METHOD,'source':'Yahoo Finance earnings history','source_url':f'https://finance.yahoo.com/quote/{ys}/analysis/',
+      'as_of':now.isoformat(),'quarters':[],'usable':False,'reason':None}
+ rows=table if isinstance(table,dict) else {}
+ for key,r in rows.items():
+  try:end=dt.datetime.fromisoformat(str(key).replace('Z','+00:00')).date()
+  except ValueError:continue
+  a,e=number((r or {}).get('epsActual')),number((r or {}).get('epsEstimate'))
+  if a is None or e is None or e==0:continue
+  out['quarters'].append({'quarter_end':end.isoformat(),'eps_actual':a,'eps_estimate':e,'surprise_pct':round((a-e)/abs(e)*100,4)})
+ out['quarters'].sort(key=lambda q:q['quarter_end'],reverse=True)
+ if len(out['quarters'])<2:out['reason']='Weniger als 2 Quartale mit Ist und Schaetzung'
+ else:out['usable']=True
+ return out
+
+def earnings_history_table(t):
+ """earnings_history als {Quartalsende: Felder}; Ausfall ergibt {} (Block bleibt offen)."""
+ try:
+  frame=t.earnings_history
+  return {} if frame is None else json.loads(frame.to_json(orient='index',date_format='iso'))
+ except Exception:return {}
+
 def recommendation_rows(t):
  """recommendations als Liste von Zeilen; Ausfall ergibt [] (Block bleibt offen)."""
  try:
@@ -337,7 +365,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'splits':recent_splits(t),'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'surprises':earnings_surprises(earnings_history_table(t),ys),'splits':recent_splits(t),'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

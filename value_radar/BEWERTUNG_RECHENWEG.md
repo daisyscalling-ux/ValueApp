@@ -662,3 +662,16 @@ Bewertungsrelevant offen bleiben 47 Titel:
 **Tests.** `test_ts_bewertung`: zweiter Durchgang sieht Peer-Zeilen mit App-Feldern und umgerechneten Kennzahlen; übernommene Zeilen unverändert; Ausfall des zweiten Durchgangs behält den ersten. 17/17 mit gebautem Scanner; alle Precompute-Testschritte OK.
 
 **Messung.** Ein Probelauf ist offline nicht möglich, weil die Scanner-Eingänge nur im Precompute entstehen. Erwartung für den nächsten Bundle-Compare: Maßstab `peers` in beiden Wegen; Bewertung im Median nahe 0.
+
+## 12M-Kursziel: ROIC-Rohblöcke für den Screener (17.11.2026)
+
+**Befund.** Das 12M-Kursziel wich im Median um 5,4 % ab (p90 23 %, bundle-compare v5, 100 Titel). Der Screener bekam KGV-Band (`pe_hist_*`), EBITDA-Reihe, `pe_history`, `phase_history` und `capital_return_period` nie. Die App leitet sie in `bundleLight` aus ROIC-Mehrjahresblöcken ab. Python lieferte nur `hist_pe_median` (1.296 Titel), das das Kursziel nicht liest.
+
+**Regel (Entscheidung des Nutzers).**
+- `roic.rohbloecke(t)` holt `multiples` (annual, 5), `enterprise_value`, `income` (annual, 3) und `cashflow` (annual, 3), mit denselben Pfaden und Parametern wie `worker/bundle-fetch.ts`. Ein Test prüft beide Seiten.
+- `precompute.score_ticker` hängt die Blöcke als `_roic_raw` (`roic_raw_blocks_v1`, mit ROIC-Symbol) an die TS-Eingabe.
+- Der App-Code (`historyFromRoicRaw`) leitet daraus alles ab wie in der Einzelanalyse, nur bei gleicher Notierung; sonst bleibt es offen mit `roic_history_status` (neu in FELDER).
+
+**Kosten.** Bis zu 3 zusätzliche ROIC-Abrufe je Titel; die EV-Reihe ist schon im Zwischenspeicher. Der Lauf scannte am 17.11. rund 9 Titel je Minute, die ROIC-Grenze liegt bei 240 Abrufen je Minute. Mehrlaufzeit erwartet im Bereich weniger Minuten; der nächste Lauf misst es.
+
+**Tests.** `test_ts_bewertung`: Pfade und Parameter wie in der App, ohne Schlüssel `None`, FELDER. Alle Precompute-Testschritte OK. App-Kopien: 41 Dateien identisch.

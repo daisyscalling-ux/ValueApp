@@ -115,6 +115,45 @@ function waehrungAusSymbol(sym: string | null | undefined): string | null {
   return BOERSE_WAEHRUNG[boerse] ?? null;
 }
 
+const rowsOf = (r: unknown): Row[] => {
+  if (Array.isArray(r)) return r as Row[];
+  if (r && typeof r === "object") {
+    const d = (r as Row).data ?? (r as Row).results;
+    if (Array.isArray(d)) return d as Row[];
+  }
+  return [];
+};
+/** Felder, die aus ROIC-Mehrjahresblöcken abgeleitet werden (seit 17.11.2026 eine Funktion für Einzelanalyse und
+ *  Screener): EV-Reihe (3 Jahre) → reihe_umsatz/ebitda/fcf, umsatz_3j; Multiples (5 Jahre) → pe_history und KGV-Band;
+ *  GuV/Cashflow (3 Jahre) → phase_history, capital_return_period. Fehlt ein Block, entsteht das Feld nicht. */
+export const ROIC_RAW_METHOD = 'roic_raw_blocks_v1';
+export const HISTORY_FIELDS = ['reihe_umsatz','reihe_ebitda','reihe_fcf','umsatz_3j','pe_history','pe_hist_min','pe_hist_max','pe_hist_median','phase_history','capital_return_period'] as const;
+export function historyFromRoicRaw(raw: Pick<RoicRaw, 'enterprise_value'|'multiples'|'income'|'cashflow'>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  // Mehrjahresreihen fuer die Saeulendiagramme (Umsatz/EBITDA/FCF): enterprise_value liefert 5 Jahre, neuestes zuerst;
+  // die letzten 3, aeltestes zuerst fuer die Achse.
+  const evAlle = rowsOf(raw.enterprise_value);
+  if (evAlle.length >= 2) {
+    const drei = evAlle.slice(0, 3).reverse();
+    out.reihe_umsatz = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_net_sales")) }));
+    out.reihe_ebitda = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_ebitda")) }));
+    out.reihe_fcf = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_free_cash_flow_firm")) }));
+    const u0 = num(gval(drei[0], "ttm_net_sales")), uN = num(gval(drei[drei.length-1], "ttm_net_sales"));
+    if (u0 && uN && u0 > 0) out.umsatz_3j = uN / u0 - 1;
+  }
+  // KGV-Band aus 5 Jahren multiples (fuer die Bewertungshistorie und das 12M-Ziel)
+  const peHistory = peObservations(rowsOf(raw.multiples));
+  out.pe_history = peHistory;
+  const peSummary = historicalPe({pe_history: peHistory});
+  if (peHistory.length >= 3) {
+    out.pe_hist_min = Math.min(...peHistory.map(p => p.value));
+    out.pe_hist_max = Math.max(...peHistory.map(p => p.value));
+    out.pe_hist_median = peSummary.median;
+  }
+  Object.assign(out, phaseInputs(raw as RoicRaw));
+  return out;
+}
+
 export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   raw = normalizeFinancialRows(raw) as RoicRaw;
   const prof = first(raw.profile);
@@ -166,28 +205,6 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
     roic: pct(gval(rp, "return_on_inv_capital")),
   };
 
-  // Mehrjahresreihen fuer die Saeulendiagramme (Umsatz/EBITDA/FCF/Netto).
-  // enterprise_value liefert 5 Jahre, neuestes zuerst - wir nehmen die
-  // letzten 3, aeltestes zuerst fuer die Achse.
-  const evAlle = (() => {
-    const r = raw.enterprise_value;
-    if (Array.isArray(r)) return r as Row[];
-    if (r && typeof r === "object") {
-      const d = (r as Row).data ?? (r as Row).results;
-      if (Array.isArray(d)) return d as Row[];
-    }
-    return [];
-  })();
-  if (evAlle.length >= 2) {
-    const drei = evAlle.slice(0, 3).reverse();  // aeltestes zuerst
-    out.reihe_umsatz = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_net_sales")) }));
-    out.reihe_ebitda = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_ebitda")) }));
-    out.reihe_fcf = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_free_cash_flow_firm")) }));
-    // Wachstum ueber 3 Jahre (aeltestes -> neuestes)
-    const u0 = num(gval(drei[0], "ttm_net_sales")), uN = num(gval(drei[drei.length-1], "ttm_net_sales"));
-    if (u0 && uN && u0 > 0) out.umsatz_3j = uN / u0 - 1;
-  }
-
   // net_debt aus total_debt - cash (in valuation.ts gebraucht)
   const td = out.total_debt as number | null, cash = out.cash as number | null;
   if (td !== null && cash !== null) out.net_debt = td - cash;
@@ -203,25 +220,8 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
     if (mc && pr && pr > 0) out.shares_out = mc / pr;
   }
 
-  // KGV-Band aus 5 Jahren multiples (fuer die Bewertungshistorie)
-  const muAlle = (() => {
-    const r = raw.multiples;
-    if (Array.isArray(r)) return r as Row[];
-    if (r && typeof r === "object") {
-      const d = (r as Row).data ?? (r as Row).results;
-      if (Array.isArray(d)) return d as Row[];
-    }
-    return [];
-  })();
-  const peHistory = peObservations(muAlle);
-  out.pe_history = peHistory;
-  const peSummary = historicalPe({pe_history: peHistory});
-  if (peHistory.length >= 3) {
-    out.pe_hist_min = Math.min(...peHistory.map(p => p.value));
-    out.pe_hist_max = Math.max(...peHistory.map(p => p.value));
-    out.pe_hist_median = peSummary.median;
-  }
-  Object.assign(out, phaseInputs(raw));
+  // Historienfelder (Reihen, KGV-Band, Gewinnhistorie, Ausschüttungsperiode) aus denselben Rohblöcken wie der Screener.
+  Object.assign(out, historyFromRoicRaw(raw));
   out.ticker = gval(prof, 'symbol', 'ticker') ?? gval(quote, 'symbol') ?? gval(ev, 'symbol');
   out.dividend_yield = num(gval(prof, 'dividend_yield'));
 

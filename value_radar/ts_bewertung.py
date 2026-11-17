@@ -20,9 +20,10 @@ FELDER = ("scanner_method", "playbook", "lifecycle_phase", "composite", "fair_va
           "annual_supplement_applied", "supplement_annual_end", "supplement_retained_fields", "score_diagnostics",
           "peer_count", "composite_peer_metrics", "ev_ebitda_anchor", "cash_conversion", "cash_conversion_source", "cash_conversion_origin", "health_source", "health_parts", "health_raw", "health_profile",
           "market_cap", "market_cap_source", "eps_forward", "eps_forward_method", "eps_forward_source", "eps_forward_status", "eps_forward_check", "expectation_gap",
-          "report_fx", "report_fx_status", "value_inputs", "eps_forward_no_profit", "roic_history_status", "eps_basis")
+          "report_fx", "report_fx_status", "value_inputs", "eps_forward_no_profit", "roic_history_status", "eps_basis",
+          "risk_free")
 PRIVAT_ERLAUBT = {"_analyst_trend", "_cash_conversion_history", "_risk_coverage", "_pruef_eingang", "_cyclicality",
-                  "_fundamental_supplement", "_supplement_symbol"}
+                  "_fundamental_supplement", "_supplement_symbol", "_rates"}
 
 
 def _sauber(x):
@@ -127,6 +128,18 @@ def risikodaten(pfad=None):
     return out
 
 
+def zinsen(pfad=None):
+    """Rendite 10-jaehriger Staatsanleihen je Waehrung (daten/cf_rates.json, scripts/export_rates.py, seit 17.11.2026).
+    Unveraendert weitergereicht; der App-Code (valuation.ts riskFree) prueft Methode, Alter und Wertebereich."""
+    pfad = pfad or os.path.join(os.path.dirname(os.path.abspath(__file__)), "daten", "cf_rates.json")
+    try:
+        with open(pfad, encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return _sauber(d) if isinstance(d, dict) else None
+
+
 def ersatzdaten(row, ordner=None):
     """Ergaenzungsdatei je Notierung (daten/fundamentals/<listing_symbol>.json, wie die App sie laedt): Aktienzahl aus
     dem Jahresabschluss (Pruefung Kurs x Aktienzahl) und Analystenkonsens (gepruefte Prognose-EPS). Nur die noetigen
@@ -167,17 +180,20 @@ def _uebernehmen(r, neu):
         r[k] = v
 
 
-def anwenden(rows, js=None, node="node", risiko=None, ordner=None):
+def anwenden(rows, js=None, node="node", risiko=None, ordner=None, zins=None):
     """Ersetzt in frisch gescannten Zeilen (mit _ts_input) die Bewertungsfelder durch die TS-Werte."""
     js = js if js is not None else os.environ.get("SCANNER_EVAL_JS")
     if risiko is None:
         risiko = risikodaten() if any(isinstance(r.get("_ts_input"), dict) for r in rows) else {}
+    zinsdaten = zins if zins is not None else (zinsen() if any(isinstance(r.get("_ts_input"), dict) for r in rows) else None)
     offen = {}
     for r in rows:
         if isinstance(r.get("_ts_input"), dict):
             eingang = r.pop("_ts_input")
             eingang.update(_sauber(risiko.get(r.get("listing_symbol")) or {}))
             eingang.update(_sauber(ersatzdaten(r, ordner)))
+            if zinsdaten:
+                eingang["_rates"] = zinsdaten
             offen[r["ticker"]] = eingang
     # Zwei Durchgaenge (seit 17.11.2026): Die Peers waehlt der App-Code aus den Zeilen dieses Laufs. Frisch gescannte
     # Zeilen tragen die App-Felder (value_inputs, gepruefter Konsens, umgerechnete Kennzahlen) aber erst nach der

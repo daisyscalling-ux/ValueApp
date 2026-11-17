@@ -1,0 +1,41 @@
+name: rates-daily
+# Rendite 10-jaehriger Staatsanleihen je Waehrung aus amtlichen Quellen (scripts/export_rates.py, seit 17.11.2026).
+# Grundlage des risikolosen Zinses der Kapitalkosten in App und Screener (valuation.ts riskFree, Hoechstalter 7 Tage).
+on:
+  schedule:
+    - cron: '23 5 * * 1-6'
+  workflow_dispatch: {}
+concurrency:
+  group: rates-export
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  export:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Export testen
+        run: cd scripts && python -m unittest -v test_export_rates
+      - name: Zinsen exportieren
+        run: python scripts/export_rates.py
+      - name: Export speichern
+        shell: bash
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add value_radar/daten/cf_rates.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Zinsen je Waehrung aktualisiert [skip ci]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::Push von cf_rates.json nach 4 Versuchen abgelehnt"
+          exit 1

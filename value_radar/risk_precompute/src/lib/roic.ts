@@ -70,6 +70,7 @@ function yr(inc: Row | null): number | null {
 // --- Rohantworten, wie der Worker sie liefert ------------------------------
 export interface RoicRaw {
   fundamental_supplement?: unknown;
+  rates?: unknown;              // cf_rates.json (Zins je Währung), geprüft in valuation.ts riskFree
   resolved_symbol?: string;
   supplement_status?: string;
   profile?: unknown;          // company/profile/{sym}
@@ -402,6 +403,8 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   applyAnalystRatings(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
   // Gewinnüberraschungen nur aus der geprüften Ergänzungsdatei (ersetzt Finnhub, gleiche Quelle wie der Screener).
   applyEarningsSurprises(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');
+  // Zins je Währung für die Kapitalkosten; Prüfung beim Rechnen (riskFree).
+  if (raw.rates && typeof raw.rates === "object") out._rates = raw.rates;
   out.valuation_data = valuationDataCheck(out, raw);
   const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(out)) {

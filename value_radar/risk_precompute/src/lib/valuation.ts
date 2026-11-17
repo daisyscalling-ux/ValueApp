@@ -144,17 +144,43 @@ export function classifyPlaybook(fund: Fund): Playbook {
   return "quality";
 }
 
+/** Risikoloser Zins je Währung (seit 17.11.2026, Entscheidung des Nutzers nach QA): Rendite 10-jähriger Staatsanleihen
+ *  aus amtlichen Tagesquellen (Pipeline scripts/export_rates.py, cf_rates.json, Methode gov_10y_v1), beim Lesen geprüft:
+ *  Methode, Währung der Notierung (bei Anzeige in EUR die Ursprungswährung), Stichtag höchstens RATES_MAX_AGE_DAYS alt und
+ *  nicht in der Zukunft, Wert zwischen −1 % und 15 %. Die Untergrenze der Kapitalkosten ist dann relativ: Zins +
+ *  WACC_FLOOR_SPREAD (vorher fest 8,5 %, die bei 182 von 301 EUR- und 172 von 225 JPY-Titeln griff). Ohne gültigen Wert
+ *  bleibt alles wie bisher (4,2 % und Boden 8,5 %), gekennzeichnet als fallback_us_constant (CHF, DKK, PLN: keine Tagesquelle). */
+export const RATES_METHOD = "gov_10y_v1", RATES_MAX_AGE_DAYS = 7, WACC_FLOOR_SPREAD = 0.04, WACC_FLOOR_FIXED = 0.085;
+export interface RiskFree { value: number; floor: number; source: "gov_10y" | "fallback_us_constant"; currency: string; as_of: string | null; label: string; note: string | null }
+export function riskFree(fund: Fund, now = Date.now()): RiskFree {
+  const f = fund as Record<string, any>;
+  const raw = String(f._native_currency ?? fund.currency ?? "");
+  const cur = raw === "GBp" || raw === "GBX" ? "GBP" : raw;
+  const fallback = (note: string): RiskFree => ({ value: V.risk_free_rate, floor: WACC_FLOOR_FIXED, source: "fallback_us_constant", currency: cur, as_of: null,
+    label: `${(V.risk_free_rate * 100).toFixed(1)} % (US-Konstante)`, note });
+  const doc = f._rates;
+  if (!doc || doc.schema !== 1 || doc.method !== RATES_METHOD) return fallback("Zinsdatei fehlt oder unbekanntes Format");
+  const r = doc.rates?.[cur];
+  if (!r) return fallback(`Kein amtlicher 10-Jahres-Zins für ${cur || "unbekannte Währung"}` + (doc.issues?.[cur] ? `: ${doc.issues[cur]}` : ""));
+  const at = Date.parse(r.as_of);
+  if (!(typeof r.value === "number" && Number.isFinite(r.value) && r.value > -0.01 && r.value < 0.15)) return fallback(`Zins für ${cur} außerhalb des plausiblen Bereichs`);
+  if (!Number.isFinite(at) || at > now + 86400000 || now - at > RATES_MAX_AGE_DAYS * 86400000) return fallback(`Zins für ${cur} veraltet oder ungültig datiert`);
+  return { value: r.value, floor: r.value + WACC_FLOOR_SPREAD, source: "gov_10y", currency: cur, as_of: r.as_of,
+    label: `${(r.value * 100).toFixed(2)} % (${r.source}, Stand ${r.as_of})`, note: null };
+}
+
 export function wacc(beta: number | null | undefined,
   market_cap: number | null | undefined,
-  total_debt: number | null | undefined, tax_rate?: number): number {
+  total_debt: number | null | undefined, tax_rate?: number,
+  rf: Pick<RiskFree, "value" | "floor"> = { value: V.risk_free_rate, floor: WACC_FLOOR_FIXED }): number {
   const tax = tax_rate ?? V.tax_rate;
-  const re = V.risk_free_rate + (beta ?? V.default_beta) * V.equity_risk_premium;
-  const rd = V.risk_free_rate + 0.015;
+  const re = rf.value + (beta ?? V.default_beta) * V.equity_risk_premium;
+  const rd = rf.value + 0.015;
   const e = market_cap ?? 0.0;
   const d = total_debt ?? 0.0;
   const tot = e + d;
   const w = tot <= 0 ? re : (e / tot) * re + (d / tot) * rd * (1 - tax);
-  return Math.max(w, 0.085);
+  return Math.max(w, rf.floor);
 }
 
 export interface FcfBasis {
@@ -198,7 +224,7 @@ export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
   if (g1 === null || g1 === undefined) g1 = fund.earnings_growth ?? 0.06;
   const cap = preset === "inflection" ? 0.25 : 0.16;
   g1 = Math.max(Math.min(g1, cap), -0.03);
-  let r = wacc(fund.beta, fund.market_cap, fund.total_debt);
+  let r = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, riskFree(fund));
   if (r - gTerm < 0.045) r = gTerm + 0.045;
   let pv = 0.0, cf = fcf;
   for (let t = 1; t <= years; t++) {
@@ -404,7 +430,7 @@ export function epv(fund: Fund, _preset: Playbook = "quality"): number | null {
   const shares = fund.shares_out;
   if (!ebit || !shares || ebit <= 0) return null;
   const nopat = ebit * (1 - V.tax_rate);
-  const w = wacc(fund.beta, fund.market_cap, fund.total_debt);
+  const w = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, riskFree(fund));
   const evEpv = nopat / w;
   const equity = evEpv - (fund.net_debt ?? 0.0);
   return equity > 0 ? equity / shares : null;
@@ -485,6 +511,8 @@ export interface FairValueResult {
   /** Alle positiven Methodenwerte des Playbooks vor Plausibilitäts- und Medianfilter (seit 17.11.2026). Szenarien rechnen
    *  damit dieselben Kernmethoden wie der Fair Value; `methods` ist nur die Anzeige der drei nächsten. */
   method_values: Record<string, number>;
+  /** Risikoloser Zins der Kapitalkosten (riskFree). */
+  risk_free: RiskFree;
   /** Gewinnbasis der Kurs-Gewinn-Methoden (epsBasis). */
   eps_basis: { source: "reported" | "consensus"; note: string | null };
   verworfen: Record<string, { wert: number; vs_kurs: number | null; grund: string }>;
@@ -669,6 +697,7 @@ export function fairValue(
     target_12m: target12m ? Math.round(target12m * 100) / 100 : null,
     methods: Object.fromEntries(Object.entries(avail).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     eps_basis: (({ source, note }) => ({ source, note }))(epsBasis(fund)),
+    risk_free: riskFree(fund),
     method_values: dataCheck.blocked ? {} : Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     verworfen,
     confidence, reliable,
@@ -693,7 +722,7 @@ export function reverseDcfImpliedGrowth(fund: Fund, years?: number): number | nu
   if (![price,fcf,shares].every(x=>typeof x==='number'&&Number.isFinite(x)&&x>0)) return null;
   if (price == null || fcf == null || shares == null) return null;
   const targetEquity = price * shares + (fund.net_debt ?? 0.0);
-  let r = wacc(fund.beta, fund.market_cap, fund.total_debt);
+  let r = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, riskFree(fund));
   const gTerm = V.terminal_growth;
   if (r - gTerm < 0.04) r = gTerm + 0.04;
   const yrs = years ?? V.projection_years;
@@ -1037,7 +1066,7 @@ export function dcfDiagnose(fund: Fund, preset: Playbook = "quality"): DcfDiagno
   if (g1 === null || g1 === undefined) g1 = fund.earnings_growth ?? 0.06;
   const cap = preset === "inflection" ? 0.25 : 0.16;
   g1 = Math.max(Math.min(g1, cap), -0.03);
-  let r = wacc(fund.beta, fund.market_cap, fund.total_debt);
+  let r = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, riskFree(fund));
   if (r - gTerm < 0.045) r = gTerm + 0.045;
 
   const netDebt = fund.net_debt ?? 0.0;

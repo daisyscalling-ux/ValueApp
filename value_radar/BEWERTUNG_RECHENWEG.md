@@ -705,3 +705,22 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
 - Analystenziele nach einem Split sind nicht Teil dieser Änderung: Bei den japanischen Fällen liegt das Analystenziel teils 2–3× über dem Kurs. Das prüft der nächste Abgleich.
 
 **Tests.** `tests/test_roic_52w.py`: 10:1-Split im Fenster, Dividenden kein Split, Zusammenlegung, fehlendes `adj_close`, Einlesen der jüngsten Tage. Die volle Zahl der betroffenen Titel zeigt der nächste Precompute (Feld `52w_split_adjusted`).
+
+## 52-Wochen-Band nach Splits: Ersatz aus der Ergänzungsdatei (17.11.2026, zweiter Schritt)
+
+**Befund nach dem Lauf vom 17.11. (19:27 UTC).** Die Split-Erkennung aus dem vorigen Abschnitt (`roic.kursband`, Sprung von `adj_close/close`) hat bei keinem Titel gegriffen (`52w_split_adjusted` 0×); die 10 bekannten Fälle standen unverändert im Universum. Vermutlich ist `adj_close` bei ROIC für diese Titel nicht split-bereinigt oder fehlt. Ohne ROIC-Zugang in der Analyse ließ sich das nicht weiter klären.
+
+**Regel.**
+- `ts_bewertung.band_nach_split` prüft die Splits der Ergänzungsdatei derselben Notierung (Yahoo, Datum und Verhältnis) über die letzten 365 Tage. Liegt dort einer, gilt das ROIC-Band nicht.
+- Ersatz ist das split-bereinigte Yahoo-Band derselben Datei, wenn es höchstens 7 Tage alt ist und dessen Kurs auf 10 % zum Kurs der Zeile passt. Ein exakter Faktor 100 zwischen Pence und Pfund wird umgerechnet und vermerkt.
+- Sonst bleibt das Band offen (`None`). Die Kennzeichnung steht in `52w_band` (`supplement_split_band_v1`, Splits, Quelle, Stand, Einheitenfaktor, Grund).
+- Das Band ändert sich in Zeile und App-Eingang zugleich (Momentum, Momentum-Teilziel).
+
+**Messung am Universum vom 17.11. (offline mit den echten Ergänzungsdateien).**
+- 51 Titel haben einen Split oder eine Abspaltung in den letzten 365 Tagen; alle 51 bekommen das bereinigte Band.
+- Rund 30 hatten vorher ein Hoch über dem 3-Fachen des Kurses, z. B. Mitsui Kinzoku 40,8×, Booking 35,6×, Furukawa Electric 32,2×, Netflix 19,4×, KLA 16,7×, Swissquote 14,6×, Kioxia 13,6×, ServiceNow 9,6×, Carvana 6,7×.
+- Bei Abspaltungen (Honeywell, FedEx, Becton Dickinson, Comcast) ist die Änderung klein.
+
+**Grenzen.** Yahoo führt auch Abspaltungsfaktoren als Split; das Band ist dann um die Abspaltung bereinigt. Ein Split ohne Eintrag in der Ergänzungsdatei wird nicht erkannt.
+
+**Tests.** `test_ts_bewertung`: Ersatz, Split außerhalb des Fensters, ohne Ergänzungsdatei, veraltet, Kurs passt nicht, Band fehlt, Pence-Umrechnung.

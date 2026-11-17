@@ -19,6 +19,27 @@ def zeile(ticker,fund):
 
 
 class Eingabe(unittest.TestCase):
+    def test_band_after_split_from_supplement(self):
+        # Mitsui Kinzoku 17.11.2026: Split 10:1 am 29.09.2026, ROIC-Band 1.344,5-54.900, Yahoo bereinigt 1.326-5.770.
+        import datetime as _dt
+        heute=_dt.date(2026,11,17)
+        sup=lambda **o:{'_fundamental_supplement':{'splits':[{'date':'2026-09-29','ratio':10.0}],'market':{'quote_at':'2026-11-17T06:00:00+00:00',
+            'fields':{'price':1344.5,'52w_low':1326.0,'52w_high':5770.0}},**o}}
+        row={'price':1344.5,'52w_low':1344.5,'52w_high':54900.0};ein=dict(sup())
+        b=T.band_nach_split(row,ein,heute)
+        self.assertEqual((row['52w_low'],row['52w_high']),(1326.0,5770.0));self.assertEqual((ein['52w_low'],ein['52w_high']),(1326.0,5770.0))
+        self.assertEqual(b['method'],T.BAND_METHODE);self.assertIsNone(b['reason']);self.assertEqual(b['splits'][0]['ratio'],10.0)
+        alt={'price':1344.5,'52w_low':1.0,'52w_high':2.0};self.assertIsNone(T.band_nach_split(alt,{'_fundamental_supplement':{'splits':[{'date':'2025-09-29','ratio':10}]}},heute),'Split ausserhalb 365 Tagen')
+        self.assertEqual(alt['52w_high'],2.0);self.assertIsNone(T.band_nach_split(dict(alt),{},heute))
+        for markt,grund in [({'quote_at':'2026-11-01','fields':{'price':1344.5,'52w_low':1326.0,'52w_high':5770.0}},'aelter'),
+                            ({'quote_at':'2026-11-17','fields':{'price':1500.0,'52w_low':1326.0,'52w_high':5770.0}},'passt nicht'),
+                            ({'quote_at':'2026-11-17','fields':{'price':1344.5,'52w_low':None,'52w_high':5770.0}},'Kein bereinigtes')]:
+            r={'price':1344.5,'52w_low':1344.5,'52w_high':54900.0};b=T.band_nach_split(r,{'_fundamental_supplement':{'splits':[{'date':'2026-09-29','ratio':10.0}],'market':markt}},heute)
+            self.assertIn(grund,b['reason']);self.assertEqual((r['52w_low'],r['52w_high']),(None,None),'offen statt unbereinigt')
+        p={'price':2350.0,'52w_low':1788.0,'52w_high':2522.0}
+        b=T.band_nach_split(p,{'_fundamental_supplement':{'splits':[{'date':'2026-08-17','ratio':0.75}],'market':{'quote_at':'2026-11-17','fields':{'price':23.5,'52w_low':21.92,'52w_high':32.45}}}},heute)
+        self.assertEqual(b['unit_factor'],100.0);self.assertAlmostEqual(p['52w_high'],3245.0)
+
     def test_roic_raw_blocks_same_paths_as_the_app(self):
         # 17.11.2026: KGV-Band, Reihen und Gewinnhistorie aus denselben ROIC-Bloecken wie worker/bundle-fetch.ts.
         import roic

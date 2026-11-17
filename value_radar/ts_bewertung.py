@@ -165,6 +165,62 @@ def ersatzdaten(row, ordner=None):
             "_fundamental_supplement": {k: v for k, v in s.items() if k not in weg}}
 
 
+# Seit 17.11.2026 (QA-Befund, zweiter Schritt): Das 52-Wochen-Band aus unbereinigten ROIC-Kursen (K52) enthielt nach
+# Aktiensplits die Kurse vor dem Split (Mitsui Kinzoku Hoch 54.900 bei Kurs 1.344,5 nach 10:1 am 29.09.2026). Die
+# Erkennung ueber adj_close/close (roic.kursband) griff im Lauf vom 17.11. bei keinem Titel. Die Ergaenzungsdatei derselben
+# Notierung kennt die Splits (Yahoo, Datum und Verhaeltnis) und ein split-bereinigtes Band. Liegt ein Split im Fenster,
+# gilt das ROIC-Band nicht: Ersatz durch das Yahoo-Band (hoechstens 7 Tage alt, Kurs passt auf 10 %), gekennzeichnet;
+# sonst bleibt das Band offen.
+BAND_METHODE = "supplement_split_band_v1"
+
+
+def band_nach_split(row, eingang, heute=None):
+    """Prueft Splits der letzten 365 Tage; setzt 52w_high/low in Zeile und Eingang neu und gibt die Kennzeichnung zurueck
+    (None ohne Split im Fenster)."""
+    import datetime as _dt
+    heute = heute or _dt.datetime.now(_dt.timezone.utc).date()
+    s = eingang.get("_fundamental_supplement") or {}
+    splits = []
+    for sp in s.get("splits") or []:
+        try:
+            d = _dt.date.fromisoformat(str(sp.get("date"))[:10])
+            r = float(sp.get("ratio"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if 0 <= (heute - d).days <= 365 and r > 0 and abs(r - 1) > 1e-9:
+            splits.append({"date": d.isoformat(), "ratio": r})
+    if not splits:
+        return None
+    m = s.get("market") or {}
+    f = m.get("fields") or {}
+    lo, hi, px = f.get("52w_low"), f.get("52w_high"), f.get("price")
+    grund = None
+    try:
+        alter = (heute - _dt.date.fromisoformat(str(m.get("quote_at"))[:10])).days
+    except (TypeError, ValueError):
+        alter = None
+    preis = row.get("price")
+    einheit = None
+    # Londoner Notierungen: Pence (GBp) gegen Pfund. Nur der exakte Faktor 100 wird umgerechnet, gekennzeichnet.
+    if all(isinstance(x, (int, float)) and x > 0 for x in (lo, hi, px)) and isinstance(preis, (int, float)) and preis > 0:
+        for faktor in (100.0, 0.01):
+            if abs(px / preis - 1) > 0.10 and abs(px * faktor / preis - 1) <= 0.10:
+                lo, hi, px, einheit = lo * faktor, hi * faktor, px * faktor, faktor
+                break
+    if not all(isinstance(x, (int, float)) and x > 0 for x in (lo, hi, px)) or hi < lo:
+        grund = "Kein bereinigtes 52-Wochen-Band in der Ergaenzungsdatei"
+    elif alter is None or alter < 0 or alter > 7:
+        grund = "Bereinigtes 52-Wochen-Band aelter als 7 Tage"
+    elif not (isinstance(preis, (int, float)) and preis > 0 and abs(px / preis - 1) <= 0.10):
+        grund = "Kurs der Ergaenzungsdatei passt nicht zum Kurs der Zeile (Einheit oder Stand)"
+    if grund:
+        lo = hi = None
+    for z in (row, eingang):
+        z["52w_low"], z["52w_high"] = lo, hi
+    return {"method": BAND_METHODE, "splits": splits, "source": None if grund else "Yahoo Finance (Ergaenzungsdatei, split-bereinigt)",
+            "quote_at": None if grund else m.get("quote_at"), "unit_factor": None if grund else einheit, "reason": grund}
+
+
 def _gueltig(neu):
     return isinstance(neu, dict) and not neu.get("error") and neu.get("scanner_method") == METHODE
 
@@ -192,6 +248,7 @@ def anwenden(rows, js=None, node="node", risiko=None, ordner=None, zins=None):
             eingang = r.pop("_ts_input")
             eingang.update(_sauber(risiko.get(r.get("listing_symbol")) or {}))
             eingang.update(_sauber(ersatzdaten(r, ordner)))
+            r["52w_band"] = band_nach_split(r, eingang)
             if zinsdaten:
                 eingang["_rates"] = zinsdaten
             offen[r["ticker"]] = eingang

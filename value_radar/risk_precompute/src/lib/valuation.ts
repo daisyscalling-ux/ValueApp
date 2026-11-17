@@ -82,7 +82,7 @@ const SEKTOR_ALIAS: Record<string, string> = {
   "health technology": "Healthcare",
   "health services": "Healthcare",
   "energy minerals": "Energy",
-  "industrial services": "Energy",
+  // "industrial services" (FactSet) haengt von der Branche ab, siehe normalisierenSektor (seit 17.11.2026).
   "non-energy minerals": "Basic Materials",
   "process industries": "Basic Materials",
   "finance": "Financial Services",
@@ -98,9 +98,14 @@ const SEKTOR_ALIAS: Record<string, string> = {
   "miscellaneous": "Unknown",
 };
 
-export function normalisierenSektor(name: string | null | undefined): string {
+// FactSet "Industrial services" mischt Energie-Dienstleister (Oelfeld, Bohrung, Pipelines) mit Bau/Ingenieurwesen und
+// Entsorgung. Bis 17.11.2026 galt der ganze Sektor als "Energy": alle 41 Titel liefen im Zyklik-Modell (Waste Management
+// Fair Value 0,32x Kurs, Ferrovial -57 %). Jetzt "Energy" nur bei Energie-Branchen, sonst "Industrials" (wie GICS).
+export const ENERGY_SERVICE_INDUSTRY = /\b(oil\w*|gas|drilling|pipelines?)\b/i;
+export function normalisierenSektor(name: string | null | undefined, industry?: string | null): string {
   if (!name) return "";
   const s = String(name).trim();
+  if (s.toLowerCase() === "industrial services") return ENERGY_SERVICE_INDUSTRY.test(String(industry ?? "")) ? "Energy" : "Industrials";
   return SEKTOR_ALIAS[s.toLowerCase()] ?? s;
 }
 
@@ -119,12 +124,12 @@ export function dataCyclical(fund: Fund): boolean {
   if (Math.abs(mean) < 0.001) return false;
   const cv = Math.sqrt(xs.reduce((a, m) => a + (m - mean) ** 2, 0) / xs.length) / Math.abs(mean);
   if (typeof c.cv !== "number" || Math.abs(cv - c.cv) > 0.01 || !(cv > CYCLICALITY_THRESHOLD)) return false;
-  const sector = normalisierenSektor(fund.sector);
+  const sector = normalisierenSektor(fund.sector, fund.industry);
   return sector !== "Financial Services" && !DEFENSIVE_SECTORS.has(sector);
 }
 
 export function classifyPlaybook(fund: Fund): Playbook {
-  const sector = normalisierenSektor(fund.sector);
+  const sector = normalisierenSektor(fund.sector, fund.industry);
   const industry = (fund.industry ?? "").toLowerCase();
   if (dataCyclical(fund)) return "cyclical";
   if (sector === "Financial Services" && !paymentNetwork(fund)) return "financial";
@@ -299,7 +304,7 @@ function median(xs: number[]): number | null {
 
 /** Sektoranker aus einer Tabelle, mit vereinheitlichtem Namen (Audit SK1). */
 function sectorAnchor(fund: Fund, table: Record<string, number>): number {
-  const sek = normalisierenSektor(fund.sector);
+  const sek = normalisierenSektor(fund.sector, fund.industry);
   return table[sek] ?? table["_default"];
 }
 

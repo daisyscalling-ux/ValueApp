@@ -59,10 +59,22 @@ def zyklik(diagnose):
             "cyclical": bool(diagnose.get("zyklisch")), "years": diagnose.get("jahre")}
 
 
+# Seit 17.11.2026 (Entscheidung des Nutzers): Diese Felder nimmt die App nur von ROIC. Fehlen sie dort, fuellt
+# providers.py sie still aus Yahoo (freeCashflow = Cashflow nach Zinsen, enterpriseToEbitda; ungekennzeichnet, teils
+# andere Waehrung). Der Screener verwirft solche Werte; die Kennzahl bleibt wie in der App offen.
+NUR_ROIC = ("free_cashflow", "ev_ebitda")
+
+
 def eingabe(f, analyst=None):
     """Fund-Dict fuer evaluateStock: dieselben Feldnamen wie in der App; private Felder nur, wenn erlaubt."""
     d = {k: _sauber(v) for k, v in (f or {}).items() if not str(k).startswith("_") or k in PRIVAT_ERLAUBT}
     d["_pruef_eingang"] = {k: _sauber((f or {}).get(k)) for k in DIAGNOSE if (f or {}).get(k) is not None}
+    roic_felder = set((f or {}).get("_roic_felder") or [])
+    verworfen = [k for k in NUR_ROIC if d.get(k) is not None and k not in roic_felder]
+    for k in verworfen:
+        d[k] = None
+    if verworfen:
+        d["_pruef_eingang"]["nur_roic_verworfen"] = verworfen
     z = zyklik((f or {}).get("_zyklus_diagnose"))
     if z:
         d["_cyclicality"] = z

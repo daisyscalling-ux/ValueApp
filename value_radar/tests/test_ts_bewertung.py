@@ -10,6 +10,8 @@ JUMBO={'ticker':'ATHEX:BELA','name':'Jumbo S.A.','sector':'Retail trade','indust
  'book_value_ps':11.731964606615232,'roe':0.20319405304130986,'gross_margin':0.5471542365520622,'operating_margin':0.3183662683842353,
  'net_debt_ebitda':-1.06547065910024,'ev_ebitda':7.3372941572253145,'pb':2.3525471585924627,'revenue_growth':0.07220931958289278,
  'beta':0.341,'target_mean':32.9875,'analyst_count':8,'52w_high':28.7,'52w_low':21.22}
+# Herkunft wie im Lauf: FCF und EV/EBITDA von ROIC (NUR_ROIC, seit 17.11.2026)
+JUMBO['_roic']=True;JUMBO['_roic_felder']=sorted(k for k in JUMBO if not k.startswith('_'))
 
 
 def zeile(ticker,fund):
@@ -17,6 +19,15 @@ def zeile(ticker,fund):
 
 
 class Eingabe(unittest.TestCase):
+    def test_yahoo_fill_ins_without_roic_are_dropped(self):
+        # IBM/Pfizer 16.11.2026: ROIC ohne FCF, Yahoo freeCashflow still eingesetzt; App laesst offen.
+        d=T.eingabe({'free_cashflow':5e9,'ev_ebitda':12.0,'revenue':6e10,'_roic':True,'_roic_felder':['revenue']})
+        self.assertIsNone(d['free_cashflow']);self.assertIsNone(d['ev_ebitda']);self.assertEqual(d['revenue'],6e10)
+        self.assertEqual(d['_pruef_eingang']['nur_roic_verworfen'],['free_cashflow','ev_ebitda'])
+        k=T.eingabe({'free_cashflow':5e9,'ev_ebitda':12.0,'_roic_felder':['free_cashflow','ev_ebitda']})
+        self.assertEqual((k['free_cashflow'],k['ev_ebitda']),(5e9,12.0));self.assertNotIn('nur_roic_verworfen',k['_pruef_eingang'])
+        self.assertIsNone(T.eingabe({'free_cashflow':5e9})['free_cashflow'],'ohne ROIC-Herkunft kein Wert')
+
     def test_value_inputs_reach_the_universe_row(self):
         # Peers lesen Forward-KGV, PEG und FCF-Rendite aus der Zeile (value-inputs.ts, seit 17.11.2026).
         self.assertIn('value_inputs',T.FELDER);self.assertIn('eps_forward_no_profit',T.FELDER)

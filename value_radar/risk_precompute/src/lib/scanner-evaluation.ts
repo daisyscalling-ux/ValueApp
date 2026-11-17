@@ -86,6 +86,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
    // Seit 17.11.2026: Teilziele des 12M-Kursziels, damit der Abgleich App gegen Screener die Ursache zeigt.
    target:e.kz?{fundamental:r2(e.kz.ziel_fundamental),analyst:r2(e.kz.ziel_analyst),momentum:r2(e.kz.ziel_momentum),eps:r2(e.kz.eps_annahme),kgv:r1(e.kz.kgv_annahme),kgv_hist:r1(e.kz.kgv_hist)}:null},
   roic_history_status:(e.fund as Row).roic_history_status??null,
+  eps_basis:fv.eps_basis?.source??null,
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],
   kauf_urteil:kaufUrteil({blocked,fallback:fv.used_fallback,upside,quality:cats.quality??null,composite,valueTrap:!!e.scores.value_trap}),

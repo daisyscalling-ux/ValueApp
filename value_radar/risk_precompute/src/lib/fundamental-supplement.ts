@@ -205,3 +205,26 @@ export function applyAnalystRatings(f:Row,s:Row|null|undefined,now=Date.now(),sy
  f.analyst_buy=sb+b;f.analyst_hold=h;f.analyst_sell=se+ss;f.analyst_method=ANALYST_SOURCE_METHOD;f.analyst_status=null;
  f.analyst_source=`${a.source}, laufender Monat, Stand ${String(a.as_of).slice(0,10)}: ${sb+b} Kauf, ${h} Halten, ${se+ss} Verkauf`;
 }
+
+// Gewinnüberraschungen (seit 17.11.2026, Entscheidung des Nutzers): einzige Quelle für App und Screener ist Yahoos
+// earnings_history aus der geprüften Ergänzungsdatei derselben Notierung (Prozent, von der Pipeline aus Ist und
+// Schätzung gerechnet). Vorher nahm die App Finnhub, der Screener hatte keine. Genutzt im 12M-Kursziel (±2 % aufs EPS)
+// und im Katalysator. Ohne gültigen Block bleiben die Felder offen.
+export const SURPRISE_SOURCE_METHOD='yahoo_earnings_history_v1', SURPRISE_MAX_AGE_DAYS=7, SURPRISE_MAX_QUARTER_AGE_DAYS=200, SURPRISE_MIN_QUARTERS=2;
+export function applyEarningsSurprises(f:Row,s:Row|null|undefined,now=Date.now(),symbol?:string|null):void{
+ const open=(reason:string)=>{delete f.surprise_median;delete f.surprise_beat_quote;delete f.surprise_n;f.surprise_source=null;f.surprise_method=null;f.surprise_status=reason;};
+ const b=s?.surprises;
+ if(!s||s.schema!==1||(symbol!=null&&s.symbol!==symbol))return open('Keine Gewinnüberraschungen für diese Notierung');
+ if(!b||b.method!==SURPRISE_SOURCE_METHOD)return open('Gewinnüberraschungen fehlen (noch nicht im geprüften Format)');
+ if(!b.usable)return open('Gewinnüberraschungen unvollständig: '+(b.reason??'ohne Grund'));
+ if(!age(b.as_of,now,SURPRISE_MAX_AGE_DAYS*DAY))return open('Gewinnüberraschungen veraltet oder ungültig datiert');
+ const q=(Array.isArray(b.quarters)?b.quarters:[]).filter((x:Row)=>x&&typeof x.quarter_end==='string'&&Number.isFinite(Date.parse(x.quarter_end))&&finite(x.surprise_pct))
+  .sort((x:Row,y:Row)=>String(y.quarter_end).localeCompare(String(x.quarter_end))).slice(0,8);
+ if(q.length<SURPRISE_MIN_QUARTERS)return open(`Weniger als ${SURPRISE_MIN_QUARTERS} Quartale mit Überraschung`);
+ const newest=Date.parse(q[0].quarter_end);
+ if(newest>now||now-newest>SURPRISE_MAX_QUARTER_AGE_DAYS*DAY)return open('Jüngstes Quartal zu alt oder in der Zukunft');
+ const sp:number[]=q.map((x:Row)=>x.surprise_pct as number),sorted=[...sp].sort((a,c)=>a-c);
+ f.surprise_median=sorted[Math.floor(sorted.length/2)];f.surprise_beat_quote=sp.filter((x:number)=>x>0).length/sp.length;f.surprise_n=sp.length;
+ f.surprise_method=SURPRISE_SOURCE_METHOD;f.surprise_status=null;
+ f.surprise_source=`${b.source}, ${sp.length} Quartale bis ${q[0].quarter_end}, Stand ${String(b.as_of).slice(0,10)}`;
+}

@@ -1,5 +1,6 @@
 import { valuationDataCheck } from './valuation-data';
 import { PEER_PERCENTILE_MIN } from './peer-valuation';
+import { FORWARD_METHOD } from './fundamental-supplement';
 /**
  * valuation.ts - Portierung des Bewertungskerns aus valuation.py
  * Methode: Python lesen, 1:1 uebersetzen, gegen Python-Ausgabe testen.
@@ -308,8 +309,21 @@ function sectorAnchor(fund: Fund, table: Record<string, number>): number {
   return table[sek] ?? table["_default"];
 }
 
+/** Gewinnbasis der Kurs-Gewinn-Methoden (seit 17.11.2026, Entscheidung des Nutzers nach QA): Liegt das berichtete EPS
+ *  mehr als ONE_OFF_EPS_FACTOR über dem geprüften 12M-Konsens, gilt ein Sondereffekt als vermutet (Comcast 5,39 berichtet,
+ *  3,52 Konsens; Fair Value 2,4x Kurs) und die Methoden rechnen mit dem kleineren Konsens-EPS. Ohne geprüften Konsens bleibt
+ *  das berichtete EPS. Gekennzeichnet über epsBasis().source. */
+export const ONE_OFF_EPS_FACTOR = 1.4;
+export function epsBasis(fund: Fund): { eps: number | null; source: "reported" | "consensus"; note: string | null } {
+  const t = fund.eps_trailing ?? null, f = fund.eps_forward ?? null;
+  const verified = (fund as Record<string, unknown>).eps_forward_method === FORWARD_METHOD;
+  if (t !== null && t > 0 && verified && f !== null && f > 0 && t > ONE_OFF_EPS_FACTOR * f) {
+    return { eps: f, source: "consensus", note: `Sondereffekt vermutet: berichtetes EPS ${t.toFixed(2)} liegt mehr als ${ONE_OFF_EPS_FACTOR.toLocaleString("de-DE")}-fach über dem geprüften Konsens ${f.toFixed(2)}; Kurs-Gewinn-Methoden rechnen mit dem Konsens.` };
+  }
+  return { eps: t, source: "reported", note: null };
+}
 function epsIst(fund: Fund): number | null {
-  return fund.eps_trailing ?? null;   // Audit V1: laufendes Ergebnis, nicht Prognose
+  return epsBasis(fund).eps;   // Audit V1: laufendes Ergebnis, nicht Prognose (außer Sondereffekt, siehe epsBasis)
 }
 
 function ebitEstimate(fund: Fund & { ps?: number | null }): number | null {
@@ -471,6 +485,8 @@ export interface FairValueResult {
   /** Alle positiven Methodenwerte des Playbooks vor Plausibilitäts- und Medianfilter (seit 17.11.2026). Szenarien rechnen
    *  damit dieselben Kernmethoden wie der Fair Value; `methods` ist nur die Anzeige der drei nächsten. */
   method_values: Record<string, number>;
+  /** Gewinnbasis der Kurs-Gewinn-Methoden (epsBasis). */
+  eps_basis: { source: "reported" | "consensus"; note: string | null };
   verworfen: Record<string, { wert: number; vs_kurs: number | null; grund: string }>;
   confidence: "hoch" | "mittel" | "niedrig";
   reliable: boolean;
@@ -640,7 +656,9 @@ export function fairValue(
   if (capped && confidence === "hoch") confidence = "mittel";
   if (dataCheck.blocked) { confidence = "niedrig"; reliable = false; }
 
-  if (['startup', 'hypergrowth', 'decline'].includes(phase.id)) {
+  // Phasenregel nicht im Finanzmodell (seit 17.11.2026, Entscheidung des Nutzers): Bei Banken und Versicherern spiegelt
+  // "Umsatz" Zins- und Bilanzeffekte (KeyCorp +66 %); das Finanzmodell nutzt die Phase sonst nirgends (phaseWeights).
+  if (preset !== 'financial' && ['startup', 'hypergrowth', 'decline'].includes(phase.id)) {
     reliable = false; confidence = 'niedrig';
   }
   return {
@@ -650,6 +668,7 @@ export function fairValue(
     entry_price: entry ? Math.round(entry * 100) / 100 : null,
     target_12m: target12m ? Math.round(target12m * 100) / 100 : null,
     methods: Object.fromEntries(Object.entries(avail).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    eps_basis: (({ source, note }) => ({ source, note }))(epsBasis(fund)),
     method_values: dataCheck.blocked ? {} : Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     verworfen,
     confidence, reliable,
@@ -737,7 +756,7 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
   if ((fund.valuation_data ?? valuationDataCheck(fund)).blocked) return null;
   const kurs = fund.price;
   if (!kurs || kurs <= 0) return null;
-  const epsTtm = fund.eps_trailing;
+  const basis = epsBasis(fund), epsTtm = basis.eps;
   const epsFwd = fund.eps_forward;
   const herleitung: string[] = [];
 
@@ -842,6 +861,7 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
     herleitung.push(`Marktlage: Kurs bei ${(pos * 100).toFixed(0)}% im 52W-Band (${lo.toFixed(0)}-${hi.toFixed(0)})`);
   }
 
+  if (basis.note) herleitung.push(basis.note);
   // MISCHUNG
   const schaetzungen: { wert: number; gewicht: number }[] = [];
   if (zielFund) schaetzungen.push({ wert: zielFund, gewicht: 0.50 });

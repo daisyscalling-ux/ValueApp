@@ -632,3 +632,16 @@ Bewertungsrelevant offen bleiben 47 Titel:
 - Fehler beim Lesen in `bundleLight`: Antwort gefüllt, Votum trotzdem leer.
 
 **Prüfung.** Build mit esbuild; Lauf mit nachgebildeten Antworten (Finnhub 429) ergibt `status: {"429": 2}` für 2 Titel.
+
+## Screener: FCF und EV/EBITDA nur von ROIC (17.11.2026)
+
+**Befund (bundle-compare v5, 50 Titel).**
+- Bei 10 Titeln fehlte im App-Weg der freie Cashflow, darunter IBM, Pfizer, Tesco, Baxter, Weyerhaeuser, Stellantis und Rocket Lab; im Screener war er vorhanden. Ebenso EV/EBITDA bei 5 Titeln.
+- Ursache: `providers.py` beginnt mit den Yahoo-Werten und überschreibt sie mit ROIC. Fehlt ein Feld bei ROIC, bleibt still der Yahoo-Wert stehen (`freeCashflow` = Cashflow nach Zinsen, `enterpriseToEbitda`), ohne Kennzeichnung und teils in anderer Währung.
+- Die App nimmt beide Felder nur von ROIC.
+
+**Regel (Entscheidung des Nutzers).** `ts_bewertung.eingabe` verwirft `free_cashflow` und `ev_ebitda` (`NUR_ROIC`), wenn sie nicht in `_roic_felder` stehen. Die Kennzahl bleibt dann wie in der App offen (FCF-Rendite „Freier Cashflow fehlt“, EV/EBITDA „Keine Daten“). Verworfene Felder stehen in `_pruef_eingang.nur_roic_verworfen`.
+
+**Wirkung.** Etwas weniger Abdeckung im Screener (in der Stichprobe 10 FCF- und 5 EV/EBITDA-Werte). Dafür rechnen beide Wege dieselbe Definition. Die volle Zahl zeigt der nächste Precompute.
+
+**Tests.** `test_ts_bewertung`: verworfen ohne ROIC-Herkunft, behalten mit ROIC-Herkunft, ohne Herkunftsliste verworfen; das Jumbo-Beispiel trägt die ROIC-Herkunft. 15/15 mit gebautem Scanner.

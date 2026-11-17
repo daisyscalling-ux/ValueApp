@@ -113,7 +113,10 @@ jobs:
         working-directory: value_radar
         env:
           SCANNER_EVAL_JS: ${{ github.workspace }}/value_radar/risk_precompute/.build/scanner-evaluate.mjs
-          EXPORT_BUDGET_MIN: "160"
+          # 200 min seit 17.11.2026: Mit den ROIC-Rohbloecken (bis 3 Abrufe mehr je Titel) und schwankender Last brauchte
+          # der Lauf 7,7 bis 12,5 min je 100 Titel; bei 160 min blieben am 17.11. 156 von 1.341 Titeln aus dem Vorlauf
+          # stehen. 1.344 x 12,5 / 100 = 168 min; 200 min laesst rund 20 % Puffer und bleibt unter timeout-minutes 260.
+          EXPORT_BUDGET_MIN: "200"
           NETZ_TIMEOUT_S: "20"
           ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}

@@ -689,3 +689,19 @@ Bewertungsrelevant offen bleiben 47 Titel:
 `sektor._SEKTOR_ALIAS` (und die App-Kopie in `valuation.ts`) machte alle 41 Titel von FactSet „Industrial services“ zu „Energy“. Damit liefen sie im Zyklik-Modell und mit Energie-Multiples; Waste Management bekam z. B. einen Fair Value von 0,32× Kurs. Neu gibt `normalisieren(sector, industry)` nur bei Energie-Branchen (oil…, gas, drilling, pipeline) „Energy“ zurück, sonst „Industrials“. Alle Aufrufer geben die Branche mit.
 
 Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (20 → Qualität, 2 → Wachstumswende), 19 bleiben zyklisch (7 Energie, 12 über die Margenschwankung). Tests: `tests/test_sektor_industrial_services.py`, im Workflow `precompute-3tage`; das Muster ist mit der App identisch, per Test geprüft.
+
+## 52-Wochen-Band: Aktiensplits herausgerechnet (17.11.2026)
+
+**Befund (QA-Analyse 17.11.2026).** 10 Titel hatten den Kurs auf dem 52-Wochen-Tief und ein Hoch von über 3,5× Kurs: 7 in Japan (u. a. Mitsui Kinzoku 41×, Furukawa Electric 32×, Kioxia 13,6×), dazu Netflix (Hoch 1.157,50 bei Kurs 59,85 nach dem 10:1-Split), CSG und Swissquote. Ursache: Seit K52 (13.11.) entsteht das Band aus unbereinigten ROIC-Schlusskursen, damit Dividenden den Abstand zum Kurs nicht verfälschen. Splits wurden dabei aber auch nicht bereinigt. Das verfälschte Momentum, Momentum-Teilziel und 52-Wochen-Position.
+
+**Regel.**
+- `roic.kursband` liest dieselbe Reihe mit `close` und `adj_close`. Springt das Verhältnis `adj_close/close` zwischen zwei Handelstagen um mehr als 25 % (`SPLIT_SPRUNG`), gilt das als Split (Faktor = Verhältnissprung).
+- Kurse vor dem Split werden durch den Faktor geteilt, auf die heutige Aktienbasis. Dividendenschritte (wenige Prozent) bleiben unbereinigt.
+- Erkannte Splits stehen in der Zeile als `52w_split_adjusted` (`adj_close_ratio_step_v1`, Datum, Faktor).
+
+**Grenzen.**
+- Tage ohne `adj_close` gehen unbereinigt ein; ein Split in einer solchen Lücke wird nicht erkannt.
+- Eine Sonderdividende über 25 % des Kurses würde als Split gewertet.
+- Analystenziele nach einem Split sind nicht Teil dieser Änderung: Bei den japanischen Fällen liegt das Analystenziel teils 2–3× über dem Kurs. Das prüft der nächste Abgleich.
+
+**Tests.** `tests/test_roic_52w.py`: 10:1-Split im Fenster, Dividenden kein Split, Zusammenlegung, fehlendes `adj_close`, Einlesen der jüngsten Tage. Die volle Zahl der betroffenen Titel zeigt der nächste Precompute (Feld `52w_split_adjusted`).

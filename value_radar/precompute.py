@@ -331,6 +331,7 @@ def score_ticker(t: str, deep: bool = True, mit_eingabe: bool = False) -> dict |
         "beta": f.get("beta"),
         "52w_high": f.get("52w_high"),
         "52w_low": f.get("52w_low"),
+        "52w_split_adjusted": f.get("52w_split_adjusted"),
         "hist_pe_median": f.get("hist_pe_median"),
         "currency": f.get("currency"),
         "industry": f.get("industry"),

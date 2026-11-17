@@ -813,7 +813,8 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             try:
                 # Unbereinigte Schlusskurse des juengsten Handelsjahres; das Band muss zum
                 # aktuellen (unbereinigten) Kurs passen. Juengster Kurs hoechstens 10 Tage alt.
-                _reihe = _roic.schlusskurse(ticker, tage=260, adjustiert=False)   # ~1 Handelsjahr
+                # Seit 17.11.2026 um Aktiensplits bereinigt (roic.kursband); Splits im Fenster werden gekennzeichnet.
+                _reihe, _splits = _roic.kursband(ticker, tage=260)   # ~1 Handelsjahr
                 _kurse = [k for _, k in _reihe if k]
                 if len(_kurse) >= 30 and _band_aktuell(_reihe):
                     _r_hi, _r_lo = max(_kurse), min(_kurse)
@@ -824,6 +825,8 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
                         _r_lo *= _faktor
                     merged["52w_high"] = _r_hi
                     merged["52w_low"] = _r_lo
+                    merged["52w_split_adjusted"] = ({"method": _roic.SPLIT_METHODE, "splits": _splits}
+                                                    if _splits else None)
                     if "52w_high" not in _roic_felder:
                         _roic_felder.append("52w_high")
                         _roic_felder.append("52w_low")

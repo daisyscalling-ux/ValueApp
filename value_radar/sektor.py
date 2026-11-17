@@ -39,6 +39,7 @@ from __future__ import annotations
 __version__ = "2026.09.27"
 
 from datetime import datetime
+import re as _re_sektor
 from typing import Dict, List, Optional, Sequence
 
 #: Kennzahlen, fuer die ein Sektormedian gebildet wird. Je Kennzahl ein
@@ -96,7 +97,7 @@ _SEKTOR_ALIAS = {
     "health technology": "Healthcare",
     "health services": "Healthcare",
     "energy minerals": "Energy",
-    "industrial services": "Energy",
+    # "industrial services" haengt von der Branche ab, siehe normalisieren (seit 17.11.2026).
     "non-energy minerals": "Basic Materials",
     "process industries": "Basic Materials",
     "finance": "Financial Services",
@@ -113,7 +114,12 @@ _SEKTOR_ALIAS = {
 }
 
 
-def normalisieren(name: Optional[str]) -> Optional[str]:
+#: FactSet "Industrial services" mischt Energie-Dienstleister mit Bau/Ingenieurwesen und Entsorgung (seit 17.11.2026,
+#: identisch mit valuation.ts ENERGY_SERVICE_INDUSTRY).
+_ENERGIE_DIENSTE = _re_sektor.compile(r"\b(oil\w*|gas|drilling|pipelines?)\b", _re_sektor.I)
+
+
+def normalisieren(name: Optional[str], industry: Optional[str] = None) -> Optional[str]:
     """Sektorname auf EIN System bringen.
 
     Ohne diesen Schritt wird derselbe Sektor unter zwei Namen gefuehrt: Die
@@ -122,6 +128,8 @@ def normalisieren(name: Optional[str]) -> Optional[str]:
     """
     if not name:
         return None
+    if str(name).strip().lower() == "industrial services":
+        return "Energy" if _ENERGIE_DIENSTE.search(str(industry or "")) else "Industrials"
     return _SEKTOR_ALIAS.get(str(name).strip().lower(), str(name).strip())
 
 
@@ -201,7 +209,7 @@ def segment(fund: dict) -> Optional[str]:
         for name, muster in _SEGMENT_MUSTER:
             if any(m in ind for m in muster):
                 return name
-    return normalisieren(fund.get("sector"))
+    return normalisieren(fund.get("sector"), fund.get("industry"))
 
 
 def unbekannte_branchen(funds: Sequence[dict], limit: int = 30) -> list:
@@ -227,7 +235,7 @@ def unbekannte_branchen(funds: Sequence[dict], limit: int = 30) -> list:
         zaehler[roh] = zaehler.get(roh, 0) + 1
     out = [(b, n, normalisieren(
         next((f.get("sector") for f in funds
-              if str(f.get("industry")) == b), None)))
+              if str(f.get("industry")) == b), None), b))
         for b, n in zaehler.items()]
     return sorted(out, key=lambda x: -x[1])[:limit]
 
@@ -273,7 +281,7 @@ def messen(funds: Sequence[dict], ebene: str = "sector") -> dict:
         if ebene == "segment":
             gruppe = segment(f)
         elif ebene == "sector":
-            gruppe = normalisieren(f.get("sector"))
+            gruppe = normalisieren(f.get("sector"), f.get("industry"))
         else:
             gruppe = f.get(ebene)
         if not gruppe or gruppe == "Unknown":

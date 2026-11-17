@@ -82,7 +82,7 @@ const SEKTOR_ALIAS: Record<string, string> = {
   "health technology": "Healthcare",
   "health services": "Healthcare",
   "energy minerals": "Energy",
-  "industrial services": "Energy",
+  // "industrial services" (FactSet) haengt von der Branche ab, siehe normalisierenSektor (seit 17.11.2026).
   "non-energy minerals": "Basic Materials",
   "process industries": "Basic Materials",
   "finance": "Financial Services",
@@ -98,9 +98,14 @@ const SEKTOR_ALIAS: Record<string, string> = {
   "miscellaneous": "Unknown",
 };
 
-export function normalisierenSektor(name: string | null | undefined): string {
+// FactSet "Industrial services" mischt Energie-Dienstleister (Oelfeld, Bohrung, Pipelines) mit Bau/Ingenieurwesen und
+// Entsorgung. Bis 17.11.2026 galt der ganze Sektor als "Energy": alle 41 Titel liefen im Zyklik-Modell (Waste Management
+// Fair Value 0,32x Kurs, Ferrovial -57 %). Jetzt "Energy" nur bei Energie-Branchen, sonst "Industrials" (wie GICS).
+export const ENERGY_SERVICE_INDUSTRY = /\b(oil\w*|gas|drilling|pipelines?)\b/i;
+export function normalisierenSektor(name: string | null | undefined, industry?: string | null): string {
   if (!name) return "";
   const s = String(name).trim();
+  if (s.toLowerCase() === "industrial services") return ENERGY_SERVICE_INDUSTRY.test(String(industry ?? "")) ? "Energy" : "Industrials";
   return SEKTOR_ALIAS[s.toLowerCase()] ?? s;
 }
 
@@ -119,12 +124,12 @@ export function dataCyclical(fund: Fund): boolean {
   if (Math.abs(mean) < 0.001) return false;
   const cv = Math.sqrt(xs.reduce((a, m) => a + (m - mean) ** 2, 0) / xs.length) / Math.abs(mean);
   if (typeof c.cv !== "number" || Math.abs(cv - c.cv) > 0.01 || !(cv > CYCLICALITY_THRESHOLD)) return false;
-  const sector = normalisierenSektor(fund.sector);
+  const sector = normalisierenSektor(fund.sector, fund.industry);
   return sector !== "Financial Services" && !DEFENSIVE_SECTORS.has(sector);
 }
 
 export function classifyPlaybook(fund: Fund): Playbook {
-  const sector = normalisierenSektor(fund.sector);
+  const sector = normalisierenSektor(fund.sector, fund.industry);
   const industry = (fund.industry ?? "").toLowerCase();
   if (dataCyclical(fund)) return "cyclical";
   if (sector === "Financial Services" && !paymentNetwork(fund)) return "financial";
@@ -299,7 +304,7 @@ function median(xs: number[]): number | null {
 
 /** Sektoranker aus einer Tabelle, mit vereinheitlichtem Namen (Audit SK1). */
 function sectorAnchor(fund: Fund, table: Record<string, number>): number {
-  const sek = normalisierenSektor(fund.sector);
+  const sek = normalisierenSektor(fund.sector, fund.industry);
   return table[sek] ?? table["_default"];
 }
 
@@ -463,9 +468,6 @@ export interface FairValueResult {
   entry_price: number | null;
   target_12m: number | null;
   methods: Record<string, number>;
-  /** Alle positiven Methodenwerte des Playbooks vor Plausibilitäts- und Medianfilter (seit 17.11.2026). Szenarien rechnen
-   *  damit dieselben Kernmethoden wie der Fair Value; `methods` ist nur die Anzeige der drei nächsten. */
-  method_values: Record<string, number>;
   verworfen: Record<string, { wert: number; vs_kurs: number | null; grund: string }>;
   confidence: "hoch" | "mittel" | "niedrig";
   reliable: boolean;
@@ -645,7 +647,6 @@ export function fairValue(
     entry_price: entry ? Math.round(entry * 100) / 100 : null,
     target_12m: target12m ? Math.round(target12m * 100) / 100 : null,
     methods: Object.fromEntries(Object.entries(avail).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-    method_values: dataCheck.blocked ? {} : Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     verworfen,
     confidence, reliable,
     spread_pct: spread,
@@ -1115,24 +1116,16 @@ export function szenarioMatrix(
 
   const phase = analysePhase(fund);
   const weights = phaseWeights(fund, preset, WEIGHTS[preset], phase);
-  // Seit 17.11.2026: je Szenario dieselben Kernmethoden wie im Base-Fair-Value (core_methods ohne Rückfall), Werte aus
-  // method_values. Vorher kamen sie aus `methods` (Anzeige der drei nächsten Methoden); bei vier Kernmethoden fehlte eine
-  // in allen Szenarien, und das Bewertungsrisiko blieb offen (META, MSFT).
-  const runs: Partial<Record<string, FairValueResult>> = {};
   for (const sz of SZENARIEN) {
     const fSz = szenarioFund(fund, sz, gDelta, opDelta, bewDelta, betaDelta);
     let v: FairValueResult | null = null;
     try { v = fairValue(fSz, peerFunds, preset, phase); } catch { v = null; }
     if (!v) { blend[sz] = null; upside[sz] = null; continue; }
-    runs[sz] = v;
     blend[sz] = v.fair_value;
     upside[sz] = v.upside_pct;
-  }
-  const kern = Object.keys(runs.base?.core_methods ?? {}).filter((k) => k !== "fallback");
-  for (const sz of SZENARIEN) {
-    const v = runs[sz];
-    if (!v) continue;
-    for (const k of kern) (methoden[k] ??= {})[sz] = v.method_values?.[k] ?? null;
+    for (const [k, val] of Object.entries(v.methods)) {
+      (methoden[k] ??= {})[sz] = val;
+    }
   }
 
   // Methoden ohne Base-Wert entfernen

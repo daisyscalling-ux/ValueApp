@@ -141,7 +141,7 @@
   {
    "app": "src/lib/valuation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/valuation.ts",
-   "sha256": "8233fa0091367acf55ec02535254f53d4a8ae28f9e1aa4c3116462275493897c"
+   "sha256": "bf1413af7c1088d6c943d3d96bf5ccccea9c2a8991b204b4edbffc2267f2277c"
   },
   {
    "app": "src/risk_capital_requirement_view.ts",

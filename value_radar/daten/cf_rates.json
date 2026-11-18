@@ -1,56 +1,56 @@
 {
  "schema": 1,
  "method": "gov_10y_v1",
- "generated_at": "2026-11-17T19:26:57.218254+00:00",
+ "generated_at": "2026-11-18T14:21:03.905000+00:00",
  "max_age_days": 7,
  "rates": {
   "USD": {
-   "value": 0.0512,
-   "as_of": "2026-11-16",
+   "value": 0.051,
+   "as_of": "2026-11-17",
    "source": "U.S. Treasury, Daily Treasury Par Yield Curve, 10 Yr",
    "source_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&field_tdr_date_value=2026",
-   "sha256": "e0a34fc89581322490fc56e2e572e15f3e920ca0d6d37dff148c4f3b4a9e6d82",
-   "retrieved_at": "2026-11-17T19:26:57.218254+00:00"
+   "sha256": "d4d116eec0d400cffd49908f8a28f27977d3bb0e04b36d0119cb36d3c8cc567a",
+   "retrieved_at": "2026-11-18T14:21:03.905000+00:00"
   },
   "EUR": {
-   "value": 0.034224,
-   "as_of": "2026-11-16",
+   "value": 0.034246,
+   "as_of": "2026-11-17",
    "source": "EZB, Zinsstrukturkurve Euroraum AAA, 10 Jahre (YC)",
    "source_url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y?lastNObservations=3&format=csvdata",
-   "sha256": "75b17deae9740330b224ddbb142b40e91ad46ad24410636dbd1ad259fe22b332",
-   "retrieved_at": "2026-11-17T19:26:57.218254+00:00"
+   "sha256": "da12eda77ee02c3758099bb0ff6492944c605789c1dc994d90b6436058800c52",
+   "retrieved_at": "2026-11-18T14:21:03.905000+00:00"
   },
   "JPY": {
-   "value": 0.02927,
-   "as_of": "2026-11-16",
+   "value": 0.02925,
+   "as_of": "2026-11-17",
    "source": "Japanisches Finanzministerium, JGB Interest Rate, 10Y",
    "source_url": "https://www.mof.go.jp/english/policy/jgbs/reference/interest_rate/jgbcme.csv",
-   "sha256": "8c3e07948d437f332b3cf1915c152be90f8e7c0d68ff5bc27374808748c611a7",
-   "retrieved_at": "2026-11-17T19:26:57.218254+00:00"
+   "sha256": "29a71038a12ae13f744a70211b603b9c22bbc142ea027f8608526e3f2d6d7eab",
+   "retrieved_at": "2026-11-18T14:21:03.905000+00:00"
   },
   "GBP": {
-   "value": 0.053224,
-   "as_of": "2026-11-13",
+   "value": 0.053337,
+   "as_of": "2026-11-16",
    "source": "Bank of England, IUDMNZC (10 Jahre nominal, Nullkupon)",
-   "source_url": "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=28/Oct/2026&Dateto=now&SeriesCodes=IUDMNZC&CSVF=TN&UsingCodes=Y",
-   "sha256": "6d6b75e0d431565ae985d22cc8a0110987cf4729d8f149b9681bfe485fbd5a2b",
-   "retrieved_at": "2026-11-17T19:26:57.218254+00:00"
+   "source_url": "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=29/Oct/2026&Dateto=now&SeriesCodes=IUDMNZC&CSVF=TN&UsingCodes=Y",
+   "sha256": "9122f133c9168d19f0d7e08d227542ad9a06251c34845cfea23e80bb66ef0057",
+   "retrieved_at": "2026-11-18T14:21:03.905000+00:00"
   },
   "SEK": {
-   "value": 0.0311,
-   "as_of": "2026-11-16",
+   "value": 0.03107,
+   "as_of": "2026-11-17",
    "source": "Sveriges Riksbank, SEGVB10YC (Staatsanleihe 10 Jahre)",
    "source_url": "https://api.riksbank.se/swea/v1/Observations/Latest/SEGVB10YC",
-   "sha256": "f2d053c7cba24b2eb93a2fd57526fa21557fe0fb148540c8a398630c03bb01e4",
-   "retrieved_at": "2026-11-17T19:26:57.218254+00:00"
+   "sha256": "3110aedaa7bdd8f207acbbd947901a8222317ffd666d5c190d7f2a9b6a836a75",
+   "retrieved_at": "2026-11-18T14:21:03.905000+00:00"
   },
   "NOK": {
-   "value": 0.04385,
-   "as_of": "2026-11-16",
+   "value": 0.04398,
+   "as_of": "2026-11-17",
    "source": "Norges Bank, GOVT_GENERIC_RATES 10Y (Staatsanleihe)",
    "source_url": "https://data.norges-bank.no/api/data/GOVT_GENERIC_RATES/B.10Y.GBON?format=csv&lastNObservations=3&locale=en",
-   "sha256": "4bff20454686a3a08389a6691b1539e95720ae73de8e144ddd24a70227a01518",
-   "retrieved_at": "2026-11-17T19:26:57.218254+00:00"
+   "sha256": "374fb206f9893739d208be9b4c3972866071502fcc7c787ba40fd99d716528e2",
+   "retrieved_at": "2026-11-18T14:21:03.905000+00:00"
   }
  },
  "issues": {

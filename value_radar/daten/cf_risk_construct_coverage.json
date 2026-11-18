@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-17T22:47:18.583483+00:00",
+ "generatedAt": "2026-11-18T11:25:35.474505+00:00",
  "listings": 1341,
  "overallAverageWeight": {
   "filled": 82.0,
@@ -81,11 +81,11 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 24.87,
-     "missing": 0.13,
+     "filled": 24.86,
+     "missing": 0.14,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.995
+     "filledShareOfMeasurable": 0.994
     },
     "Umfeldstress": {
      "weight": 15,
@@ -246,6 +246,19 @@
   },
   {
    "profile": "corporate",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "FCFF-Marge",
+   "weight": 10,
+   "missingListings": 14,
+   "filledListings": 1112,
+   "weightedGap": 140,
+   "reasons": {
+    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 13,
+    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
+   }
+  },
+  {
+   "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Volatilität",
    "weight": 10,
@@ -256,19 +269,6 @@
     "Keine Kurshistorie": 10,
     "Weniger als ein Handelsjahr (Neuemission)": 2,
     "Kurshistorie mit längeren Handelslücken": 1
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "FCFF-Marge",
-   "weight": 10,
-   "missingListings": 13,
-   "filledListings": 1113,
-   "weightedGap": 130,
-   "reasons": {
-    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 12,
-    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {

@@ -186,20 +186,27 @@ export function wacc(beta: number | null | undefined,
 export interface FcfBasis {
   basis: number | null; gemeldet: number | null; normalisiert: number | null;
   conversion: number | null; quelle: "normalisiert" | "gemeldet";
+  /** Faktor, mit dem der Jahresüberschuss wegen eines vermuteten Sondereffekts gekürzt wurde (epsBasis), sonst null. */
+  sondereffekt_faktor?: number | null;
 }
 
 export function fcfBasis(fund: Fund, conversion?: number | null): FcfBasis {
   const gemeldet = fund.free_cashflow ?? null;
   const conv = conversion ?? fund.cash_conversion ?? null;
-  const ni = fund.net_income ?? null;
+  // Sondereffekt (seit 19.11.2026, Entscheidung des Nutzers): Rechnen die Kurs-Gewinn-Methoden mit dem Konsens-EPS
+  // (epsBasis), wird auch der Jahresüberschuss der normalisierten Basis im selben Verhältnis gekürzt (Konsens ÷ berichtet).
+  // Vorher enthielt der DCF den Sondereffekt weiter (Comcast: Fair Value 3x Kurs, "kauf").
+  const eb = epsBasis(fund);
+  const faktor = eb.source === "consensus" && fund.eps_trailing && fund.eps_trailing > 0 && eb.eps && eb.eps > 0 ? eb.eps / fund.eps_trailing : null;
+  const ni = fund.net_income != null && faktor !== null ? fund.net_income * faktor : fund.net_income ?? null;
   // Gepruefte mehrjaehrige Conversion <= 0: freier Cashflow ueber 3-5 Jahre in Summe nicht positiv -> DCF offen,
   // kein Rueckfall auf einen einzelnen besseren Jahreswert (cash-conversion.ts, seit 13.11.2026).
-  if (conv !== null && conv <= 0) return { basis: null, gemeldet, normalisiert: null, conversion: conv, quelle: "normalisiert" };
+  if (conv !== null && conv <= 0) return { basis: null, gemeldet, normalisiert: null, conversion: conv, quelle: "normalisiert", sondereffekt_faktor: faktor };
   const normal = conv && ni && ni > 0 ? ni * conv : null;
   let basis: number | null, quelle: "normalisiert" | "gemeldet";
   if (normal && normal > 0) { basis = normal; quelle = "normalisiert"; }
   else { basis = gemeldet; quelle = "gemeldet"; }
-  return { basis, gemeldet, normalisiert: normal, conversion: conv, quelle };
+  return { basis, gemeldet, normalisiert: normal, conversion: conv, quelle, sondereffekt_faktor: faktor };
 }
 
 /** Cashflow-Basis für den Reverse DCF (Erwartungslücke), seit 16.11.2026 dieselbe wie im DCF (Entscheidung des Nutzers):
@@ -344,7 +351,7 @@ export function epsBasis(fund: Fund): { eps: number | null; source: "reported" |
   const t = fund.eps_trailing ?? null, f = fund.eps_forward ?? null;
   const verified = (fund as Record<string, unknown>).eps_forward_method === FORWARD_METHOD;
   if (t !== null && t > 0 && verified && f !== null && f > 0 && t > ONE_OFF_EPS_FACTOR * f) {
-    return { eps: f, source: "consensus", note: `Sondereffekt vermutet: berichtetes EPS ${t.toFixed(2)} liegt mehr als ${ONE_OFF_EPS_FACTOR.toLocaleString("de-DE")}-fach über dem geprüften Konsens ${f.toFixed(2)}; Kurs-Gewinn-Methoden rechnen mit dem Konsens.` };
+    return { eps: f, source: "consensus", note: `Sondereffekt vermutet: berichtetes EPS ${t.toFixed(2)} liegt mehr als ${ONE_OFF_EPS_FACTOR.toLocaleString("de-DE")}-fach über dem geprüften Konsens ${f.toFixed(2)}; Kurs-Gewinn-Methoden und die Gewinnbasis des DCF rechnen mit dem Konsens.` };
   }
   return { eps: t, source: "reported", note: null };
 }

@@ -31,3 +31,9 @@ Die QA-Wiederholung vom 17.11. zeigte Comcast mit Fair Value +198 % („kauf“)
 ## Endwachstum des DCF je Titel (19.11.2026)
 
 Comcast behielt nach der Sondereffekt-Regel einen Fair Value von +155 % („kauf“). Ursache war das einheitliche ewige Wachstum von 2,5 % im DCF, auch bei stagnierendem Umsatz. Nach Entscheidung des Nutzers gilt jetzt `terminalGrowth` (`valuation.ts`): das Umsatzwachstum p. a. über drei Geschäftsjahre aus `reihe_umsatz`, begrenzt auf 0 bis 2,5 %. Ohne gültige Reihe bleibt es bei 2,5 %, gekennzeichnet. Das gilt für DCF, Reverse DCF und die DCF-Zerlegung. Der Screener hat `reihe_umsatz` über die ROIC-Rohblöcke (`_roic_raw`). Kennzeichnung `terminal_growth` in der Zeile (FELDER). Näherung nach Vorjahreswachstum: rund 208 von 664 DCF-Titeln betroffen; Comcast DCF etwa 52 → 35 bei Kurs 25.
+
+## Pence/Pfund im Jahresblock, Kurskonflikt, Methodendiagnose (19.11.2026)
+
+- **Tesco:** Die App (GBp) verlor beim Jahresblock den freien Cashflow, der Screener (GBP) nicht. Felder desselben Geschäftsjahres bleiben jetzt auch bei reinem Einheitenfaktor 100, umgerechnet (`applySupplement`).
+- **Keyence:** Der ROIC-Kurs stammt von nach dem Split (14.690), der Yahoo-Kurs von davor (73.610). Bei mehr als Faktor 1,5 zwischen den Quellen wird nichts gemischt, und die Bewertung bleibt gesperrt (`price_source_conflict`). Am Universum vom 19.11. betrifft das nur Keyence.
+- **Andritz:** 5 % Abweichung im Fair Value bei gleichen Eingängen. Neu `score_diagnostics.fv_methods` (Kern, Rohwerte, Gewichte); der nächste Bundle-Compare zeigt die Methode.

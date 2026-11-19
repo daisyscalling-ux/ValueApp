@@ -157,6 +157,9 @@ export function valuationDataCheck(f: Row, raw?: Row) {
   if (positive(ttm) && positive(f.eps_trailing) && Math.max(ttm/f.eps_trailing,f.eps_trailing/ttm)>4) {
     (f.annual_supplement_applied ? warnings : issues).push('Jahres-EPS und Anbieter-TTM-EPS unterscheiden sich um mehr als Faktor 4. Berichtsperioden, Sondereffekte und Aktienbasis sind ungeklärt.');
   }
+  // Kurse der Quellen widersprechen sich (vermutlich Aktiensplit, noch nicht in beiden Quellen), seit 19.11.2026.
+  const pc = f.price_source_conflict;
+  if (pc && positive(pc.factor)) issues.push(`Kurs von ROIC (${pc.roic}) und Ergänzungsdatei (${pc.supplement}, Stand ${String(pc.quote_at??'').slice(0,10)}) weichen um Faktor ${pc.factor} ab, vermutlich Aktiensplit; Bewertung erst nach Abgleich beider Quellen.`);
   const hi = f['52w_high'];
   if (positive(f.price) && positive(hi) && f.price>hi*2) {
     issues.push('Aktueller Kurs liegt über dem Doppelten des gelieferten 52-Wochen-Hochs. Kursbasis oder Datenstand widersprüchlich.');

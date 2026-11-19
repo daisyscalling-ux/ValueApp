@@ -23,3 +23,7 @@ Die QA-Analyse prüfte 100 Titel aus 18 Ländern und 22 Sektoren auf plausible F
 - Wirkung (offline geschätzt): WACC-Median EUR 8,50 → 7,42 %, JPY 8,50 → 7,00 %, SEK 8,50 → 7,36 %, USD 8,80 → 9,72 %, GBP 8,50 → 9,32 %; CHF, DKK, PLN unverändert.
 - Tests: `scripts/test_export_rates.py` (Parser je Quelle, Frische, Fehler), `test_ts_bewertung` (Weitergabe an jeden Eingang).
 - **Reihenfolge nach dem Merge:** zuerst `rates-daily` starten, dann Precompute. Ohne Zinsdatei rechnet alles wie bisher mit dem gekennzeichneten Ersatz.
+
+## Nachtrag Punkt 3 (19.11.2026): Sondereffekt auch in der DCF-Gewinnbasis
+
+Die QA-Wiederholung vom 17.11. zeigte Comcast mit Fair Value +198 % („kauf“). Der DCF rechnete weiter mit Jahresüberschuss × Cash-Conversion, und der Jahresüberschuss enthielt den Sondereffekt. Nach Entscheidung des Nutzers kürzt `fcfBasis` (`valuation.ts`) den Jahresüberschuss im Verhältnis Konsens ÷ berichtetes EPS, sobald `epsBasis` den Konsens nutzt. Das gilt für DCF und Reverse DCF; betroffen sind dieselben 22 Titel. App-Kopie abgeglichen, Tests in valueapp-cf.

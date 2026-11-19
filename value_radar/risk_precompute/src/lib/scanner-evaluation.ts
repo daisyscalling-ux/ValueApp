@@ -84,6 +84,8 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
   score_diagnostics:{value:Object.fromEntries(['ev_ebitda','pb','pe_forward','peg','fcf_yield'].map(k=>[k,{input:typeof (e.scores as Row)._inputs?.[k]==='number'?r2((e.scores as Row)._inputs[k]):null,score:(e.scores as Row).breakdown?.[k]??null,basis:(e.scores as Row).metric_source?.[k]??((e.scores as Row).metric_open?.[k]?'open':null),open:(e.scores as Row).metric_open?.[k]??null}])),
    catalyst:((e.scores as Row)._catalyst_teile??[]).map(([n,v]:[string,number])=>[n,v]),
    // Seit 17.11.2026: Teilziele des 12M-Kursziels, damit der Abgleich App gegen Screener die Ursache zeigt.
+   // Seit 19.11.2026: Methodenwerte des Fair Value (Kern und Rohwerte), damit der Abgleich Abweichungen je Methode zeigt.
+   fv_methods:{core:Object.fromEntries(Object.entries(fv.core_methods??{}).map(([k,v])=>[k,r2(v)])),values:fv.method_values??{},weights:fv.method_weights??{}},
    target:e.kz?{fundamental:r2(e.kz.ziel_fundamental),analyst:r2(e.kz.ziel_analyst),momentum:r2(e.kz.ziel_momentum),eps:r2(e.kz.eps_annahme),kgv:r1(e.kz.kgv_annahme),kgv_hist:r1(e.kz.kgv_hist)}:null},
   roic_history_status:(e.fund as Row).roic_history_status??null,
   eps_basis:fv.eps_basis?.source??null,

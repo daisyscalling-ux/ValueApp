@@ -11,6 +11,7 @@ const unitRate=(from:unknown,to:unknown):number|null=>{
 };
 const age=(s:unknown,now:number,max:number)=>typeof s==='string'&&Number.isFinite(Date.parse(s))&&now-Date.parse(s)>=0&&now-Date.parse(s)<=max;
 // ADR-Verhältnis ungleich 1:1 nur aus der doppelten Prüfung der Pipeline (Aktienzahl auf 2 %, Kurs auf 10 % am selben Standardwert).
+export const PRICE_CONFLICT_FACTOR=1.5;
 export const DERIVED_ADR_METHOD='share_count_and_price_ratio_v1';
 const STANDARD_RATIOS=[0.01,0.02,0.04,0.05,0.1,0.2,0.25,1/3,0.5,1,2,3,4,5,6,8,10,12,15,16,20,25,30,40,50,100];
 // Die Pipeline speichert Verhältnisse auf 6 Nachkommastellen (1/3 = 0,333333); Toleranz deshalb 1e-5.
@@ -44,12 +45,21 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
   // Prefer the quote with the verifiable newer observation timestamp.
   const quote=latestRows(raw.quote)[0];
   const primaryTime=quote ? period(quote) : null;
+  // Seit 19.11.2026: Weichen der bisherige Kurs (ROIC) und der Kurs der Ergänzungsdatei um mehr als PRICE_CONFLICT_FACTOR ab
+  // (Keyence: ROIC 14.690 nach dem Split, Yahoo 73.610 davor), werden Kurs, Band, Aktienzahl und Analystenziel nicht gemischt;
+  // die Bewertung bleibt gesperrt (valuationDataCheck), bis beide Quellen übereinstimmen. Vorher nahm der Screener ohne
+  // ROIC-Zeitstempel immer den Yahoo-Kurs, die Einzelanalyse den neueren ROIC-Kurs.
+  const yp=finite(m.fields?.price)&&m.fields.price>0?m.fields.price*quoteScale:null;
+  if(yp!==null&&finite(f.price)&&f.price>0&&Math.max(yp/f.price,f.price/yp)>PRICE_CONFLICT_FACTOR){
+   f.price_source_conflict={roic:f.price,supplement:yp,factor:Math.round(Math.max(yp/f.price,f.price/yp)*100)/100,quote_at:m.quote_at};
+  } else {
   if(finite(m.fields?.price)&&m.fields.price>0&&(primaryTime===null||Date.parse(m.quote_at)>primaryTime)){f.price=m.fields.price*quoteScale;f.price_observed_at=m.quote_at;}
   for(const key of ['shares_out','52w_high','52w_low','target_mean','analyst_count','beta']){
    if(finite(m.fields?.[key])&&m.fields[key]>0)f[key]=m.fields[key]*(['52w_high','52w_low','target_mean'].includes(key)?quoteScale:1);
   }
   if(finite(f.price)&&finite(f.shares_out))f.market_cap=f.price*f.shares_out;
   f.data_sources.push({source:m.source,url:m.source_url,observed_at:m.quote_at,retrieved_at:s.retrieved_at,basis:'Kurs/Aktienzahl/Band; Analystenziel als Anbieterbeobachtung, kein Berichtswert'});
+  }
  }
  const a=s.annual;
  if(s.latest_fiscal_end) f.provider_latest_fiscal_end=s.latest_fiscal_end;
@@ -94,7 +104,14 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
   const kept:string[]=[];
   const keep=(k:string)=>{if(!finite(f[k])&&finite(before[k])){f[k]=before[k];kept.push(k);}};
   for(const k of ['revenue_growth','earnings_growth','gross_margin','operating_margin','roic','ev_ebitda'])keep(k);
-  if(annualScale===1){for(const k of ['free_cashflow','cash','total_debt','net_debt'])keep(k);if(finite(f.net_debt))for(const k of ['ebitda','ebit'])keep(k);}
+  // Seit 19.11.2026 auch bei reinem Einheitenfaktor (London: Notierung GBp, Abschluss und ROIC-Beträge GBP, Faktor 100),
+  // umgerechnet. Vorher fiel in der Einzelanalyse (GBp) z. B. der freie Cashflow weg, im Screener (GBP) nicht (Tesco).
+  const roicScale=unitRate(f.risk_financial?.currency??a.currency,f.currency);
+  if(annualScale===1||(unitScale!==null&&roicScale===unitScale)){
+   const sc=annualScale===1?1:roicScale as number;
+   const keepScaled=(k:string)=>{if(!finite(f[k])&&finite(before[k])){f[k]=before[k]*sc;kept.push(k);}};
+   for(const k of ['free_cashflow','cash','total_debt','net_debt'])keepScaled(k);if(finite(f.net_debt))for(const k of ['ebitda','ebit'])keepScaled(k);
+  }
   if(!finite(f.net_debt_ebitda)&&finite(f.net_debt)&&finite(f.ebitda)&&f.ebitda>0)f.net_debt_ebitda=f.net_debt/f.ebitda;
   if(kept.length){f.supplement_retained_fields=kept;f.supplement_status+=` · Aus der ROIC-Zeile desselben Geschäftsjahres beibehalten: ${kept.join(', ')}`;}
  }

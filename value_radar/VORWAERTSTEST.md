@@ -1,10 +1,37 @@
 # Vorwärtstest Fair Value gegen 12M-Ziel
 
-Stand 19.11.2026, Methode `fv_vs_target_forward_v1` (`value_radar/forward_test/forward_test.py`, Workflow `forward-test.yml`).
+Stand 19.11.2026, Methode `fv_vs_target_forward_v2` (seit dem Abend des 19.11.; vorher v1) (`value_radar/forward_test/forward_test.py`, Workflow `forward-test.yml`).
 
 ## Frage
 
 Wenn Fair Value und 12-Monats-Ziel in entgegengesetzte Richtungen zeigen (Beispiel: Fair Value −14 %, Ziel +12 %), welches Modell hatte recht? Das ist ein Vorwärtstest: Es werden nur Prognosen gewertet, die vor der Kursbewegung gespeichert waren. Rückwirkend gerechnete Werte werden nicht gewertet.
+
+## v2: nur Schlusskurse (19.11.2026, Entscheidung des Nutzers)
+
+v1 speicherte den Kurs des Exports ohne Zeitangabe. Am 19.11. lief der Export einmal vor US-Eröffnung (13:04 UTC: US-Schluss vom 18.11., Europa im Handel) und einmal während der US-Sitzung (17:44 UTC: US-Handelskurse). Everpure stand so ohne echte Bewegung zwischen beiden Läufen bei +10,9 %. Deshalb:
+
+- **Kurszeitpunkt im Export** (`value_radar/kurszeit.py`, Methode `exchange_close_v1`):
+  - Jede Kursquelle gibt ihren Zeitstempel mit: yfinance `regularMarketTime`, Finnhub `t`, Tiingo und ROIC das Datum des Tagesbalkens, FMP keinen.
+  - Dazu kommt der Abrufzeitpunkt (`price_fetched_at`).
+  - Die Zeile trägt `price_source`, `price_time`, `price_date`, `price_kind` (`schluss` / `handel` / `unbekannt`), `price_day` (Handelstag, Ortszeit der Börse) und `price_kind_reason`.
+- **Regel:**
+  - Ein Kurs ist der Schlusskurs seines Handelstags, wenn er mindestens 15 Minuten nach Börsenschluss abgerufen wurde oder von einem früheren Kalendertag stammt als der Abruf.
+  - Schlusszeiten je Börse sind als Konstante `BOERSEN` hinterlegt, mit Zeitzone, also auch mit Sommerzeit.
+  - Ohne Zeitangabe oder bei unbekannter Börse bleibt die Art offen.
+  - Ein Tagesbalken ohne Uhrzeit, der während der Sitzung abgerufen wurde, gilt als „unbekannt“, weil er unvollständig sein kann.
+- **Precompute nach US-Schluss:**
+  - Der Lauf startet täglich um 21:23 UTC statt 01:17 UTC. Dann sind New York (Schluss Winter 21:00, Sommer 20:00 UTC), Europa und Tokio geschlossen.
+  - Titel, die nach 00:00 UTC abgerufen werden (Eröffnung Tokio), tragen bei Tokio `handel` und fallen an diesem Tag aus dem Vorwärtstest.
+  - Ihre Zahl steht je Stand in `gegenlaeufig_ohne_schlusskurs`.
+- **Vorwärtstest v2:**
+  - Ein Eintrag zählt nur mit nachgeprüftem Schlusskurs. Die Kursart wird beim Ablegen aus den Rohfeldern neu bestimmt und mit der Angabe des Exports abgeglichen; bei Widerspruch fällt der Eintrag weg.
+  - Ein Stand ohne Eintrag wird nicht gespeichert.
+  - Bei der Wertung muss auch der spätere Kurs ein Schlusskurs sein, sonst bleibt der Titel offen („Kein Schlusskurs“).
+- **Kohorte:**
+  - „aktuell“ sind nur Stände mit Schema 2.
+  - Alle v1-Stände, auch der vom 19.11., zählen als „vorversion“ (`kohorte_von`).
+  - Die Messung der aktuellen Methode beginnt mit dem ersten Lauf nach US-Schluss. Startpunkt ist dann der Schlusskurs, alle Titel beginnen bei 0 %.
+- **Rekonstruktion:** Der Befehl `rekonstruieren` entfällt. Die v1-Stände vom 13.–19.11. wurden am 19.11. einmalig aus der Git-Historie erzeugt (Commit und sha256 je Datei) und bleiben unverändert.
 
 ## Regeln (Entscheidungen des Nutzers, 19.11.2026)
 
@@ -31,8 +58,8 @@ Fehlt für einen fälligen Zeitraum ein Stand innerhalb von 10 Tagen nach dem Zi
 
 ## Kohorten und Methode
 
-- `aktuell`: Stände ab 19.11.2026, laufend vom Workflow abgelegt (nach jedem precompute und täglich 09:41 UTC als Rückfall).
-- `vorversion`: Stände vom 13. bis 18.11.2026, aus der Git-Historie von `cf_universum.json` rekonstruiert (je Kalendertag der letzte Commit, Commit und sha256 in `quelle`). Ein 12M-Ziel (`target_12m`) steht erst seit dem 13.11.2026 im Universum. Davor gab es nur `target_mean` (Analystenziel); das ist ein anderes Modell und wird nicht ersatzweise verwendet. Die 34 Stände vom 28.09. bis 12.11. haben deshalb keine Einträge und werden nicht gespeichert.
+- `aktuell`: Stände mit Schema 2 (geprüfte Schlusskurse), ab dem ersten Lauf nach US-Schluss, laufend vom Workflow abgelegt (nach jedem precompute und täglich 09:41 UTC als Rückfall).
+- `vorversion`: alle Stände mit Schema 1 (13. bis 19.11.2026), aus der Git-Historie von `cf_universum.json` rekonstruiert (je Kalendertag der letzte Commit, Commit und sha256 in `quelle`). Ein 12M-Ziel (`target_12m`) steht erst seit dem 13.11.2026 im Universum. Davor gab es nur `target_mean` (Analystenziel); das ist ein anderes Modell und wird nicht ersatzweise verwendet. Die 34 Stände vom 28.09. bis 12.11. haben deshalb keine Einträge und werden nicht gespeichert.
 - Kohorten werden nie zusammengezählt. Zusätzlich trägt jeder Eintrag einen Methoden-Fingerabdruck (Scanner-Methode, `value_inputs`-Version, Vorhandensein von `eps_basis`, `terminal_growth`, `risk_free`, `roic_history_status`); die Auswertung zählt je Fingerabdruck (`nach_methode`). Der Fingerabdruck erkennt nur Regeln, die ein eigenes Feld schreiben; reine Rechenänderungen ohne neues Feld trennt er nicht.
 
 ## Dateien
@@ -44,6 +71,14 @@ Fehlt für einen fälligen Zeitraum ein Stand innerhalb von 10 Tagen nach dem Zi
 ## Anzeige in der App (Tab „Vorwärtstest“)
 
 Seit 19.11.2026 zeigt die App jeden gespeicherten Stand gegen den heutigen Kurs. Als „heute“ gilt der Kurs aus dem letzten Universum-Export, nicht ein Echtzeitkurs: Für 316 Titel gibt es keine Sammelquelle mit Echtzeitkursen, die fair nutzbar wäre.
+
+Seit v2 zeigt der Tab:
+
+- die Spalten „Schluss 19.11.“, „FV 19.11.“ und „Ziel 19.11.“, also den Handelstag des Startkurses;
+- bei jedem heutigen Kurs die nachgeprüfte Art („Schluss 20.11.“, „Handel 20.11.“, „Zeit unbekannt“);
+- in der Statuszeile die Verteilung dieser Arten.
+
+Die App bestimmt die Kursart mit derselben Regel selbst (`priceKind`, `rowPriceKind` in `src/lib/forward-test.ts`). Ein Startkurs, der nicht nachgeprüft ein Schlusskurs ist, wird nicht gezeigt.
 
 Die App rechnet beim Lesen selbst nach (`src/lib/forward-test.ts`). Sie prüft:
 

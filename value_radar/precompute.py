@@ -181,6 +181,16 @@ def _fuer_sektormessung(f: dict) -> None:
     })
 
 
+def _kurszeitpunkt(f):
+    """Quelle, Zeitpunkt und Art des Kurses (Schluss/Handel) fuer App und Vorwaertstest (kurszeit.py, seit 19.11.2026)."""
+    import kurszeit
+    boerse = f.get("exchange") or str(f.get("listing_symbol") or "").split(":")[0]
+    art = kurszeit.einordnen(boerse, f.get("price_time"), f.get("price_date"), f.get("price_fetched_at"))
+    return {"price_source": f.get("price_source"), "price_time": f.get("price_time"), "price_date": f.get("price_date"),
+            "price_fetched_at": f.get("price_fetched_at"), "price_kind": art["kind"], "price_day": art["date"],
+            "price_kind_reason": art["reason"] or None, "price_kind_method": kurszeit.METHODE}
+
+
 def score_ticker(t: str, deep: bool = True, mit_eingabe: bool = False) -> dict | None:
     """Kennzahlen fuer einen Ticker. mit_eingabe=True haengt die Eingangsdaten fuer den App-Rechenweg an
     (_ts_input, nur fuer export_cf.py; ts_bewertung.anwenden entfernt das Feld wieder)."""
@@ -307,6 +317,7 @@ def score_ticker(t: str, deep: bool = True, mit_eingabe: bool = False) -> dict |
         "quantum": q.get("score"),
         "entry": round(v["entry_price"], 2) if v.get("entry_price") else None,
         "price": round(f["price"], 2) if f.get("price") else None,
+        **_kurszeitpunkt(f),
         "sector": f.get("sector"),
         # --- Zusatzfelder fuer Strategie-Filter (kosten keine Extra-Abrufe,
         #     stehen alle schon in f bzw. s)

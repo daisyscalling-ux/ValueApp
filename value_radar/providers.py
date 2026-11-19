@@ -112,6 +112,7 @@ def _yf_bundle(info):
     """yfinance-Rohwerte normalisiert (Margen/ROE als Ratio 0-1, wie geliefert)."""
     return {
         "price": _num(info.get("currentPrice")) or _num(info.get("regularMarketPrice")),
+        "_price_time": _num(info.get("regularMarketTime")),   # Epoch-Sekunden der Quote (kurszeit.py)
         "name": info.get("longName"), "sector": info.get("sector"),
         "industry": info.get("industry"), "currency": info.get("currency"),
         "country": info.get("country"),
@@ -161,6 +162,7 @@ def _finnhub_bundle(ticker):
     q = _fh("quote", {"symbol": ticker})
     if q and _num(q.get("c")):
         B["price"] = _num(q.get("c"))
+        B["_price_time"] = _num(q.get("t"))
     p = _fh("stock/profile2", {"symbol": ticker})
     if p:
         B["name"] = p.get("name") or None
@@ -209,6 +211,16 @@ def _finnhub_bundle(ticker):
         B["revenue_growth"] = ratio(-5, 10, "revenueGrowthTTMYoy", "revenueGrowthQuarterlyYoy")
         B["earnings_growth"] = ratio(-5, 10, "epsGrowthTTMYoy", "epsGrowthQuarterlyYoy")
     return {k: v for k, v in B.items() if v is not None}
+
+
+def _iso_zeit(v):
+    import kurszeit
+    return kurszeit.iso(v)
+
+
+def _jetzt_iso():
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
 
 
 def _pick(*vals):
@@ -330,11 +342,16 @@ def _tiingo_eod(ticker):
     """Letzter EOD-Schlusskurs (adjustiert) + Waehrung, gepaart. (preis, waehrung)."""
     d = _tiingo_get(f"tiingo/daily/{ticker}/prices")
     px = None
+    _TIINGO_DATUM[ticker] = None
     if isinstance(d, list) and d:
         row = d[-1]
         px = _num(row.get("adjClose")) or _num(row.get("close"))
+        _TIINGO_DATUM[ticker] = str(row.get("date") or "")[:10] or None
     cur = (_tiingo_meta(ticker) or {}).get("currency")
     return (px if px and px > 0 else None), cur
+
+
+_TIINGO_DATUM = {}   # Datum des letzten Tagesbalkens je Ticker (Kurszeitpunkt, kurszeit.py)
 
 
 def _tiingo_iex(ticker):
@@ -426,6 +443,13 @@ def _merge_sources(ticker, A, B, C=None, use_tiingo=False):
             t_px, t_cur = _tiingo_eod(ticker)
         except Exception:
             t_px = t_cur = None
+    # Kurszeitpunkt der tatsaechlich verwendeten Quelle (seit 19.11.2026, kurszeit.py)
+    if t_px:
+        price_src = {"price_source": "tiingo_eod", "price_time": None, "price_date": _TIINGO_DATUM.get(ticker)}
+    else:
+        _q = next(((n, s) for n, s in (("yfinance", A), ("fmp", C), ("finnhub", B)) if s.get("price") is not None), None)
+        price_src = ({"price_source": _q[0], "price_time": _iso_zeit(_q[1].get("_price_time")), "price_date": None}
+                     if _q else {"price_source": None, "price_time": None, "price_date": None})
     if t_px:
         price = t_px
         currency = t_cur or A.get("currency") or C.get("currency") or "USD"
@@ -492,6 +516,8 @@ def _merge_sources(ticker, A, B, C=None, use_tiingo=False):
         "currency": currency,
         "country": _pick(A.get("country"), C.get("country"), B.get("country")) or "?",
         "price": price,
+        **price_src,
+        "price_fetched_at": _jetzt_iso(),
         "market_cap": market_cap,
         "enterprise_value": ev,
         "shares_out": shares,
@@ -679,6 +705,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         try:
             fi = yf.Ticker(ticker).fast_info
             if not A.get("price"):
+                A["_price_time"] = None    # fast_info hat keine Quotezeit
                 A["price"] = _num(getattr(fi, "last_price", None)
                                   or (fi.get("last_price") if hasattr(fi, "get") else None))
             if not A.get("currency"):
@@ -740,7 +767,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
             merged["_roic_kursverhaeltnis"] = round(_px_y / _px_r, 4)
         _roic_felder = []
         for k, v in R.items():
-            if k in ("price", "currency", "_src") or v is None:
+            if k in ("price", "currency", "_src", "price_source", "price_time", "price_date", "price_fetched_at") or v is None:
                 continue
             if _faktor != 1.0 and k in _ABSOLUT:
                 try:
@@ -837,6 +864,7 @@ def get_fundamentals(ticker: str, deep: bool = False) -> dict[str, Any]:
         sp = _stooq_last(ticker)
         if sp:
             merged["price"] = sp
+            merged.update(price_source="stooq", price_time=None, price_date=None, price_fetched_at=_jetzt_iso())
             merged["data_sources"] = merged.get("data_sources", "") + "+stooq"
             if merged.get("market_cap") is None and merged.get("shares_out"):
                 merged["market_cap"] = sp * merged["shares_out"]

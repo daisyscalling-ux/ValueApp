@@ -338,6 +338,15 @@ def profile(t: str):
     return _first(_get(f"company/profile/{_sym(t)}"))
 
 
+def _kursherkunft(q):
+    """Kurszeitpunkt (kurszeit.py): ROIC liefert den Tagesbalken mit Datum, ohne Uhrzeit."""
+    import datetime as _dt
+    ok = bool(q and _num(_g(q, "price", "close", "adj_close")))
+    return {"price_source": "roic_latest" if ok else "roic_profile",
+            "price_time": None, "price_date": (q.get("datum") or None) if ok else None,
+            "price_fetched_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")}
+
+
 def quote(t: str):
     """Letzter Kurs. Pfad laut Doku: stock-prices/latest/{ticker}.
     (Mein erster Versuch 'prices/latest/' war falsch - daher die
@@ -731,6 +740,7 @@ def bundle(t: str) -> dict:
         "country": _g(prof, "country_code") or (aufloesen(t) or {}).get("country"),
         "currency": _g(prof, "currency"),
         "price": (_num(_g(_q, "price", "close", "adj_close")) if _q else None) or _num(_g(prof, "price")),
+        **_kursherkunft(_q),
         "dividend_yield": _num(_g(prof, "dividend_yield")),
         "isin": _g(prof, "isin") or (aufloesen(t) or {}).get("isin"),
 
@@ -1988,6 +1998,7 @@ def bundle_light(t: str) -> dict:
                     or _waehrung_aus_suffix(t),
         "price": (_num(_g(_q, "price", "close", "adj_close")) if _q else None)
                  or _num(_g(prof, "price")),
+        **_kursherkunft(_q),
         "market_cap": _num(_g(ev, "market_cap")),
         "enterprise_value": _num(_g(ev, "enterprise_value")),
         "total_debt": _num(_g(ev, "short_and_long_term_debt")),

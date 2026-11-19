@@ -4,9 +4,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import forward_test as ft
 
 
+SCHLUSS = {'exchange': 'NYSE', 'price_time': '2026-11-18T21:00:00+00:00', 'price_fetched_at': '2026-11-19T13:00:00+00:00',
+           'price_kind': 'schluss', 'price_day': '2026-11-18', 'price_kind_method': 'exchange_close_v1'}
+HANDEL = {**SCHLUSS, 'price_time': '2026-11-19T17:00:00+00:00', 'price_fetched_at': '2026-11-19T17:05:00+00:00',
+          'price_kind': 'handel', 'price_day': '2026-11-19'}
+
+
 def zeile(sym, p, fv, z, land='US', isin=None, cur='USD', **o):
     return {'listing_symbol': sym, 'price': p, 'fair_value': fv, 'target_12m': z, 'country': land,
-            'isin': isin or 'US' + sym.split(':')[-1].ljust(10, '0'), 'currency': cur, **o}
+            'isin': isin or 'US' + sym.split(':')[-1].ljust(10, '0'), 'currency': cur, **SCHLUSS, **o}
 
 
 def universum(stand, kurse, extra=()):
@@ -132,6 +138,35 @@ class Index(unittest.TestCase):
             self.assertEqual(len(doc['staende'][0]['sha256']), 64)
             self.assertEqual(doc['splits'], {'NYSE:A': [{'date': '2026-12-01', 'ratio': 4}]}, 'Split vor dem ersten Stand entfaellt')
             self.assertTrue((ordner / 'index.json').exists())
+
+
+class Schlusskurs(unittest.TestCase):
+    def test_nur_geprueft_schlusskurse_als_eintrag(self):
+        doc = universum('2026-11-19 17:44 UTC', {}, [zeile('NYSE:A', 100, 80, 120), zeile('NYSE:B', 100, 80, 120, **HANDEL),
+                                                    zeile('NYSE:C', 100, 80, 120, price_kind='handel'),
+                                                    zeile('NYSE:D', 100, 80, 120, price_kind_method=None)])
+        s = ft.schnappschuss(doc, 'x', 'aktuell')
+        self.assertEqual([e['listing_symbol'] for e in s['eintraege']], ['NYSE:A'])
+        self.assertEqual(s['eintraege'][0]['price_day'], '2026-11-18')
+        self.assertEqual(s['gegenlaeufig_ohne_schlusskurs'], {'Abruf während der Handelszeit': 1,
+                         'Kursart im Export widerspricht der Nachpruefung': 1, 'Kurs ohne Zeitangabe im Export': 1})
+        self.assertEqual(s['kurse']['NYSE:B'][4:], ['handel', '2026-11-19'])
+        self.assertEqual((s['schema'], s['method']), (2, 'fv_vs_target_forward_v2'))
+
+    def test_spaeterer_kurs_muss_schluss_sein(self):
+        z = einmonat(zwei_staende(0, sonder1=zeile('NYSE:A', 125, 80, 120, **HANDEL)))
+        self.assertEqual(z['offen'], {'Kein Schlusskurs': 1})
+
+    def test_schema_1_ist_immer_vorversion(self):
+        self.assertEqual(ft.kohorte_von({'schema': 1, 'kohorte': 'aktuell'}), 'vorversion')
+        self.assertEqual(ft.kohorte_von({'schema': 2, 'kohorte': 'aktuell'}), 'aktuell')
+        alt = ft.schnappschuss(universum('2026-11-19 13:04 UTC', {}, [zeile('NYSE:A', 100, 80, 120)]), 'x', 'aktuell')
+        alt['schema'] = 1
+        for k, v in alt['kurse'].items():
+            alt['kurse'][k] = v[:4]
+        neu = ft.schnappschuss(universum('2026-12-20 01:00 UTC', {f'NYSE:M{i}': 110 for i in range(25)}, [zeile('NYSE:A', 125, 80, 120)]), 'x', 'aktuell')
+        erg = ft.auswerten([alt, neu], jetzt=dt.datetime(2027, 1, 1, tzinfo=dt.timezone.utc), splits_von=lambda s: [])
+        self.assertEqual([(z['kohorte'], z['zeitraum'], z['ziel_12m_recht']) for z in erg['ergebnisse']], [('vorversion', '1M', 1)])
 
 
 if __name__ == '__main__':

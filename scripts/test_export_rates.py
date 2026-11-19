@@ -10,9 +10,12 @@ FIX={
  'GBP':b'DATE,IUDMNZC\n12 Nov 2026,5.2617\n13 Nov 2026,5.3224\n',
  'SEK':b'{"date":"2026-11-16","value":3.11}',
  'NOK':b'FREQ;TENOR;TIME_PERIOD;OBS_VALUE\nB;10Y;2026-11-13;4.358\nB;10Y;2026-11-16;4.385\n',
+ 'DKK':b'KEY,TIME_PERIOD,OBS_VALUE\nIRS.M.DK,2026-09,3.287\nIRS.M.DK,2026-10,3.228\n',
+ 'PLN':b'KEY,TIME_PERIOD,OBS_VALUE\nIRS.M.PL,2026-09,6.23\nIRS.M.PL,2026-10,6.32\n',
 }
 def fetcher_for(fix):
     urls={c:u for c,(n,u,p) in R.sources(NOW.date()).items()}
+    urls.update({c:u for c,(n,u) in R.monthly_sources().items()})
     def f(url):
         cur=next(c for c,u in urls.items() if u==url);v=fix[cur]
         if isinstance(v,Exception):raise v
@@ -24,17 +27,23 @@ class Parser(unittest.TestCase):
         doc=R.collect(NOW,fetcher_for(FIX))
         self.assertEqual({c:(r['value'],r['as_of']) for c,r in doc['rates'].items()},{
             'USD':(0.0512,'2026-11-16'),'EUR':(0.034224,'2026-11-16'),'JPY':(0.02927,'2026-11-16'),
-            'GBP':(0.053224,'2026-11-13'),'SEK':(0.0311,'2026-11-16'),'NOK':(0.04385,'2026-11-16')})
+            'GBP':(0.053224,'2026-11-13'),'SEK':(0.0311,'2026-11-16'),'NOK':(0.04385,'2026-11-16'),
+            'DKK':(0.03228,'2026-10-31'),'PLN':(0.0632,'2026-10-31')})
         self.assertEqual(doc['method'],'gov_10y_v1');self.assertEqual(len(doc['rates']['USD']['sha256']),64)
-        self.assertEqual(set(doc['issues']),{'CHF','DKK','PLN'},'ohne Tagesquelle offen, nie geschaetzt')
+        self.assertEqual(set(doc['issues']),{'CHF'},'CHF ohne aktuelle Quelle offen, nie geschaetzt')
+        self.assertEqual({c:(doc['rates'][c]['value'],doc['rates'][c]['as_of'],doc['rates'][c]['frequency']) for c in ('DKK','PLN')},
+                         {'DKK':(0.03228,'2026-10-31','monthly'),'PLN':(0.0632,'2026-10-31','monthly')})
+        self.assertNotIn('frequency',doc['rates']['USD'])
     def test_stale_future_broken_and_http_errors_stay_open(self):
         fix=dict(FIX,USD=b'Date,"10 Yr"\n11/01/2026,5.0\n',EUR=b'KEY,TIME_PERIOD,OBS_VALUE\nx,2026-11-20,3.4\n',
-                 JPY=b'kein csv',GBP=urllib.error.HTTPError('u',403,'x',{},None),SEK=b'{"date":"2026-11-16","value":null}',NOK=TimeoutError())
+                 JPY=b'kein csv',GBP=urllib.error.HTTPError('u',403,'x',{},None),SEK=b'{"date":"2026-11-16","value":null}',NOK=TimeoutError(),
+                 DKK=b'KEY,TIME_PERIOD,OBS_VALUE\nx,2026-07,3.1\n',PLN=b'KEY,TIME_PERIOD,OBS_VALUE\n')
         doc=R.collect(NOW,fetcher_for(fix))
         self.assertEqual(doc['rates'],{})
         self.assertIn('ausserhalb von 7 Tagen',doc['issues']['USD']);self.assertIn('ausserhalb',doc['issues']['EUR'],'Zukunftsdatum')
         self.assertIn('ohne gueltigen',doc['issues']['JPY']);self.assertEqual(doc['issues']['GBP'],'Abruf fehlgeschlagen: HTTP 403')
         self.assertIn('ohne gueltigen',doc['issues']['SEK']);self.assertEqual(doc['issues']['NOK'],'Abruf fehlgeschlagen: TimeoutError')
+        self.assertIn('ausserhalb von 75 Tagen',doc['issues']['DKK'],'Juli-Wert im November zu alt');self.assertIn('ohne gueltigen Monatswert',doc['issues']['PLN'])
     def test_implausible_values_rejected(self):
         self.assertIsNone(R.parse_sek(b'{"date":"2026-11-16","value":312}'));self.assertIsNone(R.num('abc'))
 

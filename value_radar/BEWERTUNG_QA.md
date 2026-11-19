@@ -36,3 +36,7 @@ Comcast behielt nach der Sondereffekt-Regel einen Fair Value von +155 % („kauf
 
 - **Robuste Zyklik:** `dataCyclical` (`valuation.ts`) verlangt die Margenschwankung über 0,40 auch ohne das extremste Jahr (`robustMarginCv`). Am Universum vom 19.11. hingen 235 von 509 datenbasierten Zyklikern an einem Ausreißerjahr. 111 verlassen das Zyklik-Modell (104 → Qualität, 7 → Wachstumswende), der Rest bleibt über die Branchenliste zyklisch. Das Flag `cyclicality.cyclical` der Pipeline bleibt der volle CV; der App-Code entscheidet.
 - **Wachstum über drei Jahre:** Wachstumsmodell und Phase Hyperwachstum nach Umsatz p. a. über drei Geschäftsjahre (`umsatzCagr3`, `lifecycle.ts`), sonst wie bisher nach dem letzten Jahr. Grund: Eine Übernahme machte Italgas zum Wachstumstitel (Fair Value +69 %, „kauf“). Die Wirkung zeigt der Precompute.
+
+## Zins für DKK und PLN als EZB-Monatswert (19.11.2026)
+
+`scripts/export_rates.py` ergänzt DKK und PLN aus der EZB-Reihe „Langfristige Zinssätze“ (IRS, Monatswert, Stichtag Monatsletzter, `frequency: monthly`, Höchstalter 75 Tage). `riskFree` akzeptiert Monatswerte bis 75 Tage, gekennzeichnet. CHF bleibt ohne amtliche Quelle beim Ersatz. Livetest 19.11.: DKK 3,228 %, PLN 6,320 % (Stand 31.10.). Betroffen sind 41 Titel (23 DKK, 18 PLN), die bisher mit 4,2 % rechneten.

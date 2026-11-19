@@ -46,11 +46,15 @@ export function analysePhase(f:Fund):PhaseResult {
  const annualGrowth=latest&&prior&&latest.year===prior.year+1&&latest.revenue!==null&&prior.revenue!==null&&prior.revenue>0
   ?latest.revenue/prior.revenue-1:null;
  const growth=rows.length?finite(annualGrowth):finite(f.revenue_growth);
+ // Hyperwachstum nach dem Umsatzwachstum p. a. über drei Geschäftsjahre (seit 19.11.2026, Entscheidung des Nutzers nach QA),
+ // damit eine Übernahme im letzten Jahr keine Wachstumsphase macht; ohne drei lückenlose Jahre wie bisher nach dem letzten Jahr.
+ const growth3=revenueOK?Math.sqrt(rev[2]!/rev[0]!)-1:null;
+ const growthHyper=growth3??growth;
  const profit=finite(f.net_income)??finite(f.eps_trailing)??finite(latest?.netIncome),fcf=finite(f.free_cashflow),capital=capitalReturn(f);
  let id:PhaseId='unknown';const reasons:string[]=[],warnings:string[]=[];
  if(falling&&(growth===null||growth<0)){id='decline';reasons.push('Umsatz und Nettogewinn fallen über zwei aufeinanderfolgende Jahresvergleiche.');warnings.push('Der Rückgang kann zyklisch sein. Struktur, Sondereffekte und Erholung separat prüfen.');}
- else if(profit!==null&&profit<=0&&growth!==null){id=growth>=.25?'hypergrowth':'startup';reasons.push('Noch kein positiver realisierter Gewinn; Einordnung nach Umsatzwachstum.');}
- else if(profit!==null&&profit>0&&growth!==null&&growth>=.25){id='hypergrowth';reasons.push('Mindestens 25 % Umsatzwachstum bei positivem Gewinn.');}
+ else if(profit!==null&&profit<=0&&growth!==null){id=(growthHyper??growth)>=.25?'hypergrowth':'startup';reasons.push('Noch kein positiver realisierter Gewinn; Einordnung nach Umsatzwachstum.');}
+ else if(profit!==null&&profit>0&&growthHyper!==null&&growthHyper>=.25){id='hypergrowth';reasons.push(growth3!==null?'Mindestens 25 % Umsatzwachstum p. a. über drei Geschäftsjahre bei positivem Gewinn.':'Mindestens 25 % Umsatzwachstum bei positivem Gewinn.');}
  else if(profit!==null&&profit>0&&leverage){id='operating_leverage';reasons.push('Steigender Umsatz und mindestens 2 Prozentpunkte operative Margenverbesserung über drei Geschäftsjahre.');}
  else if(profit!==null&&profit>0&&fcf!==null&&fcf>0&&growth!==null&&growth>=0){id=capital.returning?'capital_return':'mature';reasons.push('Positiver Gewinn und FCF bei nicht schrumpfendem Umsatz.');reasons.push(capital.returning?'Kapitalrückgabe gemeldet; ihre Deckung wird gesondert geprüft.':'Eine Kapitalrückgabe ist durch die vorhandenen Daten nicht belegt.');}
  else reasons.push('Die vorhandenen Daten erlauben keine eindeutige Phase.');

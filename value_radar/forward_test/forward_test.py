@@ -227,6 +227,30 @@ def auswerten(staende, jetzt=None, splits_von=splits_laden):
             'staende': len(staende), 'methoden': methoden, 'ergebnisse': out, 'ohne_passenden_spaeteren_stand': gruende}
 
 
+def index_schreiben(ordner=ORDNER, splits_von=splits_laden):
+    """Uebersicht der Staende und Splits seit dem aeltesten Stand fuer die App (Zwischenstand gegen den heutigen Kurs)."""
+    staende = []
+    for p in sorted((ordner / 'staende').glob('*.json')):
+        roh = p.read_bytes()
+        d = json.loads(roh)
+        staende.append({'datei': p.name, 'stand': d['stand'], 'kohorte': d['kohorte'], 'eintraege': len(d['eintraege']),
+                        'sha256': hashlib.sha256(roh).hexdigest()})
+    ab = stand_zeit(staende[0]['stand']).date() if staende else None
+    splits, symbole = {}, set()
+    for p in (ordner / 'staende').glob('*.json'):
+        symbole.update(json.loads(p.read_text(encoding='utf-8'))['kurse'])
+    for sym in sorted(symbole):
+        sp = [x for x in splits_von(sym) if ab and str(x.get('date', ''))[:10] > ab.isoformat()]
+        if sp:
+            splits[sym] = sp
+    doc = {'schema': 1, 'method': METHODE, 'erstellt': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
+           'regeln': {'min_abstand': MIN_ABSTAND, 'unentschieden': UNENTSCHIEDEN, 'min_region': MIN_REGION,
+                      'kurssprung_ohne_split': SPRUNG, 'horizonte_tage': HORIZONTE},
+           'staende': staende, 'splits_ab': ab.isoformat() if ab else None, 'splits': splits}
+    (ordner / 'index.json').write_text(json.dumps(doc, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    return doc
+
+
 def lade_staende(ordner=STAENDE):
     return [json.loads(p.read_text(encoding='utf-8')) for p in sorted(ordner.glob('*.json'))]
 
@@ -263,6 +287,7 @@ def main(argv=None):
                 neu += 1
         print(f'[forward] rekonstruiert: {neu} Staende (vorversion) aus {len(commits)} Commits')
     else:
+        index_schreiben()
         erg = auswerten(lade_staende())
         (ORDNER / 'ergebnis.json').write_text(json.dumps(erg, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
         for z in erg['ergebnisse']:

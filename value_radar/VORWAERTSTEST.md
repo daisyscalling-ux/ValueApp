@@ -38,7 +38,25 @@ Fehlt für einen fälligen Zeitraum ein Stand innerhalb von 10 Tagen nach dem Zi
 ## Dateien
 
 - `daten/forward_test/staende/<Datum>T<Zeit>.json`: Einträge (Notierung, ISIN, Währung, Region, Kurs, FV, Ziel, beide Abstände, welches Modell nach oben zeigte, `fv_reliable`, `kauf_urteil`, `playbook`, Fingerabdruck) und kompakte Kurse aller Titel (`kurse_felder`: Kurs, Währung, ISIN, Region). Etwa 170 KB je Stand, gepackt rund 35 KB.
+- `daten/forward_test/index.json`: Liste der Stände (Datei, Stand, Kohorte, Anzahl, sha256), die Regeln und die Splits seit dem ältesten Stand aus den Ergänzungsdateien. Die App liest ihn für den Tab „Vorwärtstest“.
 - `daten/forward_test/ergebnis.json`: je Kohorte und Zeitraum Anzahl Wertungen, verschiedene Titel, FV recht, Ziel recht, unentschieden, Anteil FV unter den entschiedenen, Median marktbereinigt, Aufteilung danach, welches Modell nach oben zeigte, offene Gründe.
+
+## Anzeige in der App (Tab „Vorwärtstest“)
+
+Seit 19.11.2026 zeigt die App jeden gespeicherten Stand gegen den heutigen Kurs. Als „heute“ gilt der Kurs aus dem letzten Universum-Export, nicht ein Echtzeitkurs: Für 316 Titel gibt es keine Sammelquelle mit Echtzeitkursen, die fair nutzbar wäre.
+
+Die App rechnet beim Lesen selbst nach (`src/lib/forward-test.ts`). Sie prüft:
+
+- dass Regeln und Methode gleich sind wie in der Pipeline (sonst wird nicht gerechnet);
+- die sha256 jedes Stands gegen den Index;
+- die Gegenläufigkeit jedes Eintrags;
+- Währung und ISIN;
+- das Alter des heutigen Kurses (höchstens 7 Tage);
+- Splits und Kurssprünge.
+
+Das Ergebnis ist ausdrücklich ein Zwischenstand, keine Wertung. Gewertet wird nur nach den festen Zeiträumen.
+
+Probe am 19.11. (Stände 13.–18.11. gegen die Kurse vom 19.11.): App und Pipeline zählen identisch. Beispiel Stand 13.11.: FV führt 127, Ziel führt 148, unentschieden 342, offen 1 (Keyence: Kurs 73.610 → 14.690 JPY ohne Splitnachweis in der Ergänzungsdatei).
 
 ## Grenzen und Verzerrungen
 

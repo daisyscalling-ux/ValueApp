@@ -144,6 +144,24 @@ export function classifyPlaybook(fund: Fund): Playbook {
   return "quality";
 }
 
+/** Endwachstum des DCF je Titel (seit 19.11.2026, Entscheidung des Nutzers nach QA): durchschnittliches Umsatzwachstum p. a.
+ *  über drei Geschäftsjahre (reihe_umsatz, drei aufeinanderfolgende Jahre, alle Werte > 0), begrenzt auf 0 bis
+ *  V.terminal_growth (2,5 %). Vorher galt für alle 2,5 % ewiges Wachstum, auch bei stagnierendem oder schrumpfendem Umsatz
+ *  (Comcast: DCF ~52 bei Kurs 25). Ohne gültige Reihe bleibt es bei 2,5 %, gekennzeichnet (source "standard"). */
+export interface TerminalGrowth { value: number; source: "umsatz_3j" | "standard"; cagr: number | null; note: string }
+export function terminalGrowth(fund: Fund): TerminalGrowth {
+  const std: TerminalGrowth = { value: V.terminal_growth, source: "standard", cagr: null, note: `Endwachstum ${(V.terminal_growth * 100).toFixed(1)} % (Standard; keine geprüfte Dreijahres-Umsatzreihe)` };
+  const r = (fund as Record<string, any>).reihe_umsatz;
+  if (!Array.isArray(r) || r.length < 3) return std;
+  const x = r.slice(-3);
+  const ok = x.every((z: any) => typeof z?.wert === "number" && Number.isFinite(z.wert) && z.wert > 0 && typeof z?.jahr === "number")
+    && x[1].jahr === x[0].jahr + 1 && x[2].jahr === x[1].jahr + 1;
+  if (!ok) return std;
+  const cagr = Math.sqrt(x[2].wert / x[0].wert) - 1;
+  const value = Math.max(0, Math.min(V.terminal_growth, cagr));
+  return { value, source: "umsatz_3j", cagr, note: `Endwachstum ${(value * 100).toFixed(1)} % (Umsatz ${x[0].jahr}–${x[2].jahr}: ${(cagr * 100).toFixed(1)} % p. a., begrenzt auf 0–${(V.terminal_growth * 100).toFixed(1)} %)` };
+}
+
 /** Risikoloser Zins je Währung (seit 17.11.2026, Entscheidung des Nutzers nach QA): Rendite 10-jähriger Staatsanleihen
  *  aus amtlichen Tagesquellen (Pipeline scripts/export_rates.py, cf_rates.json, Methode gov_10y_v1), beim Lesen geprüft:
  *  Methode, Währung der Notierung (bei Anzeige in EUR die Ursprungswährung), Stichtag höchstens RATES_MAX_AGE_DAYS alt und
@@ -226,7 +244,7 @@ export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
   if (fund.net_debt == null) return null;
   if (!fcf || !shares || fcf <= 0) return null;
   const years = Math.max(Math.floor(V.projection_years), 2);
-  const gTerm = V.terminal_growth;
+  const gTerm = terminalGrowth(fund).value;
   let g1 = fund.revenue_growth;
   if (g1 === null || g1 === undefined) g1 = fund.earnings_growth ?? 0.06;
   const cap = preset === "inflection" ? 0.25 : 0.16;
@@ -518,6 +536,8 @@ export interface FairValueResult {
   /** Alle positiven Methodenwerte des Playbooks vor Plausibilitäts- und Medianfilter (seit 17.11.2026). Szenarien rechnen
    *  damit dieselben Kernmethoden wie der Fair Value; `methods` ist nur die Anzeige der drei nächsten. */
   method_values: Record<string, number>;
+  /** Endwachstum des DCF (terminalGrowth). */
+  terminal_growth: TerminalGrowth;
   /** Risikoloser Zins der Kapitalkosten (riskFree). */
   risk_free: RiskFree;
   /** Gewinnbasis der Kurs-Gewinn-Methoden (epsBasis). */
@@ -705,6 +725,7 @@ export function fairValue(
     methods: Object.fromEntries(Object.entries(avail).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     eps_basis: (({ source, note }) => ({ source, note }))(epsBasis(fund)),
     risk_free: riskFree(fund),
+    terminal_growth: terminalGrowth(fund),
     method_values: dataCheck.blocked ? {} : Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     verworfen,
     confidence, reliable,
@@ -730,7 +751,7 @@ export function reverseDcfImpliedGrowth(fund: Fund, years?: number): number | nu
   if (price == null || fcf == null || shares == null) return null;
   const targetEquity = price * shares + (fund.net_debt ?? 0.0);
   let r = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, riskFree(fund));
-  const gTerm = V.terminal_growth;
+  const gTerm = terminalGrowth(fund).value;
   if (r - gTerm < 0.04) r = gTerm + 0.04;
   const yrs = years ?? V.projection_years;
   if(!Number.isInteger(yrs)||yrs<2||yrs>50||!Number.isFinite(targetEquity)||targetEquity<=0)return null;
@@ -1068,7 +1089,7 @@ export function dcfDiagnose(fund: Fund, preset: Playbook = "quality"): DcfDiagno
   if (!fcf || !shares || fcf <= 0) return null;
 
   const years = Math.max(Math.floor(V.projection_years), 2);
-  const gTerm = V.terminal_growth;
+  const gTerm = terminalGrowth(fund).value;
   let g1 = fund.revenue_growth;
   if (g1 === null || g1 === undefined) g1 = fund.earnings_growth ?? 0.06;
   const cap = preset === "inflection" ? 0.25 : 0.16;

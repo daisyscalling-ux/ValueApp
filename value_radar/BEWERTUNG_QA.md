@@ -27,3 +27,7 @@ Die QA-Analyse prüfte 100 Titel aus 18 Ländern und 22 Sektoren auf plausible F
 ## Nachtrag Punkt 3 (19.11.2026): Sondereffekt auch in der DCF-Gewinnbasis
 
 Die QA-Wiederholung vom 17.11. zeigte Comcast mit Fair Value +198 % („kauf“). Der DCF rechnete weiter mit Jahresüberschuss × Cash-Conversion, und der Jahresüberschuss enthielt den Sondereffekt. Nach Entscheidung des Nutzers kürzt `fcfBasis` (`valuation.ts`) den Jahresüberschuss im Verhältnis Konsens ÷ berichtetes EPS, sobald `epsBasis` den Konsens nutzt. Das gilt für DCF und Reverse DCF; betroffen sind dieselben 22 Titel. App-Kopie abgeglichen, Tests in valueapp-cf.
+
+## Endwachstum des DCF je Titel (19.11.2026)
+
+Comcast behielt nach der Sondereffekt-Regel einen Fair Value von +155 % („kauf“). Ursache war das einheitliche ewige Wachstum von 2,5 % im DCF, auch bei stagnierendem Umsatz. Nach Entscheidung des Nutzers gilt jetzt `terminalGrowth` (`valuation.ts`): das Umsatzwachstum p. a. über drei Geschäftsjahre aus `reihe_umsatz`, begrenzt auf 0 bis 2,5 %. Ohne gültige Reihe bleibt es bei 2,5 %, gekennzeichnet. Das gilt für DCF, Reverse DCF und die DCF-Zerlegung. Der Screener hat `reihe_umsatz` über die ROIC-Rohblöcke (`_roic_raw`). Kennzeichnung `terminal_growth` in der Zeile (FELDER). Näherung nach Vorjahreswachstum: rund 208 von 664 DCF-Titeln betroffen; Comcast DCF etwa 52 → 35 bei Kurs 25.

@@ -724,3 +724,17 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
 **Grenzen.** Yahoo führt auch Abspaltungsfaktoren als Split; das Band ist dann um die Abspaltung bereinigt. Ein Split ohne Eintrag in der Ergänzungsdatei wird nicht erkannt.
 
 **Tests.** `test_ts_bewertung`: Ersatz, Split außerhalb des Fensters, ohne Ergänzungsdatei, veraltet, Kurs passt nicht, Band fehlt, Pence-Umrechnung.
+
+## 52-Wochen-Band: Fenster 400 Tage, Widerspruch ohne Split (19.11.2026)
+
+**Befund (Lauf 19.11.2026).** 50 Titel bekamen das bereinigte Band. Danach hatten noch 13 Titel ein Hoch über dem 3-Fachen des Kurses. 10 davon sind echte Kursstürze, Yahoo zeigt dasselbe Band (z. B. SanDisk, Alnylam, Alstom, Stellantis). Drei sind Fehler:
+- Netflix: Split am 17.11.2025, nach 367 Tagen aus dem 365-Tage-Fenster gefallen. Das ROIC-Band umfasst 260 Handelstage, also etwas mehr als ein Kalenderjahr.
+- Compass Group: ROIC-Band 27–2.527 durch gemischte Pence- und Pfund-Kurse, ohne Split.
+- Keyence: Kurs 14.690 unter dem Yahoo-Tief 51.510, vermutlich ein ganz frischer Split, den Yahoo noch nicht führt. Die Kurse beider Quellen passen nicht zusammen; dieser Fall bleibt unverändert und offen benannt.
+
+**Regel.**
+- Das Split-Fenster umfasst 400 Tage (`SPLIT_FENSTER_TAGE`).
+- Ohne Split: Weichen ROIC- und Yahoo-Band (gleiche Notierung, höchstens 7 Tage, Kurs auf 10 %) an einem Ende um mehr als 1,5× ab, gilt das engere der beiden Bänder, das den Kurs enthält. Enthält keines den Kurs, bleibt das Band offen. Kennzeichnung: `52w_band.conflict`.
+- Offline am Universum vom 19.11. trifft die neue Regel 3 Titel: Compass und Netflix bekommen das Yahoo-Band, Rose Petroleum behält das ROIC-Band (dort ist das Yahoo-Band mit 0,03–3,95 fehlerhaft).
+
+**Tests.** `test_ts_bewertung`: Compass, Rose, keines passt, kein Widerspruch, veraltete Datei, Netflix im 400-Tage-Fenster.

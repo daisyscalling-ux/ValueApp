@@ -172,6 +172,10 @@ def ersatzdaten(row, ordner=None):
 # gilt das ROIC-Band nicht: Ersatz durch das Yahoo-Band (hoechstens 7 Tage alt, Kurs passt auf 10 %), gekennzeichnet;
 # sonst bleibt das Band offen.
 BAND_METHODE = "supplement_split_band_v1"
+# 400 statt 365 Tage (19.11.2026): Das ROIC-Band umfasst 260 Handelstage und reicht ueber ein Kalenderjahr zurueck;
+# Netflix (Split 17.11.2025) fiel am 19.11.2026 aus dem 365-Tage-Fenster und behielt das Hoch 1.157,50.
+SPLIT_FENSTER_TAGE = 400
+WIDERSPRUCH = 1.5
 
 
 def band_nach_split(row, eingang, heute=None):
@@ -187,11 +191,11 @@ def band_nach_split(row, eingang, heute=None):
             r = float(sp.get("ratio"))
         except (TypeError, ValueError, AttributeError):
             continue
-        if 0 <= (heute - d).days <= 365 and r > 0 and abs(r - 1) > 1e-9:
+        if 0 <= (heute - d).days <= SPLIT_FENSTER_TAGE and r > 0 and abs(r - 1) > 1e-9:
             splits.append({"date": d.isoformat(), "ratio": r})
-    if not splits:
-        return None
     m = s.get("market") or {}
+    if not splits:
+        return _band_widerspruch(row, eingang, m, heute)
     f = m.get("fields") or {}
     lo, hi, px = f.get("52w_low"), f.get("52w_high"), f.get("price")
     grund = None
@@ -219,6 +223,47 @@ def band_nach_split(row, eingang, heute=None):
         z["52w_low"], z["52w_high"] = lo, hi
     return {"method": BAND_METHODE, "splits": splits, "source": None if grund else "Yahoo Finance (Ergaenzungsdatei, split-bereinigt)",
             "quote_at": None if grund else m.get("quote_at"), "unit_factor": None if grund else einheit, "reason": grund}
+
+
+def _band_widerspruch(row, eingang, m, heute):
+    """Ohne Split: Weichen ROIC- und Yahoo-Band (gleiche Notierung, <= 7 Tage, Kurs auf 10 %) an einem Ende um mehr als
+    WIDERSPRUCH ab, gilt das engere der beiden Baender, das den Kurs enthaelt (Compass: ROIC 27-2.527 durch gemischte
+    Pence/Pfund; Rose: Yahoo 0,03-3,95). Enthaelt keines den Kurs, bleibt das Band offen. Sonst keine Aenderung (None)."""
+    import datetime as _dt
+    f = m.get("fields") or {}
+    lo, hi, preis = row.get("52w_low"), row.get("52w_high"), row.get("price")
+    ylo, yhi, ypx = f.get("52w_low"), f.get("52w_high"), f.get("price")
+    zahlen = (lo, hi, preis, ylo, yhi, ypx)
+    if not all(isinstance(x, (int, float)) and x > 0 for x in zahlen):
+        return None
+    try:
+        alter = (heute - _dt.date.fromisoformat(str(m.get("quote_at"))[:10])).days
+    except (TypeError, ValueError):
+        return None
+    if alter < 0 or alter > 7:
+        return None
+    faktor = None
+    for fk in (100.0, 0.01):
+        if abs(ypx / preis - 1) > 0.10 and abs(ypx * fk / preis - 1) <= 0.10:
+            ylo, yhi, ypx, faktor = ylo * fk, yhi * fk, ypx * fk, fk
+            break
+    if abs(ypx / preis - 1) > 0.10:
+        return None
+    if not (hi > WIDERSPRUCH * yhi or yhi > WIDERSPRUCH * hi or lo > WIDERSPRUCH * ylo or ylo > WIDERSPRUCH * lo):
+        return None
+    passt = lambda a, b: a * 0.98 <= preis <= b * 1.02
+    kandidaten = [(b / a, a, b, q) for a, b, q in ((lo, hi, "roic"), (ylo, yhi, "yahoo")) if b >= a and passt(a, b)]
+    if not kandidaten:
+        neu, quelle, grund = (None, None), None, "ROIC- und Yahoo-Band widersprechen sich, keines enthaelt den Kurs"
+    else:
+        _, a, b, quelle = min(kandidaten)
+        neu, grund = (a, b), None
+    for z in (row, eingang):
+        z["52w_low"], z["52w_high"] = neu
+    return {"method": BAND_METHODE, "splits": [], "conflict": True,
+            "source": {"roic": "ROIC (unbereinigte Schlusskurse)", "yahoo": "Yahoo Finance (Ergaenzungsdatei)"}.get(quelle),
+            "quote_at": m.get("quote_at") if quelle == "yahoo" else None, "unit_factor": faktor if quelle == "yahoo" else None,
+            "reason": grund}
 
 
 def _gueltig(neu):

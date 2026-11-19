@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "gov_10y_v1",
- "generated_at": "2026-11-19T14:33:42.122281+00:00",
+ "generated_at": "2026-11-19T14:55:39.048921+00:00",
  "max_age_days": 7,
  "rates": {
   "USD": {
@@ -10,7 +10,7 @@
    "source": "U.S. Treasury, Daily Treasury Par Yield Curve, 10 Yr",
    "source_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&field_tdr_date_value=2026",
    "sha256": "0707733bdc20fce9a21a1063c5b99dbfd3456acabb216f73e6d6b798f511243d",
-   "retrieved_at": "2026-11-19T14:33:42.122281+00:00"
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
   },
   "EUR": {
    "value": 0.034103,
@@ -18,7 +18,7 @@
    "source": "EZB, Zinsstrukturkurve Euroraum AAA, 10 Jahre (YC)",
    "source_url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y?lastNObservations=3&format=csvdata",
    "sha256": "8bb76e15a683f63da3e2fa0f820d487d9710beb4ff0b49a191f6005e2d948c0c",
-   "retrieved_at": "2026-11-19T14:33:42.122281+00:00"
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
   },
   "JPY": {
    "value": 0.02916,
@@ -26,7 +26,7 @@
    "source": "Japanisches Finanzministerium, JGB Interest Rate, 10Y",
    "source_url": "https://www.mof.go.jp/english/policy/jgbs/reference/interest_rate/jgbcme.csv",
    "sha256": "3ca84c094d74129b231e33d4b6868f45be4b300d365eadcffec3f72be5dba127",
-   "retrieved_at": "2026-11-19T14:33:42.122281+00:00"
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
   },
   "GBP": {
    "value": 0.053747,
@@ -34,7 +34,7 @@
    "source": "Bank of England, IUDMNZC (10 Jahre nominal, Nullkupon)",
    "source_url": "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=30/Oct/2026&Dateto=now&SeriesCodes=IUDMNZC&CSVF=TN&UsingCodes=Y",
    "sha256": "630a7a481ad83edf005cfff325f2e374b39d6fcf7e663719c81115dc945dfdf6",
-   "retrieved_at": "2026-11-19T14:33:42.122281+00:00"
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
   },
   "SEK": {
    "value": 0.03103,
@@ -42,7 +42,7 @@
    "source": "Sveriges Riksbank, SEGVB10YC (Staatsanleihe 10 Jahre)",
    "source_url": "https://api.riksbank.se/swea/v1/Observations/Latest/SEGVB10YC",
    "sha256": "f70f6f703d713b0a7a7a4d935b0386584af7274c4c7cbb2a831af2a10344f503",
-   "retrieved_at": "2026-11-19T14:33:42.122281+00:00"
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
   },
   "NOK": {
    "value": 0.04343,
@@ -50,12 +50,30 @@
    "source": "Norges Bank, GOVT_GENERIC_RATES 10Y (Staatsanleihe)",
    "source_url": "https://data.norges-bank.no/api/data/GOVT_GENERIC_RATES/B.10Y.GBON?format=csv&lastNObservations=3&locale=en",
    "sha256": "e54e96e14caa91ddd338fd3f98266aa03c72e9cef169f0f5e970dd294aab2ca5",
-   "retrieved_at": "2026-11-19T14:33:42.122281+00:00"
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
+  },
+  "DKK": {
+   "value": 0.03228,
+   "as_of": "2026-10-31",
+   "frequency": "monthly",
+   "max_age_days": 75,
+   "source": "EZB, Langfristige Zinssaetze Daenemark (IRS, Monatswert)",
+   "source_url": "https://data-api.ecb.europa.eu/service/data/IRS/M.DK.L.L40.CI.0000.DKK.N.Z?lastNObservations=3&format=csvdata",
+   "sha256": "3ab2dabb152508dee553db6390102dfc13e5362e41bd20ac14298743edb61e4b",
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
+  },
+  "PLN": {
+   "value": 0.0632,
+   "as_of": "2026-10-31",
+   "frequency": "monthly",
+   "max_age_days": 75,
+   "source": "EZB, Langfristige Zinssaetze Polen (IRS, Monatswert)",
+   "source_url": "https://data-api.ecb.europa.eu/service/data/IRS/M.PL.L.L40.CI.0000.PLN.N.Z?lastNObservations=3&format=csvdata",
+   "sha256": "5e315d7126bd20c85767f5eaf05b586b824dc909276c384ce8bf8224dbe48f0c",
+   "retrieved_at": "2026-11-19T14:55:39.048921+00:00"
   }
  },
  "issues": {
-  "CHF": "Keine aktuelle amtliche Tagesreihe (SNB rendoblid endet am 31.07.2025)",
-  "DKK": "Keine amtliche Tagesreihe (EZB nur Monatswerte)",
-  "PLN": "Keine amtliche Tagesreihe (EZB nur Monatswerte)"
+  "CHF": "Keine aktuelle amtliche Tagesreihe (SNB rendoblid endet am 31.07.2025)"
  }
 }

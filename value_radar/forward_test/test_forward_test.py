@@ -121,5 +121,18 @@ class Auswertung(unittest.TestCase):
             self.assertEqual(ft.splits_laden('NYSE:B', Path(d)), [])
 
 
+class Index(unittest.TestCase):
+    def test_index_mit_staenden_und_splits_nach_dem_ersten_stand(self):
+        with tempfile.TemporaryDirectory() as d:
+            ordner = Path(d)
+            ft.speichern(ft.schnappschuss(universum('2026-11-19 13:04 UTC', {}, [zeile('NYSE:A', 100, 80, 120)]), 'x', 'aktuell'), ordner / 'staende')
+            sp = {'NYSE:A': [{'date': '2026-11-01', 'ratio': 2}, {'date': '2026-12-01', 'ratio': 4}]}
+            doc = ft.index_schreiben(ordner, splits_von=lambda s: sp.get(s, []))
+            self.assertEqual([(x['datei'], x['kohorte'], x['eintraege']) for x in doc['staende']], [('2026-11-19T1304.json', 'aktuell', 1)])
+            self.assertEqual(len(doc['staende'][0]['sha256']), 64)
+            self.assertEqual(doc['splits'], {'NYSE:A': [{'date': '2026-12-01', 'ratio': 4}]}, 'Split vor dem ersten Stand entfaellt')
+            self.assertTrue((ordner / 'index.json').exists())
+
+
 if __name__ == '__main__':
     unittest.main()

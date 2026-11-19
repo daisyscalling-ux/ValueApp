@@ -1,4 +1,5 @@
 """Rendite 10-jaehriger Staatsanleihen je Waehrung aus amtlichen Quellen (seit 17.11.2026, Entscheidung des Nutzers).
+DKK und PLN seit 19.11.2026 als EZB-Monatswert (frequency monthly, Hoechstalter 75 Tage).
 
 Grundlage fuer den risikolosen Zins der Kapitalkosten (valuation.ts riskFree). Je Waehrung eine amtliche Tagesquelle;
 gespeichert werden Wert (Anteil, 0.0512 = 5,12 %), Stichtag, Quelle, Quell-URL, sha256 der Antwort und Abrufzeit.
@@ -120,9 +121,32 @@ def sources(today):
 
 NO_SOURCE = {
     'CHF': 'Keine aktuelle amtliche Tagesreihe (SNB rendoblid endet am 31.07.2025)',
-    'DKK': 'Keine amtliche Tagesreihe (EZB nur Monatswerte)',
-    'PLN': 'Keine amtliche Tagesreihe (EZB nur Monatswerte)',
 }
+
+# Seit 19.11.2026 (Entscheidung des Nutzers): DKK und PLN aus der EZB-Reihe "Langfristige Zinssaetze" (Konvergenzkriterium,
+# Rendite 10-jaehriger Staatsanleihen), nur Monatswerte. Stichtag = letzter Tag des Monats; Hoechstalter 75 Tage
+# (Monatswert erscheint Anfang des Folgemonats), gekennzeichnet als frequency "monthly".
+MONTHLY_MAX_AGE_DAYS = 75
+
+
+def monthly_sources():
+    return {
+        'DKK': ('EZB, Langfristige Zinssaetze Daenemark (IRS, Monatswert)',
+                'https://data-api.ecb.europa.eu/service/data/IRS/M.DK.L.L40.CI.0000.DKK.N.Z?lastNObservations=3&format=csvdata'),
+        'PLN': ('EZB, Langfristige Zinssaetze Polen (IRS, Monatswert)',
+                'https://data-api.ecb.europa.eu/service/data/IRS/M.PL.L.L40.CI.0000.PLN.N.Z?lastNObservations=3&format=csvdata'),
+    }
+
+
+def parse_ecb_monthly(raw):
+    """EZB csvdata mit TIME_PERIOD YYYY-MM: juengster Monat, Stichtag = Monatsletzter."""
+    rows = [r for r in csv.DictReader(io.StringIO(raw.decode('utf-8-sig'))) if num(r.get('OBS_VALUE')) is not None]
+    if not rows:
+        return None
+    r = max(rows, key=lambda x: x['TIME_PERIOD'])
+    y, m = (int(x) for x in r['TIME_PERIOD'][:7].split('-'))
+    end = (dt.date(y + (m == 12), m % 12 + 1, 1) - dt.timedelta(days=1))
+    return end, num(r['OBS_VALUE'])
 
 
 def collect(now=None, fetcher=fetch):
@@ -145,6 +169,23 @@ def collect(now=None, fetcher=fetch):
             continue
         rates[cur] = {'value': round(v / 100, 6), 'as_of': d.isoformat(), 'source': name, 'source_url': url,
                       'sha256': hashlib.sha256(raw).hexdigest(), 'retrieved_at': now.isoformat()}
+    for cur, (name, url) in monthly_sources().items():
+        try:
+            raw = fetcher(url)
+            got = parse_ecb_monthly(raw)
+        except Exception as exc:
+            issues[cur] = 'Abruf fehlgeschlagen: ' + (('HTTP ' + str(exc.code)) if hasattr(exc, 'code') else type(exc).__name__)
+            continue
+        if not got:
+            issues[cur] = 'Antwort ohne gueltigen Monatswert'
+            continue
+        d, v = got
+        age = (now.date() - d).days
+        if age < 0 or age > MONTHLY_MAX_AGE_DAYS:
+            issues[cur] = f'Juengster Monatswert ({d.isoformat()}) ausserhalb von {MONTHLY_MAX_AGE_DAYS} Tagen'
+            continue
+        rates[cur] = {'value': round(v / 100, 6), 'as_of': d.isoformat(), 'frequency': 'monthly', 'max_age_days': MONTHLY_MAX_AGE_DAYS,
+                      'source': name, 'source_url': url, 'sha256': hashlib.sha256(raw).hexdigest(), 'retrieved_at': now.isoformat()}
     return {'schema': 1, 'method': METHOD, 'generated_at': now.isoformat(), 'max_age_days': MAX_AGE_DAYS,
             'rates': rates, 'issues': issues}
 

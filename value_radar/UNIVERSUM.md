@@ -94,3 +94,10 @@ Banken und Versicherer brauchen für das Finanzprofil zusätzlich ihre Aufsichts
 - Die Bewertung rechnet mit dem EZB-Kurs um (CAD → USD).
 - Die Solvenzquote nach kanadischer Aufsicht (LICAT) ist nicht angebunden; die Versicherer-Kennzahl bleibt offen.
 - Die ISIN prüft der erste Exportlauf gegen ROIC.
+
+**Zweiter Titel (19.11.2026):** Anthropic (NASDAQ:ANT, ISIN US03703U1079, Class A, Börsengang 19.11.2026).
+- **Identität:** CUSIP 03703U 107 aus der Pricing-Mitteilung (FWP) bei der SEC, CIK 2130357. Die ISIN ist daraus abgeleitet, die Prüfziffer gültig. Den Abgleich mit ROIC macht der erste Exportlauf; weicht dort Notierung, ISIN oder Währung ab, wird die Zeile verworfen.
+- **Erwartete Lücken in den ersten Monaten** (offen mit Grund, keine Schätzung):
+  - Es gibt noch keinen 10-K/10-Q, nur die Abschlüsse im S-1. SEC-Kennzahlen (companyfacts) und ROIC-Jahreswerte können fehlen, bis der erste Quartalsbericht eingereicht ist.
+  - Kurshistorie ab 19.11.2026: Für die 52-Wochen-Spanne, die Volatilität, Beta und den größten Rückgang fehlt die Historie. Der größte Rückgang bleibt bei verkürzter Historie bewusst offen (`shortHistory`).
+  - Analystenvotum und Konsensschätzungen beginnen erst nach der Ruhefrist der Konsortialbanken (in der Regel 25 Tage).

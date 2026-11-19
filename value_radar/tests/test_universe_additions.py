@@ -16,7 +16,10 @@ class Load(unittest.TestCase):
     def test_valid_entry(self):
         out,problems=U.load(write([MFC]),TODAY);self.assertEqual(list(out),['MFC']);self.assertEqual(problems,[])
     def test_repository_file_valid(self):
-        out,problems=U.load(today=TODAY);self.assertIn('MFC',out);self.assertEqual(problems,[])
+        out,problems=U.load(today=max(TODAY,dt.date(2026,11,19)));self.assertIn('MFC',out);self.assertEqual(problems,[])
+        ant=out['ANT'];self.assertEqual((ant['listing_symbol'],ant['isin'],ant['currency']),('NASDAQ:ANT','US03703U1079','USD'))
+        self.assertTrue(U.isin_valid('US03703U1079'));self.assertFalse(U.isin_valid('US03703U1078'))
+        self.assertTrue(ant['source_url'].startswith('https://www.sec.gov/'))
     def test_rejections_with_reason(self):
         cases=[({**MFC,'isin':'CA56501R1065'},'isin_pruefziffer'),({**MFC,'isin':'XX'},'isin_pruefziffer'),
                ({**MFC,'review_expires':'2026-11-16'},'pruefung_abgelaufen'),({**MFC,'reviewed_on':'2026-12-01'},'pruefung_in_zukunft'),

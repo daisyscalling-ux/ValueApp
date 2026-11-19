@@ -19,6 +19,23 @@ def zeile(ticker,fund):
 
 
 class Eingabe(unittest.TestCase):
+    def test_band_conflict_without_split(self):
+        # 19.11.2026: Compass ROIC 27-2.527 (Pence/Pfund gemischt), Rose Yahoo 0,03-3,95; Netflix-Split vor 367 Tagen.
+        import datetime as _dt
+        heute=_dt.date(2026,11,19);self.assertEqual(T.SPLIT_FENSTER_TAGE,400)
+        m=lambda lo,hi,px:{'_fundamental_supplement':{'splits':[],'market':{'quote_at':'2026-11-19','fields':{'price':px,'52w_low':lo,'52w_high':hi}}}}
+        cpg={'price':33.0,'52w_low':27.185,'52w_high':2527.0};b=T.band_nach_split(cpg,m(26.0,34.92,33.0),heute)
+        self.assertEqual((cpg['52w_low'],cpg['52w_high']),(26.0,34.92));self.assertTrue(b['conflict']);self.assertIn('Yahoo',b['source'])
+        rose={'price':3.22,'52w_low':2.95,'52w_high':3.88};b=T.band_nach_split(rose,m(0.03,3.95,3.22),heute)
+        self.assertEqual((rose['52w_low'],rose['52w_high']),(2.95,3.88));self.assertIn('ROIC',b['source'])
+        weg={'price':10.0,'52w_low':20.0,'52w_high':30.0};b=T.band_nach_split(weg,m(40.0,90.0,10.0),heute)
+        self.assertIsNone(weg['52w_high']);self.assertIn('keines enthaelt',b['reason'])
+        gleich={'price':33.0,'52w_low':27.0,'52w_high':36.0};self.assertIsNone(T.band_nach_split(gleich,m(26.0,34.9,33.0),heute),'ohne Widerspruch keine Aenderung')
+        alt={'price':33.0,'52w_low':27.185,'52w_high':2527.0};self.assertIsNone(T.band_nach_split(alt,{'_fundamental_supplement':{'splits':[],'market':{'quote_at':'2026-11-01','fields':{'price':33.0,'52w_low':26.0,'52w_high':34.9}}}},heute),'veraltete Ergaenzungsdatei')
+        nflx={'price':59.82,'52w_low':59.68,'52w_high':1157.5}
+        b=T.band_nach_split(nflx,{'_fundamental_supplement':{'splits':[{'date':'2025-11-17','ratio':10.0}],'market':{'quote_at':'2026-11-19','fields':{'price':59.82,'52w_low':59.41,'52w_high':113.34}}}},heute)
+        self.assertEqual(nflx['52w_high'],113.34);self.assertEqual(b['splits'][0]['date'],'2025-11-17')
+
     def test_band_after_split_from_supplement(self):
         # Mitsui Kinzoku 17.11.2026: Split 10:1 am 29.09.2026, ROIC-Band 1.344,5-54.900, Yahoo bereinigt 1.326-5.770.
         import datetime as _dt

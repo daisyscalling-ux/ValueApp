@@ -1,7 +1,7 @@
 {
  "schema": 1,
- "method": "fv_vs_target_forward_v1",
- "ausgewertet": "2026-11-19T19:34:54+00:00",
+ "method": "fv_vs_target_forward_v2",
+ "ausgewertet": "2026-11-19T23:07:47+00:00",
  "regeln": {
   "min_abstand": 0.05,
   "unentschieden": 0.02,

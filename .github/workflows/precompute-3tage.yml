@@ -5,7 +5,7 @@ name: precompute-3tage
 # Schreibt das JSON fuer Cloudflare. Der fruehere Streamlit-Nachtlauf (Google Sheet, ~80 min) ist seit
 # 16.11.2026 entfernt: der Nutzer arbeitet nur noch in Cloudflare, und der Export las nichts daraus.
 #
-# 01:17 UTC. Der historische Workflowname bleibt fuer bestehende Aufrufer erhalten.
+# 21:23 UTC (seit 19.11.2026, vorher 01:17 UTC). Der historische Workflowname bleibt fuer bestehende Aufrufer erhalten.
 on:
   pull_request:
     paths:
@@ -34,10 +34,15 @@ on:
       - 'value_radar/ts_bewertung.py'
       - 'value_radar/precompute.py'
       - 'value_radar/tests/test_ts_bewertung.py'
+      - 'value_radar/kurszeit.py'
+      - 'value_radar/tests/test_kurszeit.py'
       - 'value_radar/risk_precompute/scanner-evaluate.ts'
       - 'value_radar/risk_precompute/src/lib/**'
   schedule:
-    - cron: "17 1 * * *"    # daily
+    # 21:23 UTC, nach US-Schluss (Winter 21:00 UTC, Sommer 20:00 UTC; Europa und Tokio sind dann ebenfalls zu). Seit
+    # 19.11.2026 (vorher 01:17 UTC, da lief Tokio bereits): Grundlage fuer Schlusskurse im Vorwaertstest (kurszeit.py).
+    # Titel, die nach 00:00 UTC (Eroeffnung Tokio) abgerufen werden, tragen dort price_kind "handel".
+    - cron: "23 21 * * *"    # daily
   workflow_dispatch: {}
 
 concurrency:
@@ -79,6 +84,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_universe_additions.py -v
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_sektor_industrial_services.py -v
+      - working-directory: value_radar
+        run: python -m unittest discover -s tests -p test_kurszeit.py -v
   precompute:
     concurrency:
       group: roic-bulk-production

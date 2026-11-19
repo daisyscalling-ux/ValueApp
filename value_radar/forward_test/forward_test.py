@@ -14,20 +14,22 @@ fuer diesen Zeitraum mit Grund.
 """
 import argparse, datetime as dt, hashlib, json, os, re, statistics, subprocess, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import kurszeit
 
-METHODE = 'fv_vs_target_forward_v1'
+METHODE = 'fv_vs_target_forward_v2'   # v2 seit 19.11.2026: nur geprueft Schlusskurse (kurszeit.py); v1-Staende = Vorversion
 MIN_ABSTAND = 0.05
 UNENTSCHIEDEN = 0.02
 HORIZONTE = {'1M': 30, '3M': 91, '6M': 182, '12M': 365}
 TOLERANZ_TAGE = 10          # spaeterer Stand hoechstens so viele Tage nach dem Zieldatum
-START = '2026-11-19'        # Staende davor: kohorte "vorversion"
+START = '2026-11-19'        # Rekonstruktion nur vor diesem Tag; Kohorte "aktuell" nur mit Schema 2 (kohorte_von)
 BASIS = Path(__file__).resolve().parents[1]
 ORDNER = BASIS / 'daten' / 'forward_test'
 STAENDE = ORDNER / 'staende'
 REGION = {'US': 'USA', 'United States': 'USA', 'JP': 'Japan', 'GB': 'Grossbritannien'}
 EUROPA = {'DE', 'FR', 'CH', 'SE', 'IT', 'NL', 'ES', 'DK', 'NO', 'PL', 'FI', 'BE', 'GR', 'AT', 'IE', 'PT', 'LU', 'CZ', 'HU'}
 SPRUNG = (-0.5, 1.0)        # Kursaenderung ausserhalb dieses Bereichs ohne Splitnachweis: offen (moeglicher Split)
-KURS_FELDER = ['price', 'currency', 'isin', 'region']   # kompakte Kursliste je Titel
+KURS_FELDER = ['price', 'currency', 'isin', 'region', 'kind', 'day']   # kompakte Kursliste je Titel
 MIN_REGION = 20             # Marktabgleich nur mit mindestens so vielen Titeln der Region
 
 
@@ -63,6 +65,22 @@ def fingerabdruck(r):
     return teile, hashlib.sha256(json.dumps(teile, sort_keys=True).encode()).hexdigest()[:12]
 
 
+def kursart(r):
+    """Kursart der Zeile neu bestimmen (nicht ungeprueft uebernehmen) -> (kind, tag, grund)."""
+    boerse = r.get('exchange') or str(r.get('listing_symbol') or '').split(':')[0]
+    a = kurszeit.einordnen(boerse, r.get('price_time'), r.get('price_date'), r.get('price_fetched_at'))
+    if r.get('price_kind_method') != kurszeit.METHODE:
+        return 'unbekannt', None, 'Kurs ohne Zeitangabe im Export'
+    if a['kind'] != r.get('price_kind') or a['date'] != r.get('price_day'):
+        return 'unbekannt', None, 'Kursart im Export widerspricht der Nachpruefung'
+    return a['kind'], a['date'], a['reason']
+
+
+def kohorte_von(s):
+    """Staende vor v2 (ohne geprueften Schlusskurs) zaehlen immer als Vorversion."""
+    return s.get('kohorte') if s.get('schema') == 2 else 'vorversion'
+
+
 def gegenlaeufig(r):
     p, fv, z = zahl(r.get('price')), zahl(r.get('fair_value')), zahl(r.get('target_12m'))
     if not (p and p > 0 and fv and fv > 0 and z and z > 0):
@@ -78,26 +96,34 @@ def schnappschuss(doc, quelle, kohorte, commit=None, roh=None):
     stand = doc.get('stand')
     if stand_zeit(stand) is None:
         raise ValueError('Universum ohne gueltigen Stand')
-    eintraege, kurse, methoden = [], {}, {}
+    eintraege, kurse, methoden, ohne_schluss = [], {}, {}, {}
     for r in doc.get('kandidaten') or []:
         sym = r.get('listing_symbol')
         p = zahl(r.get('price'))
         if not isinstance(sym, str) or not p or p <= 0:
             continue
-        kurse[sym] = [p, r.get('currency'), r.get('isin'), region(r.get('country'))]
+        art, tag, grund = kursart(r)
+        kurse[sym] = [p, r.get('currency'), r.get('isin'), region(r.get('country')), art, tag]
         g = gegenlaeufig(r)
         if g is None:
+            continue
+        if art != 'schluss':
+            k = grund or 'kein Schlusskurs'
+            ohne_schluss[k] = ohne_schluss.get(k, 0) + 1
             continue
         teile, fp = fingerabdruck(r)
         methoden[fp] = teile
         eintraege.append({
             'listing_symbol': sym, 'isin': r.get('isin'), 'currency': r.get('currency'), 'region': region(r.get('country')),
-            'name': r.get('name'), 'price': p, 'fair_value': r['fair_value'], 'target_12m': r['target_12m'],
+            'name': r.get('name'), 'price': p, 'price_day': tag, 'fair_value': r['fair_value'], 'target_12m': r['target_12m'],
+            'exchange': r.get('exchange'), 'price_time': r.get('price_time'), 'price_date': r.get('price_date'),
+            'price_fetched_at': r.get('price_fetched_at'),
             'fv_pct': round(g[0] * 100, 2), 'target_pct': round(g[1] * 100, 2),
             'oben': 'fair_value' if g[0] > 0 else 'ziel_12m',
             'fv_reliable': r.get('fv_reliable'), 'kauf_urteil': r.get('kauf_urteil'), 'playbook': r.get('playbook'),
             'fingerabdruck': fp})
-    return {'schema': 1, 'method': METHODE, 'stand': stand, 'kohorte': kohorte, 'min_abstand': MIN_ABSTAND,
+    return {'schema': 2, 'method': METHODE, 'stand': stand, 'kohorte': kohorte, 'min_abstand': MIN_ABSTAND,
+            'kursart_methode': kurszeit.METHODE, 'gegenlaeufig_ohne_schlusskurs': ohne_schluss,
             'quelle': {'pfad': quelle, 'commit': commit, 'sha256': hashlib.sha256(roh).hexdigest() if roh else None},
             'erstellt': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
             'methoden': methoden, 'kurse_felder': KURS_FELDER, 'eintraege': eintraege, 'kurse': kurse}
@@ -142,6 +168,9 @@ def splits_laden(sym, ordner=None):
 
 def rendite(k0, k1, t0, t1, splits):
     """Split-bereinigte Kursrendite -> (wert, grund). Wert None bei Identitaetsbruch oder unbelegtem Kurssprung."""
+    for k in (k0, k1):
+        if 'kind' in k and k['kind'] != 'schluss':
+            return None, 'Kein Schlusskurs'
     if k0.get('currency') != k1.get('currency'):
         return None, 'Waehrung verschieden'
     if k0.get('isin') and k1.get('isin') and k0['isin'] != k1['isin']:
@@ -170,7 +199,7 @@ def auswerten(staende, jetzt=None, splits_von=splits_laden):
                 continue
             j = next((k for k in range(i + 1, len(staende)) if zeiten[k] >= ziel), None)
             if j is None or (zeiten[j] - ziel).days > TOLERANZ_TAGE:
-                k = f"{s.get('kohorte')} {h}"
+                k = f"{kohorte_von(s)} {h}"
                 gruende[k] = gruende.get(k, 0) + len(s['eintraege'])
                 continue
             s1, t1 = staende[j], zeiten[j]
@@ -191,7 +220,7 @@ def auswerten(staende, jetzt=None, splits_von=splits_laden):
                 sp = cache.setdefault(sym, splits_von(sym))
                 r, grund = rendite(s['kurse'][sym], k1, t0, t1, sp) if k1 else (None, 'kein spaeterer Kurs')
                 m = median.get(e['region'])
-                key = (s.get('kohorte'), h)
+                key = (kohorte_von(s), h)
                 z = ergebnis.setdefault(key, {'n': 0, 'fair_value': 0, 'ziel_12m': 0, 'unentschieden': 0, 'offen': {},
                                               'rel': [], 'nach_oben': {'fair_value': [0, 0], 'ziel_12m': [0, 0]}, 'methode': {}, 'titel': set()})
                 if r is None or m is None:
@@ -233,7 +262,7 @@ def index_schreiben(ordner=ORDNER, splits_von=splits_laden):
     for p in sorted((ordner / 'staende').glob('*.json')):
         roh = p.read_bytes()
         d = json.loads(roh)
-        staende.append({'datei': p.name, 'stand': d['stand'], 'kohorte': d['kohorte'], 'eintraege': len(d['eintraege']),
+        staende.append({'datei': p.name, 'stand': d['stand'], 'kohorte': kohorte_von(d), 'method': d.get('method'), 'eintraege': len(d['eintraege']),
                         'sha256': hashlib.sha256(roh).hexdigest()})
     ab = stand_zeit(staende[0]['stand']).date() if staende else None
     splits, symbole = {}, set()
@@ -257,35 +286,21 @@ def lade_staende(ordner=STAENDE):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument('befehl', choices=['schnappschuss', 'rekonstruieren', 'auswerten'])
+    ap.add_argument('befehl', choices=['schnappschuss', 'auswerten'])
     ap.add_argument('--universum', default=str(BASIS / 'daten' / 'cf_universum.json'))
     a = ap.parse_args(argv)
     if a.befehl == 'schnappschuss':
         roh = Path(a.universum).read_bytes()
         doc = json.loads(roh)
-        koh = 'aktuell' if stand_zeit(doc.get('stand')).date().isoformat() >= START else 'vorversion'
-        p = speichern(schnappschuss(doc, 'value_radar/daten/cf_universum.json', koh, roh=roh))
-        print(f'[forward] {"gespeichert: " + p.name if p else "Stand schon vorhanden"}')
-    elif a.befehl == 'rekonstruieren':
-        rel = 'value_radar/daten/cf_universum.json'
-        commits = subprocess.run(['git', 'log', '--format=%H', '--', rel], capture_output=True, text=True, check=True).stdout.split()
-        neu, tage = 0, set()
-        for c in commits:  # neueste zuerst: je Kalendertag zaehlt der letzte Stand
-            roh = subprocess.run(['git', 'show', f'{c}:{rel}'], capture_output=True, check=True).stdout
-            try:
-                doc = json.loads(roh)
-                t = stand_zeit(doc.get('stand'))
-            except ValueError:
-                continue
-            if t is None or t.date().isoformat() >= START or t.date() in tage:
-                continue
-            tage.add(t.date())
-            snap = schnappschuss(doc, rel, 'vorversion', commit=c, roh=roh)
-            if not snap['eintraege']:   # vor dem 13.11.2026 gab es kein target_12m; target_mean ist ein anderes Modell
-                continue
-            if speichern(snap):
-                neu += 1
-        print(f'[forward] rekonstruiert: {neu} Staende (vorversion) aus {len(commits)} Commits')
+        snap = schnappschuss(doc, 'value_radar/daten/cf_universum.json', 'aktuell', roh=roh)
+        if not snap['eintraege']:
+            print(f"[forward] nicht gespeichert: keine gegenlaeufigen Titel mit geprueftem Schlusskurs {snap['gegenlaeufig_ohne_schlusskurs']}")
+            return
+        p = speichern(snap)
+        if p:
+            print(f"[forward] gespeichert: {p.name} ({len(snap['eintraege'])} Eintraege, ohne Schlusskurs {snap['gegenlaeufig_ohne_schlusskurs']})")
+        else:
+            print('[forward] Stand schon vorhanden')
     else:
         index_schreiben()
         erg = auswerten(lade_staende())

@@ -1,0 +1,73 @@
+{
+ "schema": 1,
+ "method": "fv_vs_target_forward_v1",
+ "erstellt": "2026-11-19T15:18:45+00:00",
+ "regeln": {
+  "min_abstand": 0.05,
+  "unentschieden": 0.02,
+  "min_region": 20,
+  "kurssprung_ohne_split": [
+   -0.5,
+   1.0
+  ],
+  "horizonte_tage": {
+   "1M": 30,
+   "3M": 91,
+   "6M": 182,
+   "12M": 365
+  }
+ },
+ "staende": [
+  {
+   "datei": "2026-11-13T2125.json",
+   "stand": "2026-11-13 21:25 UTC",
+   "kohorte": "vorversion",
+   "eintraege": 618,
+   "sha256": "32955d3c2ef203707fa189d19a1d4146c226fdbb12ebd9b58c1412cf23c01c78"
+  },
+  {
+   "datei": "2026-11-14T2242.json",
+   "stand": "2026-11-14 22:42 UTC",
+   "kohorte": "vorversion",
+   "eintraege": 603,
+   "sha256": "6f6d7c8f2e9a54a1bb131fdcff113d6a5103b76c3f3567bfa0de0b82b0323ebb"
+  },
+  {
+   "datei": "2026-11-15T1720.json",
+   "stand": "2026-11-15 17:20 UTC",
+   "kohorte": "vorversion",
+   "eintraege": 605,
+   "sha256": "32ffc64d2525e5f452b223b66951fae8cefe9d4f33624f5cf3f9079164b83cdc"
+  },
+  {
+   "datei": "2026-11-16T2103.json",
+   "stand": "2026-11-16 21:03 UTC",
+   "kohorte": "vorversion",
+   "eintraege": 647,
+   "sha256": "9e76c113951267c54d0006413b8db915dbb97dd69e5f85998a9dafa512e1c70f"
+  },
+  {
+   "datei": "2026-11-17T2231.json",
+   "stand": "2026-11-17 22:31 UTC",
+   "kohorte": "vorversion",
+   "eintraege": 310,
+   "sha256": "8a3cb3fa5ec29dda8187de2996def4d5f588f3241fb27c11fe358d4481cf58d5"
+  },
+  {
+   "datei": "2026-11-18T1434.json",
+   "stand": "2026-11-18 14:34 UTC",
+   "kohorte": "vorversion",
+   "eintraege": 315,
+   "sha256": "696f025a4ce2232fa6f4633fa31f3d726b17925029df064fcf84f881045beadc"
+  },
+  {
+   "datei": "2026-11-19T1304.json",
+   "stand": "2026-11-19 13:04 UTC",
+   "kohorte": "aktuell",
+   "eintraege": 316,
+   "sha256": "043f1cf8e0d6c7d73777e062bd9dc68bce4454b25e551969be7b5619f3dcc0ea"
+  }
+ ],
+ "splits_ab": "2026-11-13",
+ "splits": {}
+}

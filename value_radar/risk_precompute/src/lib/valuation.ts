@@ -190,6 +190,7 @@ export function terminalGrowth(fund: Fund): TerminalGrowth {
  *  nicht in der Zukunft, Wert zwischen −1 % und 15 %. Die Untergrenze der Kapitalkosten ist dann relativ: Zins +
  *  WACC_FLOOR_SPREAD (vorher fest 8,5 %, die bei 182 von 301 EUR- und 172 von 225 JPY-Titeln griff). Ohne gültigen Wert
  *  bleibt alles wie bisher (4,2 % und Boden 8,5 %), gekennzeichnet als fallback_us_constant (CHF, DKK, PLN: keine Tagesquelle). */
+export const RATES_MONTHLY_MAX_AGE_DAYS = 75;
 export const RATES_METHOD = "gov_10y_v1", RATES_MAX_AGE_DAYS = 7, WACC_FLOOR_SPREAD = 0.04, WACC_FLOOR_FIXED = 0.085;
 export interface RiskFree { value: number; floor: number; source: "gov_10y" | "fallback_us_constant"; currency: string; as_of: string | null; label: string; note: string | null }
 export function riskFree(fund: Fund, now = Date.now()): RiskFree {
@@ -204,9 +205,11 @@ export function riskFree(fund: Fund, now = Date.now()): RiskFree {
   if (!r) return fallback(`Kein amtlicher 10-Jahres-Zins für ${cur || "unbekannte Währung"}` + (doc.issues?.[cur] ? `: ${doc.issues[cur]}` : ""));
   const at = Date.parse(r.as_of);
   if (!(typeof r.value === "number" && Number.isFinite(r.value) && r.value > -0.01 && r.value < 0.15)) return fallback(`Zins für ${cur} außerhalb des plausiblen Bereichs`);
-  if (!Number.isFinite(at) || at > now + 86400000 || now - at > RATES_MAX_AGE_DAYS * 86400000) return fallback(`Zins für ${cur} veraltet oder ungültig datiert`);
+  // Monatswerte (DKK, PLN aus der EZB-Reihe, seit 19.11.2026) dürfen bis RATES_MONTHLY_MAX_AGE_DAYS alt sein, gekennzeichnet.
+  const monthly = r.frequency === "monthly", maxAge = monthly ? RATES_MONTHLY_MAX_AGE_DAYS : RATES_MAX_AGE_DAYS;
+  if (!Number.isFinite(at) || at > now + 86400000 || now - at > maxAge * 86400000) return fallback(`Zins für ${cur} veraltet oder ungültig datiert`);
   return { value: r.value, floor: r.value + WACC_FLOOR_SPREAD, source: "gov_10y", currency: cur, as_of: r.as_of,
-    label: `${(r.value * 100).toFixed(2)} % (${r.source}, Stand ${r.as_of})`, note: null };
+    label: `${(r.value * 100).toFixed(2)} % (${r.source}, ${monthly ? "Monatswert " : ""}Stand ${r.as_of})`, note: monthly ? `Monatswert (Höchstalter ${RATES_MONTHLY_MAX_AGE_DAYS} Tage)` : null };
 }
 
 export function wacc(beta: number | null | undefined,

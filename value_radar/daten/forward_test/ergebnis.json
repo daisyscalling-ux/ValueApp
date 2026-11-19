@@ -1,0 +1,42 @@
+{
+ "schema": 1,
+ "method": "fv_vs_target_forward_v1",
+ "ausgewertet": "2026-11-19T15:08:39+00:00",
+ "regeln": {
+  "min_abstand": 0.05,
+  "unentschieden": 0.02,
+  "horizonte_tage": {
+   "1M": 30,
+   "3M": 91,
+   "6M": 182,
+   "12M": 365
+  },
+  "toleranz_tage": 10,
+  "markt": "Median der split-bereinigten Kursrenditen aller Titel der Region (mindestens 20)",
+  "kurssprung_ohne_split": [
+   -0.5,
+   1.0
+  ]
+ },
+ "staende": 7,
+ "methoden": {
+  "469a605c6977": {
+   "scanner_method": "ts-evaluate-v1",
+   "value_inputs": null,
+   "eps_basis": "nein",
+   "terminal_growth": "nein",
+   "risk_free": "nein",
+   "roic_history": "nein"
+  },
+  "59ea5d119509": {
+   "scanner_method": "ts-evaluate-v1",
+   "value_inputs": "value_inputs_v1",
+   "eps_basis": "ja",
+   "terminal_growth": "nein",
+   "risk_free": "ja",
+   "roic_history": "ja"
+  }
+ },
+ "ergebnisse": [],
+ "ohne_passenden_spaeteren_stand": {}
+}

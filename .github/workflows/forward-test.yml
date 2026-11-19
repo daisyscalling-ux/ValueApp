@@ -1,0 +1,54 @@
+name: forward-test
+# Vorwaertstest Fair Value gegen 12M-Ziel (value_radar/forward_test, seit 19.11.2026): legt je Kalendertag den
+# Universumsstand der gegenlaeufigen Titel samt Kursen aller Titel ab und wertet faellige Zeitraeume (1/3/6/12 Monate) aus.
+# Laeuft nach jedem precompute-3tage und taeglich als Rueckfall; ein Stand je Kalendertag, vorhandene bleiben unveraendert.
+on:
+  workflow_run:
+    workflows: [precompute-3tage]
+    types: [completed]
+  schedule:
+    - cron: '41 9 * * *'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '.github/workflows/forward-test.yml'
+      - 'value_radar/forward_test/**'
+concurrency:
+  group: forward-test
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Tests
+        run: cd value_radar/forward_test && python -m unittest -v test_forward_test
+      - name: Stand ablegen und auswerten
+        if: github.event_name != 'pull_request'
+        run: |
+          python value_radar/forward_test/forward_test.py schnappschuss
+          python value_radar/forward_test/forward_test.py auswerten
+      - name: Speichern
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add value_radar/daten/forward_test
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Vorwaertstest: Stand und Auswertung [skip ci]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::Push des Vorwaertstests nach 4 Versuchen abgelehnt"
+          exit 1

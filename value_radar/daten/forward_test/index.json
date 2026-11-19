@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "fv_vs_target_forward_v1",
- "erstellt": "2026-11-19T15:25:39+00:00",
+ "erstellt": "2026-11-19T17:46:19+00:00",
  "regeln": {
   "min_abstand": 0.05,
   "unentschieden": 0.02,
@@ -69,5 +69,12 @@
   }
  ],
  "splits_ab": "2026-11-13",
- "splits": {}
+ "splits": {
+  "TSE:6861": [
+   {
+    "date": "2026-11-19",
+    "ratio": 5.0
+   }
+  ]
+ }
 }

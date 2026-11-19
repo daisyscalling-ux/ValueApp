@@ -37,3 +37,8 @@ Comcast behielt nach der Sondereffekt-Regel einen Fair Value von +155 % („kauf
 - **Tesco:** Die App (GBp) verlor beim Jahresblock den freien Cashflow, der Screener (GBP) nicht. Felder desselben Geschäftsjahres bleiben jetzt auch bei reinem Einheitenfaktor 100, umgerechnet (`applySupplement`).
 - **Keyence:** Der ROIC-Kurs stammt von nach dem Split (14.690), der Yahoo-Kurs von davor (73.610). Bei mehr als Faktor 1,5 zwischen den Quellen wird nichts gemischt, und die Bewertung bleibt gesperrt (`price_source_conflict`). Am Universum vom 19.11. betrifft das nur Keyence.
 - **Andritz:** 5 % Abweichung im Fair Value bei gleichen Eingängen. Neu `score_diagnostics.fv_methods` (Kern, Rohwerte, Gewichte); der nächste Bundle-Compare zeigt die Methode.
+
+## Punkt 5: Modellzuordnung (19.11.2026)
+
+- **Robuste Zyklik:** `dataCyclical` (`valuation.ts`) verlangt die Margenschwankung über 0,40 auch ohne das extremste Jahr (`robustMarginCv`). Am Universum vom 19.11. hingen 235 von 509 datenbasierten Zyklikern an einem Ausreißerjahr. 111 verlassen das Zyklik-Modell (104 → Qualität, 7 → Wachstumswende), der Rest bleibt über die Branchenliste zyklisch. Das Flag `cyclicality.cyclical` der Pipeline bleibt der volle CV; der App-Code entscheidet.
+- **Wachstum über drei Jahre:** Wachstumsmodell und Phase Hyperwachstum nach Umsatz p. a. über drei Geschäftsjahre (`umsatzCagr3`, `lifecycle.ts`), sonst wie bisher nach dem letzten Jahr. Grund: Eine Übernahme machte Italgas zum Wachstumstitel (Fair Value +69 %, „kauf“). Die Wirkung zeigt der Precompute.

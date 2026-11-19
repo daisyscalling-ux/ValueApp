@@ -63,6 +63,7 @@ class Eingabe(unittest.TestCase):
         self.assertIn('roic_history_status',T.FELDER)
         self.assertIn('eps_basis',T.FELDER,'Sondereffekt-Kennzeichnung in der Zeile (17.11.2026)')
         self.assertIn('risk_free',T.FELDER)
+        self.assertIn('terminal_growth',T.FELDER,'Endwachstum je Titel in der Zeile (19.11.2026)')
 
     def test_rates_file_reaches_every_input(self):
         # cf_rates.json (scripts/export_rates.py) unveraendert an jeden Eingang; App prueft (valuation.ts riskFree).

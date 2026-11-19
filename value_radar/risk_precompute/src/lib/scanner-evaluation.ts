@@ -87,6 +87,7 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
    target:e.kz?{fundamental:r2(e.kz.ziel_fundamental),analyst:r2(e.kz.ziel_analyst),momentum:r2(e.kz.ziel_momentum),eps:r2(e.kz.eps_annahme),kgv:r1(e.kz.kgv_annahme),kgv_hist:r1(e.kz.kgv_hist)}:null},
   roic_history_status:(e.fund as Row).roic_history_status??null,
   eps_basis:fv.eps_basis?.source??null,
+  terminal_growth:fv.terminal_growth?{value:fv.terminal_growth.value,source:fv.terminal_growth.source}:null,
   risk_free:fv.risk_free?{value:fv.risk_free.value,source:fv.risk_free.source,currency:fv.risk_free.currency,as_of:fv.risk_free.as_of}:null,
   momentum:r1(cats.momentum),quality:r1(cats.quality),value:r1(cats.valuation),growth:r1(cats.growth),catalyst:r1(cats.catalyst),health:r1(cats.health),
   cat_neutral:(e.scores as Row).cat_neutral??{},value_trap:!!e.scores.value_trap,vt_warnung:e.q.value_trap_warnung??[],

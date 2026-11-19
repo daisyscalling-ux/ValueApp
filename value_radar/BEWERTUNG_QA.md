@@ -31,3 +31,8 @@ Die QA-Wiederholung vom 17.11. zeigte Comcast mit Fair Value +198 % („kauf“)
 ## Endwachstum des DCF je Titel (19.11.2026)
 
 Comcast behielt nach der Sondereffekt-Regel einen Fair Value von +155 % („kauf“). Ursache war das einheitliche ewige Wachstum von 2,5 % im DCF, auch bei stagnierendem Umsatz. Nach Entscheidung des Nutzers gilt jetzt `terminalGrowth` (`valuation.ts`): das Umsatzwachstum p. a. über drei Geschäftsjahre aus `reihe_umsatz`, begrenzt auf 0 bis 2,5 %. Ohne gültige Reihe bleibt es bei 2,5 %, gekennzeichnet. Das gilt für DCF, Reverse DCF und die DCF-Zerlegung. Der Screener hat `reihe_umsatz` über die ROIC-Rohblöcke (`_roic_raw`). Kennzeichnung `terminal_growth` in der Zeile (FELDER). Näherung nach Vorjahreswachstum: rund 208 von 664 DCF-Titeln betroffen; Comcast DCF etwa 52 → 35 bei Kurs 25.
+
+## Punkt 5: Modellzuordnung (19.11.2026)
+
+- **Robuste Zyklik:** `dataCyclical` (`valuation.ts`) verlangt die Margenschwankung über 0,40 auch ohne das extremste Jahr (`robustMarginCv`). Am Universum vom 19.11. hingen 235 von 509 datenbasierten Zyklikern an einem Ausreißerjahr. 111 verlassen das Zyklik-Modell (104 → Qualität, 7 → Wachstumswende), der Rest bleibt über die Branchenliste zyklisch. Das Flag `cyclicality.cyclical` der Pipeline bleibt der volle CV; der App-Code entscheidet.
+- **Wachstum über drei Jahre:** Wachstumsmodell und Phase Hyperwachstum nach Umsatz p. a. über drei Geschäftsjahre (`umsatzCagr3`, `lifecycle.ts`), sonst wie bisher nach dem letzten Jahr. Grund: Eine Übernahme machte Italgas zum Wachstumstitel (Fair Value +69 %, „kauf“). Die Wirkung zeigt der Precompute.

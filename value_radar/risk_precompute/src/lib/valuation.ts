@@ -116,6 +116,27 @@ export function normalisierenSektor(name: string | null | undefined, industry?: 
  *  Margenreihe nachgerechnet. Nicht fuer Finanzwerte (Margen dort ohne Aussage) und defensive Sektoren (wie die
  *  Branchenregel). Ersetzt das ungepruefte Flag _ist_zyklisch. */
 export const CYCLICALITY_METHOD = "margin_cv_v1", CYCLICALITY_THRESHOLD = 0.40;
+/** Variationskoeffizient ohne den Wert mit dem größten Abstand zum Median (null, wenn der Rest im Mittel ~0 ist). */
+export function robustMarginCv(xs: number[]): number | null {
+  if (xs.length < 4) return null;
+  const sorted = [...xs].sort((a, b) => a - b), med = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+  let i = 0;
+  xs.forEach((x, j) => { if (Math.abs(x - med) > Math.abs(xs[i] - med)) i = j; });
+  const rest = xs.filter((_, j) => j !== i), mean = rest.reduce((a, b) => a + b, 0) / rest.length;
+  if (Math.abs(mean) < 0.001) return null;
+  return Math.sqrt(rest.reduce((a, m) => a + (m - mean) ** 2, 0) / rest.length) / Math.abs(mean);
+}
+
+/** Umsatzwachstum p. a. über drei aufeinanderfolgende Geschäftsjahre (reihe_umsatz, alle Werte > 0), sonst null. */
+export function umsatzCagr3(fund: Fund): { cagr: number; von: number; bis: number } | null {
+  const r = (fund as Record<string, any>).reihe_umsatz;
+  if (!Array.isArray(r) || r.length < 3) return null;
+  const x = r.slice(-3);
+  const ok = x.every((z: any) => typeof z?.wert === "number" && Number.isFinite(z.wert) && z.wert > 0 && typeof z?.jahr === "number")
+    && x[1].jahr === x[0].jahr + 1 && x[2].jahr === x[1].jahr + 1;
+  return ok ? { cagr: Math.sqrt(x[2].wert / x[0].wert) - 1, von: x[0].jahr, bis: x[2].jahr } : null;
+}
+
 export function dataCyclical(fund: Fund): boolean {
   const c = fund._cyclicality;
   if (!c || c.method !== CYCLICALITY_METHOD || !Array.isArray(c.margins)) return false;
@@ -125,6 +146,10 @@ export function dataCyclical(fund: Fund): boolean {
   if (Math.abs(mean) < 0.001) return false;
   const cv = Math.sqrt(xs.reduce((a, m) => a + (m - mean) ** 2, 0) / xs.length) / Math.abs(mean);
   if (typeof c.cv !== "number" || Math.abs(cv - c.cv) > 0.01 || !(cv > CYCLICALITY_THRESHOLD)) return false;
+  // Robust (seit 19.11.2026, Entscheidung des Nutzers nach QA): auch ohne das am stärksten abweichende Jahr muss die
+  // Schwankung über der Grenze liegen. Sonst macht ein einzelnes Verlust- oder Sonderjahr (Lufthansa, Umicore) bzw. eine
+  // Rundung bei sehr kleinen Margen (Carrefour) die Firma zum Zykliker (am 19.11.: 235 von 509 Titeln).
+  if (!((robustMarginCv(xs) ?? 0) > CYCLICALITY_THRESHOLD)) return false;
   const sector = normalisierenSektor(fund.sector, fund.industry);
   return sector !== "Financial Services" && !DEFENSIVE_SECTORS.has(sector);
 }
@@ -138,7 +163,9 @@ export function classifyPlaybook(fund: Fund): Playbook {
     if (CYCLICAL_SECTORS.has(sector) ||
         CYCLICAL_INDUSTRIES.some((k) => industry.includes(k))) return "cyclical";
   }
-  let g = fund.revenue_growth;
+  // Seit 19.11.2026 (Entscheidung des Nutzers nach QA): Wachstumsmodell nach dem Dreijahres-Umsatz, damit eine einzelne
+  // Übernahme (Italgas +41,5 %) kein Wachstumstitel macht; ohne Reihe wie bisher nach dem letzten Jahr.
+  let g = umsatzCagr3(fund)?.cagr ?? fund.revenue_growth;
   if (g === null || g === undefined) g = fund.earnings_growth ?? 0;
   if (g >= 0.25) return "inflection";
   return "quality";
@@ -151,15 +178,10 @@ export function classifyPlaybook(fund: Fund): Playbook {
 export interface TerminalGrowth { value: number; source: "umsatz_3j" | "standard"; cagr: number | null; note: string }
 export function terminalGrowth(fund: Fund): TerminalGrowth {
   const std: TerminalGrowth = { value: V.terminal_growth, source: "standard", cagr: null, note: `Endwachstum ${(V.terminal_growth * 100).toFixed(1)} % (Standard; keine geprüfte Dreijahres-Umsatzreihe)` };
-  const r = (fund as Record<string, any>).reihe_umsatz;
-  if (!Array.isArray(r) || r.length < 3) return std;
-  const x = r.slice(-3);
-  const ok = x.every((z: any) => typeof z?.wert === "number" && Number.isFinite(z.wert) && z.wert > 0 && typeof z?.jahr === "number")
-    && x[1].jahr === x[0].jahr + 1 && x[2].jahr === x[1].jahr + 1;
-  if (!ok) return std;
-  const cagr = Math.sqrt(x[2].wert / x[0].wert) - 1;
-  const value = Math.max(0, Math.min(V.terminal_growth, cagr));
-  return { value, source: "umsatz_3j", cagr, note: `Endwachstum ${(value * 100).toFixed(1)} % (Umsatz ${x[0].jahr}–${x[2].jahr}: ${(cagr * 100).toFixed(1)} % p. a., begrenzt auf 0–${(V.terminal_growth * 100).toFixed(1)} %)` };
+  const u = umsatzCagr3(fund);
+  if (!u) return std;
+  const cagr = u.cagr, value = Math.max(0, Math.min(V.terminal_growth, cagr));
+  return { value, source: "umsatz_3j", cagr, note: `Endwachstum ${(value * 100).toFixed(1)} % (Umsatz ${u.von}–${u.bis}: ${(cagr * 100).toFixed(1)} % p. a., begrenzt auf 0–${(V.terminal_growth * 100).toFixed(1)} %)` };
 }
 
 /** Risikoloser Zins je Währung (seit 17.11.2026, Entscheidung des Nutzers nach QA): Rendite 10-jähriger Staatsanleihen

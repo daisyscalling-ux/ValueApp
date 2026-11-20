@@ -1,0 +1,72 @@
+name: qa-einzelanalyse
+# QA-Lauf der Einzelanalyse (valueapp-cf/QA-EINZELANALYSE.md, Phase 2, seit 20.11.2026): alle Universumstitel im Rechenweg
+# der App (qa-runner.ts mit der App-Kopie qa-checks.ts). Woechentlich (Entscheidung des Nutzers) und manuell; nur Meldung.
+# Sonntag 03:17 UTC: nach precompute (21:23 UTC), vor fundamentals-daily (06:37 UTC); dieselbe ROIC-Warteschlange wie precompute.
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      anzahl:
+        description: 'Titel (alle oder Zahl fuer einen Probelauf)'
+        default: 'alle'
+  pull_request:
+    paths:
+      - '.github/workflows/qa-einzelanalyse.yml'
+      - 'value_radar/risk_precompute/qa-runner.ts'
+      - 'value_radar/risk_precompute/test-qa-runner.ts'
+      - 'value_radar/risk_precompute/src/lib/qa-checks.ts'
+jobs:
+  qa:
+    concurrency:
+      group: roic-bulk-production
+      cancel-in-progress: false
+      queue: max
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: App-Kopien identisch
+        run: python value_radar/risk_precompute/app_copies.py
+      - name: Tests
+        run: |
+          npx --yes esbuild@0.24.2 value_radar/risk_precompute/test-qa-runner.ts --bundle --platform=node --format=esm --outfile=/tmp/test-qa-runner.mjs
+          node /tmp/test-qa-runner.mjs
+      - name: Runner bauen
+        run: npx --yes esbuild@0.24.2 value_radar/risk_precompute/qa-runner.ts --bundle --platform=node --format=esm --outfile=qa-runner.mjs
+      - name: QA-Lauf
+        if: github.event_name != 'pull_request'
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          QA_BUDGET_MIN: '170'
+        run: |
+          node qa-runner.mjs value_radar/daten value_radar/daten/qa/qa_einzelanalyse.json "${{ github.event.inputs.anzahl || 'alle' }}" | tee summary.json
+          { echo '## QA Einzelanalyse'; echo '```json'; cat summary.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Bericht speichern
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add value_radar/daten/qa
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "QA Einzelanalyse: Bericht [skip ci]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::Push des QA-Berichts nach 4 Versuchen abgelehnt"
+          exit 1

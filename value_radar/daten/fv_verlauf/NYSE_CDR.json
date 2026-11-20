@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:CDR","isin":"US1506022094","currency":"PLN"},"name":"CD Projekt Red S.A.","punkte":[{"d":"2026-10-13","fv":96.41,"kurs":261.1,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

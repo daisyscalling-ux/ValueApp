@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"FRA:VOW3","isin":"DE0007664005","currency":"EUR"},"name":"Volkswagen AG","punkte":[{"d":"2026-10-13","fv":112.29,"kurs":68.54,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

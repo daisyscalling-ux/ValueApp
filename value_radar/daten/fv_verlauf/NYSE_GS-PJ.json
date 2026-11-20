@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:GS-PJ","isin":"US38145G3083","currency":"USD"},"name":"The Goldman Sachs Group, Inc.","punkte":[{"d":"2026-10-13","fv":38.4,"kurs":19.2,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

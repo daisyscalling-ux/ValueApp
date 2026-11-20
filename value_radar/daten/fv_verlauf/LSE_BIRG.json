@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"LSE:BIRG","isin":"IE00BD1RP616","currency":"EUR"},"name":"Bank of Ireland Group plc","punkte":[{"d":"2026-10-13","fv":18.28,"kurs":18.5,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:PL","isin":"US72703X1063","currency":"USD"},"name":"Planet Labs PBC","punkte":[{"d":"2026-10-13","fv":null,"kurs":19.78,"m":"python","grund":"Fair Value offen"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

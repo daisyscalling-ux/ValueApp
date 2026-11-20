@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:MOH","isin":"US60855R1005","currency":"EUR"},"name":"Molina Healthcare Inc","punkte":[{"d":"2026-10-13","fv":58.43,"kurs":68.05,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

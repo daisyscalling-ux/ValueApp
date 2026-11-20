@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"ASX:MBK","isin":"AU000000MBK5","currency":"PLN"},"name":"Metal Bank Ltd","punkte":[{"d":"2026-10-13","fv":434.4,"kurs":1448.0,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

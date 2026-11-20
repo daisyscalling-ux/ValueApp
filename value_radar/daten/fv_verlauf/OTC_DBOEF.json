@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"OTC:DBOEF","isin":"DE0005810055","currency":"USD"},"name":"Deutsche Boerse AG","punkte":[{"d":"2026-11-06","fv":211.68,"kurs":359.0,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

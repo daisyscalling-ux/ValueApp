@@ -1,0 +1,222 @@
+{
+ "schema": 1,
+ "method": "fv_daily_log_v1",
+ "tage": {
+  "2026-10-13": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "9fd4f6b3378b",
+   "sha256": "e71cd348303827cb",
+   "m": "python"
+  },
+  "2026-10-17": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "d409559474d0",
+   "sha256": "4ec776568fc93e4e",
+   "m": "python"
+  },
+  "2026-10-18": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "d6044ec41431",
+   "sha256": "bfe3f28105744792",
+   "m": "python"
+  },
+  "2026-10-19": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "7a29cbb532da",
+   "sha256": "01051ef6348d2ae3",
+   "m": "python"
+  },
+  "2026-10-20": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "b2771b50b73a",
+   "sha256": "5a313bdc762e5144",
+   "m": "python"
+  },
+  "2026-10-21": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "ae2b589e333d",
+   "sha256": "f30523c37911706d",
+   "m": "python"
+  },
+  "2026-10-22": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "91c1fb2690df",
+   "sha256": "7300d9dee2acfc59",
+   "m": "python"
+  },
+  "2026-10-23": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "c4a69c8dc40f",
+   "sha256": "f70c0444e74a8321",
+   "m": "python"
+  },
+  "2026-10-24": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "201679ebf838",
+   "sha256": "ecfb79dbb2ea107a",
+   "m": "python"
+  },
+  "2026-10-25": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "82313da98fb4",
+   "sha256": "a9946383f3812f1a",
+   "m": "python"
+  },
+  "2026-10-26": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "de2fb091d685",
+   "sha256": "6913b295ba5dba00",
+   "m": "python"
+  },
+  "2026-10-27": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "bf0a8fcf3b97",
+   "sha256": "798d560f0615db97",
+   "m": "python"
+  },
+  "2026-10-28": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "4b815315fc15",
+   "sha256": "9ef92452b2a9499a",
+   "m": "python"
+  },
+  "2026-10-29": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "08b0a5e62d00",
+   "sha256": "74f8e0e7424c094d",
+   "m": "python"
+  },
+  "2026-10-30": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "1c23380d203d",
+   "sha256": "6f6da47a1ae982c0",
+   "m": "python"
+  },
+  "2026-10-31": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "aa7fa929abc5",
+   "sha256": "9aa6eeb9d1cfa56f",
+   "m": "python"
+  },
+  "2026-11-01": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "8c676c40050a",
+   "sha256": "28e9c3aac30784b3",
+   "m": "python"
+  },
+  "2026-11-02": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "ce10642e2bdb",
+   "sha256": "73640ecc225d3a10",
+   "m": "python"
+  },
+  "2026-11-03": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "0a30c21c97ae",
+   "sha256": "805342e98b008110",
+   "m": "python"
+  },
+  "2026-11-04": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "4ecd74cac439",
+   "sha256": "af0417cff1cc64af",
+   "m": "python"
+  },
+  "2026-11-05": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "afc07c6c9935",
+   "sha256": "d062ffca6c601517",
+   "m": "python"
+  },
+  "2026-11-06": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "0355790d3b7e",
+   "sha256": "4e2fafe0068a9dbf",
+   "m": "python"
+  },
+  "2026-11-07": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "87ad4090d139",
+   "sha256": "4360ff4182eb3885",
+   "m": "python"
+  },
+  "2026-11-08": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "599e7ebac2b2",
+   "sha256": "5cfb94b79e91541c",
+   "m": "python"
+  },
+  "2026-11-09": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "6b76a1a8f555",
+   "sha256": "f3b85bd542140fac",
+   "m": "python"
+  },
+  "2026-11-10": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "4310a3f26cbb",
+   "sha256": "6fe9aef75baf34ff",
+   "m": "python"
+  },
+  "2026-11-11": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "b202aa90cd0d",
+   "sha256": "1d466e9137fadd93",
+   "m": "python"
+  },
+  "2026-11-12": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "6fab1d47ce7d",
+   "sha256": "9eed11090f5f6c21",
+   "m": "python"
+  },
+  "2026-11-13": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "4664b78457d8",
+   "sha256": "51683bd5f805ea8b",
+   "m": "e34f8175f9da"
+  },
+  "2026-11-14": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "ec3e03e0648b",
+   "sha256": "b3a3fffe5e6c98fd",
+   "m": "fade90511679"
+  },
+  "2026-11-15": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "8caad3289c31",
+   "sha256": "4f790cd086c68e56",
+   "m": "12b1c341456b"
+  },
+  "2026-11-16": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "39131c6c9632",
+   "sha256": "c03093e930c29942",
+   "m": "73fac5484e55"
+  },
+  "2026-11-17": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "949f41eab0db",
+   "sha256": "6db56ffae0ce48d4",
+   "m": "082b049308ee"
+  },
+  "2026-11-18": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "01154af7f1e2",
+   "sha256": "cd6339aaf922a562",
+   "m": "082b049308ee"
+  },
+  "2026-11-19": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "46acd7c1d827",
+   "sha256": "0ba6259d6fd8cbce",
+   "m": "d42514b8befb"
+  },
+  "2026-11-20": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "commit": "b117f2953a6f",
+   "sha256": "682e43cfa9f7386a",
+   "m": "d42514b8befb"
+  }
+ }
+}

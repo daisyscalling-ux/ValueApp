@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"OTC:WFAFF","isin":"AU000000WES1","currency":"USD"},"name":"Wesfarmers Limited","punkte":[{"d":"2026-11-02","fv":57.96,"kurs":62.0,"m":"python"},{"d":"2026-11-03","fv":57.96,"kurs":62.0,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

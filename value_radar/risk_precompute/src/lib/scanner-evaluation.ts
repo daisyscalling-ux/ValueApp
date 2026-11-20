@@ -5,7 +5,7 @@
  * BEWERTUNG_RISIKODATEN.md). Identische Kopie unter ValueApp/value_radar/risk_precompute/src/lib.
  */
 import {evaluateStock} from './evaluation';
-import {analystTarget,reverseDcfImpliedGrowth,reverseDcfInput,type Fund} from './valuation';
+import {analystTarget,reverseDcfImpliedGrowth,reverseDcfInput,fairesKgv,ungehebelteEkr,epsBasis,type Fund} from './valuation';
 import {valuationDataCheck} from './valuation-data';
 import type {HealthDistribution} from './financial-health';
 
@@ -86,6 +86,13 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
    // Seit 17.11.2026: Teilziele des 12M-Kursziels, damit der Abgleich App gegen Screener die Ursache zeigt.
    // Seit 19.11.2026: Methodenwerte des Fair Value (Kern und Rohwerte), damit der Abgleich Abweichungen je Methode zeigt.
    fv_methods:{core:Object.fromEntries(Object.entries(fv.core_methods??{}).map(([k,v])=>[k,r2(v)])),values:fv.method_values??{},weights:fv.method_weights??{}},
+   // Seit 20.11.2026: Eingänge des fairen KGV (fairesKgv) und Verlässlichkeit des Fair Value, damit der Abgleich App gegen
+   // Screener die Abweichung beim begründeten KGV (10 von 49 Titeln im Bundle-Compare v6) einem Feld zuordnet.
+   kgv_inputs:(()=>{const f=e.fund as Row,n=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v*10000)/10000:null,b=epsBasis(e.fund);
+    return {preset:fv.playbook??null,faires_kgv:n(fairesKgv(e.fund,fv.playbook)),eps:n(b.eps),eps_source:b.source,free_cashflow:n(f.free_cashflow),net_debt_ebitda:n(f.net_debt_ebitda),
+     current_ratio:n(f.current_ratio),uroe:n(ungehebelteEkr(e.fund as any)),roe:n(f.roe),gross_margin:n(f.gross_margin),revenue_growth:n(f.revenue_growth),earnings_growth:n(f.earnings_growth),
+     net_income:n(f.net_income),total_assets:n(f.total_assets),operating_cashflow:n(f.operating_cashflow)}})(),
+   fv_check:{reliable:fv.reliable??null,confidence:fv.confidence??null,n_core:Object.keys(fv.core_methods??{}).length,fallback:fv.used_fallback??null},
    target:e.kz?{fundamental:r2(e.kz.ziel_fundamental),analyst:r2(e.kz.ziel_analyst),momentum:r2(e.kz.ziel_momentum),eps:r2(e.kz.eps_annahme),kgv:r1(e.kz.kgv_annahme),kgv_hist:r1(e.kz.kgv_hist)}:null},
   roic_history_status:(e.fund as Row).roic_history_status??null,
   eps_basis:fv.eps_basis?.source??null,

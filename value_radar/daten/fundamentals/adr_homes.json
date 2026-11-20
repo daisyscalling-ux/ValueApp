@@ -34,17 +34,7 @@
    "drs": [
     "NYSE:GSK"
    ],
-   "market": {
-    "currency": "GBP",
-    "quote_at": "2026-11-19T16:36:40+00:00",
-    "source": "Yahoo Finance",
-    "source_url": "https://finance.yahoo.com/quote/GSK.L/",
-    "name": "GSK plc",
-    "fields": {
-     "price": 18.27,
-     "shares_out": 4008939182
-    }
-   }
+   "quoteProblem": "quote_missing"
   },
   "GB00BVZK7T90": {
    "isin": "GB00BVZK7T90",
@@ -90,17 +80,7 @@
    "drs": [
     "NYSE:UL"
    ],
-   "market": {
-    "currency": "GBP",
-    "quote_at": "2026-11-19T16:37:13+00:00",
-    "source": "Yahoo Finance",
-    "source_url": "https://finance.yahoo.com/quote/ULVR.L/",
-    "name": "Unilever PLC",
-    "fields": {
-     "price": 47.84,
-     "shares_out": 2153366959
-    }
-   }
+   "quoteProblem": "quote_missing"
   },
   "GB00BH4HKS39": {
    "isin": "GB00BH4HKS39",
@@ -158,17 +138,7 @@
    "drs": [
     "NASDAQ:VOD"
    ],
-   "market": {
-    "currency": "GBP",
-    "quote_at": "2026-11-19T16:38:00+00:00",
-    "source": "Yahoo Finance",
-    "source_url": "https://finance.yahoo.com/quote/VOD.L/",
-    "name": "Vodafone Group Public Limited Company",
-    "fields": {
-     "price": 1.0945,
-     "shares_out": 23168639889
-    }
-   }
+   "quoteProblem": "quote_missing"
   },
   "JE00B8KF9B49": {
    "isin": "JE00B8KF9B49",
@@ -202,25 +172,17 @@
    "drs": [
     "NYSE:WPP"
    ],
-   "market": {
-    "currency": "GBP",
-    "quote_at": "2026-11-19T16:38:18+00:00",
-    "source": "Yahoo Finance",
-    "source_url": "https://finance.yahoo.com/quote/WPP.L/",
-    "name": "WPP plc",
-    "fields": {
-     "price": 4.038,
-     "shares_out": 1078525408
-    }
-   }
+   "quoteProblem": "quote_missing"
   }
  },
- "generatedAt": "2026-11-19T17:02:49.469230+00:00",
+ "generatedAt": "2026-11-20T16:14:05.703909+00:00",
  "report": {
   "targets": 4,
   "resolved": 4,
   "unresolved": {},
-  "quoted": 4,
-  "quoteFailed": {}
+  "quoted": 0,
+  "quoteFailed": {
+   "quote_missing": 4
+  }
  }
 }

@@ -14,6 +14,8 @@ from sec_original_filings import PDD_CONCEPT
 SOURCE='SEC companyfacts / annual cash PPE context v1'
 METHOD='sec-cashflow-history-v1'
 COLLECTION_POLICY=POLICY+'/cash-context-v12-dei-date-continuations'
+# Einmaliger Nachabruf fuer Titel ohne Umsatzreihe (sec_revenue_history); danach normaler 7-Tage-Takt.
+REVENUE_POLICY='sec-annual-revenue-v1'
 
 def expected_period(domain,now):
  value=domain.get('domains',{}).get('balance',{}).get('period')
@@ -177,7 +179,8 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   newer_due=behind_period(old.get('periods',[]),expected) and (att.get('requestedPeriod')!=expected or not recent(att.get('at'),now,2))
   evidence_due=att.get('requestedPeriodState')=='still_missing' and bool(att.get('originalFiling')) and 'investmentEvidence' not in att['originalFiling'] and not att.get('originalError')
   retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or (att.get('originalFiling',{}).get('fields')=={}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
-  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due and not evidence_due:counts['cached']+=1;continue
+  revenue_due=s in state['stocks'] and s not in state.get('revenueStocks',{}) and att.get('revenuePolicy')!=REVENUE_POLICY
+  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due and not evidence_due and not revenue_due:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)
@@ -186,7 +189,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   remaining=budget-(time.monotonic()-started)
   if counts['attempted']>=max_companies or remaining<1:break
   s=r['listing_symbol'];cik=str(listing_map[s]);expected=expected_period(domains.get(s,{}),now)
-  att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY,'requestedPeriod':expected};counts['attempted']+=1
+  att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY,'revenuePolicy':REVENUE_POLICY,'requestedPeriod':expected};counts['attempted']+=1
   try:
    data=fetch(cik,min(12,remaining))
    att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
@@ -211,6 +214,12 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
      except Exception as e:
       att['originalError']=str(e) if isinstance(e,ValueError) and str(e) in ('filing_too_large','xml_declaration_blocked','ambiguous_namespace','duplicate_context','duplicate_unit','filing_cik_mismatch','filing_metadata_mismatch','submissions_cik_mismatch','submissions_array_mismatch','response_too_large') else safe_error(e);counts['originalFetchFailed']+=1
       if att['originalError'] in ('http_403','http_429'):att['originalRateLimited']=True
+   # Jahresumsatz aus derselben Antwort (sec_revenue_history, Anzeige in der Kennzahlen-Tabelle, seit 20.11.2026)
+   from sec_revenue_history import normalize as revenue_normalize
+   revenue=revenue_normalize(data,cik,now)
+   if revenue:
+    state.setdefault('revenueStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':revenue};counts['revenueUpdated']+=1
+   else:counts['revenueMissing']+=1
    if operating:
     state.setdefault('operatingStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':operating,'pointInTimeUsable':False}
     counts['operatingUpdated']+=1;counts['operatingPeriods']+=len(operating)

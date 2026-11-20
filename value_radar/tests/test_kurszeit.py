@@ -52,6 +52,14 @@ class Einordnen(unittest.TestCase):
         self.assertIsNone(kz._zeit('2026-11-19T10:00:00'), 'ohne Zeitzone nicht verwendbar')
 
 
+    def test_export_uebernimmt_alle_kurszeitfelder(self):
+        # Fehler vom 19.11.: EXPORT_FELDER kannte die Felder nicht, das Universum blieb ohne Kurszeit
+        import precompute, export_cf
+        felder = precompute._kurszeitpunkt({'exchange': 'NYSE'}).keys()
+        self.assertEqual([k for k in felder if k not in export_cf.EXPORT_FELDER], [])
+        self.assertIn('exchange', export_cf.EXPORT_FELDER, 'Boerse fuer die Nachpruefung')
+
+
 if __name__ == '__main__':
     unittest.main()
 

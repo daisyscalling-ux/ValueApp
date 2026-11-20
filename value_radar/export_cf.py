@@ -49,6 +49,9 @@ EXPORT_FELDER = (
     "52w_high", "52w_low", "52w_split_adjusted", "hist_pe_median",
     # Datenbasierte Zyklik (valuation.ts, dataCyclical), seit 13.11.2026
     "cyclicality",
+    # Kurszeitpunkt (kurszeit.py, Vorwaertstest v2), seit 20.11.2026; vorher fehlte er hier und kam nie im Universum an
+    "price_source", "price_time", "price_date", "price_fetched_at", "price_kind", "price_day",
+    "price_kind_reason", "price_kind_method",
 )
 EXPORT_FELDER = tuple(dict.fromkeys(EXPORT_FELDER + PEER_FIELDS))
 

@@ -754,3 +754,26 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
 **Grenze:** `phase_history` und `capital_return_period` werden weiter immer gelöscht. Ob sie bei gleicher Periode bleiben dürfen, ist eine eigene Methodenfrage (Lebenszyklus-Phase), noch offen.
 
 **Wirkung:** Wird nach dem nächsten precompute gemessen (Zahl der Titel mit `umsatz_3j`, mit geändertem Endwachstum und mit geändertem Modell).
+
+## Kennzahlen-Tabelle: SEC-Jahre vor ROIC (20.11.2026, Entscheidung des Nutzers)
+
+**Messung `roic-jahre` (40 Titel, `limit=30`):** ROIC liefert höchstens 5 Geschäftsjahre (37×5, 1×4, 2×3; keine Lücken), auch auf Anfrage nicht mehr. Für US-Titel enthält `cf_sec_cashflow_history.json` operativen Cashflow und Capex bis 2018: 345 von 443 Titeln mit 8 Jahren; 275 mit 3 Jahren vor 2021.
+
+**Pipeline:**
+- `sec_revenue_history.py` liest den Jahresumsatz aus derselben companyfacts-Antwort; es entsteht keine zusätzliche SEC-Anfrage.
+  - Ein Konzept je Titel, und zwar das erste, das den jüngsten Jahreszeitraum abdeckt. Reihenfolge: `Revenues`, dann ASC 606 ohne Steuern, dann `SalesRevenueNet`, dann ASC 606 mit Steuern, dann IFRS `Revenue`.
+  - Nur Jahresberichte mit 330–400 Tagen Dauer, höchstens 8 Jahre alt. Je Stichtag zählt der neueste Bericht; widersprüchliche Werte im selben Bericht verwerfen den Stichtag.
+- Titel ohne Umsatzreihe werden einmal neu abgerufen (`REVENUE_POLICY`); danach gilt der übliche 7-Tage-Takt.
+- `sec_jahre_export.py` (daily-risk) schreibt je Universumstitel `daten/sec_jahre/<Notierung>.json` mit Umsatz und „operativer CF − Capex“ (nur us-gaap `PaymentsToAcquirePropertyPlantAndEquipment`).
+  - Voraussetzung: gleiche `inputIdentity` und CIK, Abruf höchstens 14 Tage alt.
+- Kein Score nutzt diese Daten.
+
+**App (Regel):**
+- Die Umsatzzeile wird nur um ältere SEC-Jahre verlängert, wenn SEC und ROIC in mindestens 2 überlappenden Jahren (Stichtag ± 35 Tage) jeweils höchstens 1 % auseinanderliegen. Sonst bleibt sie bei den ROIC-Jahren, und die Karte nennt den Grund.
+- „Operativer CF − Capex (SEC)“ steht als eigene, gekennzeichnete Zeile. Das ist nicht der FCFF von ROIC.
+- EBITDA, FCFF und Margen bleiben bei den ROIC-Jahren.
+
+**Grenzen:**
+- Nur US-Titel mit SEC-Daten.
+- Der Umsatz kommt erst nach dem Nachabruf; gestaffelt durch das Abrufbudget, rund 300 Titel je Lauf.
+- Weichen die Definitionen von SEC und ROIC ab (laut `SEC_UMSATZ.md` bei 29 von 360 Titeln über 5 %), wird nicht verlängert.

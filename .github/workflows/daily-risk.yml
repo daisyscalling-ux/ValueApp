@@ -288,6 +288,10 @@ jobs:
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
         run: python value_radar/risk_precompute/sec_cashflow_history.py
+      - name: SEC-Jahresreihen je Titel fuer die Kennzahlen-Tabelle schreiben
+        if: always() && !cancelled()
+        continue-on-error: true
+        run: python value_radar/risk_precompute/sec_jahre_export.py
       - name: Abdeckung nach dem Lauf neu pruefen
         id: riskpack
         if: always() && !cancelled()
@@ -359,6 +363,7 @@ jobs:
           git add value_radar/daten/cf_risk.json
           if test -s value_radar/daten/cf_risk_app_manifest.json; then git add value_radar/daten/cf_risk_app_manifest.json value_radar/daten/risk_app; fi
           if test -d value_radar/daten/risk_observations; then git add value_radar/daten/risk_observations; fi
+          if test -d value_radar/daten/sec_jahre; then git add -A value_radar/daten/sec_jahre; fi
           for file in cf_risk_event_review.json cf_sector_review_packets.json cf_risk_observation_status.json cf_risk_run_integrity.json cf_sec_cashflow_history.json cf_roic_history.json cf_financial_history.json cf_capital_requirements.json cf_regulatory_context.json cf_ecb_fx.json cf_risk_workplan.json cf_risk_coverage_changes.json cf_edinet_cashflow.json cf_financial_supply_plan.json cf_roic_risk_annual.json cf_universum.json cf_listing_recovery.json cf_listing_isin_audit.json cf_risk_coverage.json cf_risk_queue.json cf_company_news.json cf_news_identity_audit.json cf_news_supply_plan.json cf_peer_groups.json cf_sector_context.json cf_peer_metadata.json cf_sector_supply_plan.json cf_risk_construct_coverage.json; do
             if test -s "value_radar/daten/$file"; then git add "value_radar/daten/$file"; fi
           done

@@ -1,0 +1,33 @@
+name: roic-jahre
+# Messung (20.11.2026): Wie viele Geschaeftsjahre liefert ROIC je Titel (EV-Block, Gewinn- und Cashflow-Rechnung)?
+# Nur manuell, schreibt nichts ins Repo; Ergebnis als Artefakt und Zusammenfassung. Nicht parallel zu precompute starten.
+on:
+  workflow_dispatch:
+    inputs:
+      anzahl:
+        description: 'Titel in der Stichprobe (je Region gleich viele, max. 80)'
+        default: '40'
+jobs:
+  messen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Abrufen und zaehlen
+        env:
+          ROIC_API_KEY: ${{ secrets.ROIC_API_KEY }}
+          ANZAHL: ${{ github.event.inputs.anzahl }}
+        run: |
+          n=$(( ANZAHL > 80 ? 80 : ANZAHL ))
+          python value_radar/roic_jahre.py value_radar/daten/cf_universum.json roic-jahre.json "$n" | tee summary.json
+          { echo '## ROIC: Geschaeftsjahre je Titel'; echo '```json'; cat summary.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roic-jahre-${{ github.run_id }}
+          path: roic-jahre.json
+          retention-days: 14

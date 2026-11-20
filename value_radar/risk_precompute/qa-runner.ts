@@ -53,4 +53,5 @@ async function main(){
  const kurz=Object.fromEntries(Object.entries(bericht.summary).map(([k,v])=>[k,`${v.fehler} F · ${v.auffaellig} A · ${v.offen} O · ${v.ok} ok`]));
  console.log(JSON.stringify({titel:bericht.titel,abgerufen:bericht.abgerufen,abrufFehler:abrufFehler.length,summary:kurz},null,1));
 }
-if(process.argv[1]?.endsWith('qa-runner.mjs'))main();
+// Nur als eigenes Programm starten; der Test (test-qa-runner.mjs) endet ebenfalls auf qa-runner.mjs (Fehler im ersten Lauf 20.11.2026).
+if(path.basename(process.argv[1]??'')==='qa-runner.mjs')main();

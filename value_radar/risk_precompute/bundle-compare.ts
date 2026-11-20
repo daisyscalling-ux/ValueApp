@@ -70,7 +70,10 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
    const evShape={rows:evRows.length,keys:evRows[0]&&typeof evRows[0]==='object'?Object.keys(evRows[0]).filter(k=>/year|quarter|period|date|fiscal/i.test(k)):[],
     periods:evRows.slice(0,6).map((z:Row)=>({fiscal_year:z?.fiscal_year??null,fiscal_quarter:z?.fiscal_quarter??z?.quarter??null,period:z?.period??z?.period_type??null,end:z?.period_end_date??z?.date??null,sales:typeof z?.ttm_net_sales==='number'})),
     reihe_umsatz:Array.isArray(fund.reihe_umsatz)?fund.reihe_umsatz:null,terminal_growth:app.terminal_growth??null};
-   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,diag,analyst,evShape,appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
+   // Seit 20.11.2026 (v7): Eingänge des fairen KGV App gegen Screener je Feld (score_diagnostics.kgv_inputs).
+   const ka=(app.score_diagnostics as Row)?.kgv_inputs??null,ks=(u.score_diagnostics as Row)?.kgv_inputs??null;
+   const kgv=ka&&ks?Object.fromEntries(Object.keys(ka).map(k=>{const a=ka[k],b=ks[k];const differs=typeof a==='number'&&typeof b==='number'?Math.abs(a-b)>Math.max(1e-9,0.01*Math.max(Math.abs(a),Math.abs(b))):a!==b;return [k,{app:a??null,scanner:b??null,differs}]})):null;
+   rows.push({symbol:sym,inputs,outputs,labels,forward,gap,diag,analyst,evShape,kgv,fvCheck:{app:(app.score_diagnostics as Row)?.fv_check??null,scanner:(u.score_diagnostics as Row)?.fv_check??null},appBlocked:app.kauf_urteil==='Daten prüfen',appIssues:app.valuation_issues,roicEmpty:fund._roic_empty});
   }catch(e){rows.push({symbol:sym,error:String(e).slice(0,200),analyst:{probe}})}
   // 4,5 s je Titel: ROIC 9 Abrufe (120/min, Plan 300/min, Rest fuer parallele Laeufe), Finnhub 4 Abrufe (53/min, Grenze 60/min).
   // Der erste Lauf (13.11.2026, 1,1 s, parallel zu precompute) lief in Abrufgrenzen; Felder fehlten dadurch scheinbar.
@@ -84,6 +87,9 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
   playbookDiffers:ok.filter(r=>r.outputs.playbook.app!==r.outputs.playbook.scanner).length,verdictDiffers:ok.filter(r=>r.outputs.kauf_urteil.app!==r.outputs.kauf_urteil.scanner).length,
   appBlocked:ok.filter(r=>r.appBlocked).length,scannerBlocked:ok.filter(r=>r.outputs.kauf_urteil.scanner==='Daten prüfen').length,
   titlesWithEmptyRoicBlocks:ok.filter(r=>(r.roicEmpty||[]).length).length,
+  kgvInputs:(()=>{const mit=ok.filter(r=>r.kgv);const out:Row={compared:mit.length,fairesKgvDiffers:mit.filter(r=>r.kgv.faires_kgv?.differs).length,fieldDiffers:{}};
+   for(const r of mit.filter(r=>r.kgv.faires_kgv?.differs))for(const [k,v] of Object.entries(r.kgv as Row))if(k!=='faires_kgv'&&(v as Row).differs)out.fieldDiffers[k]=(out.fieldDiffers[k]??0)+1;
+   out.reliableDiffers=ok.filter(r=>r.fvCheck?.app&&r.fvCheck?.scanner&&r.fvCheck.app.reliable!==r.fvCheck.scanner.reliable).map(r=>r.symbol);return out})(),
   evShape:{rows:ok.reduce((m:Row,r)=>{const n=String(r.evShape?.rows??'?');m[n]=(m[n]??0)+1;return m},{}),
    terminalGrowth:ok.reduce((m:Row,r)=>{const n=String(r.evShape?.terminal_growth?.source??'fehlt');m[n]=(m[n]??0)+1;return m},{})},
   categories:Object.fromEntries(CATEGORIES.map(k=>{const d=ok.map(r=>[r.outputs[k]?.app,r.outputs[k]?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));
@@ -110,7 +116,7 @@ const rel=(a:any,b:any)=>typeof a==='number'&&typeof b==='number'&&Number.isFini
     appCount:ok.filter(r=>typeof r.analyst?.appCount==='number').length,
     emptyExamples:ok.filter(r=>r.analyst?.probe?.status===200&&!(r.analyst.probe.rows>0)).slice(0,10).map(r=>r.symbol+' -> '+r.analyst.probe.finnhubSymbol)}})(),
   expectationGapPp:(()=>{const d=ok.map(r=>[r.gap?.app,r.gap?.scanner]).filter(([a,b])=>typeof a==='number'&&typeof b==='number').map(([a,b])=>Math.abs(a-b));return {compared:d.length,median:q(d,.5),p90:q(d,.9)}})()};
- const report={schema:1,method:'bundle-vs-scanner-v6',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
+ const report={schema:1,method:'bundle-vs-scanner-v7',generatedAt:new Date().toISOString(),sample:sample.length,fetched:ok.length,errors:rows.length-ok.length,inputSummary,outputSummary,rows};
  fs.writeFileSync(output,JSON.stringify(report,null,1));
  console.log(JSON.stringify({sample:report.sample,fetched:report.fetched,errors:report.errors,outputSummary},null,1));
 })();

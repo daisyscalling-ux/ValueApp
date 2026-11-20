@@ -129,6 +129,8 @@ const rowsOf = (r: unknown): Row[] => {
  *  GuV/Cashflow (3 Jahre) → phase_history, capital_return_period. Fehlt ein Block, entsteht das Feld nicht. */
 export const ROIC_RAW_METHOD = 'roic_raw_blocks_v1';
 export const HISTORY_FIELDS = ['reihe_umsatz','reihe_ebitda','reihe_fcf','umsatz_3j','pe_history','pe_hist_min','pe_hist_max','pe_hist_median','phase_history','capital_return_period'] as const;
+/** Stichtag einer ROIC-Zeile (period_end_date), für den Periodenabgleich mit dem Jahresabschluss der Ergänzungsdatei. */
+function endeVon(z: Row | null | undefined): string | null { const v = String(gval(z, "period_end_date") ?? ""); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; }
 export function historyFromRoicRaw(raw: Pick<RoicRaw, 'enterprise_value'|'multiples'|'income'|'cashflow'>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   // Mehrjahresreihen fuer die Saeulendiagramme (Umsatz/EBITDA/FCF): enterprise_value liefert 5 Jahre, neuestes zuerst;
@@ -136,9 +138,9 @@ export function historyFromRoicRaw(raw: Pick<RoicRaw, 'enterprise_value'|'multip
   const evAlle = rowsOf(raw.enterprise_value);
   if (evAlle.length >= 2) {
     const drei = evAlle.slice(0, 3).reverse();
-    out.reihe_umsatz = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_net_sales")) }));
-    out.reihe_ebitda = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_ebitda")) }));
-    out.reihe_fcf = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_free_cash_flow_firm")) }));
+    out.reihe_umsatz = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_net_sales")), ende: endeVon(z) }));
+    out.reihe_ebitda = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_ebitda")), ende: endeVon(z) }));
+    out.reihe_fcf = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_free_cash_flow_firm")), ende: endeVon(z) }));
     const u0 = num(gval(drei[0], "ttm_net_sales")), uN = num(gval(drei[drei.length-1], "ttm_net_sales"));
     if (u0 && uN && u0 > 0) out.umsatz_3j = uN / u0 - 1;
   }

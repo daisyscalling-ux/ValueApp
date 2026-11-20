@@ -777,3 +777,10 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
 - Nur US-Titel mit SEC-Daten.
 - Der Umsatz kommt erst nach dem Nachabruf; gestaffelt durch das Abrufbudget, rund 300 Titel je Lauf.
 - Weichen die Definitionen von SEC und ROIC ab (laut `SEC_UMSATZ.md` bei 29 von 360 Titeln über 5 %), wird nicht verlängert.
+
+## Neueres Geschäftsjahr, Composite ohne Kennzahl, Finanzlage-Schwelle (20.11.2026)
+
+- **Neueres Geschäftsjahr in der Kennzahlen-Tabelle:** Bringt die Ergänzungsdatei ein neueres Geschäftsjahr als ROIC, entfallen wie bisher die Rechenreihen (`reihe_*`, `umsatz_3j`). Die Anzeige-Reihe `jahresreihe` bleibt dagegen erhalten: Das neue Jahr kommt als eigene, kursive Spalte aus dem Abschluss dazu (Umsatz und EBITDA; FCFF offen), mit Hinweis `jahresreihe_hinweis`. Voraussetzung sind dieselbe Währung und ein positiver Umsatz; sonst entfällt die Reihe mit Grund.
+  - Anlass: Micron, Ergänzungsdatei mit GJ 2026 (Stichtag 03.09.2026), ROIC bis 31.08.2025. Dort zeigte die Karte nur den Grund und keine Werte.
+- **Composite ohne jede Kennzahl:** bleibt offen (`null`) statt des Platzhalters 50. Anlass: Anthropic am ersten Handelstag mit leerem ROIC-Block, angezeigt mit Composite 50 und Quantum 50. Quantum rechnet dann nur mit den übrigen Teilen oder bleibt ebenfalls offen. Das Kauf-Urteil behandelt einen offenen Composite wie bisher als 0, also kein „kauf“.
+- **Finanzlage:** Ein Urteil gibt es erst ab `FINANZLAGE_MIN_KENNZAHLEN` = 5 bewerteten Kennzahlen (von 18). Vorher stand „Finanziell Solide“ bei 0 von 0.

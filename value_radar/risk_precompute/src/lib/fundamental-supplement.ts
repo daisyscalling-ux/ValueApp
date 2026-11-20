@@ -135,8 +135,15 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  // Abschluss (≤ SAME_PERIOD_DAYS). Vorher wurden sie immer gelöscht, auch bei gleichem Geschäftsjahr (49 von 49 im
  // Bundle-Compare 20.11.); dadurch fehlten Endwachstum und Dreijahreswachstum bei 1.330 von 1.341 Titeln.
  const reihenEnde=(Array.isArray(f.reihe_umsatz)?f.reihe_umsatz:[]).at(-1)?.ende,gleichePeriode=typeof reihenEnde==='string'&&Math.abs(Date.parse(reihenEnde)-candidate)<=SAME_PERIOD_DAYS*DAY;
- if(!gleichePeriode){for(const key of Object.keys(f))if(key.startsWith('reihe_')||key==='umsatz_3j'||key==='jahresreihe')delete f[key];
-  f.jahresreihe_status=`Neuerer Jahresabschluss ${a.end} als die ROIC-Reihe${typeof reihenEnde==='string'?` (bis ${reihenEnde})`:' (ohne Stichtag)'}: Reihe entfällt, bis ROIC das Jahr liefert`;}
+ if(!gleichePeriode){for(const key of Object.keys(f))if(key.startsWith('reihe_')||key==='umsatz_3j')delete f[key];
+  // Anzeige (seit 20.11.2026): die ROIC-Jahresreihe bleibt in der Kennzahlen-Tabelle; das neuere Jahr kommt als eigene,
+  // gekennzeichnete Spalte aus dem übernommenen Abschluss (nur Umsatz und EBITDA, gleiche Währung). Rechenreihen entfallen wie bisher.
+  const jr=Array.isArray(f.jahresreihe)?f.jahresreihe:null,letzte=jr?.at(-1);
+  if(jr&&letzte?.ende&&candidate-Date.parse(letzte.ende)>SAME_PERIOD_DAYS*DAY&&letzte.waehrung===a.currency&&finite(a.fields?.revenue)&&a.fields.revenue>0){
+   const versatz=Number(letzte.jahr)-Number(String(letzte.ende).slice(0,4));
+   f.jahresreihe=[...jr,{jahr:Number(a.end.slice(0,4))+versatz,ende:a.end,waehrung:a.currency,umsatz:a.fields.revenue,ebitda:finite(a.fields.ebitda)?a.fields.ebitda:null,fcf:null,quelle:'abschluss',quelle_text:`Jahresabschluss ${a.end} · ${a.source}`}];
+   f.jahresreihe_hinweis=`ROIC-Reihe bis ${letzte.ende}; GJ ${Number(a.end.slice(0,4))+versatz} (Stichtag ${a.end}) aus dem Jahresabschluss (${a.source}), noch nicht bei ROIC. FCFF für dieses Jahr offen.`;
+  }else if(jr){delete f.jahresreihe;f.jahresreihe_status=`Neuerer Jahresabschluss ${a.end} als die ROIC-Reihe${typeof reihenEnde==='string'?` (bis ${reihenEnde})`:' (ohne Stichtag)'}, Währung oder Umsatz nicht vergleichbar: Reihe entfällt, bis ROIC das Jahr liefert`;}}
  if(gleichePeriode)f.history_series_basis=`ROIC-Reihen bis ${reihenEnde}, gleiche Periode wie der Jahresabschluss ${a.end}`;
  f._finanzlage={};
  f.data_sources.push({source:a.source,url:a.source_url,period_end:a.end,published_at:a.published_at,retrieved_at:s.annual_retrieved_at??s.retrieved_at,basis:'Jahresabschluss; CFO − Capex separat, kein bestätigter FCFF'});

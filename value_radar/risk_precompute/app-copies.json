@@ -21,7 +21,7 @@
   {
    "app": "src/lib/currency.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/currency.ts",
-   "sha256": "00e661813fa7b66549da63618578b12f6c49bfd43ea499477a6da9b37e4201e7"
+   "sha256": "e18927ba56ae91af489fe840e8d0014156f670ada63fd5d17f7ec1855dbae0f4"
   },
   {
    "app": "src/lib/depositary.ts",
@@ -197,12 +197,12 @@
   {
    "app": "src/lib/roic.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
-   "sha256": "00a43222a1948fe4416a7462b354d438c067529f78b8bc83b1b3464bcbe1f0b0"
+   "sha256": "618630bcef50e6e3375214a9cafa542ec26087f77ec777c814c1151cdc50d5c3"
   },
   {
    "app": "src/lib/fundamental-supplement.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/fundamental-supplement.ts",
-   "sha256": "f20fcde757338afa4ff6580337e19c006f44759b1cf083d719453725cec98622"
+   "sha256": "ac3acb96e8e6dc9b3ff77e5b47bbebfcbea893d5bb417b0a5af022a836c4c7ad"
   },
   {
    "app": "src/lib/phase-data.ts",

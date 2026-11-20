@@ -21,6 +21,8 @@ export function fundInEur(input:Row,quote:EurRate|null,now=Date.now()):Row {
  const scale=(v:any)=>typeof v==='number'&&Number.isFinite(v)?v*rate:v;
  for(const key of ['price','market_cap','enterprise_value','total_debt','cash','net_debt','revenue','ebitda','ebit','free_cashflow','reported_equity_fcf','net_income','total_assets','eps_trailing','eps_forward','book_value_ps','target_mean','52w_high','52w_low'])fund[key]=scale(fund[key]);
  for(const key of ['reihe_umsatz','reihe_ebitda','reihe_fcf'])if(Array.isArray(fund[key]))fund[key]=fund[key].map((r:Row)=>({...r,wert:scale(r.wert)}));
+ // Jahresreihe nur umrechnen, wenn sie in der Handelswährung vorliegt; sonst bleibt sie in ihrer Berichtswährung (gekennzeichnet).
+ if(Array.isArray(fund.jahresreihe))fund.jahresreihe=fund.jahresreihe.map((r:Row)=>r.waehrung===from?{...r,umsatz:scale(r.umsatz),ebitda:scale(r.ebitda),fcf:scale(r.fcf),waehrung:'EUR'}:r);
  if(Array.isArray(fund.phase_history))fund.phase_history=fund.phase_history.map((r:Row)=>({...r,revenue:scale(r.revenue),netIncome:scale(r.netIncome)}));
  if(fund.capital_return_period?.currency===from){const p={...fund.capital_return_period,currency:'EUR'};for(const k of ['fcf','dividends','buybacks'])p[k]=scale(p[k]);fund.capital_return_period=p;}
  fund.currency='EUR';fund._native_currency=from;fund._fx=rate;fund._fx_live=true;

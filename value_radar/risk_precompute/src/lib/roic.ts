@@ -128,7 +128,7 @@ const rowsOf = (r: unknown): Row[] => {
  *  Screener): EV-Reihe (3 Jahre) → reihe_umsatz/ebitda/fcf, umsatz_3j; Multiples (5 Jahre) → pe_history und KGV-Band;
  *  GuV/Cashflow (3 Jahre) → phase_history, capital_return_period. Fehlt ein Block, entsteht das Feld nicht. */
 export const ROIC_RAW_METHOD = 'roic_raw_blocks_v1';
-export const HISTORY_FIELDS = ['reihe_umsatz','reihe_ebitda','reihe_fcf','umsatz_3j','pe_history','pe_hist_min','pe_hist_max','pe_hist_median','phase_history','capital_return_period'] as const;
+export const HISTORY_FIELDS = ['reihe_umsatz','reihe_ebitda','reihe_fcf','umsatz_3j','jahresreihe','jahresreihe_status','pe_history','pe_hist_min','pe_hist_max','pe_hist_median','phase_history','capital_return_period'] as const;
 /** Stichtag einer ROIC-Zeile (period_end_date), für den Periodenabgleich mit dem Jahresabschluss der Ergänzungsdatei. */
 function endeVon(z: Row | null | undefined): string | null { const v = String(gval(z, "period_end_date") ?? ""); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; }
 export function historyFromRoicRaw(raw: Pick<RoicRaw, 'enterprise_value'|'multiples'|'income'|'cashflow'>): Record<string, unknown> {
@@ -136,6 +136,18 @@ export function historyFromRoicRaw(raw: Pick<RoicRaw, 'enterprise_value'|'multip
   // Mehrjahresreihen fuer die Saeulendiagramme (Umsatz/EBITDA/FCF): enterprise_value liefert 5 Jahre, neuestes zuerst;
   // die letzten 3, aeltestes zuerst fuer die Achse.
   const evAlle = rowsOf(raw.enterprise_value);
+  // Anzeige (seit 20.11.2026): alle Geschäftsjahre des EV-Blocks, ältestes zuerst, je Jahr eine Zeile (nur Jahreszeilen,
+  // gleiche Währung wie die jüngste Zeile). Nur für die Kennzahlen-Tabelle; Rechnungen lesen weiter reihe_* (3 Jahre).
+  const jahre = new Map<number, Record<string, unknown>>();
+  const wcur = gval(evAlle[0], "currency");
+  for (const z of evAlle) {
+    const j = num(gval(z, "fiscal_year")), pt = String(gval(z, "period_type") ?? "annual");
+    if (j === null || pt !== "annual" || jahre.has(j) || (wcur && gval(z, "currency") && gval(z, "currency") !== wcur)) continue;
+    jahre.set(j, { jahr: j, ende: endeVon(z), waehrung: typeof wcur === "string" ? wcur : null, umsatz: num(gval(z, "ttm_net_sales")), ebitda: num(gval(z, "ttm_ebitda")), fcf: num(gval(z, "ttm_free_cash_flow_firm")) });
+  }
+  const jr = [...jahre.values()].sort((a, b) => (a.jahr as number) - (b.jahr as number));
+  if (jr.length >= 2) out.jahresreihe = jr;
+  else out.jahresreihe_status = jr.length ? 'ROIC liefert nur ein Geschäftsjahr' : 'ROIC liefert keine Jahreswerte (EV-Block leer)';
   if (evAlle.length >= 2) {
     const drei = evAlle.slice(0, 3).reverse();
     out.reihe_umsatz = drei.map((z) => ({ jahr: num(gval(z, "fiscal_year")), wert: num(gval(z, "ttm_net_sales")), ende: endeVon(z) }));

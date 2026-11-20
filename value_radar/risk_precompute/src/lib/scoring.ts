@@ -84,7 +84,7 @@ export interface ScoreResult {
   ticker?: string; name?: string; sector?: string;
   category_scores: Record<string, number>;
   cat_neutral: Record<string, boolean>;
-  composite: number;
+  composite: number | null;   // offen, wenn keine Kategorie eine Kennzahl hat (seit 20.11.2026; vorher Platzhalter 50)
   value_trap: boolean;
   breakdown: Record<string, number>;
   /** Je Kennzahl: "peers" = Perzentil gegen >= PEER_PERCENTILE_MIN Peers, "scale" = feste Ersatzskala. */
@@ -166,10 +166,10 @@ export function scoreStock(
 
   let num = 0, den = 0;
   for (const [c, w] of Object.entries(weights)) { const v = catScores[c]; if (typeof v === "number") { num += v * w; den += w; } }
-  let composite = den > 0 ? num / den : 50.0;
   const vt = valueTrap(fund);
-  if (vt) composite -= VALUE_TRAP_PENALTY;
-  composite = Math.max(0.0, Math.min(100.0, composite));
+  // Ohne jede Kennzahl kein Composite (vorher 50 als Platzhalter, z. B. Anthropic am Börsentag mit leerem ROIC-Block).
+  let composite: number | null = den > 0 ? num / den : null;
+  if (composite !== null) { if (vt) composite -= VALUE_TRAP_PENALTY; composite = Math.max(0.0, Math.min(100.0, composite)); }
 
   const roundCats: Record<string, number> = {};
   for (const [k, v] of Object.entries(catScores)) roundCats[k] = (typeof v === "number" ? Math.round(v * 10) / 10 : null) as number;
@@ -178,7 +178,7 @@ export function scoreStock(
     ticker: fund.ticker, name: fund.name, sector: fund.sector,
     category_scores: roundCats,
     cat_neutral: catNeutral,
-    composite: Math.round(composite * 10) / 10,
+    composite: composite === null ? null : Math.round(composite * 10) / 10,
     value_trap: vt,
     breakdown,
     metric_source: metricSource,

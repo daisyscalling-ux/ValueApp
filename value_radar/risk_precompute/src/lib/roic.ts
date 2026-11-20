@@ -128,7 +128,7 @@ const rowsOf = (r: unknown): Row[] => {
  *  Screener): EV-Reihe (3 Jahre) → reihe_umsatz/ebitda/fcf, umsatz_3j; Multiples (5 Jahre) → pe_history und KGV-Band;
  *  GuV/Cashflow (3 Jahre) → phase_history, capital_return_period. Fehlt ein Block, entsteht das Feld nicht. */
 export const ROIC_RAW_METHOD = 'roic_raw_blocks_v1';
-export const HISTORY_FIELDS = ['reihe_umsatz','reihe_ebitda','reihe_fcf','umsatz_3j','jahresreihe','jahresreihe_status','pe_history','pe_hist_min','pe_hist_max','pe_hist_median','phase_history','capital_return_period'] as const;
+export const HISTORY_FIELDS = ['reihe_umsatz','reihe_ebitda','reihe_fcf','umsatz_3j','jahresreihe','jahresreihe_status','jahresreihe_hinweis','pe_history','pe_hist_min','pe_hist_max','pe_hist_median','phase_history','capital_return_period'] as const;
 /** Stichtag einer ROIC-Zeile (period_end_date), für den Periodenabgleich mit dem Jahresabschluss der Ergänzungsdatei. */
 function endeVon(z: Row | null | undefined): string | null { const v = String(gval(z, "period_end_date") ?? ""); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; }
 export function historyFromRoicRaw(raw: Pick<RoicRaw, 'enterprise_value'|'multiples'|'income'|'cashflow'>): Record<string, unknown> {

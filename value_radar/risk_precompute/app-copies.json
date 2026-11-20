@@ -213,6 +213,11 @@
    "app": "worker/bundle-fetch.ts",
    "pipeline": "value_radar/risk_precompute/worker/bundle-fetch.ts",
    "sha256": "2ad0c992d0f312cb950e0e3fa886fb66cfe1d149758bb6ed169babeaad2ce26b"
+  },
+  {
+   "app": "src/lib/qa-checks.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/qa-checks.ts",
+   "sha256": "fb2a4fb5d11dfc4a76f576fbe1fed536fda4e64286fd248c96c566ddb7b3ed4f"
   }
  ]
 }

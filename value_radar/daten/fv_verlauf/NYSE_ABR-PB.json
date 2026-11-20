@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:ABR-PB","isin":null,"currency":"USD"},"name":"Petróleo Brasileiro S.A. - Petrobras","punkte":[{"d":"2026-10-13","fv":24.55,"kurs":22.62,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"FRA:SRT3","isin":"DE0007165607","currency":"EUR"},"name":"Sartorius AG","punkte":[{"d":"2026-10-13","fv":134.85,"kurs":254.6,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

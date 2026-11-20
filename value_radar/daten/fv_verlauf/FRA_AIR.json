@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"FRA:AIR","isin":"NL0000235190","currency":"EUR"},"name":"Airbus SE","punkte":[{"d":"2026-10-13","fv":130.9,"kurs":188.52,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

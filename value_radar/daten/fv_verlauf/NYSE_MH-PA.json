@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:MH-PA","isin":"BMG5753U1201","currency":"USD"},"name":"Morgan Stanley","punkte":[{"d":"2026-10-13","fv":37.88,"kurs":18.94,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

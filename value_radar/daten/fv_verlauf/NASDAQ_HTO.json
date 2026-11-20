@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NASDAQ:HTO","isin":"US7843051043","currency":"EUR"},"name":"H2O America","punkte":[{"d":"2026-10-13","fv":12.58,"kurs":19.36,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

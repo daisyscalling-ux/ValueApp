@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NASDAQ:PPC","isin":"US72147K1088","currency":"EUR"},"name":"Pilgrim's Pride Corporation","punkte":[{"d":"2026-10-13","fv":33.62,"kurs":22.6,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

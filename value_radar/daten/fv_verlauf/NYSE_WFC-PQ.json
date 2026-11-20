@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:WFC-PQ","isin":"US9497465560","currency":"USD"},"name":"Wells Fargo & Company","punkte":[{"d":"2026-10-13","fv":321.34,"kurs":1071.12,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

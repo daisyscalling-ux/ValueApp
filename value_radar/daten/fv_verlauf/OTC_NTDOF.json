@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"OTC:NTDOF","isin":"JP3756600007","currency":"USD"},"name":"Nintendo Co., Ltd.","punkte":[{"d":"2026-10-20","fv":111.98,"kurs":55.99,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

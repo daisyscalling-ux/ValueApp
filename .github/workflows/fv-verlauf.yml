@@ -1,0 +1,53 @@
+name: fv-verlauf
+# Taeglicher Fair-Value-Verlauf je Titel (value_radar/fv_verlauf, seit 20.11.2026): nach jedem precompute-3tage und taeglich
+# als Rueckfall ein Punkt je Titel und Kalendertag (Fair Value, Kurs, Verlaesslichkeit, Modell, Methodenstand). Die App
+# zeigt ihn unter "Verlauf" in der Einzelanalyse.
+on:
+  workflow_run:
+    workflows: [precompute-3tage]
+    types: [completed]
+  schedule:
+    - cron: '47 9 * * *'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '.github/workflows/fv-verlauf.yml'
+      - 'value_radar/fv_verlauf/**'
+concurrency:
+  group: fv-verlauf
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  verlauf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Tests
+        run: cd value_radar/fv_verlauf && python -m unittest -v test_fv_verlauf
+      - name: Tagespunkte eintragen
+        if: github.event_name != 'pull_request'
+        run: |
+          python value_radar/fv_verlauf/fv_verlauf.py eintragen
+      - name: Speichern
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add value_radar/daten/fv_verlauf
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Fair-Value-Verlauf: Tagespunkte [skip ci]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::Push des Fair-Value-Verlaufs nach 4 Versuchen abgelehnt"
+          exit 1

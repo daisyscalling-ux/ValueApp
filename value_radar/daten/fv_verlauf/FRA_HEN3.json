@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"FRA:HEN3","isin":"DE0006048408","currency":"EUR"},"name":"Henkel AG & Co. KGaA","punkte":[{"d":"2026-10-13","fv":82.76,"kurs":76.24,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

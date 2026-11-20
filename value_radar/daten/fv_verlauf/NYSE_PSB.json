@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:PSB","isin":"US69360J1079","currency":"USD"},"name":"Postal Savings Bank of China Co., Ltd.","punkte":[{"d":"2026-10-13","fv":1.3,"kurs":0.67,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

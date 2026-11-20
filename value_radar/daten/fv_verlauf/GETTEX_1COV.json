@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"GETTEX:1COV","isin":"DE0006062144","currency":"EUR"},"name":"Covestro AG","punkte":[{"d":"2026-10-13","fv":51.34,"kurs":59.98,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"FRA:FPE3","isin":"DE000A3E5D56","currency":"EUR"},"name":"FUCHS SE","punkte":[{"d":"2026-10-13","fv":44.15,"kurs":44.68,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

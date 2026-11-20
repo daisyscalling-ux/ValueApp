@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"EURONEXT:DLE","isin":"IE0000527006","currency":"USD"},"name":"Delta Electronics (Thailand) Public Comp","punkte":[{"d":"2026-10-13","fv":null,"kurs":8.0,"m":"python","grund":"Fair Value offen"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

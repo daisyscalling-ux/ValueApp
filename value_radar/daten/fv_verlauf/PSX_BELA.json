@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"PSX:BELA","isin":"PK0062701013","currency":"EUR"},"name":"Bela Automotives Ltd.","punkte":[{"d":"2026-10-13","fv":40.8,"kurs":24.96,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

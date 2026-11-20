@@ -1,0 +1,1 @@
+{"schema":1,"method":"fv_daily_log_v1","inputIdentity":{"listing_symbol":"NYSE:PKO","isin":"US72202B1008","currency":"PLN"},"name":"Powszechna Kasa Oszczednosci Bank Polski","punkte":[{"d":"2026-10-13","fv":85.59,"kurs":115.98,"m":"python"}],"aktualisiert":"2026-11-20T14:14:30+00:00"}

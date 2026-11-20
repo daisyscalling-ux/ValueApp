@@ -738,3 +738,19 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
 - Offline am Universum vom 19.11. trifft die neue Regel 3 Titel: Compass und Netflix bekommen das Yahoo-Band, Rose Petroleum behält das ROIC-Band (dort ist das Yahoo-Band mit 0,03–3,95 fehlerhaft).
 
 **Tests.** `test_ts_bewertung`: Compass, Rose, keines passt, kein Widerspruch, veraltete Datei, Netflix im 400-Tage-Fenster.
+
+## Mehrjahresreihen bei gleicher Periode (20.11.2026, Fehlerbehebung)
+
+**Fehler:** `applySupplement` löschte die ROIC-Reihen (`reihe_umsatz`, `reihe_ebitda`, `reihe_fcf`) und `umsatz_3j` immer, wenn der Jahresabschluss der Ergänzungsdatei übernommen wurde.
+- Das betraf 1.315 von 1.341 Titeln, auch wenn es dasselbe Geschäftsjahr war.
+- Bundle-Compare v6 vom 20.11.: Der EV-Block lieferte bei 49 von 50 Titeln 5 Geschäftsjahre; Ergänzungsdatei und ROIC hatten bei 49 von 49 Titeln dieselbe Periode.
+- Folge: `terminal_growth` stand bei 1.330 Titeln auf „standard“ (2,5 %), nur 11 hatten `umsatz_3j`. Die Regeln „Endwachstum aus dem Dreijahres-Umsatz“ und „Dreijahreswachstum in der Modellwahl“ griffen fast nie, in App und Scanner gleich. Die Säulendiagramme der Einzelanalyse fehlten ebenfalls.
+
+**Regel jetzt:**
+- Jede Reihenzeile trägt den Stichtag der ROIC-Zeile (`ende`).
+- Liegt der letzte Stichtag höchstens `SAME_PERIOD_DAYS` = 35 Tage vom übernommenen Abschluss entfernt, bleiben die Reihen. Kennzeichnung: `history_series_basis`.
+- Bei einer neueren Periode oder einer Reihe ohne Stichtag werden sie gelöscht wie bisher. Sonst würde eine Reihe bis zum Vorjahr neben dem neuen Abschluss stehen.
+
+**Grenze:** `phase_history` und `capital_return_period` werden weiter immer gelöscht. Ob sie bei gleicher Periode bleiben dürfen, ist eine eigene Methodenfrage (Lebenszyklus-Phase), noch offen.
+
+**Wirkung:** Wird nach dem nächsten precompute gemessen (Zahl der Titel mit `umsatz_3j`, mit geändertem Endwachstum und mit geändertem Modell).

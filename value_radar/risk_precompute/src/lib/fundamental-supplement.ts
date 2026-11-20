@@ -1,6 +1,8 @@
 import {latestRows,period,annualUnitsPerListingUnit} from './valuation-data';
 type Row=Record<string,any>;
 const DAY=86400000;
+/** Gleiche Periode: Stichtage höchstens so viele Tage auseinander (Jahresblock, Reihen). */
+export const SAME_PERIOD_DAYS=35;
 const finite=(x:unknown):x is number=>typeof x==='number'&&Number.isFinite(x);
 // Unit conversion only. FX rates come from the ECB file; ADR ratios only from share_basis (issuer-reviewed or the double check below).
 const unitRate=(from:unknown,to:unknown):number|null=>{
@@ -99,7 +101,7 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  // (SEC: kein Wachstum, Versicherer: keine Bruttomarge/EBIT), bleiben aus der ROIC-Zeile derselben Periode erhalten.
  // Vorher fielen sie ersatzlos weg (Hartford: begründetes KGV 203 → 127). Beträge nur bei gleicher Währung (Faktor 1),
  // EBITDA/EBIT nur mit Nettoschulden. Bei neuerem Geschäftsjahr gehören die ROIC-Werte zum Vorjahr und bleiben weg.
- const sameYear=primaryDate!==null&&Math.abs(candidate-primaryDate)<=35*DAY;
+ const sameYear=primaryDate!==null&&Math.abs(candidate-primaryDate)<=SAME_PERIOD_DAYS*DAY;
  if(sameYear){
   const kept:string[]=[];
   const keep=(k:string)=>{if(!finite(f[k])&&finite(before[k])){f[k]=before[k];kept.push(k);}};
@@ -129,7 +131,12 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  f.supplement_annual_end=a.end;
  // Old phase and forensic inputs cannot explain the newly selected period.
  delete f.phase_history;delete f.capital_return_period;delete f._forensik_akt;delete f._forensik_vorjahr;
- for(const key of Object.keys(f))if(key.startsWith('reihe_')||key==='umsatz_3j')delete f[key];
+ // Mehrjahresreihen (seit 20.11.2026): nur löschen, wenn ihr letzter Stichtag nicht dieselbe Periode ist wie der übernommene
+ // Abschluss (≤ SAME_PERIOD_DAYS). Vorher wurden sie immer gelöscht, auch bei gleichem Geschäftsjahr (49 von 49 im
+ // Bundle-Compare 20.11.); dadurch fehlten Endwachstum und Dreijahreswachstum bei 1.330 von 1.341 Titeln.
+ const reihenEnde=(Array.isArray(f.reihe_umsatz)?f.reihe_umsatz:[]).at(-1)?.ende,gleichePeriode=typeof reihenEnde==='string'&&Math.abs(Date.parse(reihenEnde)-candidate)<=SAME_PERIOD_DAYS*DAY;
+ if(!gleichePeriode)for(const key of Object.keys(f))if(key.startsWith('reihe_')||key==='umsatz_3j')delete f[key];
+ if(gleichePeriode)f.history_series_basis=`ROIC-Reihen bis ${reihenEnde}, gleiche Periode wie der Jahresabschluss ${a.end}`;
  f._finanzlage={};
  f.data_sources.push({source:a.source,url:a.source_url,period_end:a.end,published_at:a.published_at,retrieved_at:s.annual_retrieved_at??s.retrieved_at,basis:'Jahresabschluss; CFO − Capex separat, kein bestätigter FCFF'});
  const labels:Record<string,string>={total_debt:'Finanzschulden',cash:'Liquide Mittel',capex:'Investitionsausgaben',operating_cashflow:'Operativer Cashflow',ebit:'EBIT',ebitda:'EBITDA',gross_profit:'Bruttogewinn',net_income:'Jahresüberschuss',total_assets:'Bilanzsumme',equity:'Eigenkapital',revenue_growth:'Umsatzwachstum',weighted_shares:'Verwässerte Aktienzahl'};

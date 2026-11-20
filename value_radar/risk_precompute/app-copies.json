@@ -197,12 +197,12 @@
   {
    "app": "src/lib/roic.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
-   "sha256": "363d4d5117107a3dd88d4807011388fb1f9be7b1f1739a9f3a96809d92b2dda2"
+   "sha256": "00a43222a1948fe4416a7462b354d438c067529f78b8bc83b1b3464bcbe1f0b0"
   },
   {
    "app": "src/lib/fundamental-supplement.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/fundamental-supplement.ts",
-   "sha256": "f078457dafd36220ee0509560f077a98f0d54004d8f0a9765075f035654a9de4"
+   "sha256": "f20fcde757338afa4ff6580337e19c006f44759b1cf083d719453725cec98622"
   },
   {
    "app": "src/lib/phase-data.ts",

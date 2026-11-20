@@ -41,7 +41,7 @@
   {
    "app": "src/lib/evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
-   "sha256": "ffcaa64ebad09a36826ab20ac2f9dea9964b2eb02db8e58863cde091d2f37067"
+   "sha256": "8ee74ff5b5ed9043e1d32e11b42be2e58cb158fac54240f27a3405b714f5ab73"
   },
   {
    "app": "src/lib/financial-health.ts",

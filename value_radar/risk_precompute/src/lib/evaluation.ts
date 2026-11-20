@@ -16,6 +16,19 @@ import {financialHealth,healthProfile,healthRank,type HealthDistribution} from '
 /** riskCoverage: vorberechnete Bilanzpruefung der Risikopipeline ({balance,...}; Einzelanalyse /api/risk-coverage,
  *  Scanner cf_risk_coverage.json). Ohne sie rechnet die Bilanz-Kategorie wie bisher. */
 /** healthDistribution: Rohwerte der Bilanz je Profil im Universum (Rang statt absoluter Skala). */
+/** KGV und KBV zum aktuellen Kurs (seit 20.11.2026, QA-Befund F1). Ohne übernommenen Jahresabschluss kam pe_trailing aus
+ *  ROIC-multiples (pe_ratio) und war das KGV zum Geschäftsjahresende; Peer-Vergleich und Checkliste zeigten es als aktuelles
+ *  KGV. Der ROIC-Wert bleibt als pe_year_end (bzw. pb_year_end) erhalten. Ohne positive Basis bleibt der ROIC-Wert und trägt
+ *  pe_trailing_basis bzw. pb_basis „Geschäftsjahresende“ (das KBV ist Eingang der Bankbewertung und soll nicht wegfallen). */
+export function aktuelleMultiples(f:Record<string,any>):void{
+ const p=f.price,ok=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
+ if(!ok(p)||p<=0)return;
+ for(const [m,basis,jahr] of [['pe_trailing','eps_trailing','pe_year_end'],['pb','book_value_ps','pb_year_end']] as const){
+  const b=f[basis];
+  if(ok(b)&&b>0){const neu=p/b;if(ok(f[m])&&Math.abs(f[m]/neu-1)>0.005&&f[jahr]===undefined)f[jahr]=f[m];f[m]=neu;}
+  else if(ok(f[m]))f[m+'_basis']='Geschäftsjahresende (ROIC), kein aktueller '+(basis==='eps_trailing'?'Gewinn je Aktie':'Buchwert je Aktie');
+ }
+}
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
  const fund={...input};
  // Scanner (seit 17.11.2026): Historienfelder aus denselben ROIC-Rohblöcken wie bundleLight (historyFromRoicRaw), vor dem
@@ -39,6 +52,7 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  // Scanner: Analystenempfehlungen aus derselben Ergänzungsdatei (Einzelanalyse: bereits in bundleLight).
  if('_fundamental_supplement' in fund)applyAnalystRatings(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
  if('_fundamental_supplement' in fund)applyEarningsSurprises(fund,fund._fundamental_supplement??null,Date.now(),fund._supplement_symbol??'');
+ aktuelleMultiples(fund);
  // Mehrjaehrige Cash-Conversion aus der geprueften Historie (Pipeline: balance.cashConversion), beim Lesen erneut geprueft.
  // Ersatz aus der Yahoo-Jahreshistorie derselben Ergänzungsdatei, nur wenn ROIC keine gültige Conversion liefert (gekennzeichnet).
  // Scanner: _fundamental_supplement.cash_history; Einzelanalyse: _fundamental_cash_history (bundleLight, Identität geprüft).
@@ -100,7 +114,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const targetFund={...display};
  // 12M-Ziel: fundamentaler Teil Richtung Fair Value, nur wenn dieser verlässlich ist (seit 17.11.2026).
  targetFund._fv_anker={value:fv.fair_value,reliable:fv.reliable};
- if(!targetFund.hist_pe_median&&targetFund.pe_trailing)targetFund.hist_pe_median=targetFund.pe_trailing;
+ // Rückfall für das historische KGV: das KGV zum letzten Geschäftsjahresende (ROIC), nicht das heutige (seit 20.11.2026).
+ if(!targetFund.hist_pe_median&&targetFund.pe_year_end)targetFund.hist_pe_median=targetFund.pe_year_end;
  const kz=kursziel12m(targetFund,playbook);
  const analyst=(fund.analyst_buy!==undefined||fund.analyst_hold!==undefined)
   ?{buy:Number(fund.analyst_buy??0),hold:Number(fund.analyst_hold??0),sell:Number(fund.analyst_sell??0)}:null;

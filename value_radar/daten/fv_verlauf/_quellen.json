@@ -217,6 +217,11 @@
    "commit": "b117f2953a6f",
    "sha256": "682e43cfa9f7386a",
    "m": "d42514b8befb"
+  },
+  "2026-11-21": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "sha256": "879e3852ab7a7c32",
+   "m": "023756df9974"
   }
  }
 }

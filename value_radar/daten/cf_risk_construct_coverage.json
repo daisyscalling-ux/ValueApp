@@ -2,11 +2,11 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-21T04:31:20.844063+00:00",
+ "generatedAt": "2026-11-21T17:44:01.736439+00:00",
  "listings": 1342,
  "overallAverageWeight": {
-  "filled": 82.0,
-  "missing": 1.2,
+  "filled": 82.1,
+  "missing": 1.1,
   "app_only": 14.2,
   "by_design": 2.7
  },
@@ -65,8 +65,8 @@
   "corporate": {
    "listings": 1127,
    "averageWeight": {
-    "filled": 84.2,
-    "missing": 0.8,
+    "filled": 84.3,
+    "missing": 0.7,
     "app_only": 15.0,
     "by_design": 0.0
    },
@@ -81,8 +81,8 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 24.87,
-     "missing": 0.13,
+     "filled": 24.88,
+     "missing": 0.12,
      "app_only": 0.0,
      "by_design": 0.0,
      "filledShareOfMeasurable": 0.995
@@ -97,11 +97,11 @@
     },
     "Bewertungsrisiko": {
      "weight": 15,
-     "filled": 9.8,
-     "missing": 0.2,
+     "filled": 9.86,
+     "missing": 0.14,
      "app_only": 5.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.98
+     "filledShareOfMeasurable": 0.986
     },
     "Wettbewerbsanfälligkeit": {
      "weight": 15,
@@ -219,19 +219,6 @@
  "largestGaps": [
   {
    "profile": "corporate",
-   "block": "Bewertungsrisiko",
-   "metric": "Erwartungslücke Reverse DCF",
-   "weight": 10,
-   "missingListings": 23,
-   "filledListings": 1104,
-   "weightedGap": 230,
-   "reasons": {
-    "Kein positiver Cashflow und kein positives EV/EBITDA": 18,
-    "Währungskonflikt: ADR oder unklare Aktienbasis": 5
-   }
-  },
-  {
-   "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Expected Shortfall",
    "weight": 15,
@@ -246,6 +233,19 @@
   },
   {
    "profile": "corporate",
+   "block": "Bewertungsrisiko",
+   "metric": "Erwartungslücke Reverse DCF",
+   "weight": 10,
+   "missingListings": 16,
+   "filledListings": 1111,
+   "weightedGap": 160,
+   "reasons": {
+    "Kein positiver Cashflow und kein positives EV/EBITDA": 12,
+    "Währungskonflikt: ADR oder unklare Aktienbasis": 4
+   }
+  },
+  {
+   "profile": "corporate",
    "block": "Kursrisiko",
    "metric": "Volatilität",
    "weight": 10,
@@ -256,19 +256,6 @@
     "Keine Kurshistorie": 11,
     "Weniger als ein Handelsjahr (Neuemission)": 2,
     "Kurshistorie mit längeren Handelslücken": 1
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "FCFF-Marge",
-   "weight": 10,
-   "missingListings": 12,
-   "filledListings": 1115,
-   "weightedGap": 120,
-   "reasons": {
-    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 11,
-    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {
@@ -310,6 +297,19 @@
    "weightedGap": 105,
    "reasons": {
     "Eigenkapital, Schulden, Kasse oder Bilanzsumme fehlen oder Währungskonflikt": 7
+   }
+  },
+  {
+   "profile": "corporate",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "FCFF-Marge",
+   "weight": 10,
+   "missingListings": 10,
+   "filledListings": 1117,
+   "weightedGap": 100,
+   "reasons": {
+    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 9,
+    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {

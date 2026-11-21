@@ -784,3 +784,9 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
   - Anlass: Micron, Ergänzungsdatei mit GJ 2026 (Stichtag 03.09.2026), ROIC bis 31.08.2025. Dort zeigte die Karte nur den Grund und keine Werte.
 - **Composite ohne jede Kennzahl:** bleibt offen (`null`) statt des Platzhalters 50. Anlass: Anthropic am ersten Handelstag mit leerem ROIC-Block, angezeigt mit Composite 50 und Quantum 50. Quantum rechnet dann nur mit den übrigen Teilen oder bleibt ebenfalls offen. Das Kauf-Urteil behandelt einen offenen Composite wie bisher als 0, also kein „kauf“.
 - **Finanzlage:** Ein Urteil gibt es erst ab `FINANZLAGE_MIN_KENNZAHLEN` = 5 bewerteten Kennzahlen (von 18). Vorher stand „Finanziell Solide“ bei 0 von 0.
+
+## Frische der Marktwerte und EV/EBITDA zum aktuellen Kurs (21.11.2026, Entscheidungen des Nutzers nach dem QA-Lauf)
+
+- **Marktwerte der Ergänzungsdatei** (Kurs, 52-Wochen-Band, Aktienzahl, Analystenziel, Beta): Maßgeblich ist der Kurszeitpunkt `quote_at` ≤ 4 Tage. Die Datei selbst darf wie bisher höchstens 7 Tage alt sein. Vorher galt zusätzlich ein Abruf ≤ 36 h. Weil fundamentals-daily nicht jeden Titel täglich abruft, rechneten etwa 700 Titel je nach Tageszeit anders: Die App hatte kein Band, eine andere Aktienzahl und ein anderes Analystenziel, der Scanner am Vorabend schon (QA K1 und E4). Ein älterer Yahoo-Kurs ersetzt weiterhin nie einen neueren ROIC-Kurs.
+- **EV/EBITDA** = (Marktkapitalisierung + Nettoverschuldung) ÷ EBITDA zum aktuellen Kurs (`aktuelleMultiples`). Der ROIC-Wert zum Geschäftsjahresende bleibt als `ev_ebitda_year_end` erhalten; ohne Basis bleibt er mit `ev_ebitda_basis` stehen. Anlass: QA F2, 830 Titel; der Wert geht mit 40 % in die EV/EBITDA-Methode ein.
+- **Wirkung auf Fair Value und Scanner:** wird nach dem nächsten precompute und QA-Lauf gemessen.

@@ -43,7 +43,11 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  f.supplement_status=[raw.supplement_status,...(s.issues??[])].filter(Boolean).join(' · ')||'Datierte Ersatzquelle verfügbar';
  const m=s.market;
  const quoteScale=unitRate(m?.currency,f.currency);
- if(quoteScale!==null&&age(m.quote_at,now,4*DAY)&&age(s.retrieved_at,now,36*3600000)){
+ // Seit 21.11.2026 (Entscheidung des Nutzers nach QA-Lauf): maßgeblich ist das Alter der Kursangabe (quote_at ≤ 4 Tage),
+ // nicht der Abruf der Datei (≤ 7 Tage, oben). Vorher zusätzlich Abruf ≤ 36 h: Bei ~700 Titeln fehlten je nach Tageszeit
+ // Band, Aktienzahl, Analystenziel und Beta in der App, der Scanner hatte sie (QA K1/E4). Ein älterer Yahoo-Kurs ersetzt
+ // weiterhin nie einen neueren ROIC-Kurs (primaryTime).
+ if(quoteScale!==null&&age(m.quote_at,now,4*DAY)){
   // Prefer the quote with the verifiable newer observation timestamp.
   const quote=latestRows(raw.quote)[0];
   const primaryTime=quote ? period(quote) : null;

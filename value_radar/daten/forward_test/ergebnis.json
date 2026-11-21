@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "fv_vs_target_forward_v2",
- "ausgewertet": "2026-11-20T18:01:50+00:00",
+ "ausgewertet": "2026-11-21T00:27:01+00:00",
  "regeln": {
   "min_abstand": 0.05,
   "unentschieden": 0.02,
@@ -18,7 +18,7 @@
    1.0
   ]
  },
- "staende": 7,
+ "staende": 8,
  "methoden": {
   "469a605c6977": {
    "scanner_method": "ts-evaluate-v1",
@@ -33,6 +33,14 @@
    "value_inputs": "value_inputs_v1",
    "eps_basis": "ja",
    "terminal_growth": "nein",
+   "risk_free": "ja",
+   "roic_history": "ja"
+  },
+  "3dfe30828883": {
+   "scanner_method": "ts-evaluate-v1",
+   "value_inputs": "value_inputs_v1",
+   "eps_basis": "ja",
+   "terminal_growth": "ja",
    "risk_free": "ja",
    "roic_history": "ja"
   }

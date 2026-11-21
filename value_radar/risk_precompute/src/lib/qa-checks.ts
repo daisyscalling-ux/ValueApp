@@ -11,12 +11,17 @@ export type QaInput={raw?:Rec|null;ev:{fund:Rec;fv:FairValueResult;scores:Rec;kz
 /** Schwellen (Vorschläge, nach dem ersten Lauf zu schärfen). */
 export const QA_LIMITS={formelToleranz:0.005,mcapToleranz:0.02,evToleranz:0.10,bandToleranz:0.05,quellenFaktor:1.5,ergaenzungMaxTage:7,kzFvAnteil:1/3,kzClip:[0.6,1.6] as [number,number]};
 export const QA_TITEL:Record<string,string>={E1:'Identität',E2:'Frische',E3:'Einheit und Währung',E4:'52-Wochen-Band und Splits',E5:'Jahresreihe',E6:'Wertebereiche',E7:'Marktkapitalisierung = Kurs × Aktien',
- F1:'KGV = Kurs ÷ EPS',F2:'EV = Marktkapitalisierung + Nettoverschuldung',F3:'Margen',F4:'KBV = Kurs ÷ Buchwert je Aktie',F5:'Fair Value aus Kernmethoden',F6:'DCF-Annahmen',F8:'Szenarien Bear ≤ Base ≤ Bull',
+ F1:'KGV = Kurs ÷ EPS',F2:'EV/EBITDA = (Marktkapitalisierung + Nettoverschuldung) ÷ EBITDA',F3:'Margen',F4:'KBV = Kurs ÷ Buchwert je Aktie',F5:'Fair Value aus Kernmethoden',F6:'DCF-Annahmen',F8:'Szenarien Bear ≤ Base ≤ Bull',
  F9:'12M-Ziel aus Teilzielen',F10:'Composite aus Kategorien',F12:'Risikoscore-Gewichte',D1:'Offene Werte mit Grund',D3:'Währung',D5:'Keine Platzhalter im Text',D6:'Keine widersprüchlichen Ergebnisse',K1:'App gegen Scanner'};
 const fin=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const rel=(a:number,b:number)=>Math.abs(a-b)/Math.max(Math.abs(b),1e-12);
 const r2=(v:number)=>Math.round(v*100)/100;
 const ISIN=/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+/** Pence-Codes vereinheitlichen (GBX = GBp); GBp gegen GBP ist eine Einheit, keine andere Notierung. */
+export const waehrungsCode=(c:unknown)=>{const x=String(c??'');return x==='GBX'?'GBp':x};
+const pence=(c:unknown)=>waehrungsCode(c)==='GBp';
+/** Faktor, um einen Betrag in Währung b auf Währung a zu bringen (nur Pence/Pfund), sonst 1 bzw. null. */
+const einheit=(a:unknown,b:unknown)=>{const x=waehrungsCode(a),y=waehrungsCode(b);if(x===y||!x||!y)return 1;if(x==='GBp'&&y==='GBP')return 100;if(x==='GBP'&&y==='GBp')return 0.01;return null};
 export function isinValid(s:unknown):boolean{
  if(typeof s!=='string'||!ISIN.test(s))return false;
  const d=s.slice(0,-1).split('').map(c=>parseInt(c,36)).join('');let t=0;
@@ -34,7 +39,9 @@ export function qaChecks(input:QaInput):QaBefund[]{
   if(sup&&sup.symbol&&String(sup.symbol).toUpperCase()!==sym)prob.push(`Ergänzungsdatei ${sup.symbol}`);
   if(f.isin&&!isinValid(f.isin))prob.push(`ISIN ${f.isin} ungültig`);
   const offen:string[]=[];
-  if(universeRow){for(const [k,a,b] of [['Notierung',universeRow.listing_symbol,sym],['ISIN',universeRow.isin,f.isin],['Währung',universeRow.currency,nativ]] as const){if(a&&b&&String(a)!==String(b))prob.push(`${k} Universum ${a} ≠ ${b}`);else if(a&&!b)offen.push(`${k} in der App fehlt`)}}
+  if(universeRow){for(const [k,a,b] of [['Notierung',universeRow.listing_symbol,sym],['ISIN',universeRow.isin,f.isin],['Währung',universeRow.currency,nativ]] as const){
+   if(k==='Währung'&&a&&b&&einheit(a,b)!==null)continue;   // GBP/GBX/GBp: Einheit, keine andere Notierung
+   if(a&&b&&String(a)!==String(b))prob.push(`${k} Universum ${a} ≠ ${b}`);else if(a&&!b)offen.push(`${k} in der App fehlt`)}}
   add('E1',prob.length?'fehler':offen.length?'offen':'ok',[...prob,...offen].join('; '))}
  // E2 Frische der Ergänzungsdatei und des Zinses
  {const t=Date.parse(String(sup?.retrieved_at??''));const tage=Number.isFinite(t)?(now-t)/86400000:null;
@@ -44,7 +51,7 @@ export function qaChecks(input:QaInput):QaBefund[]{
  {const sp=sup?.market?.fields?.price,sc=sup?.market?.currency;
   if(f.price_source_conflict)add('E3','offen','Kurskonflikt erkannt, Bewertung gesperrt');
   else if(!fin(sp)||!fin(price)||!sc)add('E3','offen','Kein zweiter Kurs zum Abgleich');
-  else{const faktor=sc===nativ?1:(sc==='GBp'&&nativ==='GBP')?0.01:(sc==='GBP'&&nativ==='GBp')?100:null;const p0=fin(f._fx)&&cur==='EUR'&&nativ!=='EUR'?price/f._fx:price;
+  else{const faktor=einheit(nativ,sc);const p0=fin(f._fx)&&cur==='EUR'&&nativ!=='EUR'?price/f._fx:price;
    if(faktor===null)add('E3','offen',`Ergänzung in ${sc}, Notierung in ${nativ}`);else{const r=sp*faktor/p0;add('E3',r>L.quellenFaktor||r<1/L.quellenFaktor?'fehler':'ok',`Yahoo ÷ App-Kurs = ${r.toFixed(3)}`,r2(r),'0,67–1,5')}}}
  // E4 52-Wochen-Band
  {const hi=f['52w_high'],lo=f['52w_low'];
@@ -53,18 +60,24 @@ export function qaChecks(input:QaInput):QaBefund[]{
  // E5 Jahresreihe
  {const jr=f.jahresreihe;if(!Array.isArray(jr))add('E5','offen',String(f.jahresreihe_status??'Keine Jahresreihe'));
   else{const j=jr.map((z:Rec)=>z.jahr),e=jr.map((z:Rec)=>String(z.ende??''));const steigt=j.every((x:number,i:number)=>!i||x>j[i-1])&&e.every((x:string,i:number)=>!i||x>e[i-1]);
-   const neg=jr.some((z:Rec)=>fin(z.umsatz)&&z.umsatz<0);add('E5',!steigt||neg?'fehler':'ok',!steigt?'Jahre oder Stichtage nicht aufsteigend':neg?'negativer Umsatz':'')}}
+   // Negativer Umsatz kommt bei Versicherern und Beteiligungsgesellschaften vor (Anlageergebnis im Umsatz): auffällig, kein Fehler.
+   const neg=jr.some((z:Rec)=>fin(z.umsatz)&&z.umsatz<0);add('E5',!steigt?'fehler':neg?'auffaellig':'ok',!steigt?'Jahre oder Stichtage nicht aufsteigend':neg?'negativer Umsatz in der Jahresreihe (bei Versicherern und Holdings möglich)':'')}}
  // E6 Wertebereiche
  {const prob:string[]=[];const chk=(n:string,v:unknown,ok:(x:number)=>boolean)=>{if(fin(v)&&!ok(v))prob.push(`${n} ${v}`)};
-  chk('Kurs',price,x=>x>0);chk('Aktien',f.shares_out,x=>x>0);chk('Umsatz',f.revenue,x=>x>=0);chk('Bilanzsumme',f.total_assets,x=>x>0);
-  for(const k of ['gross_margin','operating_margin','profit_margin'])chk(k,f[k],x=>x>-2&&x<=1.0001);chk('Beta',f.beta,x=>x>=-1&&x<=4);
-  if(fv.risk_free)chk('Zins',(fv.risk_free as Rec).value,x=>x>=-0.01&&x<=0.15);add('E6',prob.length?'fehler':'ok',prob.join('; '))}
+  chk('Kurs',price,x=>x>0);chk('Aktien',f.shares_out,x=>x>0);chk('Bilanzsumme',f.total_assets,x=>x>0);
+  chk('Beta',f.beta,x=>x>=-1&&x<=4);if(fv.risk_free)chk('Zins',(fv.risk_free as Rec).value,x=>x>=-0.01&&x<=0.15);
+  // Margen über 100 % oder unter −200 % sind möglich (Bewertungsgewinne bei Immobilien, Beteiligungserträge, Anlaufverluste): auffällig.
+  const marge:string[]=[];for(const k of ['gross_margin','operating_margin','profit_margin'])if(fin(f[k])&&!(f[k]>-2&&f[k]<=1.0001))marge.push(`${k} ${(f[k]*100).toFixed(0)} %`);
+  if(fin(f.revenue)&&f.revenue<0)marge.push(`Umsatz negativ`);
+  add('E6',prob.length?'fehler':marge.length?'auffaellig':'ok',[...prob,...marge].join('; '))}
  // E7 Marktkapitalisierung
  if(fin(f.market_cap)&&fin(price)&&fin(f.shares_out)&&f.shares_out>0){const r=rel(price*f.shares_out,f.market_cap);add('E7',r>L.mcapToleranz?'auffaellig':'ok',`Abweichung ${(r*100).toFixed(1)} %`,r2(price*f.shares_out),r2(f.market_cap))}else add('E7','offen','Marktkapitalisierung oder Aktienzahl fehlt');
  // F1 KGV
  if(fin(f.pe_trailing)&&fin(price)&&fin(f.eps_trailing)&&f.eps_trailing>0){const e=price/f.eps_trailing;add('F1',rel(f.pe_trailing,e)>L.formelToleranz?'fehler':'ok','',r2(f.pe_trailing),r2(e))}else add('F1','offen','KGV oder positives EPS fehlt');
  // F2 EV
- if(fin(f.enterprise_value)&&fin(f.market_cap)&&fin(f.net_debt)){const e=f.market_cap+f.net_debt,r=rel(f.enterprise_value,e);add('F2',r>L.evToleranz?'auffaellig':'ok',`Abweichung ${(r*100).toFixed(1)} % (EV der Quelle kann anderen Stichtag haben)`,r2(f.enterprise_value),r2(e))}else add('F2','offen','EV, Marktkapitalisierung oder Nettoverschuldung fehlt');
+ // Seit 21.11.2026: EV/EBITDA zum aktuellen Kurs (aktuelleMultiples) nachrechnen; vorher Vergleich mit dem ROIC-EV zum Jahresende (830 auffällig).
+ if(fin(f.ev_ebitda)&&fin(f.market_cap)&&fin(f.net_debt)&&fin(f.ebitda)&&f.ebitda>0&&f.market_cap+f.net_debt>0){const e=(f.market_cap+f.net_debt)/f.ebitda;add('F2',rel(f.ev_ebitda,e)>L.formelToleranz?'fehler':'ok','',r2(f.ev_ebitda),r2(e))}
+ else add('F2','offen',fin(f.ev_ebitda)?String(f.ev_ebitda_basis??'Marktkapitalisierung, Nettoverschuldung oder positives EBITDA fehlt'):'EV/EBITDA fehlt');
  // F3 Margen
  {const prob:string[]=[];let n=0;for(const [m,z] of [['gross_margin','gross_profit'],['profit_margin','net_income'],['operating_margin','ebit']] as const){if(fin(f[m])&&fin(f[z])&&fin(f.revenue)&&f.revenue>0){n++;const e=f[z]/f.revenue;if(Math.abs(f[m]-e)>0.002)prob.push(`${m} ${(f[m]*100).toFixed(1)} % ≠ ${(e*100).toFixed(1)} %`)}}
   add('F3',prob.length?'auffaellig':n?'ok':'offen',prob.join('; ')||(n?'':'Keine Marge mit Bezugsgröße'))}
@@ -109,11 +122,16 @@ export function qaChecks(input:QaInput):QaBefund[]{
   walk(fv,'fv');walk(kz,'kz');walk(ev.scores,'scores');walk(ev.q,'q');add('D5',prob.length?'fehler':'ok',prob.slice(0,5).join('; '))}
  // D6 widersprüchliche Ergebnisse
  {const prob:string[]=[];const blocked=!!f.valuation_data?.blocked;if(blocked&&fv.fair_value!==null)prob.push('Bewertung gesperrt, aber Fair Value');if(blocked&&kz)prob.push('Bewertung gesperrt, aber 12M-Ziel');
-  if(fv.fair_value!==null&&fin(price)&&fin(fv.upside_pct)&&Math.abs((fv.fair_value/price-1)*100-fv.upside_pct)>0.15)prob.push(`Upside ${fv.upside_pct} ≠ FV/Kurs`);
+  if(fv.fair_value!==null&&fin(price)&&fin(fv.upside_pct)&&Math.abs((fv.fair_value/price-1)*100-fv.upside_pct)>0.3)prob.push(`Upside ${fv.upside_pct} ≠ FV ${fv.fair_value} / Kurs ${r2(price)} − 1 = ${r2((fv.fair_value/price-1)*100)}`);
   if(fv.reliable&&fv.confidence==='niedrig')prob.push('verlässlich bei Konfidenz niedrig');add('D6',prob.length?'fehler':'ok',prob.join('; '))}
  // K1 App gegen Scanner-Zeile (nur Kennzeichnung, Abweichungen sind auffällig)
  if(universeRow){const prob:string[]=[];const cmp=(n:string,a:unknown,b:unknown,tol:number)=>{if(fin(a)&&fin(b)&&rel(a,b)>tol)prob.push(`${n} App ${r2(a)} / Scanner ${r2(b)}`);else if((a===null)!==(b===null)&&(fin(a)||fin(b)))prob.push(`${n} nur ${fin(a)?'App':'Scanner'}`)};
-  if(cur===nativ){cmp('Fair Value',fv.fair_value,universeRow.fair_value,0.02);cmp('12M-Ziel',kz?.ziel??null,universeRow.target_12m,0.02)}
+  const k=cur===nativ?einheit(nativ,universeRow.currency):null;   // Pence/Pfund-Einheit des Universums angleichen
+  if(k!==null){const sk=(v:unknown)=>fin(v)?v*k:v;cmp('Fair Value',fv.fair_value,sk(universeRow.fair_value),0.02);cmp('12M-Ziel',kz?.ziel??null,sk(universeRow.target_12m),0.02);
+   // Seit 21.11.2026: welche Methode abweicht (Universum score_diagnostics.fv_methods)
+   const um=universeRow.score_diagnostics?.fv_methods?.values??null;if(um&&prob.length){const diff:string[]=[];for(const [m,v] of Object.entries(fv.method_values??{})){const w=sk(um[m]);if(fin(v)&&fin(w)&&rel(v,w)>0.02)diff.push(`${m} ${r2(v)}/${r2(w)}`);else if(fin(v)!==fin(w))diff.push(`${m} nur ${fin(v)?'App':'Scanner'}`)}
+    for(const m of Object.keys(um))if(!(m in (fv.method_values??{}))&&fin(sk(um[m])))diff.push(`${m} nur Scanner`);if(diff.length)prob.push('Methoden App/Scanner: '+diff.join(', '))}
+   const ur=universeRow.score_diagnostics?.fv_check?.reliable;if(typeof ur==='boolean'&&ur!==fv.reliable)prob.push(`verlässlich App ${fv.reliable} / Scanner ${ur}`)}
   if(universeRow.playbook&&universeRow.playbook!==ev.playbook)prob.push(`Playbook ${ev.playbook} / ${universeRow.playbook}`);add('K1',prob.length?'auffaellig':'ok',prob.join('; '))}
  return out;
 }

@@ -16,7 +16,7 @@ import {financialHealth,healthProfile,healthRank,type HealthDistribution} from '
 /** riskCoverage: vorberechnete Bilanzpruefung der Risikopipeline ({balance,...}; Einzelanalyse /api/risk-coverage,
  *  Scanner cf_risk_coverage.json). Ohne sie rechnet die Bilanz-Kategorie wie bisher. */
 /** healthDistribution: Rohwerte der Bilanz je Profil im Universum (Rang statt absoluter Skala). */
-/** KGV und KBV zum aktuellen Kurs (seit 20.11.2026, QA-Befund F1). Ohne übernommenen Jahresabschluss kam pe_trailing aus
+/** KGV, KBV und EV/EBITDA zum aktuellen Kurs (seit 20./21.11.2026, QA-Befunde F1/F2). Ohne übernommenen Jahresabschluss kam pe_trailing aus
  *  ROIC-multiples (pe_ratio) und war das KGV zum Geschäftsjahresende; Peer-Vergleich und Checkliste zeigten es als aktuelles
  *  KGV. Der ROIC-Wert bleibt als pe_year_end (bzw. pb_year_end) erhalten. Ohne positive Basis bleibt der ROIC-Wert und trägt
  *  pe_trailing_basis bzw. pb_basis „Geschäftsjahresende“ (das KBV ist Eingang der Bankbewertung und soll nicht wegfallen). */
@@ -28,6 +28,11 @@ export function aktuelleMultiples(f:Record<string,any>):void{
   if(ok(b)&&b>0){const neu=p/b;if(ok(f[m])&&Math.abs(f[m]/neu-1)>0.005&&f[jahr]===undefined)f[jahr]=f[m];f[m]=neu;}
   else if(ok(f[m]))f[m+'_basis']='Geschäftsjahresende (ROIC), kein aktueller '+(basis==='eps_trailing'?'Gewinn je Aktie':'Buchwert je Aktie');
  }
+ // EV/EBITDA zum aktuellen Kurs (seit 21.11.2026, Entscheidung des Nutzers nach QA-Befund F2: 830 Titel mit ROIC-Wert zum
+ // Geschäftsjahresende). Geht mit 40 % in die EV/EBITDA-Methode ein (multipleEvEbitda). ROIC-Wert bleibt als ev_ebitda_year_end.
+ const mc=f.market_cap,nd=f.net_debt,eb=f.ebitda;
+ if(ok(mc)&&mc>0&&ok(nd)&&ok(eb)&&eb>0){const neu=(mc+nd)/eb;if(neu>0){if(ok(f.ev_ebitda)&&Math.abs(f.ev_ebitda/neu-1)>0.005&&f.ev_ebitda_year_end===undefined)f.ev_ebitda_year_end=f.ev_ebitda;f.ev_ebitda=neu;}}
+ else if(ok(f.ev_ebitda))f.ev_ebitda_basis='Geschäftsjahresende (ROIC), aktueller Wert nicht berechenbar';
 }
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
  const fund={...input};

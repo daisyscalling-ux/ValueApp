@@ -790,3 +790,22 @@ Messung am Universum vom 17.11.: 22 von 41 Titeln verlassen das Zyklik-Modell (2
 - **Marktwerte der Ergänzungsdatei** (Kurs, 52-Wochen-Band, Aktienzahl, Analystenziel, Beta): Maßgeblich ist der Kurszeitpunkt `quote_at` ≤ 4 Tage. Die Datei selbst darf wie bisher höchstens 7 Tage alt sein. Vorher galt zusätzlich ein Abruf ≤ 36 h. Weil fundamentals-daily nicht jeden Titel täglich abruft, rechneten etwa 700 Titel je nach Tageszeit anders: Die App hatte kein Band, eine andere Aktienzahl und ein anderes Analystenziel, der Scanner am Vorabend schon (QA K1 und E4). Ein älterer Yahoo-Kurs ersetzt weiterhin nie einen neueren ROIC-Kurs.
 - **EV/EBITDA** = (Marktkapitalisierung + Nettoverschuldung) ÷ EBITDA zum aktuellen Kurs (`aktuelleMultiples`). Der ROIC-Wert zum Geschäftsjahresende bleibt als `ev_ebitda_year_end` erhalten; ohne Basis bleibt er mit `ev_ebitda_basis` stehen. Anlass: QA F2, 830 Titel; der Wert geht mit 40 % in die EV/EBITDA-Methode ein.
 - **Wirkung auf Fair Value und Scanner:** wird nach dem nächsten precompute und QA-Lauf gemessen.
+
+## Archiv der Jahreswerte (21.11.2026, Wunsch des Nutzers)
+
+ROIC liefert höchstens 5 Geschäftsjahre. Mit jedem neuen Geschäftsjahr fällt das älteste weg; ab 2027 wäre etwa 2021 verloren. Die SEC-Reihe umfasst 8 Jahre. Beide Quellen werden deshalb archiviert:
+
+- **ROIC** (`value_radar/roic_archiv.py`, `roic_annual_archive_v1`):
+  - precompute schreibt die Jahreszeilen des EV-Blocks je Notierung nach `daten/roic_archiv/` (Umsatz, EBITDA, FCFF, Nettogewinn, EBIT; Berichtswährung).
+  - Quelle sind die Rohblöcke, die precompute ohnehin holt; keine zusätzlichen Abrufe.
+  - Es wird nie gelöscht. Spätere Anpassungen ersetzen den Wert; der alte bleibt mit Datum unter `frueher`.
+  - Bei anderer ISIN oder Währung wird nichts eingetragen.
+  - Veröffentlicht wird mit dem Universum (`publish_cf.py`); vorhandene Dateien bleiben bestehen.
+- **SEC** (`sec_jahre_export.py`): Ältere Jahre bleiben in `daten/sec_jahre/` erhalten (`archiviert: true`), bei gleicher Identität, CIK und gleichem Umsatzkonzept. Der Ordner wird nicht mehr bei jedem Lauf gelöscht.
+- **App:**
+  - Die Kennzahlen-Tabelle zeigt Archivjahre vor dem ältesten ROIC-Jahr kursiv, mit Tooltip „ROIC-Archiv (zuletzt geliefert …)“.
+  - Die SEC-Verlängerung prüft die Überlappung auch gegen Archivjahre.
+  - Die Bewertung rechnet weiter nur mit den aktuellen Jahren.
+- **Grenzen:**
+  - Das Archiv beginnt mit dem ersten precompute nach dem Merge. Was ROIC bis dahin schon nicht mehr lieferte, ist nicht enthalten. Am 20.11. lieferte ROIC meist 2021–2025.
+  - Titel, die precompute in einem Lauf nicht frisch abruft (Zeitbudget), werden erst beim nächsten Abruf ergänzt.

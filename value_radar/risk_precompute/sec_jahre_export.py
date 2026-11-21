@@ -2,11 +2,11 @@
 
 Aus cf_sec_cashflow_history.json: Jahresumsatz (revenueStocks, sec_revenue_history) und operativer Cashflow minus
 Sachinvestitionen (stocks, Konzept PaymentsToAcquirePropertyPlantAndEquipment, us-gaap). Nur Titel des Universums mit
-gleicher inputIdentity und CIK, Abruf hoechstens MAX_AGE_DAYS alt. Datei je Notierung unter daten/sec_jahre/, Ordner
-wird je Lauf neu geschrieben. Die App verlaengert damit die Umsatzzeile nur bei Uebereinstimmung mit ROIC und zeigt
+gleicher inputIdentity und CIK, Abruf hoechstens MAX_AGE_DAYS alt. Datei je Notierung unter daten/sec_jahre/, Aeltere Jahre
+bleiben erhalten (behalten). Die App verlaengert damit die Umsatzzeile nur bei Uebereinstimmung mit ROIC und zeigt
 "Operativer CF - Capex (SEC)" als eigene, gekennzeichnete Zeile. Kein Score nutzt diese Dateien.
 """
-import datetime as dt, json, math, os, re, shutil, sys
+import datetime as dt, json, math, os, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -64,6 +64,24 @@ def build(state, universe, now):
     return out
 
 
+def behalten(neu, alt):
+    """Aeltere Jahre aus der bisherigen Datei behalten (seit 21.11.2026): Die SEC-Reihe umfasst nur 8 Jahre, aeltere fielen
+    sonst mit jedem neuen Geschaeftsjahr weg. Nur bei gleicher Identitaet und CIK; Umsatz nur bei gleichem Konzept. Behaltene
+    Jahre tragen archiviert: true. Dateien von Titeln ohne neue Reihe bleiben unveraendert liegen (nie loeschen)."""
+    if not alt or alt.get('method') != METHOD or alt.get('inputIdentity') != neu['inputIdentity'] or str(alt.get('cik')) != str(neu['cik']):
+        return neu, 0
+    neu, n = dict(neu), 0
+    for key in ('umsatz', 'ocf_capex'):
+        if not neu[key]:
+            continue
+        erstes = neu[key][0]['ende']
+        konzepte = {r.get('konzept') for r in neu[key]}
+        vorher = [{**r, 'archiviert': True} for r in alt.get(key, []) if r.get('ende', '') < erstes and r.get('konzept') in konzepte]
+        n += len(vorher)
+        neu[key] = vorher + neu[key]
+    return neu, n
+
+
 def main():
     folder = Path(os.getenv('RISK_DATA_DIR', str(Path(__file__).resolve().parents[1] / 'daten')))
     try:
@@ -73,13 +91,19 @@ def main():
         print(f'SEC-Jahresreihen: Eingabe fehlt ({type(e).__name__}), Ordner unveraendert'); return
     out = build(state, universe, dt.datetime.now(dt.timezone.utc))
     ziel = folder / 'sec_jahre'
-    if ziel.exists():
-        shutil.rmtree(ziel)
-    ziel.mkdir(parents=True)
+    ziel.mkdir(parents=True, exist_ok=True)
+    gehalten = 0
     for s, d in out.items():
-        (ziel / _datei(s)).write_text(json.dumps(d, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
+        pfad = ziel / _datei(s)
+        try:
+            alt = json.loads(pfad.read_text(encoding='utf-8')) if pfad.exists() else None
+        except (OSError, ValueError):
+            alt = None
+        d, n = behalten(d, alt)
+        gehalten += n
+        pfad.write_text(json.dumps(d, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
     mit_umsatz = sum(1 for d in out.values() if len(d['umsatz']) >= 2)
-    print(json.dumps({'titel': len(out), 'mit_umsatz': mit_umsatz, 'mit_ocf_capex': sum(1 for d in out.values() if len(d['ocf_capex']) >= 2)}))
+    print(json.dumps({'titel': len(out), 'aeltere_jahre_behalten': gehalten, 'mit_umsatz': mit_umsatz, 'mit_ocf_capex': sum(1 for d in out.values() if len(d['ocf_capex']) >= 2)}))
 
 
 if __name__ == '__main__':

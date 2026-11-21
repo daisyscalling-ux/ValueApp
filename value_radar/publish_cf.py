@@ -7,6 +7,7 @@ import sys
 from export_continuity import guard
 
 TARGET = 'value_radar/daten/cf_universum.json'
+ARCHIV = 'value_radar/daten/roic_archiv'
 
 
 def git(repo, *args, check=True):
@@ -45,6 +46,14 @@ def publish(repo, source, now=None):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(source.read_bytes())
     git(repo, 'add', '--', TARGET)
+    # ROIC-Archiv (roic_archiv.py) mit veroeffentlichen: Dateien neben dem Export; nur hinzufuegen oder ersetzen, nie loeschen.
+    archiv = source.parent / 'roic_archiv'
+    if archiv.is_dir():
+        ziel = repo / ARCHIV
+        ziel.mkdir(parents=True, exist_ok=True)
+        for f in archiv.glob('*.json'):
+            (ziel / f.name).write_bytes(f.read_bytes())
+        git(repo, 'add', '--', ARCHIV)
     if git(repo, 'diff', '--cached', '--quiet', check=False).returncode == 0:
         return 'unchanged'
     git(repo, 'commit', '-m', 'Cloudflare-Universum aktualisiert [skip ci]')

@@ -76,5 +76,19 @@ class Export(unittest.TestCase):
         self.assertEqual(ex.build({'schema': 1, 'method': 'x'}, uni, NOW), {})
 
 
+class Behalten(unittest.TestCase):
+    def test_aeltere_jahre_bleiben_nach_dem_rollen(self):
+        ident = {'listing_symbol': 'NYSE:A'}
+        r = lambda y, k='Revenues': {'ende': f'{y}-12-31', 'wert': y, 'konzept': k}
+        alt = {'method': ex.METHOD, 'inputIdentity': ident, 'cik': '1', 'umsatz': [r(y) for y in range(2018, 2026)], 'ocf_capex': []}
+        neu = {'method': ex.METHOD, 'inputIdentity': ident, 'cik': '1', 'umsatz': [r(y) for y in range(2019, 2027)], 'ocf_capex': []}
+        d, n = ex.behalten(neu, alt)
+        self.assertEqual([x['ende'][:4] for x in d['umsatz']], [str(y) for y in range(2018, 2027)]); self.assertEqual(n, 1)
+        self.assertTrue(d['umsatz'][0]['archiviert']); self.assertNotIn('archiviert', d['umsatz'][1])
+        for a in ({**alt, 'cik': '2'}, {**alt, 'inputIdentity': {'listing_symbol': 'NYSE:B'}}, {**alt, 'umsatz': [r(2018, 'SalesRevenueNet')]}, None):
+            d, n = ex.behalten({**neu, 'umsatz': list(neu['umsatz'])}, a)
+            self.assertEqual((d['umsatz'][0]['ende'][:4], n), ('2019', 0))
+
+
 if __name__ == '__main__':
     unittest.main()

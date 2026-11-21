@@ -171,6 +171,12 @@ def main() -> int:
         r["index_membership"] = mitglied.get(r["ticker"], [])
     # Bewertungsfelder aus dem App-Rechenweg (evaluateStock, TypeScript), Peers aus dem kompletten Universum
     # (frische und uebernommene Zeilen); siehe ts_bewertung.py.
+    # ROIC-Jahreswerte dauerhaft archivieren (vor ts_bewertung, das _ts_input entfernt); ROIC liefert nur 5 Jahre.
+    try:
+        import roic_archiv
+        _melde(f"[export] ROIC-Archiv: {roic_archiv.einarbeiten(ergebnisse)}")
+    except Exception as e:
+        _melde(f"[export] ROIC-Archiv fehlgeschlagen (Export laeuft weiter): {type(e).__name__}: {e}")
     import ts_bewertung
     _melde(f"[export] Bewertung im App-Rechenweg: {ts_bewertung.anwenden(ergebnisse)}")
     # EBITDA-Marge: gekennzeichneter Ersatz aus dem eigenen Jahresabschluss, nur wenn ROIC keine liefert.

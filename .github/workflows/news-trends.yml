@@ -1,0 +1,41 @@
+name: news-trends
+# Trends aus Nachrichten (news_trends_v1, NACHRICHTEN_TRENDS.md): Schlagzeilen täglich archivieren und auszählen.
+# Zweimal täglich, damit die stündlichen Marktnachrichten (je Quelle höchstens 80) lückenlos ins Archiv kommen.
+on:
+  schedule:
+    - cron: '13 11,23 * * *'
+  workflow_dispatch: {}
+concurrency:
+  group: news-trends
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  trends:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Regeln testen
+        run: python -m unittest discover -s value_radar/nachrichten_trends -p 'test_*.py'
+      - name: Archivieren und auswerten
+        run: python value_radar/nachrichten_trends/trends.py value_radar/daten
+      - name: Archiv und Ergebnis speichern
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'value-radar-bot'
+          git config user.email 'bot@value-radar'
+          git add value_radar/daten/cf_trends.json value_radar/daten/nachrichten_archiv
+          git diff --cached --quiet && exit 0
+          git commit -m 'Trends aus Nachrichten aktualisiert [skip ci]'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1

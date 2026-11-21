@@ -119,6 +119,23 @@ class PublishTests(unittest.TestCase):
             p.publish(self.repo,self.source,self.now)
 
 
+    def test_roic_archiv_mitveroeffentlicht_nie_geloescht(self):
+        # Seit 21.11.2026: daten/roic_archiv neben dem Export wird mit veroeffentlicht; vorhandene Dateien bleiben.
+        alt = self.repo/p.ARCHIV/'NYSE_ALT.json'
+        alt.parent.mkdir(parents=True, exist_ok=True)
+        alt.write_text('{"alt":1}')
+        p.git(self.repo, 'add', '.')
+        p.git(self.repo, 'commit', '-m', 'alt')
+        p.git(self.repo, 'push', 'origin', 'main')
+        quelle = self.root/'export'/'roic_archiv'
+        quelle.mkdir(parents=True)
+        (quelle/'NYSE_MSFT.json').write_text('{"neu":1}')
+        src = self.root/'export'/'cf_universum.json'
+        src.write_text(self.source.read_text())
+        self.assertEqual(p.publish(self.repo, src, self.now), 'published')
+        self.assertEqual((self.repo/p.ARCHIV/'NYSE_MSFT.json').read_text(), '{"neu":1}')
+        self.assertTrue(alt.exists())
+
 if __name__=='__main__': unittest.main()
 
 

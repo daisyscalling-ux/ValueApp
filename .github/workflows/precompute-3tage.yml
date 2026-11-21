@@ -35,6 +35,8 @@ on:
       - 'value_radar/precompute.py'
       - 'value_radar/tests/test_ts_bewertung.py'
       - 'value_radar/kurszeit.py'
+      - 'value_radar/roic_archiv.py'
+      - 'value_radar/tests/test_roic_archiv.py'
       - 'value_radar/tests/test_kurszeit.py'
       - 'value_radar/risk_precompute/scanner-evaluate.ts'
       - 'value_radar/risk_precompute/src/lib/**'
@@ -86,6 +88,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_sektor_industrial_services.py -v
       - working-directory: value_radar
         run: python -m unittest discover -s tests -p test_kurszeit.py -v
+      - working-directory: value_radar
+        run: python -m unittest discover -s tests -p test_roic_archiv.py -v
   precompute:
     concurrency:
       group: roic-bulk-production

@@ -1,7 +1,7 @@
 // QA-Prüfregeln der Einzelanalyse (QA-EINZELANALYSE.md, Phase 1, seit 20.11.2026). Laufen im Rechenweg der App auf dem Ergebnis
 // von evaluateStock und melden je Prüfung ok / offen / auffaellig / fehler. Nur Meldung (Entscheidung des Nutzers), keine
 // Änderung an Werten. Der Runner (Phase 2) ruft qaChecks je Titel auf und fasst über das Universum zusammen.
-import {szenarioMatrix,FAIR_VALUE_MAX_MULT,FAIR_VALUE_MIN_MULT,type Fund,type FairValueResult} from './valuation';
+import {szenarioMatrix,FAIR_VALUE_MAX_MULT,FAIR_VALUE_MIN_MULT,fairesKgvTeile,epsBasis,type Fund,type FairValueResult} from './valuation';
 import {BLOCK_WEIGHTS} from './risk-construct';
 export const QA_METHOD='qa_einzelanalyse_v1';
 export type QaStatus='ok'|'offen'|'auffaellig'|'fehler';
@@ -131,9 +131,37 @@ export function qaChecks(input:QaInput):QaBefund[]{
    // Seit 21.11.2026: welche Methode abweicht (Universum score_diagnostics.fv_methods)
    const um=universeRow.score_diagnostics?.fv_methods?.values??null;if(um&&prob.length){const diff:string[]=[];for(const [m,v] of Object.entries(fv.method_values??{})){const w=sk(um[m]);if(fin(v)&&fin(w)&&rel(v,w)>0.02)diff.push(`${m} ${r2(v)}/${r2(w)}`);else if(fin(v)!==fin(w))diff.push(`${m} nur ${fin(v)?'App':'Scanner'}`)}
     for(const m of Object.keys(um))if(!(m in (fv.method_values??{}))&&fin(sk(um[m])))diff.push(`${m} nur Scanner`);if(diff.length)prob.push('Methoden App/Scanner: '+diff.join(', '))}
+   // Seit 22.11.2026 (Entscheidung des Nutzers: erst messen): weicht das begründete KGV ab, welche Stufe des fairen KGV kippt
+   // und welcher Eingang dahintersteht (Scanner-Eingänge aus score_diagnostics.kgv_inputs, gleiche Rechnung fairesKgvTeile).
+   const ki=universeRow.score_diagnostics?.kgv_inputs;const jv=(fv.method_values??{} as Rec).justified_pe,jw=um?sk(um.justified_pe):null;
+   if(ki&&fin(jv)&&fin(jw)&&rel(jv,jw)>0.02){const t=kgvVergleich(f as Fund,fv.playbook??ev.playbook,ki);if(t)prob.push('Faires KGV '+t)}
    const ur=universeRow.score_diagnostics?.fv_check?.reliable;if(typeof ur==='boolean'&&ur!==fv.reliable)prob.push(`verlässlich App ${fv.reliable} / Scanner ${ur}`)}
   if(universeRow.playbook&&universeRow.playbook!==ev.playbook)prob.push(`Playbook ${ev.playbook} / ${universeRow.playbook}`);add('K1',prob.length?'auffaellig':'ok',prob.join('; '))}
  return out;
+}
+
+/** K1-Ursache beim begründeten KGV: Stufen des fairen KGV aus App-Eingängen und Scanner-Eingängen (kgv_inputs) gegenüberstellen.
+ *  Liefert z. B. „14 / 10,5: Profitabilität 1/0 (bereinigte EKR 5,2 % / 4,75 %)“ oder null, wenn Stufen und EPS gleich sind. */
+const KGV_TEIL_NAME:Record<string,string>={stab:'Stabilität',prof:'Profitabilität',pos:'Marge',gp:'Wachstum'};
+export function kgvVergleich(app:Fund,preset:unknown,ki:Rec):string|null{
+ const p=(preset as any)??ki.preset??'quality';
+ const scan={free_cashflow:ki.free_cashflow,net_debt_ebitda:ki.net_debt_ebitda,current_ratio:ki.current_ratio,roe:ki.roe,gross_margin:ki.gross_margin,
+  revenue_growth:ki.revenue_growth,earnings_growth:ki.earnings_growth,net_income:ki.net_income,total_assets:ki.total_assets,operating_cashflow:ki.operating_cashflow} as unknown as Fund;
+ const a=fairesKgvTeile(app,p),b=fairesKgvTeile(scan,ki.preset??p);
+ const zahl0=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?String(Math.round(v*100)/100):'—';
+ // Nur zuordnen, wenn sich das Scanner-KGV aus den gespeicherten Eingängen nachrechnen lässt (21.11.2026: 1.337 von 1.342).
+ if(typeof ki.faires_kgv==='number'&&Math.abs(b.faires_kgv-ki.faires_kgv)>0.01)return `${zahl0(a.faires_kgv)}/${zahl0(ki.faires_kgv)}: Ursache offen, Scanner-Eingänge unvollständig`;
+ const pct=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?(Math.round(v*1000)/10).toLocaleString('de-DE')+' %':'—';
+ const zahl=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?String(Math.round(v*100)/100):'—';
+ const ein:Record<string,string>={
+  stab:`FCF ${(app.free_cashflow??0)>0?'+':'≤0'}/${(ki.free_cashflow??0)>0?'+':'≤0'}, Nettoschulden/EBITDA ${zahl(app.net_debt_ebitda)}/${zahl(ki.net_debt_ebitda)}, Current Ratio ${zahl(app.current_ratio)}/${zahl(ki.current_ratio)}`,
+  prof:`bereinigte EKR ${pct(a.uroe)}/${pct(b.uroe)}, EKR ${pct(app.roe)}/${pct(ki.roe)}`,
+  pos:`Bruttomarge ${pct(app.gross_margin)}/${pct(ki.gross_margin)}`,
+  gp:`Umsatzwachstum ${pct(app.revenue_growth)}/${pct(ki.revenue_growth)}`};
+ const teile=(['stab','prof','pos','gp'] as const).filter(k=>a[k]!==b[k]).map(k=>`${KGV_TEIL_NAME[k]} ${a[k]}/${b[k]} (${ein[k]})`);
+ const ea=epsBasis(app).eps,eb=ki.eps;const epsDiff=typeof ea==='number'&&typeof eb==='number'&&eb!==0&&Math.abs(ea/eb-1)>0.02;
+ if(!teile.length&&!epsDiff&&a.faires_kgv===b.faires_kgv)return null;
+ return `${zahl(a.faires_kgv)}/${zahl(b.faires_kgv)}`+(teile.length?': '+teile.join('; '):'')+(epsDiff?`; EPS ${zahl(ea)}/${zahl(eb)}`:'');
 }
 
 /** Zusammenfassung je Prüfung (für Runner und Tab). */

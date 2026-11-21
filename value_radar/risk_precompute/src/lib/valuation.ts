@@ -320,7 +320,9 @@ export function ungehebelteEkr(fund: Fund & { operating_cashflow?: number | null
  * 1:1 aus valuation.faires_kgv. Nutzt ungehebelte ROE, gestufte Rentabilitaets-
  * und Margenpunkte, differenziertes Wachstum. Cap je Playbook.
  */
-export function fairesKgv(fund: Fund, preset: Playbook = "quality"): number | null {
+/** Bestandteile des fairen KGV (seit 22.11.2026, für den QA-Abgleich K1): gleiche Rechnung wie bisher, nur mit offengelegten Stufen. */
+export type FairesKgvTeile = { stab: number; prof: number; pos: number; moat: number; gp: number; uroe: number | null; faires_kgv: number };
+export function fairesKgvTeile(fund: Fund, preset: Playbook = "quality"): FairesKgvTeile {
   const base = 7.0;
   let stab = 0.0;
   if ((fund.free_cashflow ?? 0) > 0) stab += 1;
@@ -355,7 +357,11 @@ export function fairesKgv(fund: Fund, preset: Playbook = "quality"): number | nu
   if (preset === "inflection") fairPe *= 1.1;
   const cap = preset === "inflection" ? 50 : preset === "quality" ? 42
             : preset === "financial" ? 18 : 16;
-  return Math.max(6.0, Math.min(fairPe, cap));
+  return { stab, prof, pos, moat, gp, uroe, faires_kgv: Math.max(6.0, Math.min(fairPe, cap)) };
+}
+
+export function fairesKgv(fund: Fund, preset: Playbook = "quality"): number | null {
+  return fairesKgvTeile(fund, preset).faires_kgv;
 }
 
 // --- Sektor-Multiples, exakt aus config ------------------------------------

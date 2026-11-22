@@ -119,3 +119,32 @@ class Ablauf(unittest.TestCase):
 
 if __name__ == '__main__':
  unittest.main()
+
+
+class Kandidaten(unittest.TestCase):
+ TR = {'kandidaten': [
+  {'boerse': 'NYSE', 'kuerzel': 'KMT', 'name': 'Kennametal', 'identitaet': 'ungeprueft', 'aehnlichImUniversum': [], 'schlagzeilen': [{'title': 'Kennametal (NYSE:KMT) beats'}]},
+  {'boerse': 'NYSE', 'kuerzel': 'BTI', 'name': 'BAT', 'identitaet': 'ungeprueft', 'aehnlichImUniversum': ['LSE:BATS'], 'schlagzeilen': [{'title': 'BAT (NYSE:BTI)'}]},
+  {'boerse': 'NASDAQ', 'kuerzel': 'X', 'name': 'X', 'identitaet': 'geprueft', 'aehnlichImUniversum': [], 'schlagzeilen': [{'title': 'x'}]},
+  {'boerse': 'NASDAQ', 'kuerzel': 'Y', 'name': 'Y', 'identitaet': 'ungeprueft', 'aehnlichImUniversum': [], 'schlagzeilen': []}]}
+
+ def test_eingabe_nur_echte_kandidaten(self):
+  k = K.kandidaten_eingabe(self.TR)
+  self.assertEqual([(x['id'], x['kuerzel']) for x in k], [('k1', 'KMT')], 'ADR-Verdacht, falsche Kennzeichnung, ohne Schlagzeile: nicht an die KI')
+
+ def test_pruefung(self):
+  k = K.kandidaten_eingabe(self.TR)
+  out, v = K.kandidaten_pruefen({'kandidaten': [{'id': 'k1', 'beschreibung': 'Werkzeughersteller.', 'anlass': 'Quartalszahlen.'},
+                                                {'id': 'k1', 'beschreibung': 'doppelt', 'anlass': ''}, {'id': 'k9', 'beschreibung': 'erfunden', 'anlass': ''},
+                                                {'id': 'k1', 'beschreibung': ' ', 'anlass': ''}]}, k)
+  self.assertEqual(out, [{'boerse': 'NYSE', 'kuerzel': 'KMT', 'beschreibung': 'Werkzeughersteller.', 'anlass': 'Quartalszahlen.'}]); self.assertEqual(v, 3)
+
+ def test_ablauf_mit_kandidaten(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   daten = daten_anlegen(tmp)
+   tr = T.lies(daten / 'cf_trends.json', None); tr['kandidaten'] = self.TR['kandidaten']; T.schreibe(daten / 'cf_trends.json', tr)
+   c = FakeClient({**GUT, 'kandidaten': [{'id': 'k1', 'beschreibung': 'Werkzeughersteller.', 'anlass': 'Quartalszahlen.'}]})
+   e, g = K.ausfuehren(daten, c, JETZT)
+   self.assertEqual(g, ''); self.assertEqual(e['kandidaten'][0]['kuerzel'], 'KMT')
+   self.assertIn('<kandidaten>', c.aufrufe[0]['messages'][0]['content']); self.assertIn('NYSE:KMT | Kennametal', c.aufrufe[0]['messages'][0]['content'])
+   self.assertIn('kandidaten', K.SCHEMA['required'])

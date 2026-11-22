@@ -44,6 +44,23 @@ export function cashConversionFromAnnuals(annuals:Row[],now=Date.now()):CashConv
  return {state:'available',method:CASH_CONVERSION_METHOD,value,raw:r.raw,clamped:value!==r.raw,years:periods.length,currency:String([...currencies][0]??''),sumFcf:r.sumFcf,sumNetIncome:r.sumNetIncome,periods};
 }
 
+/**
+ * Gewinnknick (seit 22.11.2026, Entscheidung des Nutzers): Liegt der Jahresüberschuss des letzten Geschäftsjahres im
+ * Conversion-Fenster unter CC_KNICK (50 %) des Fenster-Durchschnitts, ist „Gewinn × Conversion“ nicht belastbar
+ * (Sonderabschreibungen ziehen die Basis auf fast null: ON Semi 0,12 statt Ø 1,3 Mrd). Der DCF bleibt dann offen.
+ * Gerechnet innerhalb derselben geprüften Reihe (eine Währung), daher ohne Umrechnung. Kein Ersatz durch den Durchschnitt:
+ * Das würde nur Firmen im Abschwung anheben (Verzerrung), für alle Titel würde es Wachstumsfirmen abwerten (Median −14 %).
+ */
+export const CC_KNICK=0.5;
+export type GewinnKnick={quote:number;letzterGewinn:number;schnitt:number;jahre:number;bis:string};
+export function gewinnKnick(c:CashConversion):GewinnKnick|null{
+ if(c.state!=='available'||!c.periods.length)return null;
+ const schnitt=c.sumNetIncome/c.periods.length,last=c.periods[c.periods.length-1];
+ if(!(schnitt>0)||!finite(last.netIncome))return null;
+ const quote=last.netIncome/schnitt;
+ return quote<CC_KNICK?{quote,letzterGewinn:last.netIncome,schnitt,jahre:c.periods.length,bis:last.end}:null;
+}
+
 /** Erneute Pruefung beim Lesen: Methode, Jahre, Abstand, Alter, Summen und Begrenzung werden nachgerechnet. */
 export function verifiedCashConversion(x:unknown,now=Date.now()):(CashConversion&{state:'available'})|null{
  const c=x as Row;

@@ -15,3 +15,15 @@ To inspect a previously downloaded artifact without more API calls: `python anal
 Only SEC data.sec.gov paths are used. At least 0.6 seconds between requests, 20-second per-request timeout, at most two retries for rate limits/server failures, bounded archive count and response size. No retry for HTTP 403. For broad production use, review SEC fair-access requirements and identity metadata.
 
 References: https://www.sec.gov/search-filings/edgar-application-programming-interfaces and https://www.sec.gov/about/developer-resources
+
+## Messung US-Leasing in den Nettoschulden (22.11.2026)
+
+Anlass: Prüfung der 64 Titel mit „Nettoschulden über Unternehmenswert“. Unter US-GAAP mindert die Miete den operativen Cashflow, „Total Debt“ im Jahresblock (Yahoo) enthält die Leasingverbindlichkeiten aber vermutlich zusätzlich (MGM 31,4 Mrd $). Dann zählt die Miete im DCF doppelt. Der Nutzer hat entschieden, erst zu messen und dann zu entscheiden.
+
+- Skript `us_leasing_messung.py` (Methode `us_operating_lease_in_net_debt_measure_v1`), Workflow `us-leasing-messung` (manuell).
+- Je US-Titel (USD, CIK, ohne Finanzmodell; im Universum vom 22.11.: 421) aus dem 10-K zum Stichtag des Jahresblocks (±5 Tage): `OperatingLeaseLiability` (sonst Current + Noncurrent) und Finanzschulden ohne Leasing (`LongTermDebt` bzw. Teile, dazu kurzfristige Kredite und Commercial Paper).
+- Einordnung: Liegt „Total Debt“ näher an Finanzschulden + Leasing als an den Finanzschulden allein, gilt das Leasing als enthalten. Ohne SEC-Finanzschulden bleibt die Einordnung offen.
+- Wirkung: DCF je Aktie aus den offengelegten Teilen (`dcf_inputs`) mit Nettoschulden minus Leasing. Näherung: Der Fremdkapitalanteil im Zins bleibt gleich (ohne Leasing wäre der Zins etwas höher, die Wirkung also überschätzt).
+- Herkunft je Titel: Quell-URL, SHA-256 der Antwort, Accession, Stichtag, Abrufzeit. Ergebnis nur als Artefakt; keine Datei in `daten/`, keine Bewertungsänderung.
+- Abruf nur mit `SEC_USER_AGENT`, mindestens 0,6 s Abstand, kein Wiederholen nach Fehlern (gezählt).
+- Tests: `test_us_leasing_messung.py` (12): nur 10-K, Stichtag, jüngste Einreichung, Teilsummen, ungültige Werte, Einordnung, Wirkung, Auswahl, Abruffehler, ohne User-Agent kein Abruf.

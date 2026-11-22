@@ -222,6 +222,11 @@
    "pfad": "value_radar/daten/cf_universum.json",
    "sha256": "879e3852ab7a7c32",
    "m": "023756df9974"
+  },
+  "2026-11-22": {
+   "pfad": "value_radar/daten/cf_universum.json",
+   "sha256": "87015378a7073dbf",
+   "m": "781d7ae7f14f"
   }
  }
 }

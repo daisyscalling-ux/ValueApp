@@ -145,6 +145,35 @@ class Wechselkurs(unittest.TestCase):
    self.assertEqual(w.depot()['verlauf'][-1]['wert_eur'], 50_000, 'Cash in EUR braucht keinen Kurs')
 
 
+class Sortierung(unittest.TestCase):
+ def test_nach_composite_mit_region(self):
+  u = {'kandidaten': [{**zeile('ATHEX:A', 10, '2026-11-23', 'EUR'), 'composite': 50, 'country': 'GR'}, {**zeile('NYSE:Z', 10, '2026-11-23'), 'composite': 90, 'country': 'US'},
+                      {**zeile('TSE:9', 10, '2026-11-23', 'JPY'), 'composite': None, 'country': 'JP'}, {**zeile('LSE:M', 10, '2026-11-23', 'GBP'), 'composite': 70, 'country': 'GB'}]}
+  k = P.kurse(u, T0.date())
+  zeilen = P.universum_text(u, k).split('\n')
+  self.assertEqual([z.split('|')[0] for z in zeilen[1:]], ['NYSE:Z', 'LSE:M', 'ATHEX:A', 'TSE:9'], 'Composite absteigend, ohne Composite am Ende')
+  self.assertEqual([z.split('|')[2] for z in zeilen[1:]], ['USA', 'GB', 'Europa', 'Japan'])
+  self.assertIn('Region', zeilen[0])
+
+ def test_zahlen_ohne_abgeschnittene_nullen(self):
+  self.assertEqual([P._f(80, 0), P._f(100, 0), P._f(0, 0), P._f(20.0, 1), P._f(12.50, 2), P._f(100.0, 2), P._f(-30, 1), P._f(None), P._f(float('nan')), P._f(True)],
+                   ['80', '100', '0', '20', '12.5', '100', '-30', '', '', ''])
+  u = {'kandidaten': [{**zeile('NYSE:Z', 10, '2026-11-23'), 'composite': 80, 'momentum': 90, 'quality': 70}]}
+  self.assertIn('|80|90|70|', P.universum_text(u, P.kurse(u, T0.date())))
+
+ def test_storno_des_ersten_tages(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   w = Welt(tmp)
+   w.kurse('2026-11-20', {'NYSE:AAA': 100, 'NYSE:BBB': 50, 'TSE:7203': 3000, 'NYSE:CCC': 20})
+   P.lauf(w.d, FakeClient([kauf('NYSE:AAA')]), dt.datetime(2026, 11, 22, 16, tzinfo=UTC))
+   self.assertEqual(len(w.depot()['auftraege']), 1)
+   w.kurse('2026-11-25', {'NYSE:AAA': 100, 'NYSE:BBB': 50, 'TSE:7203': 3000, 'NYSE:CCC': 20})
+   P.lauf(w.d, FakeClient([]), T0 + dt.timedelta(days=2))
+   self.assertEqual(w.depot()['positionen'], {}, 'stornierter Auftrag wird nicht ausgeführt')
+   st = [e for e in w.journal() if e['art'] == 'storniert']
+   self.assertEqual(len(st), 1); self.assertIn('Verzerrte Eingabe', st[0]['grund'])
+
+
 class KiAntworten(unittest.TestCase):
  def test_pruefung_der_entscheidungen(self):
   with tempfile.TemporaryDirectory() as tmp:

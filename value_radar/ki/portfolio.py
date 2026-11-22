@@ -201,10 +201,11 @@ def auftraege_ausfuehren(depot, k, ecb, heute, eintraege):
   if s in k and k[s]['tag'] <= a.get('kurs_tag', ''):
    offen.append(a)
    continue
-  if s not in k:
+  waehrung = depot['positionen'][s]['waehrung'] if s in depot['positionen'] else (k[s]['waehrung'] if s in k else '')
+  if s not in k or fx(ecb, waehrung, heute) is None:
    a['versuche'] = a.get('versuche', 0) + 1
    if a['versuche'] >= AUFTRAG_MAX_TAGE:
-    journal(eintraege, 'verfallen', heute, symbol=s, grund='Kein geprüfter Schlusskurs an 3 Läufen')
+    journal(eintraege, 'verfallen', heute, symbol=s, grund='Kein geprüfter Schlusskurs oder EZB-Kurs an 3 Läufen')
    else:
     offen.append(a)
    continue

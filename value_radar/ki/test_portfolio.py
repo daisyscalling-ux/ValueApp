@@ -131,6 +131,20 @@ class Grundregeln(unittest.TestCase):
    self.assertIn('Branchengrenze', gruende); self.assertIn('höchstens 10 Positionen', gruende)
 
 
+class Wechselkurs(unittest.TestCase):
+ def test_ohne_ezb_kurs_warten_dann_verfallen(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   w = Welt(tmp)
+   P.lauf(w.d, FakeClient([kauf('NYSE:AAA')]), T0)
+   (w.d / 'cf_ecb_fx.json').write_text(json.dumps({'base': 'EUR', 'quoteConvention': 'currency_units_per_EUR', 'rates': {'2026-11-01': {'USD': 1.1}}}))
+   for i, tag in enumerate(['2026-11-25', '2026-11-26', '2026-11-27']):
+    w.kurse(tag, {'NYSE:AAA': 100, 'NYSE:BBB': 50, 'TSE:7203': 3000, 'NYSE:CCC': 20})
+    P.lauf(w.d, None, T0 + dt.timedelta(days=2 + i))
+    self.assertEqual(len(w.depot()['auftraege']), 0 if i == 2 else 1, 'wartet zwei Läufe, verfällt im dritten')
+   self.assertEqual(w.depot()['positionen'], {}); self.assertIn('verfallen', [e['art'] for e in w.journal()])
+   self.assertEqual(w.depot()['verlauf'][-1]['wert_eur'], 50_000, 'Cash in EUR braucht keinen Kurs')
+
+
 class KiAntworten(unittest.TestCase):
  def test_pruefung_der_entscheidungen(self):
   with tempfile.TemporaryDirectory() as tmp:

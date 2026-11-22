@@ -854,3 +854,36 @@ ROIC liefert höchstens 5 Geschäftsjahre. Mit jedem neuen Geschäftsjahr fällt
   - bei fehlendem Wert der Grund.
 - `valuation.ts dcfZerlegung` rechnet dabei unverändert. Geprüft: 20.000 Zufallsfälle gegen den bisherigen Code ergeben 0 Abweichungen.
 - Nach dem nächsten Precompute folgt die genaue Zerlegung des US-Abstands; erst danach eine Methodenentscheidung.
+
+## US-Abstand: Zerlegung mit der DCF-Diagnose (22.11.2026, nach dem Precompute 16:30 UTC)
+**Daten:** `score_diagnostics.dcf_inputs` für alle 1.340 Titel, 808 mit DCF-Wert. Ausgewertet sind Qualitätsfirmen, deren DCF sich aus den Eingängen auf 1 % genau nachrechnen lässt: USA 248, Europa 250, Japan 89.
+
+| Median | USA | Europa | Japan |
+|---|---:|---:|---:|
+| DCF ÷ Kurs − 1 | −48 % | −27 % | −15 % |
+| Kapitalkosten r | 8,9 % | 7,5 % | 7,0 % |
+| risikoloser Zins | 4,9 % | 3,4 % | 2,9 % |
+| Beta | 0,86 | 0,75 | 0,49 |
+| FCF-Rendite (Startwert ÷ Börsenwert) | 3,8 % | 5,0 % | 3,8 % |
+| Nettoschulden ÷ Börsenwert | 0,10 | 0,11 | −0,02 |
+| Anfangswachstum / Endwachstum | 7,3 % / 2,5 % | 4,0 % / 2,5 % | 5,2 % / 2,5 % |
+| Satz gebunden an Untergrenze „Zins + 4 %“ | 138 von 248 | 179 von 250 | 21 von 89 |
+
+**Kontrafaktisch:** Für die US-Titel wird jeweils ein Eingang auf den Europa-Median gesetzt und der DCF nachgerechnet; der Ausgangswert ist −48 %.
+
+| Eingang auf Europa-Median gesetzt | DCF ÷ Kurs − 1 | Wirkung |
+|---|---:|---:|
+| Kapitalkosten (7,5 % statt 8,9 %) | −22 % | +26 Pp |
+| FCF-Rendite (5,0 % statt 3,8 %) | −26 % | +23 Pp |
+| Endwachstum | −45 % | +3 Pp |
+| Nettoschulden | −46 % | +2 Pp |
+| Anfangswachstum (USA höher) | −54 % | −6 Pp |
+| alle fünf zusammen | −2 % | |
+
+**Deutung:**
+- **Zins, etwa die Hälfte des Abstands:** Der US-Zins liegt 1,5 Punkte höher, das Endwachstum ist überall gleich. Die Inflationserwartungen unterscheiden sich nach Marktdaten nur um etwa 0,3–0,5 Punkte. Der Abstand kommt also überwiegend aus höheren realen Zinsen; ein Abschlag ist insoweit begründet.
+- **Marktniveau, die andere Hälfte:** Der US-Markt bezahlt mehr pro Euro freiem Cashflow (FCF-Rendite 3,8 % statt 5,0 %). Unser DCF mit 10 Jahren und gedeckeltem Wachstum bildet das nicht ab und nennt die Titel teuer. Das ist eine Bewertungshaltung, kein Rechenfehler.
+
+**Entscheidung des Nutzers (22.11.2026): erst den Vorwärtstest abwarten.** Die Methode bleibt unverändert. Der Vorwärtstest zeigt die Wertung jetzt je Region (valueapp-cf, `forwardNachRegion`). Sind die US-Fair-Values nach drei Monaten systematisch zu niedrig, wird mit diesen Zahlen neu entschieden. Mögliche Wege dann: Endwachstum an die Inflationserwartung koppeln (geschätzt +5 bis +8 Pp) oder die Untergrenze der Kapitalkosten senken.
+
+**Nebenbefund, offen:** Bei 64 Titeln ist der DCF offen, weil die Nettoschulden den Unternehmenswert übersteigen. Beispiel: ein japanischer Konzern mit Nettoschulden von 249 Mrd. einschließlich seiner Finanzierungssparte. Die Schulden einer Finanzierungssparte gehören nicht in einen Industrie-DCF. Das wird gesondert geprüft.

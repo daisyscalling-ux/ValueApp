@@ -91,6 +91,7 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  const before:Row={...f};
  for(const k of FINANCIAL)delete f[k];
  delete f.reported_equity_fcf;
+ delete f.investitionsanteil;
  for(const k of ['eps_trailing','net_income','revenue','ebit','ebitda','cash','total_debt','total_assets','revenue_growth'])if(finite(fields[k]))f[k]=fields[k];
  if(finite(fields.cash)&&finite(fields.total_debt))f.net_debt=fields.total_debt-fields.cash;
   if(!finite(f.net_debt)){delete f.ebitda;delete f.ebit;} // EV methods must not silently assume zero net debt.
@@ -101,6 +102,8 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  if(finite(fields.equity)&&finite(f.shares_out)&&f.shares_out>0)f.book_value_ps=fields.equity/f.shares_out;
  if(finite(f.net_debt)&&finite(f.ebitda)&&f.ebitda>0)f.net_debt_ebitda=f.net_debt/f.ebitda;
  if(finite(fields.operating_cashflow)&&finite(fields.capex))f.reported_equity_fcf=fields.operating_cashflow-Math.abs(fields.capex);
+ // Investitionsanteil der bereinigten EKR aus demselben Abschluss (seit 22.11.2026, valuation.ts investitionsanteil).
+ if(finite(fields.operating_cashflow)&&fields.operating_cashflow>0&&finite(fields.capex))f.investitionsanteil={method:'capex_share_annual_v1',wert:Math.abs(fields.capex)/fields.operating_cashflow,periode:a.end,quelle:a.source??null};
  // Gleiches Geschäftsjahr (Stichtage ≤ 35 Tage auseinander, seit 16.11.2026): Felder, die der Abschluss nicht liefert
  // (SEC: kein Wachstum, Versicherer: keine Bruttomarge/EBIT), bleiben aus der ROIC-Zeile derselben Periode erhalten.
  // Vorher fielen sie ersatzlos weg (Hartford: begründetes KGV 203 → 127). Beträge nur bei gleicher Währung (Faktor 1),

@@ -292,7 +292,27 @@ export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
  * 1:1 aus valuation.ungehebelte_ekr. Normalisiert ROE auf eine angemessene
  * EK-Basis, damit hohe Verschuldung nicht falsche Profitabilitaet vortaeuscht.
  */
-export function ungehebelteEkr(fund: Fund & { operating_cashflow?: number | null }): number | null {
+/** Investitionsanteil der ungehebelten EKR (seit 22.11.2026, Entscheidung des Nutzers nach QA K1): Investitionen ÷ operativer
+ *  Cashflow aus demselben geprüften Jahresabschluss der Ergänzungsdatei (applySupplement, Methode CAPEX_SHARE_METHOD).
+ *  Fehlt er, gekennzeichnet der Standard 35 %. Vorher: operativer Cashflow minus FCFF, der operative Cashflow in der App nie
+ *  vorhanden (immer 35 %), im Screener ungeprüft von Yahoo; das kippte bei 317 von 1.340 Titeln die Profitabilitätsstufe. */
+export const CAPEX_SHARE_METHOD = "capex_share_annual_v1";
+export const CAPEX_SHARE_DEFAULT = 0.35;
+export const CAPEX_SHARE_MIN = 0.25, CAPEX_SHARE_MAX = 0.80;
+export type Investitionsanteil = { wert: number; quelle: "abschluss" | "standard"; periode: string | null; note: string };
+export function investitionsanteil(fund: Fund): Investitionsanteil {
+  const x = (fund as Record<string, unknown>).investitionsanteil as Record<string, unknown> | undefined;
+  const roh = x && x.method === CAPEX_SHARE_METHOD && typeof x.wert === "number" && Number.isFinite(x.wert) && x.wert >= 0 && x.wert <= 5 ? x.wert : null;
+  if (roh !== null) {
+    const w = Math.min(Math.max(roh, CAPEX_SHARE_MIN), CAPEX_SHARE_MAX);
+    const per = typeof x!.periode === "string" ? x!.periode : null;
+    return { wert: w, quelle: "abschluss", periode: per,
+      note: `Investitionsanteil der bereinigten EKR ${(roh * 100).toFixed(0)} % aus dem Jahresabschluss${per ? " " + per : ""}` + (w !== roh ? ` (auf ${(w * 100).toFixed(0)} % begrenzt)` : "") };
+  }
+  return { wert: CAPEX_SHARE_DEFAULT, quelle: "standard", periode: null,
+    note: `Investitionsanteil der bereinigten EKR: Standard ${(CAPEX_SHARE_DEFAULT * 100).toFixed(0)} %, kein geprüfter Jahresabschluss mit operativem Cashflow und Investitionen` };
+}
+export function ungehebelteEkr(fund: Fund): number | null {
   const ni = fund.net_income;
   let assets = fund.total_assets ?? null;
   if (!assets) {
@@ -302,15 +322,7 @@ export function ungehebelteEkr(fund: Fund & { operating_cashflow?: number | null
     if (eq) assets = eq + (debt ?? 0);
   }
   if (!ni || !assets || assets <= 0) return null;
-  const opcf = fund.operating_cashflow ?? null;
-  const fcf = fund.free_cashflow ?? null;
-  let capex: number | null = null;
-  if (opcf !== null && fcf !== null) capex = Math.abs(opcf - fcf);
-  let sach: number | null = null;
-  if (capex !== null && opcf && opcf > 0) sach = capex / opcf;
-  if (sach === null) sach = 0.35;
-  sach = Math.min(Math.max(sach, 0.25), 0.80);
-  const fiktivesEk = assets * sach;
+  const fiktivesEk = assets * investitionsanteil(fund).wert;
   if (fiktivesEk <= 0) return null;
   return ni / fiktivesEk;
 }
@@ -573,6 +585,8 @@ export interface FairValueResult {
   risk_free: RiskFree;
   /** Gewinnbasis der Kurs-Gewinn-Methoden (epsBasis). */
   eps_basis: { source: "reported" | "consensus"; note: string | null };
+  /** Investitionsanteil der bereinigten EKR (investitionsanteil, seit 22.11.2026). */
+  capex_share: Investitionsanteil;
   verworfen: Record<string, { wert: number; vs_kurs: number | null; grund: string }>;
   confidence: "hoch" | "mittel" | "niedrig";
   reliable: boolean;
@@ -755,6 +769,7 @@ export function fairValue(
     target_12m: target12m ? Math.round(target12m * 100) / 100 : null,
     methods: Object.fromEntries(Object.entries(avail).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     eps_basis: (({ source, note }) => ({ source, note }))(epsBasis(fund)),
+    capex_share: investitionsanteil(fund),
     risk_free: riskFree(fund),
     terminal_growth: terminalGrowth(fund),
     method_values: dataCheck.blocked ? {} : Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v * 100) / 100])),

@@ -822,3 +822,35 @@ ROIC liefert höchstens 5 Geschäftsjahre. Mit jedem neuen Geschäftsjahr fällt
   - Faires KGV im Scanner bei 133 Titeln anders.
   - Fair Value näherungsweise im Median −1,9 %, bei 20 Titeln mehr als 5 %.
   - Einzelheiten: `valueapp-cf/QA-EINZELANALYSE.md`, Abschnitt 12.
+
+## US-Abstand im Fair Value: Messung und DCF-Diagnose (22.11.2026, Wunsch des Nutzers: erst messen)
+**Messung** (Universum 22.11., Modell Qualität; Methode ÷ Kurs − 1, Median):
+
+| Methode | USA (299) | Europa (308) | Japan (128) |
+|---|---:|---:|---:|
+| DCF | −33 % | −16 % | −10 % |
+| begründetes KGV | −29 % | −23 % | −19 % |
+| EV/EBITDA | −11 % | +11 % | +26 % |
+| Analysten | +16 % | +15 % | +18 % |
+| Upside des Fair Value | −11,9 % | +3,2 % | +5,6 % |
+
+**Eingänge im Vergleich** (Median USA / Europa / Japan):
+- risikoloser Zins 4,92 / 3,44 / 2,87 %; Endwachstum überall 2,5 %;
+- Beta 0,86 / 0,76 / 0,48;
+- Nettoschulden/EBITDA 1,6 / 0,9 / 0,2;
+- KGV 26,8 / 24,2 / 18,3, faires KGV 17,6 / 15,0 / 13,5;
+- EV/EBITDA 15,7 / 11,3 / 9,7 bei einer weltweit gleichen Branchentabelle als halbem Anker.
+
+**Innerhalb gleicher KGV-Bänder** liegen US-Titel weiter etwa 10 Prozentpunkte unter Europa (KGV 15–25: −6 % gegen +4 %; KGV 25–40: −23 % gegen −14 %).
+
+**Näherung ohne Einzeleingänge:** Ein einheitlicher Zins von 4,2 % hebt den US-DCF nur von −33 % auf etwa −26 % und senkt Japan auf etwa −27 %. Der Zins allein erklärt den Abstand also nicht.
+
+**DCF-Diagnose (neu):**
+- Der Scanner schreibt je Titel `score_diagnostics.dcf_inputs` mit diesen Feldern:
+  - Cashflow-Basis und Quelle, Conversion;
+  - Anfangs- und Endwachstum mit Quelle;
+  - Zins, Beta, Eigenkapitalkosten, WACC vor Untergrenze, Untergrenze, verwendeter Satz und was ihn bindet (WACC, Untergrenze oder Mindestabstand zum Endwachstum);
+  - Fremdkapitalanteil, Barwert der 10 Jahre, Barwert des Endwerts, Nettoschulden, Aktien;
+  - bei fehlendem Wert der Grund.
+- `valuation.ts dcfZerlegung` rechnet dabei unverändert. Geprüft: 20.000 Zufallsfälle gegen den bisherigen Code ergeben 0 Abweichungen.
+- Nach dem nächsten Precompute folgt die genaue Zerlegung des US-Abstands; erst danach eine Methodenentscheidung.

@@ -1,6 +1,8 @@
 import { valuationDataCheck } from './valuation-data';
 import { PEER_PERCENTILE_MIN } from './peer-valuation';
 import { FORWARD_METHOD } from './fundamental-supplement';
+import type { GewinnKnick } from './cash-conversion';
+import type { Finanzsparte } from './finanzsparte';
 /**
  * valuation.ts - Portierung des Bewertungskerns aus valuation.py
  * Methode: Python lesen, 1:1 uebersetzen, gegen Python-Ausgabe testen.
@@ -24,6 +26,8 @@ export interface Fund {
   free_cashflow?: number | null; cash_conversion?: number | null;
   net_income?: number | null; ebitda?: number | null; ebit?: number | null;
   revenue?: number | null; net_debt?: number | null; total_debt?: number | null;
+  /** Gewinnknick im Conversion-Fenster (cash-conversion.ts, gesetzt in evaluateStock) und kuratierte Finanzsparte (finanzsparte.ts). */
+  gewinn_knick?: GewinnKnick | null; finanzsparte?: Finanzsparte | null;
   total_assets?: number | null; eps_trailing?: number | null;
   eps_forward?: number | null; book_value_ps?: number | null;
   eps_forward_source?: string;
@@ -272,6 +276,23 @@ export type DcfZerlegung = {
   r: number; r_bindung: "wacc" | "untergrenze" | "abstand_endwachstum";
   fremdanteil: number | null; pv_explizit: number | null; pv_endwert: number | null; nettoschulden: number | null; aktien: number | null;
 };
+/** Gründe, aus denen der DCF trotz vorhandener Eingänge offen bleibt (seit 22.11.2026, Entscheidung des Nutzers nach Prüfung
+ *  der 64 Titel mit „Nettoschulden über Unternehmenswert“):
+ *  - Finanzmodell: Banken, Versicherer, Immobilien und Leasing rechnen ohne DCF (Gewicht 0); vorher stand dort irreführend
+ *    „Nettoschulden über Unternehmenswert“ (24 Titel), weil Bank- und Objektschulden als Nettoschulden zählen.
+ *  - Finanzsparte (finanzsparte.ts): Nettoschulden enthalten das Finanzierungsgeschäft, der Cashflow nicht dessen Ertrag.
+ *  - Gewinnknick (cash-conversion.ts): nur wenn die Basis „Gewinn × Conversion“ wäre; ein Gewinn unter 50 % des
+ *    Mehrjahresschnitts macht sie unbrauchbar. Der berichtete freie Cashflow (Rückfall ohne Conversion) ist nicht betroffen.
+ *  Nur der DCF; Reverse DCF und Erwartungslücke bleiben unverändert (eigene Entscheidung, Risikoscore). */
+export function dcfSperre(fund: Fund, preset: Playbook = "quality"): string | null {
+  if (preset === "financial") return "Finanzmodell ohne DCF";
+  const fs = fund.finanzsparte;
+  if (fs) return `Konzern mit Finanzsparte (${fs.sparte}): Nettoschulden enthalten das Finanzierungsgeschäft, DCF nicht aussagekräftig`;
+  const k = fund.gewinn_knick, fb = fcfBasis(fund);
+  if (k && fb.quelle === "normalisiert" && fb.basis && fb.basis > 0)
+    return `Gewinn eingebrochen: Geschäftsjahr bis ${k.bis} bei ${Math.round(k.quote * 100)} % des Schnitts über ${k.jahre} Jahre, normalisierter Cashflow nicht belastbar`;
+  return null;
+}
 export function dcfZerlegung(fund: Fund, preset: Playbook = "quality", conversion?: number | null): DcfZerlegung {
   const fb = fcfBasis(fund, conversion), rfx = riskFree(fund), tg = terminalGrowth(fund);
   const beta = fund.beta ?? V.default_beta, re = rfx.value + beta * V.equity_risk_premium;
@@ -289,6 +310,8 @@ export function dcfZerlegung(fund: Fund, preset: Playbook = "quality", conversio
     g1, g1_quelle: g1q, g_term: gTerm, g_term_quelle: tg.source, rf: rfx.value, rf_quelle: rfx.source, beta, re, wacc_roh: wRoh, untergrenze: rfx.floor,
     r, r_bindung: bindung, fremdanteil: tot > 0 ? d / tot : null, pv_explizit: null, pv_endwert: null, nettoschulden: fund.net_debt ?? null, aktien: fund.shares_out ?? null };
   if (preset === "cyclical") return { ...out, grund: "Zyklisches Modell ohne DCF" };
+  const sperre = dcfSperre(fund, preset);
+  if (sperre) return { ...out, grund: sperre };
   const shares = fund.shares_out, fcf = fb.basis;
   if (fund.net_debt == null) return { ...out, grund: "Nettoschulden fehlen" };
   if (!fcf || !shares || fcf <= 0) return { ...out, grund: !shares ? "Aktienzahl fehlt" : "Freier Cashflow fehlt oder ≤ 0" };

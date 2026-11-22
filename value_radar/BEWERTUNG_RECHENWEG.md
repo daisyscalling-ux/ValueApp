@@ -886,4 +886,20 @@ ROIC liefert höchstens 5 Geschäftsjahre. Mit jedem neuen Geschäftsjahr fällt
 
 **Entscheidung des Nutzers (22.11.2026): erst den Vorwärtstest abwarten.** Die Methode bleibt unverändert. Der Vorwärtstest zeigt die Wertung jetzt je Region (valueapp-cf, `forwardNachRegion`). Sind die US-Fair-Values nach drei Monaten systematisch zu niedrig, wird mit diesen Zahlen neu entschieden. Mögliche Wege dann: Endwachstum an die Inflationserwartung koppeln (geschätzt +5 bis +8 Pp) oder die Untergrenze der Kapitalkosten senken.
 
-**Nebenbefund, offen:** Bei 64 Titeln ist der DCF offen, weil die Nettoschulden den Unternehmenswert übersteigen. Beispiel: ein japanischer Konzern mit Nettoschulden von 249 Mrd. einschließlich seiner Finanzierungssparte. Die Schulden einer Finanzierungssparte gehören nicht in einen Industrie-DCF. Das wird gesondert geprüft.
+**Nebenbefund, geprüft am 22.11.2026:** Bei 64 Titeln ist der DCF offen, weil die Nettoschulden den Unternehmenswert übersteigen. Datenfehler gab es keine; meist ist der DCF-Unternehmenswert zu klein.
+
+| Gruppe | Anzahl | Folge |
+|---|---|---|
+| Finanzmodell | 24 | eigener Grund, ohne Wirkung |
+| Gewinnknick | 9 | neue Sperre |
+| Finanzsparte | 7 | neue Sperre |
+| Niedrige Conversion | 9 | unverändert |
+| Leasing und Konzessionen | 5 | US-Leasing wird gemessen |
+| Echt hoch verschuldet (Charter) | 1 | unverändert |
+| Übrige | 9 | unverändert |
+
+Regeln, Messung und Grenzen stehen in valueapp-cf `BEWERTUNG-RISIKODATEN.md`, Abschnitt „DCF offen bei Gewinnknick, Finanzsparte und im Finanzmodell“. Kopien hier: `src/lib/valuation.ts` (`dcfSperre`), `cash-conversion.ts` (`gewinnKnick`), `finanzsparte.ts` (neu), `evaluation.ts`.
+
+Probelauf auf main: Universumsweit 27 Titel mit Gewinnknick und 15 mit Finanzsparte. 6 Fair Values ändern sich, weil der DCF im Kern war: Porsche AG +3,6 %, Mazda +22,7 %, Subaru +7,0 %, Carrefour +29,1 %, STMicro +21,5 %, Tesla +40,6 % (Näherung).
+
+US-Leasing: Unter US-GAAP mindert die Miete den operativen Cashflow, „Total Debt“ (Yahoo) enthält die Mietverpflichtungen aber zusätzlich (MGM 31 Mrd $). Das zählt doppelt. Die Wirkung wird vor einer Methodenänderung gemessen (Entscheidung des Nutzers).

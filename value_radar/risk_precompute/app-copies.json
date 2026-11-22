@@ -16,7 +16,7 @@
   {
    "app": "src/lib/cash-conversion.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/cash-conversion.ts",
-   "sha256": "d89b2adf261cb18987a9767b1cc50028c748ec035c859f098b08822d3f70b129"
+   "sha256": "4694c0d9624048fe33cb7a67d8f21f48e2ef95e79e04973359d265ab75015e5d"
   },
   {
    "app": "src/lib/currency.ts",
@@ -41,7 +41,12 @@
   {
    "app": "src/lib/evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
-   "sha256": "874a50037d2de18e56367d9d47b59dbd2f29c2b0961e608a4a964b7d7514e1cb"
+   "sha256": "5488cd6b3ea0dad195ee1236e31f4f361d7a6aed8140be84414817674dd3190a"
+  },
+  {
+   "app": "src/lib/finanzsparte.ts",
+   "pipeline": "value_radar/risk_precompute/src/lib/finanzsparte.ts",
+   "sha256": "3e4dd923fafbfb868caf9bbc36bc192da4b7103846b913dad3495db397ff07d1"
   },
   {
    "app": "src/lib/financial-health.ts",
@@ -141,7 +146,7 @@
   {
    "app": "src/lib/valuation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/valuation.ts",
-   "sha256": "c2d1f2a14cbdc0f84b885d96dc4e976b8600a8d16e49eade400e7d6b227dcdca"
+   "sha256": "7f7a033df4c3b439f5ffddc120a29322700a00b6195d074c30876f387144a173"
   },
   {
    "app": "src/risk_capital_requirement_view.ts",

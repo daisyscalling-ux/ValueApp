@@ -4,7 +4,8 @@ import {altmanZ,type Row} from './scores';
 import {scoresPlus} from './scores_plus';
 import {fundInEur,type EurRate} from './currency';
 import {peerFundsFromRows} from './peer-valuation';
-import {verifiedCashConversion,cashConversionFromSupplement} from './cash-conversion';
+import {verifiedCashConversion,cashConversionFromSupplement,gewinnKnick} from './cash-conversion';
+import {finanzsparte} from './finanzsparte';
 import {normalizeMarketCap,convertReportCurrency} from './valuation-data';
 import {applyForwardEstimate,applySupplement,applyAnalystRatings,applyEarningsSurprises} from './fundamental-supplement';
 import {applyValueInputs} from './value-inputs';
@@ -67,6 +68,9 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const origin=roicCc?'ROIC, geprüft':'Yahoo-Jahresabschlüsse, Ersatz für fehlende ROIC-Historie';
  if(cc){fund.cash_conversion=cc.value;fund.cash_conversion_origin=roicCc?'roic_history':'yahoo_annual_history';fund.cash_conversion_source=cc.years+' Geschäftsjahre bis '+cc.periods[cc.periods.length-1].end+' ('+origin+')'+(cc.clamped?', nach oben begrenzt auf 1,5':'')+(cc.value<=0?'; freier Cashflow in Summe nicht positiv, DCF offen':'');}
  else{fund.cash_conversion=null;fund.cash_conversion_source=null;fund.cash_conversion_origin=null;}
+ // DCF-Sperren (seit 22.11.2026): immer hier neu bestimmt, mitgelieferte Werte zählen nicht (valuation.ts, dcfSperre).
+ fund.gewinn_knick=cc&&cc.value>0?gewinnKnick(cc):null;
+ fund.finanzsparte=finanzsparte(fund.isin);
  // Forward-KGV, PEG, FCF-Rendite in beiden Wegen aus denselben geprüften Feldern (seit 17.11.2026, value-inputs.ts).
  applyValueInputs(fund);
  const playbook=classifyPlaybook(fund);

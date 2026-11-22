@@ -809,3 +809,16 @@ ROIC liefert höchstens 5 Geschäftsjahre. Mit jedem neuen Geschäftsjahr fällt
 - **Grenzen:**
   - Das Archiv beginnt mit dem ersten precompute nach dem Merge. Was ROIC bis dahin schon nicht mehr lieferte, ist nicht enthalten. Am 20.11. lieferte ROIC meist 2021–2025.
   - Titel, die precompute in einem Lauf nicht frisch abruft (Zeitbudget), werden erst beim nächsten Abruf ergänzt.
+
+## Investitionsanteil der bereinigten EKR aus dem Jahresabschluss (22.11.2026, Entscheidung des Nutzers nach QA K1)
+- **Befund:** Im QA-Lauf vom 22.11. wichen 317 Titel beim fairen KGV in der Profitabilitätsstufe ab. Die App rechnete immer mit dem Standard 35 %, weil ihr der operative Cashflow fehlte. Der Scanner nahm den operativen Cashflow ungeprüft von Yahoo und zog den ROIC-FCFF ab.
+- **Neu (`capex_share_annual_v1`, `valuation.ts investitionsanteil`):**
+  - Der Anteil ist Investitionen ÷ operativer Cashflow aus demselben geprüften Jahresabschluss der Ergänzungsdatei (`applySupplement`). App und Scanner nutzen denselben Code.
+  - Die Grenzen 25–80 % bleiben.
+  - Ohne Abschluss gilt der gekennzeichnete Standard 35 %.
+  - Der Yahoo-Wert `operating_cashflow` aus `providers.py` fließt nicht mehr in die Bewertung.
+- **Probelauf (offline, Universum 22.11.):**
+  - Anteil aus dem Abschluss bei 1.168 von 1.342 Titeln.
+  - Faires KGV im Scanner bei 133 Titeln anders.
+  - Fair Value näherungsweise im Median −1,9 %, bei 20 Titeln mehr als 5 %.
+  - Einzelheiten: `valueapp-cf/QA-EINZELANALYSE.md`, Abschnitt 12.

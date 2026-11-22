@@ -1,7 +1,7 @@
 // QA-Prüfregeln der Einzelanalyse (QA-EINZELANALYSE.md, Phase 1, seit 20.11.2026). Laufen im Rechenweg der App auf dem Ergebnis
 // von evaluateStock und melden je Prüfung ok / offen / auffaellig / fehler. Nur Meldung (Entscheidung des Nutzers), keine
 // Änderung an Werten. Der Runner (Phase 2) ruft qaChecks je Titel auf und fasst über das Universum zusammen.
-import {szenarioMatrix,FAIR_VALUE_MAX_MULT,FAIR_VALUE_MIN_MULT,fairesKgvTeile,epsBasis,type Fund,type FairValueResult} from './valuation';
+import {szenarioMatrix,FAIR_VALUE_MAX_MULT,FAIR_VALUE_MIN_MULT,fairesKgvTeile,investitionsanteil,epsBasis,type Fund,type FairValueResult} from './valuation';
 import {BLOCK_WEIGHTS} from './risk-construct';
 export const QA_METHOD='qa_einzelanalyse_v1';
 export type QaStatus='ok'|'offen'|'auffaellig'|'fehler';
@@ -146,7 +146,8 @@ const KGV_TEIL_NAME:Record<string,string>={stab:'Stabilität',prof:'Profitabilit
 export function kgvVergleich(app:Fund,preset:unknown,ki:Rec):string|null{
  const p=(preset as any)??ki.preset??'quality';
  const scan={free_cashflow:ki.free_cashflow,net_debt_ebitda:ki.net_debt_ebitda,current_ratio:ki.current_ratio,roe:ki.roe,gross_margin:ki.gross_margin,
-  revenue_growth:ki.revenue_growth,earnings_growth:ki.earnings_growth,net_income:ki.net_income,total_assets:ki.total_assets,operating_cashflow:ki.operating_cashflow} as unknown as Fund;
+  revenue_growth:ki.revenue_growth,earnings_growth:ki.earnings_growth,net_income:ki.net_income,total_assets:ki.total_assets,
+  ...(typeof ki.capex_share==='number'&&ki.capex_share_source==='abschluss'?{investitionsanteil:{method:'capex_share_annual_v1',wert:ki.capex_share,periode:ki.capex_share_period??null}}:{})} as unknown as Fund;
  const a=fairesKgvTeile(app,p),b=fairesKgvTeile(scan,ki.preset??p);
  const zahl0=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?String(Math.round(v*100)/100):'—';
  // Nur zuordnen, wenn sich das Scanner-KGV aus den gespeicherten Eingängen nachrechnen lässt (21.11.2026: 1.337 von 1.342).
@@ -155,7 +156,7 @@ export function kgvVergleich(app:Fund,preset:unknown,ki:Rec):string|null{
  const zahl=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?String(Math.round(v*100)/100):'—';
  const ein:Record<string,string>={
   stab:`FCF ${(app.free_cashflow??0)>0?'+':'≤0'}/${(ki.free_cashflow??0)>0?'+':'≤0'}, Nettoschulden/EBITDA ${zahl(app.net_debt_ebitda)}/${zahl(ki.net_debt_ebitda)}, Current Ratio ${zahl(app.current_ratio)}/${zahl(ki.current_ratio)}`,
-  prof:`bereinigte EKR ${pct(a.uroe)}/${pct(b.uroe)}, EKR ${pct(app.roe)}/${pct(ki.roe)}`,
+  prof:`bereinigte EKR ${pct(a.uroe)}/${pct(b.uroe)}, EKR ${pct(app.roe)}/${pct(ki.roe)}, Investitionsanteil ${pct(investitionsanteil(app).wert)} ${investitionsanteil(app).quelle}/${pct(ki.capex_share)} ${ki.capex_share_source??'?'}`,
   pos:`Bruttomarge ${pct(app.gross_margin)}/${pct(ki.gross_margin)}`,
   gp:`Umsatzwachstum ${pct(app.revenue_growth)}/${pct(ki.revenue_growth)}`};
  const teile=(['stab','prof','pos','gp'] as const).filter(k=>a[k]!==b[k]).map(k=>`${KGV_TEIL_NAME[k]} ${a[k]}/${b[k]} (${ein[k]})`);

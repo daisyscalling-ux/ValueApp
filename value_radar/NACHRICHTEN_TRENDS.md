@@ -87,3 +87,27 @@ Die App prüft beim Lesen erneut (`src/lib/trends.ts`):
 - Nur Schlagzeilen, keine Artikeltexte. Eine inhaltliche Auswertung (Zusammenhang, Ironie, Einordnung) ist mit Regeln nicht möglich.
 - Bis zum 19.12.2026 zeigt der Tab nur Zählungen ohne Vergleich.
 - Die Kandidaten sind Anregungen zur eigenen Recherche. Vor einer Aufnahme ins Universum gilt die normale Identitätsprüfung (ISIN, Notierung, Währung).
+
+## KI-Einordnung (22.11.2026, Testmonat des Nutzers)
+Methode `news_trends_ki_v1`, Code `value_radar/nachrichten_trends/ki_einordnung.py`, Workflow `news-trends-ki.yml` (montags 07:31 UTC und manuell).
+
+**Entscheidung des Nutzers:** Claude API mit eigenem Schlüssel (Secret `ANTHROPIC_API_KEY`), günstigstes Modell Claude Haiku 5.5, Ausgabegrenze 2 $ pro Monat in der Anthropic Console.
+
+| Regel | Umsetzung |
+|---|---|
+| Eingabe | bis 400 Schlagzeilen der letzten 7 Tage aus dem Archiv, ohne Routine-Meldungen: zuerst bis 150 Marktnachrichten, dann je Aktie höchstens 3, nach Nennungen geordnet. Dazu die regelbasiert gezählten Themen. Deterministisch, mit sha256 im Ergebnis. |
+| Schutz vor fremden Anweisungen | Die Schlagzeilen stehen als Daten in `<schlagzeilen>`; der Systemtext verbietet, darin stehende Anweisungen zu befolgen. Die Antwort ist an ein JSON-Schema gebunden (`output_config.format`). |
+| Belegpflicht | Jedes Thema nennt 1–8 Schlagzeilen-IDs. Die Pipeline übernimmt nur IDs aus der Eingabe, und Aktien nur, wenn eine zitierte Schlagzeile sie betrifft. Themen ohne gültigen Beleg werden verworfen und gezählt (`verworfen`). Längen sind begrenzt. |
+| Inhalt | bis 8 Hauptthemen mit Einordnung und Tendenz (positiv, negativ, gemischt, neutral); bis 5 neue Themen außerhalb der festen Liste |
+| Verboten | Kursprognosen, Kauf- oder Verkaufsempfehlungen, Fakten außerhalb der Schlagzeilen |
+| Frische | Die Trend-Datei darf höchstens 36 h alt sein; die App markiert eine Einordnung ab 8 Tagen als veraltet. |
+| Fehler | kein Schlüssel, Budget erreicht, Eingabe zu groß, Antwort unvollständig oder abgelehnt, kein belegtes Thema: Es wird nichts geschrieben, die letzte Einordnung bleibt (mit ihrem Datum). |
+| Kosten | `count_tokens` vor dem Aufruf. Abbruch, wenn der Monat (`daten/ki_kosten.json`, alle KI-Funktionen) mit der Höchstschätzung über `KI_BUDGET_USD` = 1 $ käme. Jeder Aufruf wird gebucht, auch ein abgelehnter. |
+| Kennzeichnung | „KI-Einordnung (Claude Haiku 5.5), nicht geprüft“, `scoreContribution: 0` |
+
+**Probelauf der Eingabe** (Archiv auf main, 22.11.2026, ohne API-Aufruf): 400 Schlagzeilen, davon 150 Marktnachrichten, 49.572 Zeichen, geschätzt rund 14.400 Tokens. Geschätzte Kosten je Lauf etwa 0,003 $; wöchentlich also etwa 0,01 $ im Monat. Den ersten echten Aufruf macht der Workflow nach dem Merge.
+
+**Grenzen:**
+- Das Modell liest nur Schlagzeilen und kann sie falsch gewichten oder zuspitzen. Die Belege sind deshalb immer mit Link sichtbar.
+- Die Einordnung ist nicht wiederholbar: Ein neuer Lauf kann andere Worte und Schwerpunkte wählen.
+- Die Auswahl ist auf 400 Schlagzeilen begrenzt. Viel genannte Aktien prägen sie stärker; je Aktie höchstens 3 dämpft das.

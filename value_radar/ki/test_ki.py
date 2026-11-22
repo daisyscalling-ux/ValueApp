@@ -57,9 +57,9 @@ class Kosten(unittest.TestCase):
    m['funktionen']['risiko_ereignisse']['usd'] = 0.8999; m['usd'] = 0.9; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
    self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'risiko_ereignisse')); self.assertTrue(KO.passt(p, '2026-11', 10_000, 8000, 'ki_portfolio'))
    self.assertTrue(KO.passt(p, '2026-12', 10_000, 8000, 'risiko_ereignisse'), 'neuer Monat')
-   m['usd'] = 2.0999; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
+   m['usd'] = 2.2499; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
    self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'ki_portfolio'), 'Summe erschöpft')
-   self.assertAlmostEqual(KO.KI_BUDGET_USD, 2.10)
+   self.assertAlmostEqual(KO.KI_BUDGET_USD, 2.25)
    self.assertFalse(KO.passt(p, '2026-12', 1, 1, 'themen_des_tages'), 'abgelöste Funktion hat kein Budget mehr')
 
 

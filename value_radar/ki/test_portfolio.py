@@ -41,12 +41,19 @@ class Welt:
 
 
 class FakeClient:
- def __init__(self, entscheidungen, stop='end_turn', tokens=70_000, roh=None):
-  self.e, self.stop, self.tokens, self.roh, self.aufrufe = entscheidungen, stop, tokens, roh, []
+ """Simulierte API mit zwei Stufen: Auswahl (Schema mit „kandidaten“) und Entscheidung. Kein Netz."""
+ def __init__(self, entscheidungen, stop='end_turn', tokens=70_000, roh=None, kandidaten=None):
+  self.e, self.stop, self.tokens, self.roh, self.k, self.aufrufe = entscheidungen, stop, tokens, roh, kandidaten, []
   self.messages = SimpleNamespace(count_tokens=lambda **kw: SimpleNamespace(input_tokens=self.tokens), create=self._c)
  def _c(self, **kw):
   self.aufrufe.append(kw)
-  text = self.roh if self.roh is not None else json.dumps({'marktsicht': 'gemischt', 'entscheidungen': self.e})
+  auswahl = 'kandidaten' in kw['output_config']['format']['schema']['properties']
+  if self.roh is not None:
+   text = self.roh
+  elif auswahl:
+   text = json.dumps({'kandidaten': self.k if self.k is not None else [e['symbol'] for e in self.e if e.get('aktion') == 'kaufen']})
+  else:
+   text = json.dumps({'marktsicht': 'gemischt', 'entscheidungen': self.e})
   return SimpleNamespace(stop_reason=self.stop, usage=SimpleNamespace(input_tokens=self.tokens, output_tokens=3000), content=[SimpleNamespace(type='thinking'), SimpleNamespace(type='text', text=text)])
 
 
@@ -189,7 +196,7 @@ class KiAntworten(unittest.TestCase):
  def test_budget_groesse_unlesbar_unvollstaendig(self):
   with tempfile.TemporaryDirectory() as tmp:
    w = Welt(tmp)
-   KO.buchen(w.d / 'ki_kosten.json', '2026-11', 'ki_portfolio', 3_990_000, 0)
+   KO.buchen(w.d / 'ki_kosten.json', '2026-11', 'ki_portfolio', 5_490_000, 0)
    c = FakeClient([kauf('NYSE:AAA')]); r = P.lauf(w.d, c, T0)
    self.assertEqual(c.aufrufe, []); self.assertIn('Monatsbudget', r['ki_grund']); self.assertEqual(len(w.depot()['verlauf']), 1, 'Bewertung läuft trotzdem')
   for client, text in ((FakeClient([], tokens=95_000), 'zu groß'), (FakeClient([], roh='kein json'), 'nicht lesbar'), (FakeClient([kauf('NYSE:AAA')], stop='max_tokens'), 'unvollständig')):
@@ -204,7 +211,25 @@ class KiAntworten(unittest.TestCase):
    kw = c.aufrufe[0]; text = kw['messages'][0]['content']
    self.assertEqual(kw['model'], 'claude-haiku-5-5'); self.assertEqual(kw['output_config']['format']['type'], 'json_schema')
    self.assertIn('<universum>', text); self.assertIn('NYSE:AAA|AAA Inc', text); self.assertNotIn('NYSE:ALT', text, 'veralteter Kurs nicht im Angebot'); self.assertNotIn('NYSE:UNG', text)
+   self.assertIn('Finanzlage|Ziel12M%|ValueTrap|Vol%', text)
+   self.assertEqual(len(c.aufrufe), 1, 'ohne Kandidaten und Positionen keine zweite Stufe')
    self.assertEqual(P.lauf(w.d, c, T0)['grund'], 'Heute schon gelaufen'); self.assertEqual(len(c.aufrufe), 1)
+
+ def test_zwei_stufen_datenblatt_und_vorauswahl(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   w = Welt(tmp)
+   (w.d / 'cf_risk.json').write_text(json.dumps({'stocks': {'NYSE:AAA': {'statistics': {'vol': 0.32, 'dd': 0.4, 'drawdown': 0.1}}}}))
+   c = FakeClient([kauf('NYSE:AAA'), kauf('NYSE:BBB')], kandidaten=['NYSE:AAA', 'NYSE:XXX'])
+   r = P.lauf(w.d, c, T0)
+   self.assertEqual(len(c.aufrufe), 2); a1, a2 = c.aufrufe
+   self.assertEqual((a1['output_config']['effort'], a2['output_config']['effort']), ('low', 'medium'))
+   t2 = a2['messages'][0]['content']
+   self.assertIn('<datenblaetter>', t2); self.assertIn('Scores: Composite 70', t2); self.assertIn('Volatilität 32 %', t2); self.assertIn('größter Rückgang 40 %', t2)
+   self.assertNotIn('NYSE:BBB ·', t2, 'nur Kandidaten und Positionen im Datenblatt'); self.assertNotIn('<universum>', t2)
+   self.assertEqual(r['ki']['kandidaten'], ['NYSE:AAA'], 'unbekanntes Symbol fällt aus der Vorauswahl')
+   self.assertEqual(r['ki']['entscheidungen'], 1)
+   self.assertIn('nicht in der Vorauswahl', [e.get('grund') for e in w.journal() if e['art'] == 'verworfen'])
+   self.assertAlmostEqual(r['ki']['usd'], 2 * (70_000 * 0.1 / 1e6 + 3000 * 0.5 / 1e6))
 
  def test_fremdes_format_und_ohne_kurse(self):
   with tempfile.TemporaryDirectory() as tmp:

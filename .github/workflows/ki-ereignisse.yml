@@ -1,0 +1,48 @@
+name: ki-ereignisse
+# KI-Vorprüfung neuer Unternehmensschlagzeilen auf negative Ereignisse (risk_event_ki_v1, value_radar/ki/ereignisse.py).
+# Täglich und manuell; Claude Haiku 5.5, höchstens 8 Aufrufe je Lauf, Monatsbudget 1 $ über alle KI-Funktionen (ki_kosten.json).
+# Ohne Secret ANTHROPIC_API_KEY wird nichts aufgerufen. Gleiche Gruppe wie die übrigen KI-Läufe (gemeinsames Kostenprotokoll).
+on:
+  schedule:
+    - cron: '17 14 * * *'
+  workflow_dispatch: {}
+concurrency:
+  group: news-trends
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  ki:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: SDK installieren
+        run: pip install anthropic==2.12.0
+      - name: Regeln testen (ohne API)
+        run: python -m unittest discover -s value_radar/ki -p 'test_*.py'
+      - name: Schlagzeilen vorprüfen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python value_radar/ki/ereignisse.py value_radar/daten
+      - name: Ergebnis und Kostenprotokoll speichern
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'value-radar-bot'
+          git config user.email 'bot@value-radar'
+          for f in cf_risk_event_ki.json ki_kosten.json; do
+            if test -s "value_radar/daten/$f"; then git add "value_radar/daten/$f"; fi
+          done
+          git diff --cached --quiet && exit 0
+          git commit -m 'KI-Vorprüfung der Ereignisse [skip ci]'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1

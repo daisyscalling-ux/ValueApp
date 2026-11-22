@@ -111,3 +111,14 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 - Prüfung der KI-Antwort;
 - Budget, zu große Eingabe, unlesbare und unvollständige Antwort;
 - fremdes Depotformat, fehlende Kurse.
+
+### Erster Lauf (22.11.2026) und zwei eigene Fehler
+- **Lauf:** 8 Kaufaufträge zu je 11 %, 0 verworfen, 85.348 Tokens Eingabe, 2.717 Ausgabe, 0,0099 $.
+- **Fehler 1, Reihenfolge:** Das Universum lag alphabetisch vor der KI. Alle 8 Käufe kamen von Position 1–187 der 1.340 Titel (Athen, Madrid, Kopenhagen, Euronext). 27 Titel erfüllten das Profil, das die KI selbst als Begründung nannte, 8 davon in der hinteren Hälfte, darunter Industrivärden (Composite 88), Investor AB (84) und CF Industries (80).
+- **Fehler 2, Zahlen:** `_f` kürzte bei ganzen Zahlen die Null weg: Composite 80 wurde zu „8“, Momentum 90 zu „9“. Betroffen waren 398 von 1.339 Titeln.
+- **Entscheidung des Nutzers:**
+  - Sortierung nach Composite absteigend, jede Zeile mit Region (USA, Europa, GB, Japan, übrige). Die KI wählt weiter frei.
+  - Die 8 Aufträge werden storniert (`STORNO`, Journal-Art „storniert“) und neu entschieden.
+- **Folge der Sortierung:** Die KI wird eher Titel wählen, die unsere Scores gut finden, und erbt deren Schwächen, etwa den Abstand der US-Werte im Fair Value. Unter den ersten 100 Zeilen stehen jetzt 45 aus den USA, 32 aus Europa, 15 aus Großbritannien und 8 aus Japan.
+- **Eingabe:** etwa 72.000 Tokens (Regionsspalte), weiter unter der Preisgrenze von 100.000.
+- **Tests:** 3 neu (Sortierung und Region, ganze Zahlen, Storno).

@@ -111,3 +111,12 @@ Methode `news_trends_ki_v1`, Code `value_radar/nachrichten_trends/ki_einordnung.
 - Das Modell liest nur Schlagzeilen und kann sie falsch gewichten oder zuspitzen. Die Belege sind deshalb immer mit Link sichtbar.
 - Die Einordnung ist nicht wiederholbar: Ein neuer Lauf kann andere Worte und Schwerpunkte wählen.
 - Die Auswahl ist auf 400 Schlagzeilen begrenzt. Viel genannte Aktien prägen sie stärker; je Aktie höchstens 3 dämpft das.
+
+## KI-Kurzbeschreibung der Anregungen (22.11.2026, Wunsch des Nutzers)
+- **Aufruf:** Läuft im selben wöchentlichen Aufruf wie die KI-Einordnung, kein zusätzlicher Aufruf.
+- **Eingabe:** höchstens 15 Kandidaten außerhalb des Universums mit Identität „ungeprüft“, mit ihren bis zu 3 Schlagzeilen. Nicht übergeben werden Kandidaten mit ähnlichem Universumsnamen (vermutete ADR-Doppelungen) und solche ohne Schlagzeile.
+- **Ausgabe:** je Kandidat `beschreibung` (was die Firma laut Schlagzeilen macht) und `anlass` (warum sie diese Woche genannt wird), je ein Satz. Ist es nicht erkennbar, steht „aus den Schlagzeilen nicht erkennbar“.
+- **Prüfung:** nur IDs aus der Eingabe, je Kandidat einmal, Länge höchstens 300 Zeichen; Unpassendes zählt zu `verworfen`.
+- **Grenze:** Die Beschreibung stammt nur aus Schlagzeilen und ist kein Firmenprofil. Die Identität bleibt ungeprüft.
+- **Kosten:** etwa 15 × 3 Schlagzeilen mehr, also etwa +2.000 Tokens je Wochenlauf, unter 0,001 $.
+- **Tests:** 3 neu.

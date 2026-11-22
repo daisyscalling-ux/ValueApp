@@ -38,17 +38,20 @@ Regeln:
 - Jede Aussage muss sich auf die Schlagzeilen stützen. Gib je Thema die IDs der stützenden Schlagzeilen an (1 bis 8, z. B. "h12").
 - Nenne Aktien nur mit dem Symbol aus den Daten (z. B. "NASDAQ:NVDA"), nur wenn eine zitierte Schlagzeile sie betrifft.
 - Keine Kursprognosen, keine Kauf- oder Verkaufsempfehlungen, keine Fakten, die nicht in den Schlagzeilen stehen.
-- Antworte auf Deutsch, knapp und nüchtern."""
+- Antworte auf Deutsch, knapp und nüchtern.
+3. Zu jeder Firma in <kandidaten> (Börsenkürzel außerhalb unseres Universums): beschreibung = was die Firma laut ihren Schlagzeilen macht (ein Satz), anlass = warum sie diese Woche genannt wird (ein Satz). Nur aus diesen Schlagzeilen; ist es nicht erkennbar, schreibe „aus den Schlagzeilen nicht erkennbar“."""
 
 SCHEMA = {
- 'type': 'object', 'additionalProperties': False, 'required': ['themen', 'neue_themen', 'hinweis'],
+ 'type': 'object', 'additionalProperties': False, 'required': ['themen', 'neue_themen', 'hinweis', 'kandidaten'],
  'properties': {
   'themen': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['titel', 'einordnung', 'tendenz', 'belege', 'aktien'],
    'properties': {'titel': {'type': 'string'}, 'einordnung': {'type': 'string'}, 'tendenz': {'type': 'string', 'enum': ['positiv', 'negativ', 'gemischt', 'neutral']},
                   'belege': {'type': 'array', 'items': {'type': 'string'}}, 'aktien': {'type': 'array', 'items': {'type': 'string'}}}}},
   'neue_themen': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['titel', 'einordnung', 'belege'],
    'properties': {'titel': {'type': 'string'}, 'einordnung': {'type': 'string'}, 'belege': {'type': 'array', 'items': {'type': 'string'}}}}},
-  'hinweis': {'type': 'string'}}}
+  'hinweis': {'type': 'string'},
+  'kandidaten': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'beschreibung', 'anlass'],
+   'properties': {'id': {'type': 'string'}, 'beschreibung': {'type': 'string'}, 'anlass': {'type': 'string'}}}}}}
 
 
 def eingabe(ordner, trends, jetzt):
@@ -73,6 +76,36 @@ def nachricht(zeilen, trends):
  text = '\n'.join(f"{z['id']} | {z['publishedAt'][:10]} | {z['publisher'][:40]} | {z.get('symbol') or 'Markt'} | {z['title'][:200]}" for z in zeilen)
  return (f"Feste Themen mit Nennungen der Woche (regelbasiert gezählt): {feste}\n\n"
          f"Schlagzeilen (ID | Datum | Verlag | Aktie | Schlagzeile):\n<schlagzeilen>\n{text}\n</schlagzeilen>")
+
+
+MAX_KANDIDATEN = 15
+
+
+def kandidaten_eingabe(trends):
+ """Kandidaten ohne ähnlichen Universumsnamen (mögliche ADR-Doppelungen bleiben weg), höchstens MAX_KANDIDATEN, mit ihren Schlagzeilen."""
+ out = []
+ for k in trends.get('kandidaten', []):
+  if k.get('aehnlichImUniversum') or k.get('identitaet') != 'ungeprueft' or not k.get('schlagzeilen'):
+   continue
+  out.append({'id': f'k{len(out) + 1}', 'boerse': k['boerse'], 'kuerzel': k['kuerzel'], 'name': str(k.get('name') or '')[:80],
+              'titel': [str(z.get('title', ''))[:200] for z in k['schlagzeilen'][:3]]})
+  if len(out) >= MAX_KANDIDATEN:
+   break
+ return out
+
+
+def kandidaten_pruefen(roh, kand):
+ """Nur IDs aus der Eingabe, je Kandidat höchstens einmal, Längen begrenzt."""
+ nach = {k['id']: k for k in kand}
+ out, verworfen, gesehen = [], 0, set()
+ for x in roh.get('kandidaten') or []:
+  k = nach.get(x.get('id'))
+  if not k or k['id'] in gesehen or not str(x.get('beschreibung', '')).strip():
+   verworfen += 1
+   continue
+  gesehen.add(k['id'])
+  out.append({'boerse': k['boerse'], 'kuerzel': k['kuerzel'], 'beschreibung': str(x['beschreibung'])[:300], 'anlass': str(x.get('anlass', ''))[:300]})
+ return out, verworfen
 
 
 def pruefen(roh, zeilen):
@@ -131,7 +164,9 @@ def ausfuehren(daten, client, jetzt):
  zeilen = eingabe(daten / 'nachrichten_archiv', trends, jetzt)
  if len(zeilen) < 20:
   return None, f'Zu wenige Schlagzeilen ({len(zeilen)})'
- text = nachricht(zeilen, trends)
+ kand = kandidaten_eingabe(trends)
+ text = nachricht(zeilen, trends) + ('\n\nKandidaten (ID | Börse:Kürzel | Name | Schlagzeilen):\n<kandidaten>\n' + '\n'.join(
+  f"{k['id']} | {k['boerse']}:{k['kuerzel']} | {k['name']} | " + ' || '.join(k['titel']) for k in kand) + '\n</kandidaten>' if kand else '')
  monat = jetzt.strftime('%Y-%m')
  _, m = kosten_lesen(daten / 'ki_kosten.json', monat)
  zaehl = client.messages.count_tokens(model=MODELL, system=SYSTEM, messages=[{'role': 'user', 'content': text}])
@@ -149,12 +184,15 @@ def ausfuehren(daten, client, jetzt):
   return None, f'Antwort unvollständig ({antwort.stop_reason})'
  roh = json.loads(next(b.text for b in antwort.content if b.type == 'text'))
  themen, neue, hinweis, verworfen = pruefen(roh, zeilen)
+ kandidaten, kv = kandidaten_pruefen(roh, kand)
+ verworfen += kv
  if not themen:
   return None, 'Kein belegtes Thema in der Antwort'
  return {'schema': 1, 'method': METHOD, 'generatedAt': jetzt.isoformat(), 'modell': MODELL, 'kennzeichnung': KENNZEICHNUNG, 'scoreContribution': 0,
          'eingabe': {'schlagzeilen': len(zeilen), 'sha256': hashlib.sha256(text.encode()).hexdigest(), 'trendsGeneratedAt': trends['generatedAt'], 'fensterTage': T.FENSTER_TAGE},
          'kosten': {'input_tokens': antwort.usage.input_tokens, 'output_tokens': antwort.usage.output_tokens, 'usd': round(usd, 6)},
          'themen': themen, 'neue_themen': neue, 'hinweis': hinweis, 'verworfen': verworfen,
+         'kandidaten': kandidaten,
          'grenzen': ['Von einem Sprachmodell aus Schlagzeilen zusammengefasst, nicht geprüft; Belege anklicken.',
                      'Nur Schlagzeilen der letzten 7 Tage (höchstens 400), keine Artikeltexte.',
                      'Kein Kauf- oder Verkaufssignal; fließt in keinen Score ein.']}, ''

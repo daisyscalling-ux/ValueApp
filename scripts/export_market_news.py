@@ -21,6 +21,18 @@ WORLD_SOURCES = {
  'wsj_world': ('The Wall Street Journal', 'https://feeds.content.dowjones.io/public/rss/RSSWorldNews', 'Publisher-RSS · World News'),
  'bloomberg_politics': ('Bloomberg', 'https://www.bloomberg.com/feeds/politics/news.rss', 'Publisher-RSS · Politics'),
 }
+# Regionale Wirtschaftsquellen (seit 22.11.2026, Entscheidung des Nutzers für das News-Briefing): eigene Datei
+# cf_regional_news.json; je Quelle die Region im Feld via. Am 22.11. alle acht öffentlich erreichbar.
+REGIONAL_SOURCES = {
+ 'ft_europe': ('Financial Times', 'https://www.ft.com/europe?format=rss', 'Europa · Publisher-RSS'),
+ 'dw_business': ('Deutsche Welle', 'https://rss.dw.com/rdf/rss-en-bus', 'Europa · Publisher-RSS'),
+ 'euronews_business': ('Euronews', 'https://www.euronews.com/rss?level=vertical&name=business', 'Europa · Publisher-RSS'),
+ 'faz_finanzen': ('FAZ', 'https://www.faz.net/rss/aktuell/finanzen/', 'Europa · Publisher-RSS'),
+ 'tagesschau_wirtschaft': ('tagesschau', 'https://www.tagesschau.de/wirtschaft/index~rss2.xml', 'Europa · Publisher-RSS'),
+ 'nikkei_asia': ('Nikkei Asia', 'https://asia.nikkei.com/rss/feed/nar', 'Asien · Publisher-RSS'),
+ 'ft_asia': ('Financial Times', 'https://www.ft.com/asia-pacific?format=rss', 'Asien · Publisher-RSS'),
+ 'et_markets': ('The Economic Times', 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', 'Asien · Publisher-RSS'),
+}
 def clean(value):
  return html.unescape(re.sub(r'<[^>]*>', '', value or '')).strip()
 def parse_date(value):
@@ -30,10 +42,28 @@ def parse_date(value):
  except (ValueError,TypeError): parsed=dt.datetime.fromisoformat(value.replace('Z','+00:00'))
  if parsed.tzinfo is None: parsed=parsed.replace(tzinfo=dt.timezone.utc)
  return parsed.timestamp()
+RDF='{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF';RSS1='{http://purl.org/rss/1.0/}';DC='{http://purl.org/dc/elements/1.1/}'
+def parse_rdf(root, name, via, now):
+ """RSS 1.0 (RDF, seit 22.11.2026: Deutsche Welle, Nikkei Asia). Datum aus dc:date; ohne Datum (Nikkei) publishedAt None,
+ die Erfassungszeit setzt retrieve() als gekennzeichneten Ersatz (datumErsatz „erfasst“)."""
+ articles=[]
+ for item in root.findall(RSS1+'item'):
+  title=clean(item.findtext(RSS1+'title')); url=clean(item.findtext(RSS1+'link'))
+  if not title or urllib.parse.urlsplit(url).scheme not in ('http','https'): continue
+  d=item.findtext(DC+'date')
+  if d:
+   try: stamp=parse_date(d)
+   except (ValueError,TypeError,OverflowError): continue
+   if stamp>now+300 or now-stamp>7*86400: continue
+   articles.append({'title':title,'url':url,'publishedAt':dt.datetime.fromtimestamp(stamp,dt.timezone.utc).isoformat(),'publisher':name,'via':via})
+  else:
+   articles.append({'title':title,'url':url,'publishedAt':None,'publisher':name,'via':via})
+ return articles[:80]
 def parse_rss(raw, name, via, now):
  if len(raw)>2000000 or b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
   raise ValueError('Ungültiger RSS-Feed')
  root=ET.fromstring(raw)
+ if root.tag==RDF: return parse_rdf(root, name, via, now)
  if root.tag!='rss' or root.find('channel') is None: raise ValueError('Kein RSS-Feed')
  articles=[]
  for item in root.findall('./channel/item'):
@@ -54,7 +84,13 @@ def retrieve(key, old, now, quellen=None):
    try:
     request=urllib.request.Request(one,headers={'Accept':'application/rss+xml, application/xml','User-Agent':'ValueRadar-News/1.0 (public RSS reader)'})
     with urllib.request.urlopen(request,timeout=20) as response: raw=response.read(2000001)
+    frueher={x['url']:x for x in old.get('items',[]) if isinstance(x,dict)}
     for a in parse_rss(raw,name,via,now):
+     if a['publishedAt'] is None:
+      # Quelle ohne Datum: Erfassungszeit des ersten Abrufs als gekennzeichneter Ersatz; nach 7 Tagen fällt der Artikel weg.
+      erst=frueher.get(a['url'],{}).get('publishedAt') if frueher.get(a['url'],{}).get('datumErsatz')=='erfasst' else None
+      a['publishedAt']=erst or dt.datetime.fromtimestamp(now,dt.timezone.utc).isoformat();a['datumErsatz']='erfasst'
+      if now-dt.datetime.fromisoformat(a['publishedAt']).timestamp()>7*86400: continue
      if a['url'] not in seen: seen.add(a['url']);articles.append(a)
    except Exception as exc:
     errors.append(exc)
@@ -74,8 +110,8 @@ def retrieve(key, old, now, quellen=None):
    except (ValueError,KeyError,TypeError): pass
   return key,dict(name=name,via=via,checkedAt=int(now*1000),successAt=old.get('successAt',0),error=reason,items=retained)
 def main(satz='markt'):
- quellen=WORLD_SOURCES if satz=='welt' else SOURCES
- path=Path(os.environ.get('NEWS_OUTPUT','value_radar/daten/'+('cf_world_news.json' if satz=='welt' else 'cf_news.json')))
+ quellen={'welt':WORLD_SOURCES,'regional':REGIONAL_SOURCES}.get(satz,SOURCES)
+ path=Path(os.environ.get('NEWS_OUTPUT','value_radar/daten/'+{'welt':'cf_world_news.json','regional':'cf_regional_news.json'}.get(satz,'cf_news.json')))
  try: old=json.loads(path.read_text(encoding='utf-8')).get('sources',{})
  except (OSError,ValueError): old={}
  now=time.time()

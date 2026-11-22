@@ -58,3 +58,34 @@ class Welt(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ,{'NEWS_OUTPUT':d+'/w.json'}), mock.patch.object(M.urllib.request,'urlopen',opener):
             M.main('welt');data=json.load(open(d+'/w.json'))
         self.assertEqual(sorted(data['sources']),sorted(M.WORLD_SOURCES));self.assertEqual(data['sources']['bbc_world']['items'][0]['title'],'World story')
+
+class Regional(unittest.TestCase):
+    def test_regionen_und_datei(self):
+        import os,json,tempfile
+        self.assertEqual(len(M.REGIONAL_SOURCES),8)
+        self.assertEqual(sorted({v[2].split(' ·')[0] for v in M.REGIONAL_SOURCES.values()}),['Asien','Europa'])
+        self.assertFalse(set(M.REGIONAL_SOURCES)&(set(M.SOURCES)|set(M.WORLD_SOURCES)))
+        now=time.time()
+        def opener(req,timeout=0):return io.BytesIO(feed(item('r1','Regional story',now-600)))
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ,{'NEWS_OUTPUT':d+'/r.json'}), mock.patch.object(M.urllib.request,'urlopen',opener):
+            M.main('regional');data=json.load(open(d+'/r.json'))
+        self.assertEqual(sorted(data['sources']),sorted(M.REGIONAL_SOURCES));self.assertTrue(data['sources']['nikkei_asia']['via'].startswith('Asien'))
+
+class Rdf(unittest.TestCase):
+    def rdf(self,items):
+        return ('<?xml version="1.0"?><rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel rdf:about="x"><title>N</title></channel>'+items+'</rdf:RDF>').encode()
+    def test_mit_und_ohne_datum(self):
+        now=time.time();iso=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime(now-3600))
+        mit='<item rdf:about="a"><title>Mit Datum</title><link>https://dw.com/a</link><dc:date>'+iso+'</dc:date></item>'
+        ohne='<item rdf:about="b"><title><![CDATA[Ohne Datum]]></title><link>https://asia.nikkei.com/b</link></item>'
+        alt='<item rdf:about="c"><title>Alt</title><link>https://dw.com/c</link><dc:date>2020-01-01T00:00:00Z</dc:date></item>'
+        a=M.parse_rss(self.rdf(mit+ohne+alt),'N','Asien · RSS',now)
+        self.assertEqual([x['title'] for x in a],['Mit Datum','Ohne Datum']);self.assertIsNone(a[1]['publishedAt'])
+        # retrieve: Erfassungszeit als gekennzeichneter Ersatz, beim nächsten Abruf unverändert
+        quellen={'n':('Nikkei Asia','https://asia.nikkei.com/rss','Asien · RSS')}
+        with mock.patch.object(M.urllib.request,'urlopen',lambda req,timeout=0:io.BytesIO(self.rdf(ohne))):
+            _,r1=M.retrieve('n',{},now,quellen);_,r2=M.retrieve('n',r1,now+7200,quellen)
+        self.assertEqual(r1['items'][0]['datumErsatz'],'erfasst');self.assertEqual(r2['items'][0]['publishedAt'],r1['items'][0]['publishedAt'],'erster Abruf bleibt maßgeblich')
+        with mock.patch.object(M.urllib.request,'urlopen',lambda req,timeout=0:io.BytesIO(self.rdf(ohne))):
+            _,r3=M.retrieve('n',r1,now+8*86400,quellen)
+        self.assertEqual(r3['items'],[],'nach 7 Tagen weg')

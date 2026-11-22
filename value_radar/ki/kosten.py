@@ -10,9 +10,10 @@ from pathlib import Path
 MODELL = 'claude-haiku-5-5'
 PREIS_EIN, PREIS_AUS = 0.10 / 1e6, 0.50 / 1e6
 PROMPT_MAX_TOKENS = 90_000
-# Feste Anteile je Funktion (seit 22.11.2026, Entscheidung des Nutzers): keine Funktion verdrängt die anderen.
-# Zusammen 1,60 $; dazu 0,30 $ für die Fair-Value-Erklärung in Cloudflare = 1,90 $ unter der Console-Grenze von 2 $.
-ANTEILE = {'risiko_ereignisse': 0.90, 'ki_portfolio': 0.40, 'themen_des_tages': 0.20, 'trends_einordnung': 0.10}
+# Feste Anteile je Funktion (seit 22.11.2026, Entscheidungen des Nutzers): keine Funktion verdrängt die anderen.
+# News-Briefing (dreimal täglich, ersetzt Themen des Tages) 0,70 $; zusammen 2,10 $, dazu 0,30 $ für die Fair-Value-Erklärung
+# in Cloudflare = 2,40 $ unter der Console-Grenze von 3 $ (vom Nutzer am 22.11.2026 erhöht).
+ANTEILE = {'risiko_ereignisse': 0.90, 'news_briefing': 0.70, 'ki_portfolio': 0.40, 'trends_einordnung': 0.10}
 KI_BUDGET_USD = round(sum(ANTEILE.values()), 2)
 
 

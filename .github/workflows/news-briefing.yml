@@ -1,9 +1,11 @@
-name: themen-des-tages
-# Themen des Tages (daily_topics_ki_v1, value_radar/ki/themen_des_tages.py): Markt, Aktien und Welt aus den Schlagzeilen,
-# ein Aufruf von Claude Haiku 5.5 je Tag. Budget-Anteil 0,20 $/Monat (value_radar/ki/kosten.py). Ohne Secret kein Aufruf.
+name: news-briefing
+# News-Briefing (news_briefing_ki_v1, value_radar/ki/news_briefing.py): USA, Europa, Asien, Welt nach Themen,
+# dreimal täglich (vor Europas Eröffnung, vor der US-Eröffnung, nach US-Schluss) und manuell. Ersetzt themen-des-tages.
+# Claude Haiku 5.5, Budget-Anteil 0,70 $/Monat (value_radar/ki/kosten.py). Ohne Secret kein Aufruf.
 on:
   schedule:
-    - cron: '47 5 * * *'
+    - cron: '53 5,12 * * *'
+    - cron: '27 21 * * *'
   workflow_dispatch: {}
 concurrency:
   group: news-trends
@@ -24,21 +26,21 @@ jobs:
         run: pip install anthropic==2.12.0
       - name: Regeln testen (ohne API)
         run: python -m unittest discover -s value_radar/ki -p 'test_*.py'
-      - name: Themen des Tages erstellen
+      - name: News-Briefing erstellen
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python value_radar/ki/themen_des_tages.py value_radar/daten
+        run: python value_radar/ki/news_briefing.py value_radar/daten
       - name: Ergebnis und Kostenprotokoll speichern
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'value-radar-bot'
           git config user.email 'bot@value-radar'
-          for f in cf_themen_tag.json ki_kosten.json; do
+          for f in cf_news_briefing.json ki_kosten.json; do
             if test -s "value_radar/daten/$f"; then git add "value_radar/daten/$f"; fi
           done
           git diff --cached --quiet && exit 0
-          git commit -m 'Themen des Tages [skip ci]'
+          git commit -m 'News-Briefing [skip ci]'
           for attempt in 1 2 3; do
             git pull --rebase origin main
             if git push origin HEAD:main; then exit 0; fi

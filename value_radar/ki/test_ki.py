@@ -57,9 +57,10 @@ class Kosten(unittest.TestCase):
    m['funktionen']['risiko_ereignisse']['usd'] = 0.8999; m['usd'] = 0.9; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
    self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'risiko_ereignisse')); self.assertTrue(KO.passt(p, '2026-11', 10_000, 8000, 'ki_portfolio'))
    self.assertTrue(KO.passt(p, '2026-12', 10_000, 8000, 'risiko_ereignisse'), 'neuer Monat')
-   m['usd'] = 1.5999; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
+   m['usd'] = 2.0999; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
    self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'ki_portfolio'), 'Summe erschöpft')
-   self.assertAlmostEqual(KO.KI_BUDGET_USD, 1.60)
+   self.assertAlmostEqual(KO.KI_BUDGET_USD, 2.10)
+   self.assertFalse(KO.passt(p, '2026-12', 1, 1, 'themen_des_tages'), 'abgelöste Funktion hat kein Budget mehr')
 
 
 class Ereignisse(unittest.TestCase):
@@ -122,64 +123,73 @@ if __name__ == '__main__':
  unittest.main()
 
 
-import themen_des_tages as TD
+import news_briefing as NB
 
 
-def tag_daten(tmp, n_markt=8, n_welt=8, n_akt=8):
+def nb_daten(tmp, n_markt=8, n_europa=8, n_asien=8, n_welt=8):
  d = Path(tmp)
- def feed(prefix, n):
-  return {'version': 1, 'sources': {'q': {'name': 'Q', 'items': [{'title': f'{prefix} story {i}', 'url': f'https://x.com/{prefix}{i}', 'publisher': 'Q',
-                                                                  'publishedAt': (JETZT - dt.timedelta(hours=1, minutes=i)).isoformat()} for i in range(n)]
-                                          + [{'title': 'alt', 'url': 'https://x.com/alt', 'publishedAt': (JETZT - dt.timedelta(hours=30)).isoformat()}]}}}
- (d / 'cf_news.json').write_text(json.dumps(feed('Markt', n_markt)))
- (d / 'cf_world_news.json').write_text(json.dumps(feed('Welt', n_welt)))
- items = [{'title': f'Acme news {i}', 'url': f'https://ex.com/a{i}', 'publisher': 'X', 'publishedAt': (JETZT - dt.timedelta(hours=2, minutes=i)).isoformat()} for i in range(n_akt)]
- items.append({'title': 'Acme Shares Sold by Big Fund LLC', 'url': 'https://ex.com/r', 'publisher': 'X', 'publishedAt': (JETZT - dt.timedelta(hours=1)).isoformat()})
- weitere = {f'NYSE:X{k}': {'items': [{**items[k % len(items)], 'title': f'X{k} meldet {j}', 'url': f'https://ex.com/x{k}{j}', 'publishedAt': (JETZT - dt.timedelta(hours=5, minutes=k)).isoformat()} for j in range(2)]} for k in range(3 if n_akt >= 5 else 0)}
- (d / 'cf_company_news.json').write_text(json.dumps({'schema': 1, 'stocks': {'NYSE:ACME': {'items': items}, **weitere}}))
+ def items(prefix, n, alt=True):
+  out = [{'title': f'{prefix} story {i}', 'url': f'https://x.com/{prefix}{i}', 'publisher': 'Q', 'publishedAt': (JETZT - dt.timedelta(hours=1, minutes=i)).isoformat()} for i in range(n)]
+  return out + ([{'title': 'alt', 'url': f'https://x.com/{prefix}alt', 'publishedAt': (JETZT - dt.timedelta(hours=30)).isoformat()}] if alt else [])
+ (d / 'cf_news.json').write_text(json.dumps({'version': 1, 'sources': {'wsj': {'name': 'WSJ', 'items': items('US', n_markt)}, 'ft': {'name': 'FT', 'items': items('FT', 3)}}}))
+ (d / 'cf_regional_news.json').write_text(json.dumps({'version': 1, 'sources': {'dw': {'name': 'DW', 'via': 'Europa · RSS', 'items': items('EU', n_europa)},
+                                                                                'nikkei': {'name': 'Nikkei', 'via': 'Asien · RSS', 'items': items('AS', n_asien)}}}))
+ (d / 'cf_world_news.json').write_text(json.dumps({'version': 1, 'sources': {'bbc': {'name': 'BBC', 'items': items('W', n_welt)}}}))
+ akt = lambda s, n: [{'title': f'{s} meldet {i}', 'url': f'https://ex.com/{s}{i}', 'publisher': 'X', 'publishedAt': (JETZT - dt.timedelta(hours=3, minutes=i)).isoformat()} for i in range(n)]
+ (d / 'cf_company_news.json').write_text(json.dumps({'schema': 1, 'stocks': {'NYSE:ACME': {'items': akt('ACME', 4) + [{'title': 'Acme Shares Sold by Big Fund LLC', 'url': 'https://ex.com/r', 'publishedAt': (JETZT - dt.timedelta(hours=1)).isoformat()}]},
+                                                                             'XETR:SAP': {'items': akt('SAP', 3)}, 'TSE:7203': {'items': akt('TOYOTA', 3)}, 'NYSE:FREMD': {'items': akt('FREMD', 3)}}}))
+ (d / 'cf_universum.json').write_text(json.dumps({'kandidaten': [{'listing_symbol': 'NYSE:ACME', 'country': 'US'}, {'listing_symbol': 'XETR:SAP', 'country': 'DE'}, {'listing_symbol': 'TSE:7203', 'country': 'JP'}]}))
  return d
 
 
-def tag_antwort(text):
- return {'markt': {'lage': 'Ruhig.', 'punkte': [{'text': 'Zinsen.', 'belege': ['m1', 'm2', 'a1', 'm999'], 'aktien': ['NYSE:ACME']}, {'text': 'ohne Beleg', 'belege': ['m999'], 'aktien': []}]},
-         'aktien': {'lage': 'Acme im Fokus.', 'punkte': [{'text': 'Acme meldet.', 'belege': ['a1'], 'aktien': ['NYSE:ACME', 'NYSE:FAKE']}]},
-         'welt': {'lage': 'Wahl.', 'punkte': [{'text': 'Wahl.', 'belege': ['w3'], 'aktien': []}]}}
+def nb_antwort(text):
+ leer = {'maerkte': [], 'konjunktur': [], 'industrie': [], 'unternehmen': []}
+ return {'usa': {**leer, 'lage': 'Ruhig.', 'maerkte': [{'text': 'Indizes.', 'belege': ['u1', 'u2', 'e1', 'u999'], 'aktien': ['NYSE:ACME']}],
+                 'unternehmen': [{'text': 'Acme.', 'belege': ['u9'], 'aktien': ['NYSE:ACME', 'NYSE:FAKE']}, {'text': 'ohne', 'belege': [], 'aktien': []}]},
+         'europa': {**leer, 'lage': 'EZB.', 'konjunktur': [{'text': 'Zinsen.', 'belege': ['e1'], 'aktien': []}]},
+         'asien': {**leer, 'lage': 'Japan.', 'industrie': [{'text': 'Autos.', 'belege': ['a2'], 'aktien': []}]},
+         'welt': {'lage': 'Wahl.', 'politik': [{'text': 'Wahl.', 'belege': ['w3'], 'aktien': []}], 'konjunktur': [], 'rohstoffe': []}}
 
 
-class ThemenDesTages(unittest.TestCase):
- def test_eingabe(self):
+class NewsBriefing(unittest.TestCase):
+ def test_eingabe_regionen(self):
   with tempfile.TemporaryDirectory() as tmp:
-   e = TD.eingabe(tag_daten(tmp), JETZT)
-   self.assertEqual((len(e['markt']), len(e['welt'])), (8, 8), 'älter als 24 h fällt weg')
-   self.assertEqual(sum(1 for z in e['aktien'] if z['symbol'] == 'NYSE:ACME'), 2, 'höchstens 2 je Titel')
-   self.assertFalse(any('Sold by' in z['title'] for z in e['aktien']), 'keine Routine-Meldungen')
-   self.assertEqual(e['markt'][0]['id'], 'm1'); self.assertEqual(e['welt'][0]['id'], 'w1')
+   e = NB.eingabe(nb_daten(tmp), JETZT)
+   self.assertEqual(len(e['usa']), 8 + 2, '8 WSJ (ohne FT, ohne alt) + ACME höchstens 2, ohne Routine')
+   self.assertEqual(len(e['europa']), 8 + 3 + 2, 'DW + FT aus dem Marktfeed + SAP 2')
+   self.assertEqual(len(e['asien']), 8 + 2); self.assertEqual(len(e['welt']), 8)
+   self.assertFalse(any(z.get('symbol') == 'NYSE:FREMD' for v in e.values() for z in v), 'nicht im Universum')
+   self.assertFalse(any('Sold by' in z['title'] for v in e.values() for z in v))
+   self.assertEqual([e[r][0]['id'] for r in ('usa', 'europa', 'asien', 'welt')], ['u1', 'e1', 'a1', 'w1'])
 
- def test_ablauf_belege_je_abschnitt(self):
+ def test_ablauf_belege_je_region(self):
   with tempfile.TemporaryDirectory() as tmp:
-   d = tag_daten(tmp)
-   c = FakeClient(tag_antwort)
-   r, g = TD.ausfuehren(d, c, JETZT)
-   self.assertEqual(g, ''); ab = r['abschnitte']
-   self.assertEqual([len(b['belege']) for b in ab['markt']['punkte']], [2], 'a1 gehört nicht zum Markt, m999 gibt es nicht')
-   self.assertEqual(ab['markt']['punkte'][0]['aktien'], [], 'Symbol ohne zitierte Aktien-Schlagzeile fällt weg')
-   self.assertEqual(ab['aktien']['punkte'][0]['aktien'], ['NYSE:ACME'])
+   d = nb_daten(tmp); c = FakeClient(nb_antwort)
+   r, g = NB.ausfuehren(d, c, JETZT)
+   self.assertEqual(g, ''); us = r['regionen']['usa']['abschnitte']
+   self.assertEqual(len(us['maerkte'][0]['belege']), 2, 'e1 gehört nicht zu USA, u999 gibt es nicht')
+   self.assertEqual(us['maerkte'][0]['aktien'], [], 'Symbol ohne zitierte Aktien-Schlagzeile fällt weg')
+   self.assertEqual(us['unternehmen'][0]['aktien'], ['NYSE:ACME'])
    self.assertEqual(r['verworfen'], 1 + 1 + 1)
-   self.assertEqual((r['method'], r['scoreContribution']), ('daily_topics_ki_v1', 0)); self.assertIn('nicht geprüft', r['kennzeichnung'])
+   self.assertEqual(r['regionen']['welt']['abschnitte']['politik'][0]['text'], 'Wahl.')
+   self.assertEqual((r['method'], r['scoreContribution']), ('news_briefing_ki_v1', 0)); self.assertIn('nicht geprüft', r['kennzeichnung'])
+   self.assertEqual(r['gliederung']['welt']['abschnitte'][0], ['politik', 'Politik'])
    self.assertEqual(c.aufrufe[0]['output_config']['format']['type'], 'json_schema')
-   self.assertIn('themen_des_tages', json.loads((d / 'ki_kosten.json').read_text())['monate']['2026-11']['funktionen'])
+   self.assertIn('news_briefing', json.loads((d / 'ki_kosten.json').read_text())['monate']['2026-11']['funktionen'])
 
- def test_offene_abschnitte_und_abbrueche(self):
+ def test_offene_regionen_und_abbrueche(self):
   with tempfile.TemporaryDirectory() as tmp:
-   d = tag_daten(tmp, n_welt=2)
-   r, g = TD.ausfuehren(d, FakeClient(tag_antwort), JETZT)
-   self.assertEqual(r['abschnitte']['welt']['status'], 'offen'); self.assertIn('Zu wenige', r['abschnitte']['welt']['grund'])
-   self.assertIn('<welt>\n\n</welt>', TD.nachricht(TD.eingabe(d, JETZT)), 'zu kleiner Abschnitt geht leer an die KI')
+   d = nb_daten(tmp, n_asien=0)
+   (d / 'cf_company_news.json').write_text(json.dumps({'schema': 1, 'stocks': {}}))
+   r, g = NB.ausfuehren(d, FakeClient(nb_antwort), JETZT)
+   self.assertEqual(r['regionen']['asien']['status'], 'offen'); self.assertIn('Zu wenige', r['regionen']['asien']['grund'])
+   self.assertIn('<asien>\n\n</asien>', NB.nachricht(NB.eingabe(d, JETZT)))
   with tempfile.TemporaryDirectory() as tmp:
-   d = tag_daten(tmp, 1, 1, 1)
-   self.assertIn('Zu wenige', TD.ausfuehren(d, FakeClient(tag_antwort), JETZT)[1])
+   d = nb_daten(tmp, 1, 1, 1, 1); (d / 'cf_company_news.json').write_text(json.dumps({'schema': 1, 'stocks': {}}))
+   (d / 'cf_news.json').write_text(json.dumps({'version': 1, 'sources': {}}))
+   self.assertIn('Zu wenige', NB.ausfuehren(d, FakeClient(nb_antwort), JETZT)[1])
   with tempfile.TemporaryDirectory() as tmp:
-   d = tag_daten(tmp)
-   self.assertIn('max_tokens', TD.ausfuehren(d, FakeClient(tag_antwort, stop='max_tokens'), JETZT)[1])
-   KO.buchen(d / 'ki_kosten.json', '2026-11', 'themen_des_tages', 1_999_000, 0)
-   c = FakeClient(tag_antwort); self.assertIn('Monatsbudget', TD.ausfuehren(d, c, JETZT)[1]); self.assertEqual(c.aufrufe, [])
+   d = nb_daten(tmp)
+   self.assertIn('max_tokens', NB.ausfuehren(d, FakeClient(nb_antwort, stop='max_tokens'), JETZT)[1])
+   KO.buchen(d / 'ki_kosten.json', '2026-11', 'news_briefing', 6_990_000, 0)
+   c = FakeClient(nb_antwort); self.assertIn('Monatsbudget', NB.ausfuehren(d, c, JETZT)[1]); self.assertEqual(c.aufrufe, [])

@@ -12,13 +12,13 @@ Stand 22.11.2026. Testmonat des Nutzers mit eigenem API-Schlüssel (Secret `ANTH
   | Funktion | Anteil pro Monat |
   |---|---:|
   | Ereignis-Vorprüfung | 0,90 $ |
+  | News-Briefing (seit 22.11. statt „Themen des Tages“ mit 0,20 $) | 0,70 $ |
   | KI-Portfolio | 0,40 $ |
-  | Themen des Tages | 0,20 $ |
   | Trends-Einordnung | 0,10 $ |
-  | **Pipeline zusammen** | **1,60 $** |
+  | **Pipeline zusammen** | **2,10 $** |
   | Fair-Value-Erklärung (Cloudflare) | 0,30 $ |
 
-  Zusammen 1,90 $, unter der Console-Grenze von 2 $. Eine unbekannte Funktion hat kein Budget.
+  Zusammen 2,40 $, unter der Console-Grenze von 3 $. Der Nutzer hat die Grenze am 22.11.2026 von 2 $ auf 3 $ erhöht. Eine unbekannte oder abgelöste Funktion hat kein Budget.
 
 ## Funktionen
 
@@ -26,7 +26,7 @@ Stand 22.11.2026. Testmonat des Nutzers mit eigenem API-Schlüssel (Secret `ANTH
 |---|---|---|---:|
 | Trends-Einordnung | `news_trends_ki_v1` (`nachrichten_trends/ki_einordnung.py`) | montags | ~0,01 $ |
 | Vorprüfung negativer Ereignisse | `risk_event_ki_v1` (`ki/ereignisse.py`) | täglich | ~0,6–0,9 $ (gemessen 22.11.) |
-| Themen des Tages | `daily_topics_ki_v1` (`ki/themen_des_tages.py`) | täglich 05:47 UTC | ~0,15 $ |
+| News-Briefing (ersetzt Themen des Tages) | `news_briefing_ki_v1` (`ki/news_briefing.py`) | dreimal täglich | ~0,50 $ |
 
 ## Vorprüfung negativer Ereignisse (`risk_event_ki_v1`)
 - **Anlass:** Die Suchmuster in `company_news.py` markierten am 21.11. nur 71 von 5.542 Unternehmensschlagzeilen, 67 davon Kanzleiaufrufe. Prognosesenkungen, Ermittlungen oder Rücktritte ohne die genauen Wörter fehlten.
@@ -64,7 +64,7 @@ Stand 22.11.2026. Testmonat des Nutzers mit eigenem API-Schlüssel (Secret `ANTH
 
 Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 
-## Themen des Tages (`daily_topics_ki_v1`, seit 22.11.2026)
+## Themen des Tages (`daily_topics_ki_v1`, 22.11.2026; am selben Tag durch das News-Briefing ersetzt)
 - **Abschnitte:**
   - **Markt:** `cf_news.json`, letzte 24 h.
   - **Aktien:** `cf_company_news.json`, letzte 48 h, ohne Routine-Meldungen, höchstens 2 je Titel. Am Wochenende kommen kaum Unternehmensnachrichten (21.11.: 41 gegen 1.042 am 20.11.).
@@ -122,3 +122,24 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 - **Folge der Sortierung:** Die KI wird eher Titel wählen, die unsere Scores gut finden, und erbt deren Schwächen, etwa den Abstand der US-Werte im Fair Value. Unter den ersten 100 Zeilen stehen jetzt 45 aus den USA, 32 aus Europa, 15 aus Großbritannien und 8 aus Japan.
 - **Eingabe:** etwa 72.000 Tokens (Regionsspalte), weiter unter der Preisgrenze von 100.000.
 - **Tests:** 3 neu (Sortierung und Region, ganze Zahlen, Storno).
+
+## News-Briefing (`news_briefing_ki_v1`, seit 22.11.2026; ersetzt „Themen des Tages“)
+**Entscheidung des Nutzers:** Das Briefing steht im News-Tab, nach Regionen und Themen gegliedert und tiefer als „Themen des Tages“. Es läuft dreimal täglich (05:53 und 12:53 UTC sowie 21:27 UTC) und nutzt acht neue Quellen. Modul und Workflow `themen-des-tages` sind entfernt; die alte Datei `cf_themen_tag.json` bleibt als Daten erhalten.
+
+| Region | Quellen (Feeds 24 h, Unternehmen 48 h) |
+|---|---|
+| USA | Marktfeed ohne FT (Bloomberg, WSJ, MarketWatch, Motley Fool, Investing.com, Yahoo) + Unternehmensnachrichten von US-Titeln |
+| Europa | FT Europe, Deutsche Welle Business, Euronews Business, FAZ Finanzen, tagesschau Wirtschaft + FT aus dem Marktfeed + Unternehmensnachrichten von Titeln aus EU, GB, CH und Nordics |
+| Asien | Nikkei Asia, FT Asia-Pacific, Economic Times Markets + Unternehmensnachrichten von Japan-Titeln (Asien im Universum nur Japan) |
+| Welt | BBC World, FT World, WSJ World, Bloomberg Politics |
+
+- **Abschnitte:**
+  - USA, Europa und Asien: Märkte, Konjunktur & Zinsen, Industrie & Sektoren, Unternehmen.
+  - Welt: Politik, Konjunktur, Rohstoffe & Handel.
+  - Je Abschnitt bis zu 4 Punkte, je Region ein Lagesatz.
+- **Prüfung:** Belege nur aus der eigenen Region (IDs u…, e…, a…, w…); Symbole nur bei zitierter Unternehmensschlagzeile. Regionen mit weniger als 5 Schlagzeilen bleiben offen.
+- **Neue Quellen** (`scripts/export_market_news.py regional`, Datei `cf_regional_news.json`, stündlich in `market-news`): Nur Titel, Datum und Link. Am 22.11. waren alle acht erreichbar.
+  - Deutsche Welle und Nikkei liefern RSS 1.0 (RDF); dafür gibt es einen eigenen Leser.
+  - **Nikkei Asia liefert kein Datum.** Dort gilt die Zeit des ersten Abrufs als Ersatz, gekennzeichnet mit `datumErsatz: "erfasst"`; nach 7 Tagen fällt der Artikel weg.
+- **Probelauf der Eingabe** (22.11., ohne API): USA 80, Europa 83, Asien 67, Welt 58 Schlagzeilen, rund 16.000 Tokens. Geschätzt etwa 0,006 $ je Lauf und 0,50 $ im Monat; Anteil 0,70 $.
+- **Tests:** 3 (API simuliert) sowie 2 für die Feeds (Regionen, RDF mit und ohne Datum).

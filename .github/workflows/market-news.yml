@@ -25,6 +25,9 @@ jobs:
       - name: Welt-Rubriken exportieren (Themen des Tages, seit 22.11.2026)
         continue-on-error: true
         run: python scripts/export_market_news.py welt
+      - name: Regionale Quellen exportieren (News-Briefing, seit 22.11.2026)
+        continue-on-error: true
+        run: python scripts/export_market_news.py regional
       - name: Export speichern
         if: always()
         shell: bash
@@ -34,6 +37,7 @@ jobs:
           git config user.email "bot@value-radar"
           git add value_radar/daten/cf_news.json
           if test -s value_radar/daten/cf_world_news.json; then git add value_radar/daten/cf_world_news.json; fi
+          if test -s value_radar/daten/cf_regional_news.json; then git add value_radar/daten/cf_regional_news.json; fi
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update general news feed [skip ci]"
           for attempt in 1 2 3; do

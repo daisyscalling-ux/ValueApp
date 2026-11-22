@@ -47,3 +47,14 @@ class BloombergWSJ(unittest.TestCase):
         self.assertEqual(w['error'],'HTTP 403');self.assertEqual(w['items'],[])
 
 if __name__=='__main__':unittest.main()
+
+class Welt(unittest.TestCase):
+    def test_eigene_datei_und_quellen(self):
+        import os,json,tempfile
+        self.assertEqual(sorted(M.WORLD_SOURCES),['bbc_world','bloomberg_politics','ft_world','wsj_world'])
+        self.assertFalse(set(M.WORLD_SOURCES)&set(M.SOURCES),'getrennt vom Marktfeed')
+        now=time.time()
+        def opener(req,timeout=0):return io.BytesIO(feed(item('w1','World story',now-600)))
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ,{'NEWS_OUTPUT':d+'/w.json'}), mock.patch.object(M.urllib.request,'urlopen',opener):
+            M.main('welt');data=json.load(open(d+'/w.json'))
+        self.assertEqual(sorted(data['sources']),sorted(M.WORLD_SOURCES));self.assertEqual(data['sources']['bbc_world']['items'][0]['title'],'World story')

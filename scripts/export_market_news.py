@@ -13,6 +13,14 @@ SOURCES = {
  'wsj': ('The Wall Street Journal', ['https://feeds.content.dowjones.io/public/rss/RSSMarketsMain','https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness','https://feeds.content.dowjones.io/public/rss/socialeconomyfeed','https://feeds.content.dowjones.io/public/rss/RSSWSJD'], 'Publisher-RSS · Märkte, US-Wirtschaft, Konjunktur, Technologie'),
  'yahoo': ('Yahoo Finance', 'https://news.google.com/rss/search?' + urllib.parse.urlencode({'q':'site:finance.yahoo.com (markets OR stocks OR earnings OR economy) when:3d','hl':'en-US','gl':'US','ceid':'US:en'}), 'Google-News-Index · Link über Google')
 }
+# Welt-Rubriken (seit 22.11.2026, Entscheidung des Nutzers für „Themen des Tages · Welt“): eigene Datei cf_world_news.json,
+# damit News-Tab und Trend-Zählung unverändert bleiben. Nur Titel, Datum, Originallink; am 22.11. alle vier öffentlich erreichbar.
+WORLD_SOURCES = {
+ 'bbc_world': ('BBC News', 'https://feeds.bbci.co.uk/news/world/rss.xml', 'Publisher-RSS · World'),
+ 'ft_world': ('Financial Times', 'https://www.ft.com/world?format=rss', 'Publisher-RSS · World'),
+ 'wsj_world': ('The Wall Street Journal', 'https://feeds.content.dowjones.io/public/rss/RSSWorldNews', 'Publisher-RSS · World News'),
+ 'bloomberg_politics': ('Bloomberg', 'https://www.bloomberg.com/feeds/politics/news.rss', 'Publisher-RSS · Politics'),
+}
 def clean(value):
  return html.unescape(re.sub(r'<[^>]*>', '', value or '')).strip()
 def parse_date(value):
@@ -37,8 +45,8 @@ def parse_rss(raw, name, via, now):
   if stamp>now+300 or now-stamp>7*86400: continue
   articles.append({'title':title,'url':url,'publishedAt':dt.datetime.fromtimestamp(stamp,dt.timezone.utc).isoformat(),'publisher':clean(item.findtext('source')) or name,'via':via})
  return articles[:80]
-def retrieve(key, old, now):
- name,url,via=SOURCES[key]
+def retrieve(key, old, now, quellen=None):
+ name,url,via=(quellen or SOURCES)[key]
  try:
   # Mehrere Feeds einer Quelle (FT-Rubriken): zusammenfuehren, jeden Link nur einmal; Fehler nur, wenn keiner liefert.
   articles=[];seen=set();errors=[]
@@ -65,13 +73,14 @@ def retrieve(key, old, now):
     if 0<=age<=7*86400: retained.append(a)
    except (ValueError,KeyError,TypeError): pass
   return key,dict(name=name,via=via,checkedAt=int(now*1000),successAt=old.get('successAt',0),error=reason,items=retained)
-def main():
- path=Path(os.environ.get('NEWS_OUTPUT','value_radar/daten/cf_news.json'))
+def main(satz='markt'):
+ quellen=WORLD_SOURCES if satz=='welt' else SOURCES
+ path=Path(os.environ.get('NEWS_OUTPUT','value_radar/daten/'+('cf_world_news.json' if satz=='welt' else 'cf_news.json')))
  try: old=json.loads(path.read_text(encoding='utf-8')).get('sources',{})
  except (OSError,ValueError): old={}
  now=time.time()
  with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-  jobs=[pool.submit(retrieve,k,old.get(k,{}),now) for k in SOURCES]
+  jobs=[pool.submit(retrieve,k,old.get(k,{}),now,quellen) for k in quellen]
   sources=dict(job.result() for job in jobs)
  snapshot={'version':1,'checkedAt':int(now*1000),'sources':sources}
  path.parent.mkdir(parents=True,exist_ok=True)
@@ -80,4 +89,6 @@ def main():
   print(key+': '+str(len(status['items']))+' Artikel; '+(status['error'] or 'OK'))
   if status['error']: print('::warning::'+key+' nicht aktualisiert: '+status['error'])
  if all(s['error'] for s in sources.values()): raise SystemExit(1)
-if __name__=='__main__': main()
+if __name__=='__main__':
+ import sys
+ main(sys.argv[1] if len(sys.argv)>1 else 'markt')

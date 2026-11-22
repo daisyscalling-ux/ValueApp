@@ -5,7 +5,7 @@
  * BEWERTUNG_RISIKODATEN.md). Identische Kopie unter ValueApp/value_radar/risk_precompute/src/lib.
  */
 import {evaluateStock} from './evaluation';
-import {analystTarget,reverseDcfImpliedGrowth,reverseDcfInput,fairesKgv,ungehebelteEkr,investitionsanteil,epsBasis,type Fund} from './valuation';
+import {analystTarget,reverseDcfImpliedGrowth,reverseDcfInput,fairesKgv,ungehebelteEkr,investitionsanteil,epsBasis,dcfZerlegung,type Fund} from './valuation';
 import {valuationDataCheck} from './valuation-data';
 import type {HealthDistribution} from './financial-health';
 
@@ -93,6 +93,11 @@ export function scannerFields(input:Fund&Row,peerRows:Row[]|null=null,riskCovera
      current_ratio:n(f.current_ratio),uroe:n(ungehebelteEkr(e.fund as any)),roe:n(f.roe),gross_margin:n(f.gross_margin),revenue_growth:n(f.revenue_growth),earnings_growth:n(f.earnings_growth),
      net_income:n(f.net_income),total_assets:n(f.total_assets),operating_cashflow:n(f.operating_cashflow),
      capex_share:n(investitionsanteil(e.fund).wert),capex_share_source:investitionsanteil(e.fund).quelle,capex_share_period:investitionsanteil(e.fund).periode}})(),
+   // Seit 22.11.2026 (Messung US-Abstand, Entscheidung des Nutzers): Eingänge und Teilwerte des DCF je Titel.
+   dcf_inputs:(()=>{const z=dcfZerlegung(e.fund,fv.playbook),n=(v:unknown,k=10000)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v*k)/k:null,m=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v):null;
+    return {wert:n(z.wert,100),grund:z.grund,fcf_basis:m(z.fcf_basis),fcf_quelle:z.fcf_quelle,conversion:n(z.conversion),g1:n(z.g1),g1_quelle:z.g1_quelle,g_term:n(z.g_term),g_term_quelle:z.g_term_quelle,
+     rf:n(z.rf),rf_quelle:z.rf_quelle,beta:n(z.beta),re:n(z.re),wacc_roh:n(z.wacc_roh),untergrenze:n(z.untergrenze),r:n(z.r),r_bindung:z.r_bindung,fremdanteil:n(z.fremdanteil),
+     pv_explizit:m(z.pv_explizit),pv_endwert:m(z.pv_endwert),nettoschulden:m(z.nettoschulden),aktien:m(z.aktien)}})(),
    fv_check:{reliable:fv.reliable??null,confidence:fv.confidence??null,n_core:Object.keys(fv.core_methods??{}).length,fallback:fv.used_fallback??null},
    target:e.kz?{fundamental:r2(e.kz.ziel_fundamental),analyst:r2(e.kz.ziel_analyst),momentum:r2(e.kz.ziel_momentum),eps:r2(e.kz.eps_annahme),kgv:r1(e.kz.kgv_annahme),kgv_hist:r1(e.kz.kgv_hist)}:null},
   roic_history_status:(e.fund as Row).roic_history_status??null,

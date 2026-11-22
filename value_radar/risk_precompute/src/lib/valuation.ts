@@ -261,21 +261,38 @@ export function reverseDcfInput(fund: Fund): { fund: Fund; quelle: "normalisiert
   return { fund: { ...fund, free_cashflow: b.basis }, quelle: b.quelle };
 }
 
-export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
-  conversion?: number | null): number | null {
-  if (preset === "cyclical") return null;
-  const shares = fund.shares_out;
-  const fcf = fcfBasis(fund, conversion).basis;
-  if (fund.net_debt == null) return null;
-  if (!fcf || !shares || fcf <= 0) return null;
-  const years = Math.max(Math.floor(V.projection_years), 2);
-  const gTerm = terminalGrowth(fund).value;
-  let g1 = fund.revenue_growth;
-  if (g1 === null || g1 === undefined) g1 = fund.earnings_growth ?? 0.06;
+/** Zerlegung des zweistufigen DCF (seit 22.11.2026, Messung US-Abstand): gleiche Rechnung wie bisher, nur mit offengelegten
+ *  Eingängen und Teilwerten. grund nennt, warum kein Wert entsteht. Die Kapitalkosten-Bestandteile stehen einzeln da
+ *  (Zins, Beta, Eigenkapitalkosten, Untergrenze, Mindestabstand zum Endwachstum), damit der Regionsvergleich sie trennen kann. */
+export type DcfZerlegung = {
+  wert: number | null; grund: string | null;
+  fcf_basis: number | null; fcf_quelle: FcfBasis["quelle"] | null; conversion: number | null;
+  g1: number | null; g1_quelle: "umsatz" | "gewinn" | "standard" | null; g_term: number; g_term_quelle: TerminalGrowth["source"];
+  rf: number; rf_quelle: RiskFree["source"]; beta: number; re: number; wacc_roh: number; untergrenze: number;
+  r: number; r_bindung: "wacc" | "untergrenze" | "abstand_endwachstum";
+  fremdanteil: number | null; pv_explizit: number | null; pv_endwert: number | null; nettoschulden: number | null; aktien: number | null;
+};
+export function dcfZerlegung(fund: Fund, preset: Playbook = "quality", conversion?: number | null): DcfZerlegung {
+  const fb = fcfBasis(fund, conversion), rfx = riskFree(fund), tg = terminalGrowth(fund);
+  const beta = fund.beta ?? V.default_beta, re = rfx.value + beta * V.equity_risk_premium;
+  const e = fund.market_cap ?? 0, d = fund.total_debt ?? 0, tot = e + d;
+  const wRoh = tot <= 0 ? re : (e / tot) * re + (d / tot) * (rfx.value + 0.015) * (1 - V.tax_rate);
+  const gTerm = tg.value;
+  let r = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, rfx);
+  let bindung: DcfZerlegung["r_bindung"] = r > wRoh + 1e-12 ? "untergrenze" : "wacc";
+  if (r - gTerm < 0.045) { r = gTerm + 0.045; bindung = "abstand_endwachstum"; }
+  let g1 = fund.revenue_growth, g1q: DcfZerlegung["g1_quelle"] = "umsatz";
+  if (g1 === null || g1 === undefined) { g1 = fund.earnings_growth ?? 0.06; g1q = fund.earnings_growth == null ? "standard" : "gewinn"; }
   const cap = preset === "inflection" ? 0.25 : 0.16;
   g1 = Math.max(Math.min(g1, cap), -0.03);
-  let r = wacc(fund.beta, fund.market_cap, fund.total_debt, undefined, riskFree(fund));
-  if (r - gTerm < 0.045) r = gTerm + 0.045;
+  const out: DcfZerlegung = { wert: null, grund: null, fcf_basis: fb.basis, fcf_quelle: fb.basis ? fb.quelle : null, conversion: fb.conversion,
+    g1, g1_quelle: g1q, g_term: gTerm, g_term_quelle: tg.source, rf: rfx.value, rf_quelle: rfx.source, beta, re, wacc_roh: wRoh, untergrenze: rfx.floor,
+    r, r_bindung: bindung, fremdanteil: tot > 0 ? d / tot : null, pv_explizit: null, pv_endwert: null, nettoschulden: fund.net_debt ?? null, aktien: fund.shares_out ?? null };
+  if (preset === "cyclical") return { ...out, grund: "Zyklisches Modell ohne DCF" };
+  const shares = fund.shares_out, fcf = fb.basis;
+  if (fund.net_debt == null) return { ...out, grund: "Nettoschulden fehlen" };
+  if (!fcf || !shares || fcf <= 0) return { ...out, grund: !shares ? "Aktienzahl fehlt" : "Freier Cashflow fehlt oder ≤ 0" };
+  const years = Math.max(Math.floor(V.projection_years), 2);
   let pv = 0.0, cf = fcf;
   for (let t = 1; t <= years; t++) {
     const gT = g1 + ((gTerm - g1) * (t - 1)) / (years - 1);
@@ -284,7 +301,12 @@ export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
   }
   const terminal = (cf * (1 + gTerm)) / (r - gTerm) / Math.pow(1 + r, years);
   const equity = pv + terminal - (fund.net_debt ?? 0.0);
-  return equity > 0 ? equity / shares : null;
+  return { ...out, pv_explizit: pv, pv_endwert: terminal, wert: equity > 0 ? equity / shares : null, grund: equity > 0 ? null : "Eigenkapitalwert ≤ 0 (Nettoschulden über Unternehmenswert)" };
+}
+
+export function dcfTwoStage(fund: Fund, preset: Playbook = "quality",
+  conversion?: number | null): number | null {
+  return dcfZerlegung(fund, preset, conversion).wert;
 }
 
 /**

@@ -26,3 +26,27 @@ Stand 22.11.2026. Testmonat des Nutzers mit eigenem API-Schlüssel (Secret `ANTH
   - Fehlt eine Einstufung, heißt das nicht „kein Ereignis“.
   - Titel mit vielen Schlagzeilen werden häufiger getroffen; die Zahl der Treffer ist kein Risikomaß.
 - **Tests:** `test_ki.py` (5, API simuliert).
+
+## Erster echter Lauf (22.11.2026)
+
+| | Trends-Einordnung | Ereignis-Vorprüfung |
+|---|---|---|
+| Aufrufe | 1 | 4 (von 8 erlaubten) |
+| Tokens ein / aus | 27.317 / 4.010 | 95.560 / 26.245 |
+| Kosten | 0,0047 $ | 0,0227 $ |
+| Ergebnis | 8 Themen, 4 neue Themen, 4 Aussagen ohne Beleg verworfen | 1.050 Schlagzeilen geprüft: 24 negative Ereignisse, 36 Kanzleiaufrufe, 25 andere Firma; 0 verworfen |
+
+**Abweichungen vom Probelauf:**
+- **Tokens:** Die Eingabe hatte etwa doppelt so viele Tokens wie geschätzt (Schätzung 3,5 Zeichen je Token; tatsächlich rund 1,8). Ein Ereignis-Stapel kostet daher etwa 0,0057 $ statt 0,002 $.
+- **Eigener Fehler:** Der vierte Ereignis-Stapel brach mit `max_tokens` (8.000) ab und wird im nächsten Lauf wiederholt. Behoben: 250 Schlagzeilen je Stapel, 16.000 Antwort-Tokens.
+
+**Neue Kostenschätzung:**
+- Ereignis-Vorprüfung etwa 0,6–0,9 $ pro Monat, bei 800–1.400 neuen Schlagzeilen pro Tag.
+- Trends-Einordnung etwa 0,02 $ pro Monat.
+- Das liegt nahe am Pipeline-Budget von 1 $. Eine Senkung (Antwort ohne Denken, kürzere Begründung) entscheidet der Nutzer.
+
+**Stichprobe der Treffer:** überwiegend plausibel, z. B. Nissan-Hackerangriff, Intuit senkt die Umsatzprognose, Nike erwartet erneut sinkende Umsätze. Bekannte Fehleinstufungen:
+- „HALO Faces Legal Setback … Over MRK's Keytruda“ als negatives Ereignis für Merck, obwohl es Halozyme betrifft;
+- spekulative Fragen wie „JPMorgan Faces Data Leak …: Risks Mount?“ gelten als Ereignis.
+
+Deshalb bleibt die Kennzeichnung „nicht geprüft“.

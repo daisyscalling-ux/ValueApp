@@ -21,9 +21,11 @@ import kosten as KO
 UTC = dt.timezone.utc
 METHOD = 'risk_event_ki_v1'
 FUNKTION = 'risiko_ereignisse'
-BATCH = 350
+# Seit 22.11.2026 (erster echter Lauf): 350 Schlagzeilen ergaben je Aufruf ~24.000 Tokens Eingabe und ~6.500 Ausgabe (Denken
+# eingeschlossen); der vierte Stapel brach mit max_tokens 8000 ab. Jetzt 250 je Stapel und 16.000 Antwort-Tokens.
+BATCH = 250
 MAX_AUFRUFE = 8
-MAX_TOKENS = 8000
+MAX_TOKENS = 16000
 FENSTER_TAGE = 7
 KENNZEICHNUNG = 'KI-Vorprüfung (Claude Haiku 5.5), nicht geprüft'
 KATEGORIEN = ['Ertrag/Prognose', 'Finanzierung/Liquidität', 'Recht/Regulierung', 'Betrieb/Sicherheit', 'Wettbewerb', 'Management/Governance', 'Sonstiges']

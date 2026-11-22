@@ -1,0 +1,1 @@
+{"schema":1,"method":"roic_annual_archive_v1","inputIdentity":{"listing_symbol":"LSE:ROSE","isin":"JE00BSBJ5M88","currency":"GBP"},"quelle":"ROIC enterprise-value (Jahreszeilen)","jahre":{"2025-12-31":{"fiscal_year":2025,"waehrung":"GBP","werte":{"ttm_net_sales":445000000,"ttm_ebitda":-35000000},"erstmals":"2026-11-22","zuletzt":"2026-11-22"}},"aktualisiert":"2026-11-22"}

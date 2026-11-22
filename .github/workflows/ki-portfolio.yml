@@ -1,0 +1,48 @@
+name: ki-portfolio
+# KI-Papierdepot (ki_paper_portfolio_v1, value_radar/ki/portfolio.py): Simulation mit 50.000 € virtuell.
+# Dienstag bis Samstag 04:31 UTC (nach dem Universum-Export mit den Schlusskursen des Vortags) und manuell.
+# Aufträge vom Vortag zum neuen Schlusskurs, Stop-Loss/Take-Profit, dann eine KI-Entscheidung (Claude Haiku 5.5, Anteil 0,40 $/Monat).
+# Ohne Secret laufen Aufträge, Stops und Bewertung trotzdem. Kein echter Handel.
+on:
+  schedule:
+    - cron: '31 4 * * 2-6'
+  workflow_dispatch: {}
+concurrency:
+  group: news-trends
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  depot:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Abhängigkeiten
+        run: pip install anthropic==2.12.0 yfinance==0.2.66
+      - name: Regeln testen (ohne API)
+        run: python -m unittest discover -s value_radar/ki -p 'test_*.py'
+      - name: Depot führen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python value_radar/ki/portfolio.py value_radar/daten
+      - name: Depot, Journal und Kostenprotokoll speichern
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'value-radar-bot'
+          git config user.email 'bot@value-radar'
+          git add value_radar/daten/ki_portfolio
+          if test -s value_radar/daten/ki_kosten.json; then git add value_radar/daten/ki_kosten.json; fi
+          git diff --cached --quiet && exit 0
+          git commit -m 'KI-Papierdepot [skip ci]'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1

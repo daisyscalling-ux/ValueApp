@@ -72,3 +72,42 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 - **Ausgabe je Abschnitt:** ein Lagesatz und bis zu 5 Punkte, jeder mit 1–6 Belegen nur aus dem eigenen Abschnitt. Aktien-Symbole werden nur übernommen, wenn eine zitierte Schlagzeile sie betrifft. Abschnitte mit weniger als 5 Schlagzeilen bleiben offen, mit Grund.
 - **Probelauf der Eingabe** (22.11., Sonntag, ohne API): Markt 117, Aktien 72, Welt 54 Schlagzeilen, rund 14.300 Tokens, also etwa 0,004 $ je Lauf.
 - **Tests:** 3 (API simuliert).
+
+## KI-Papierdepot (`ki_paper_portfolio_v1`, seit 22.11.2026)
+**Simulation mit 50.000 € virtuell.** Kein echter Broker, keine echten Orders, kein Anlagerat. Code: `ki/portfolio.py`, Workflow `ki-portfolio` (Dienstag bis Samstag 04:31 UTC und manuell).
+
+**Entscheidungen des Nutzers (22.11.2026):**
+- **Auswahl:** Die KI wählt frei aus dem ganzen Universum.
+- **Takt:** täglich prüfen und handeln, wenn der Kaufgrund nicht mehr gilt (z. B. schwache Zahlen, schlechte Nachrichten, gekippter Trend).
+- **Regeln:** „ausgewogen“, dazu Nachkaufen erlaubt, wenn der Kurs gefallen ist, die Daten aber gut sind.
+- **Vergleich:** S&P 500 und FTSE All-World.
+
+| Regel | Umsetzung (Code, nicht KI) |
+|---|---|
+| Ausführung | am **nächsten** geprüften Schlusskurs (`exchange_close_v1`), der neuer ist als der bei der Entscheidung. Am Wochenende wird also nicht zum bekannten Freitagskurs ausgeführt. Nicht ausführbare Aufträge verfallen nach 3 Läufen. |
+| Gebühren, Stückelung | 0,1 % je Kauf und Verkauf; nur ganze Stück (japanische Handelseinheiten von 100 Stück sind nicht abgebildet) |
+| Währung | Depot in EUR, Umrechnung mit dem EZB-Referenzkurs (höchstens 5 Tage alt); ohne Kurs kein Handel |
+| Grenzen | höchstens 10 Positionen, 12 % je Titel, 30 % je Branche, mindestens 5 % Cash. Größere Aufträge werden gekürzt, der Grund steht im Journal. |
+| Stop-Loss | −15 % auf den durchschnittlichen Einstand (Notierungswährung), täglich zum Schlusskurs |
+| Take-Profit | +35 %: die Hälfte wird verkauft, für den Rest gilt ein Stop beim Einstand |
+| Nachkauf | nur unter dem Einstand; neuer Einstand als Durchschnitt |
+| KI | Claude Haiku 5.5, `effort: medium`, Antwort als JSON-Schema. Eingabe: Regeln, Depot mit These je Position, Schlagzeilen und KI-Ereignisse der Positionen, Universum kompakt (1.339 Titel, rund 68.000 Tokens). Geprüft: Aktion, Symbol mit geprüftem Kurs, Anteil 0,5–12 %, Teilverkauf 10–90 %, Verkauf nur aus dem Depot, je Symbol eine Entscheidung. Verworfenes steht mit Grund im Journal. |
+| Ohne KI | Aufträge, Stops und Bewertung laufen immer, auch ohne Schlüssel, bei leerem Budget oder unlesbarer Antwort. Dann gibt es an diesem Tag keine neuen Aufträge. |
+| Vergleich | Schlusskurse von SXR8 (iShares Core S&P 500, Xetra, EUR) und VWCE (Vanguard FTSE All-World, Xetra, EUR). Geprüft: Währung EUR, Börse Xetra, höchstens 5 Tage alt. ETFs statt Index, deshalb mit Kosten und Wiederanlage. |
+| Ablage | `daten/ki_portfolio/depot.json` (Stand, Positionen, Aufträge, Tagesverlauf); Journal je Monat `journal/JJJJ-MM.jsonl`, nur anhängen, nie löschen |
+
+**Verzerrungen und Grenzen:**
+- **Nur Schlusskurse:** Ein Stop-Loss greift erst zum Tagesschluss. Kurslücken (z. B. nach Zahlen) können den Verlust über 15 % treiben. Das ist realistisch, aber gröber als ein echter Stop-Auftrag.
+- **Überlebende im Universum:** Das Universum enthält nur heute gelistete Titel. Die KI kann also keine Firma kaufen, die gerade aus dem Universum fällt.
+- **Nicht wiederholbar:** Die KI-Entscheidungen lassen sich nicht exakt wiederholen. Gewertet wird erst nach mehreren Monaten gegen beide Vergleichs-ETFs; einzelne Wochen sind Zufall.
+- **Kosten:** Probelauf der Eingabe am 22.11.: rund 68.000 Tokens, also etwa 0,011 $ je Lauf und rund 0,25 $ im Monat. Anteil 0,40 $.
+
+**Tests:** `test_portfolio.py` (8, API simuliert):
+- Ausführung am Folgetag und nicht zum Wochenendkurs;
+- Gebühr, ganze Stück, Yen;
+- Stop-Loss, Take-Profit und Stop beim Einstand ohne KI;
+- Nachkauf nur unter Einstand mit Durchschnittskurs;
+- Grenzen für Titel, Branche, Cash und Anzahl;
+- Prüfung der KI-Antwort;
+- Budget, zu große Eingabe, unlesbare und unvollständige Antwort;
+- fremdes Depotformat, fehlende Kurse.

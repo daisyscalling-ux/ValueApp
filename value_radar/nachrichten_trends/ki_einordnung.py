@@ -4,7 +4,7 @@ Ein Aufruf von Claude Haiku 5.5 je Lauf (wöchentlich): Die Schlagzeilen der let
 übergeben, das Modell fasst die vorherrschenden Themen zusammen und muss jede Aussage mit Schlagzeilen-IDs belegen.
 Die Pipeline prüft danach jede ID, jedes Symbol und jede Länge; Unbelegtes wird verworfen und gezählt.
 Gekennzeichnet als „KI-Einordnung, nicht geprüft“, scoreContribution 0, kein Kauf- oder Verkaufssignal.
-Kosten: Monatsbudget KI_BUDGET_USD über alle KI-Funktionen (daten/ki_kosten.json); vor dem Aufruf wird gezählt und geschätzt.
+Kosten: fester Monatsanteil der Funktion (value_radar/ki/kosten.py, daten/ki_kosten.json); vor dem Aufruf wird gezählt und geschätzt.
 Doku: value_radar/NACHRICHTEN_TRENDS.md, Abschnitt „KI-Einordnung“.
 """
 import datetime as dt
@@ -15,7 +15,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'ki'))
 import trends as T
+import kosten as KO
 
 UTC = dt.timezone.utc
 METHOD = 'news_trends_ki_v1'
@@ -23,7 +25,7 @@ MODELL = 'claude-haiku-5-5'
 PREIS_EIN, PREIS_AUS = 0.10 / 1e6, 0.50 / 1e6      # USD je Token, Haiku 5.5 bei Prompts bis 100.000 Tokens
 PROMPT_MAX_TOKENS = 90_000                          # darüber gilt der teurere Tarif; wir bleiben deutlich darunter
 MAX_TOKENS = 8000                                   # Antwort inkl. Denken
-KI_BUDGET_USD = 1.00                                # je Kalendermonat, alle KI-Funktionen; Nutzerlimit in der Console 2 $
+FUNKTION = 'trends_einordnung'                      # Budget-Anteil in value_radar/ki/kosten.py (seit 22.11.2026)
 MAX_SCHLAGZEILEN = 400
 TRENDS_MAX_ALTER_H = 36
 MAX_THEMEN, MAX_NEU, MAX_BELEGE = 8, 5, 8
@@ -137,22 +139,6 @@ def pruefen(roh, zeilen):
  return themen, neue, str(roh.get('hinweis', ''))[:400], verworfen
 
 
-def kosten_lesen(pfad, monat):
- d = T.lies(pfad, {'schema': 1, 'monate': {}})
- return d, d['monate'].get(monat, {'usd': 0.0, 'laeufe': 0, 'funktionen': {}})
-
-
-def kosten_buchen(pfad, monat, funktion, usd, tokens_ein, tokens_aus):
- d, m = kosten_lesen(pfad, monat)
- f = m['funktionen'].get(funktion, {'usd': 0.0, 'laeufe': 0})
- m = {'usd': round(m['usd'] + usd, 6), 'laeufe': m['laeufe'] + 1,
-      'funktionen': {**m['funktionen'], funktion: {'usd': round(f['usd'] + usd, 6), 'laeufe': f['laeufe'] + 1}}}
- m['tokens'] = {'ein': (d['monate'].get(monat, {}).get('tokens', {}).get('ein', 0)) + tokens_ein, 'aus': (d['monate'].get(monat, {}).get('tokens', {}).get('aus', 0)) + tokens_aus}
- d['monate'][monat] = m
- T.schreibe(pfad, d)
- return m
-
-
 def ausfuehren(daten, client, jetzt):
  """Gibt (ergebnis|None, grund). Schreibt nichts, wenn kein gültiges Ergebnis entsteht (die letzte Einordnung bleibt)."""
  trends = T.lies(daten / 'cf_trends.json', None)
@@ -168,18 +154,15 @@ def ausfuehren(daten, client, jetzt):
  text = nachricht(zeilen, trends) + ('\n\nKandidaten (ID | Börse:Kürzel | Name | Schlagzeilen):\n<kandidaten>\n' + '\n'.join(
   f"{k['id']} | {k['boerse']}:{k['kuerzel']} | {k['name']} | " + ' || '.join(k['titel']) for k in kand) + '\n</kandidaten>' if kand else '')
  monat = jetzt.strftime('%Y-%m')
- _, m = kosten_lesen(daten / 'ki_kosten.json', monat)
  zaehl = client.messages.count_tokens(model=MODELL, system=SYSTEM, messages=[{'role': 'user', 'content': text}])
  if zaehl.input_tokens > PROMPT_MAX_TOKENS:
   return None, f'Eingabe zu groß ({zaehl.input_tokens} Tokens)'
- hoechstens = zaehl.input_tokens * PREIS_EIN + MAX_TOKENS * PREIS_AUS
- if m['usd'] + hoechstens > KI_BUDGET_USD:
-  return None, f"Monatsbudget erreicht ({m['usd']:.4f} $ von {KI_BUDGET_USD:.2f} $)"
+ if not KO.passt(daten / 'ki_kosten.json', monat, zaehl.input_tokens, MAX_TOKENS, FUNKTION):
+  return None, f"Monatsbudget erreicht (Anteil {KO.ANTEILE[FUNKTION]:.2f} $)"
  antwort = client.messages.create(model=MODELL, max_tokens=MAX_TOKENS, system=SYSTEM,
                                   output_config={'effort': 'medium', 'format': {'type': 'json_schema', 'schema': SCHEMA}},
                                   messages=[{'role': 'user', 'content': text}])
- usd = antwort.usage.input_tokens * PREIS_EIN + antwort.usage.output_tokens * PREIS_AUS
- kosten_buchen(daten / 'ki_kosten.json', monat, 'trends_einordnung', usd, antwort.usage.input_tokens, antwort.usage.output_tokens)
+ usd = KO.buchen(daten / 'ki_kosten.json', monat, FUNKTION, antwort.usage.input_tokens, antwort.usage.output_tokens)
  if antwort.stop_reason != 'end_turn':
   return None, f'Antwort unvollständig ({antwort.stop_reason})'
  roh = json.loads(next(b.text for b in antwort.content if b.type == 'text'))

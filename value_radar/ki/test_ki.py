@@ -47,13 +47,19 @@ class Kosten(unittest.TestCase):
  def test_buchen_und_budget(self):
   with tempfile.TemporaryDirectory() as tmp:
    p = Path(tmp) / 'ki_kosten.json'
-   self.assertTrue(KO.passt(p, '2026-11', 10_000, 8000))
-   usd = KO.buchen(p, '2026-11', 'a', 10_000, 1000); KO.buchen(p, '2026-11', 'b', 10_000, 1000)
+   self.assertTrue(KO.passt(p, '2026-11', 10_000, 8000, 'risiko_ereignisse'))
+   self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'unbekannt'), 'unbekannte Funktion ohne Budget')
+   usd = KO.buchen(p, '2026-11', 'risiko_ereignisse', 10_000, 1000); KO.buchen(p, '2026-11', 'ki_portfolio', 10_000, 1000)
    self.assertAlmostEqual(usd, 10_000 * 0.1 / 1e6 + 1000 * 0.5 / 1e6)
    m = json.loads(p.read_text())['monate']['2026-11']
-   self.assertEqual((m['laeufe'], m['tokens']['ein'], sorted(m['funktionen'])), (2, 20_000, ['a', 'b']))
-   m['usd'] = 0.999; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
-   self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000)); self.assertTrue(KO.passt(p, '2026-12', 10_000, 8000))
+   self.assertEqual((m['laeufe'], m['tokens']['ein'], sorted(m['funktionen'])), (2, 20_000, ['ki_portfolio', 'risiko_ereignisse']))
+   # Anteil der Funktion erschöpft, die anderen laufen weiter
+   m['funktionen']['risiko_ereignisse']['usd'] = 0.8999; m['usd'] = 0.9; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
+   self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'risiko_ereignisse')); self.assertTrue(KO.passt(p, '2026-11', 10_000, 8000, 'ki_portfolio'))
+   self.assertTrue(KO.passt(p, '2026-12', 10_000, 8000, 'risiko_ereignisse'), 'neuer Monat')
+   m['usd'] = 1.5999; p.write_text(json.dumps({'schema': 1, 'monate': {'2026-11': m}}))
+   self.assertFalse(KO.passt(p, '2026-11', 10_000, 8000, 'ki_portfolio'), 'Summe erschöpft')
+   self.assertAlmostEqual(KO.KI_BUDGET_USD, 1.60)
 
 
 class Ereignisse(unittest.TestCase):
@@ -90,7 +96,7 @@ class Ereignisse(unittest.TestCase):
    self.assertEqual(len(c.aufrufe), E.MAX_AUFRUFE); self.assertIn('nächsten Lauf', g); self.assertEqual(len(e['geprueft']), E.BATCH * E.MAX_AUFRUFE)
   with tempfile.TemporaryDirectory() as tmp:
    d = daten(tmp, n=3)
-   (d / 'ki_kosten.json').write_text(json.dumps({'schema': 1, 'monate': {'2026-11': {'usd': 0.9999, 'laeufe': 1, 'funktionen': {}, 'tokens': {'ein': 0, 'aus': 0}}}}))
+   (d / 'ki_kosten.json').write_text(json.dumps({'schema': 1, 'monate': {'2026-11': {'usd': 0.9, 'laeufe': 1, 'funktionen': {'risiko_ereignisse': {'usd': 0.8999, 'laeufe': 1}}, 'tokens': {'ein': 0, 'aus': 0}}}}))
    c = FakeClient(alle_negativ); e, g = E.ausfuehren(d, c, JETZT)
    self.assertEqual(c.aufrufe, []); self.assertEqual(g, 'Monatsbudget erreicht'); self.assertEqual(e['treffer'], [], 'nichts geprüft, nichts behauptet')
   with tempfile.TemporaryDirectory() as tmp:
@@ -114,3 +120,66 @@ class Ereignisse(unittest.TestCase):
 
 if __name__ == '__main__':
  unittest.main()
+
+
+import themen_des_tages as TD
+
+
+def tag_daten(tmp, n_markt=8, n_welt=8, n_akt=8):
+ d = Path(tmp)
+ def feed(prefix, n):
+  return {'version': 1, 'sources': {'q': {'name': 'Q', 'items': [{'title': f'{prefix} story {i}', 'url': f'https://x.com/{prefix}{i}', 'publisher': 'Q',
+                                                                  'publishedAt': (JETZT - dt.timedelta(hours=1, minutes=i)).isoformat()} for i in range(n)]
+                                          + [{'title': 'alt', 'url': 'https://x.com/alt', 'publishedAt': (JETZT - dt.timedelta(hours=30)).isoformat()}]}}}
+ (d / 'cf_news.json').write_text(json.dumps(feed('Markt', n_markt)))
+ (d / 'cf_world_news.json').write_text(json.dumps(feed('Welt', n_welt)))
+ items = [{'title': f'Acme news {i}', 'url': f'https://ex.com/a{i}', 'publisher': 'X', 'publishedAt': (JETZT - dt.timedelta(hours=2, minutes=i)).isoformat()} for i in range(n_akt)]
+ items.append({'title': 'Acme Shares Sold by Big Fund LLC', 'url': 'https://ex.com/r', 'publisher': 'X', 'publishedAt': (JETZT - dt.timedelta(hours=1)).isoformat()})
+ weitere = {f'NYSE:X{k}': {'items': [{**items[k % len(items)], 'title': f'X{k} meldet {j}', 'url': f'https://ex.com/x{k}{j}', 'publishedAt': (JETZT - dt.timedelta(hours=5, minutes=k)).isoformat()} for j in range(2)]} for k in range(3 if n_akt >= 5 else 0)}
+ (d / 'cf_company_news.json').write_text(json.dumps({'schema': 1, 'stocks': {'NYSE:ACME': {'items': items}, **weitere}}))
+ return d
+
+
+def tag_antwort(text):
+ return {'markt': {'lage': 'Ruhig.', 'punkte': [{'text': 'Zinsen.', 'belege': ['m1', 'm2', 'a1', 'm999'], 'aktien': ['NYSE:ACME']}, {'text': 'ohne Beleg', 'belege': ['m999'], 'aktien': []}]},
+         'aktien': {'lage': 'Acme im Fokus.', 'punkte': [{'text': 'Acme meldet.', 'belege': ['a1'], 'aktien': ['NYSE:ACME', 'NYSE:FAKE']}]},
+         'welt': {'lage': 'Wahl.', 'punkte': [{'text': 'Wahl.', 'belege': ['w3'], 'aktien': []}]}}
+
+
+class ThemenDesTages(unittest.TestCase):
+ def test_eingabe(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   e = TD.eingabe(tag_daten(tmp), JETZT)
+   self.assertEqual((len(e['markt']), len(e['welt'])), (8, 8), 'älter als 24 h fällt weg')
+   self.assertEqual(sum(1 for z in e['aktien'] if z['symbol'] == 'NYSE:ACME'), 2, 'höchstens 2 je Titel')
+   self.assertFalse(any('Sold by' in z['title'] for z in e['aktien']), 'keine Routine-Meldungen')
+   self.assertEqual(e['markt'][0]['id'], 'm1'); self.assertEqual(e['welt'][0]['id'], 'w1')
+
+ def test_ablauf_belege_je_abschnitt(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   d = tag_daten(tmp)
+   c = FakeClient(tag_antwort)
+   r, g = TD.ausfuehren(d, c, JETZT)
+   self.assertEqual(g, ''); ab = r['abschnitte']
+   self.assertEqual([len(b['belege']) for b in ab['markt']['punkte']], [2], 'a1 gehört nicht zum Markt, m999 gibt es nicht')
+   self.assertEqual(ab['markt']['punkte'][0]['aktien'], [], 'Symbol ohne zitierte Aktien-Schlagzeile fällt weg')
+   self.assertEqual(ab['aktien']['punkte'][0]['aktien'], ['NYSE:ACME'])
+   self.assertEqual(r['verworfen'], 1 + 1 + 1)
+   self.assertEqual((r['method'], r['scoreContribution']), ('daily_topics_ki_v1', 0)); self.assertIn('nicht geprüft', r['kennzeichnung'])
+   self.assertEqual(c.aufrufe[0]['output_config']['format']['type'], 'json_schema')
+   self.assertIn('themen_des_tages', json.loads((d / 'ki_kosten.json').read_text())['monate']['2026-11']['funktionen'])
+
+ def test_offene_abschnitte_und_abbrueche(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   d = tag_daten(tmp, n_welt=2)
+   r, g = TD.ausfuehren(d, FakeClient(tag_antwort), JETZT)
+   self.assertEqual(r['abschnitte']['welt']['status'], 'offen'); self.assertIn('Zu wenige', r['abschnitte']['welt']['grund'])
+   self.assertIn('<welt>\n\n</welt>', TD.nachricht(TD.eingabe(d, JETZT)), 'zu kleiner Abschnitt geht leer an die KI')
+  with tempfile.TemporaryDirectory() as tmp:
+   d = tag_daten(tmp, 1, 1, 1)
+   self.assertIn('Zu wenige', TD.ausfuehren(d, FakeClient(tag_antwort), JETZT)[1])
+  with tempfile.TemporaryDirectory() as tmp:
+   d = tag_daten(tmp)
+   self.assertIn('max_tokens', TD.ausfuehren(d, FakeClient(tag_antwort, stop='max_tokens'), JETZT)[1])
+   KO.buchen(d / 'ki_kosten.json', '2026-11', 'themen_des_tages', 1_999_000, 0)
+   c = FakeClient(tag_antwort); self.assertIn('Monatsbudget', TD.ausfuehren(d, c, JETZT)[1]); self.assertEqual(c.aufrufe, [])

@@ -121,7 +121,7 @@ def ausfuehren(daten, client, jetzt):
   if n > KO.PROMPT_MAX_TOKENS:
    grund = f'Stapel zu groß ({n} Tokens)'
    break
-  if not KO.passt(daten / 'ki_kosten.json', monat, n, MAX_TOKENS):
+  if not KO.passt(daten / 'ki_kosten.json', monat, n, MAX_TOKENS, FUNKTION):
    grund = 'Monatsbudget erreicht'
    break
   a = client.messages.create(model=KO.MODELL, max_tokens=MAX_TOKENS, system=SYSTEM,

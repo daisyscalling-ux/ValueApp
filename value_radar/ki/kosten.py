@@ -10,7 +10,10 @@ from pathlib import Path
 MODELL = 'claude-haiku-5-5'
 PREIS_EIN, PREIS_AUS = 0.10 / 1e6, 0.50 / 1e6
 PROMPT_MAX_TOKENS = 90_000
-KI_BUDGET_USD = 1.00
+# Feste Anteile je Funktion (seit 22.11.2026, Entscheidung des Nutzers): keine Funktion verdrängt die anderen.
+# Zusammen 1,60 $; dazu 0,30 $ für die Fair-Value-Erklärung in Cloudflare = 1,90 $ unter der Console-Grenze von 2 $.
+ANTEILE = {'risiko_ereignisse': 0.90, 'ki_portfolio': 0.40, 'themen_des_tages': 0.20, 'trends_einordnung': 0.10}
+KI_BUDGET_USD = round(sum(ANTEILE.values()), 2)
 
 
 def lies(pfad):
@@ -22,9 +25,17 @@ def monat_usd(pfad, monat):
  return lies(pfad)['monate'].get(monat, {}).get('usd', 0.0)
 
 
-def passt(pfad, monat, input_tokens, max_tokens):
- """Höchstschätzung des Aufrufs gegen das Monatsbudget."""
- return monat_usd(pfad, monat) + input_tokens * PREIS_EIN + max_tokens * PREIS_AUS <= KI_BUDGET_USD
+def funktion_usd(pfad, monat, funktion):
+ return lies(pfad)['monate'].get(monat, {}).get('funktionen', {}).get(funktion, {}).get('usd', 0.0)
+
+
+def passt(pfad, monat, input_tokens, max_tokens, funktion):
+ """Höchstschätzung des Aufrufs gegen den Anteil der Funktion und gegen die Summe. Unbekannte Funktion: kein Budget."""
+ hoechstens = input_tokens * PREIS_EIN + max_tokens * PREIS_AUS
+ anteil = ANTEILE.get(funktion)
+ if anteil is None:
+  return False
+ return funktion_usd(pfad, monat, funktion) + hoechstens <= anteil and monat_usd(pfad, monat) + hoechstens <= KI_BUDGET_USD
 
 
 def buchen(pfad, monat, funktion, tokens_ein, tokens_aus):

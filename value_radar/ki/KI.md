@@ -143,3 +143,19 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
   - **Nikkei Asia liefert kein Datum.** Dort gilt die Zeit des ersten Abrufs als Ersatz, gekennzeichnet mit `datumErsatz: "erfasst"`; nach 7 Tagen fällt der Artikel weg.
 - **Probelauf der Eingabe** (22.11., ohne API): USA 80, Europa 83, Asien 67, Welt 58 Schlagzeilen, rund 16.000 Tokens. Geschätzt etwa 0,006 $ je Lauf und 0,50 $ im Monat; Anteil 0,70 $.
 - **Tests:** 3 (API simuliert) sowie 2 für die Feeds (Regionen, RDF mit und ohne Datum).
+
+### Zwei Stufen mit vollen Datenblättern (22.11.2026, Entscheidung des Nutzers)
+**Frage des Nutzers:** Wertet die KI die erarbeiteten Werte aus (Finanzkennzahlen, Risiko, Scores)? Bisher nur zum Teil: 15 Spalten je Titel.
+
+| Stufe | Eingabe | Ausgabe |
+|---|---|---|
+| 1 Auswahl (`effort: low`) | Liste aller Titel nach Composite, je Zeile die bisherigen Werte plus Finanzlage, 12M-Ziel in %, Value-Trap und Volatilität (aus `cf_risk.json`) | bis zu 25 Kandidaten; nur Symbole mit geprüftem Kurs |
+| 2 Entscheidung (`effort: medium`) | volles Datenblatt je Kandidat und Position: Fair Value mit Verlässlichkeit und Konfidenz, 12M-Ziel, Analystenziel, Urteil, Phase; alle Scores (Composite, Value, Qualität, Growth, Momentum, Catalyst, Quantum, Finanzlage); KGV, KBV, EV/EBITDA, EPS-Prognose, Erwartungslücke; Umsatzwachstum, EKR, Margen, FCF-Marge, Nettoschulden/EBITDA, Cash-Conversion; Beta, Volatilität, größter Rückgang, Abstand zum Hoch, Value-Trap-Warnung; 3 neueste Schlagzeilen. Dazu Depot und Nachrichten wie bisher. | Entscheidungen. Käufe nur aus der Vorauswahl („nicht in der Vorauswahl“ wird verworfen). |
+
+- **Nicht enthalten: der Risikoscore.** Er wird nur in der App gerechnet (Kurshistorie, Markt, Peers). Stattdessen gehen seine Rohwerte ein (Volatilität, größter Rückgang, Abstand zum Hoch, Beta). Den Score in der Pipeline vorzurechnen wäre eine eigene Aufgabe.
+- **Messung auf den Daten vom 22.11.:**
+  - Stufe 1 rund 78.500 Tokens (unter der Preisgrenze von 100.000), Stufe 2 rund 13.200 Tokens für 25 Kandidaten.
+  - Etwa 0,013 $ je Lauf, rund 0,29 $ im Monat.
+  - Volatilität für 1.325 von 1.339 Titeln.
+- **Budget-Anteil:** Portfolio 0,55 $ (vorher 0,40 $). Pipeline zusammen 2,25 $, mit der Fair-Value-Erklärung 2,55 $, unter der Console-Grenze von 3 $.
+- **Tests:** 1 neu (zwei Stufen, Datenblatt, Vorauswahl); bestehende Tests auf zwei Aufrufe umgestellt.

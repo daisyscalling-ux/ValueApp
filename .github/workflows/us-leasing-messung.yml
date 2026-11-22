@@ -1,0 +1,40 @@
+name: us-leasing-messung
+# Messung US-Leasing in den Nettoschulden (seit 22.11.2026, Entscheidung des Nutzers: erst messen). Nur Messung, kein Commit:
+# Ergebnis als Artefakt und in der Zusammenfassung. Abruf der SEC-companyfacts nur mit SEC_USER_AGENT, hoechstens 2 je Sekunde.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths: ['value_radar/sec_pilot/us_leasing_messung.py', 'value_radar/sec_pilot/test_us_leasing_messung.py', '.github/workflows/us-leasing-messung.yml']
+permissions:
+  contents: read
+concurrency:
+  group: us-leasing-messung-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  messen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Tests
+        run: python -m unittest value_radar/sec_pilot/test_us_leasing_messung.py -v
+      - name: SEC-Leasing je US-Titel messen
+        if: github.event_name != 'pull_request'
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python value_radar/sec_pilot/us_leasing_messung.py
+      - name: Ergebnis anzeigen
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          if test -f us-leasing-output/report.md; then cat us-leasing-output/report.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Ergebnis sichern
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-leasing-messung-${{ github.run_id }}
+          path: us-leasing-output/
+          retention-days: 90
+          if-no-files-found: warn

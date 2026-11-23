@@ -143,6 +143,15 @@ def nb_daten(tmp, n_markt=8, n_europa=8, n_asien=8, n_welt=8):
 
 
 def nb_antwort(text):
+ # Flaches Format (seit 23.11.2026): aus der bisherigen Gliederung erzeugt, plus ein Punkt mit fremdem Abschnitt und eine doppelte Region.
+ alt = nb_antwort_verschachtelt(text)
+ regionen = [{'region': r, 'lage': v['lage'], 'punkte': [{**p, 'abschnitt': k} for k, ps in v.items() if k != 'lage' for p in ps]} for r, v in alt.items()]
+ regionen[3]['punkte'].append({'abschnitt': 'maerkte', 'text': 'falscher Abschnitt', 'belege': ['w1'], 'aktien': []})
+ regionen.append({'region': 'usa', 'lage': 'doppelt', 'punkte': []})
+ return {'regionen': regionen}
+
+
+def nb_antwort_verschachtelt(text):
  leer = {'maerkte': [], 'konjunktur': [], 'industrie': [], 'unternehmen': []}
  return {'usa': {**leer, 'lage': 'Ruhig.', 'maerkte': [{'text': 'Indizes.', 'belege': ['u1', 'u2', 'e1', 'u999'], 'aktien': ['NYSE:ACME']}],
                  'unternehmen': [{'text': 'Acme.', 'belege': ['u9'], 'aktien': ['NYSE:ACME', 'NYSE:FAKE']}, {'text': 'ohne', 'belege': [], 'aktien': []}]},
@@ -170,11 +179,12 @@ class NewsBriefing(unittest.TestCase):
    self.assertEqual(len(us['maerkte'][0]['belege']), 2, 'e1 gehört nicht zu USA, u999 gibt es nicht')
    self.assertEqual(us['maerkte'][0]['aktien'], [], 'Symbol ohne zitierte Aktien-Schlagzeile fällt weg')
    self.assertEqual(us['unternehmen'][0]['aktien'], ['NYSE:ACME'])
-   self.assertEqual(r['verworfen'], 1 + 1 + 1)
+   self.assertEqual(r['verworfen'], 1 + 1 + 1 + 2, 'plus fremder Abschnitt (welt/maerkte) und doppelte Region')
    self.assertEqual(r['regionen']['welt']['abschnitte']['politik'][0]['text'], 'Wahl.')
    self.assertEqual((r['method'], r['scoreContribution']), ('news_briefing_ki_v1', 0)); self.assertIn('nicht geprüft', r['kennzeichnung'])
    self.assertEqual(r['gliederung']['welt']['abschnitte'][0], ['politik', 'Politik'])
    self.assertEqual(c.aufrufe[0]['output_config']['format']['type'], 'json_schema')
+   self.assertEqual(list(c.aufrufe[0]['output_config']['format']['schema']['properties']), ['regionen'], 'flaches Schema')
    self.assertIn('news_briefing', json.loads((d / 'ki_kosten.json').read_text())['monate']['2026-11']['funktionen'])
 
  def test_offene_regionen_und_abbrueche(self):
@@ -193,3 +203,11 @@ class NewsBriefing(unittest.TestCase):
    self.assertIn('max_tokens', NB.ausfuehren(d, FakeClient(nb_antwort, stop='max_tokens'), JETZT)[1])
    KO.buchen(d / 'ki_kosten.json', '2026-11', 'news_briefing', 6_990_000, 0)
    c = FakeClient(nb_antwort); self.assertIn('Monatsbudget', NB.ausfuehren(d, c, JETZT)[1]); self.assertEqual(c.aufrufe, [])
+
+
+class ApiFehler(unittest.TestCase):
+ def test_meldung_der_api_im_protokoll(self):
+  e = SimpleNamespace(status_code=400, body={'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'output_config.format.schema: too   complex'}})
+  self.assertEqual(KO.api_fehler(e), 'API-Fehler 400 (invalid_request_error): output_config.format.schema: too complex')
+  self.assertEqual(KO.api_fehler(SimpleNamespace(status_code=500, body=None, message='')), 'API-Fehler 500')
+  self.assertEqual(len(KO.api_fehler(SimpleNamespace(status_code=400, body={'error': {'message': 'x' * 999}}))), len('API-Fehler 400: ') + 300)

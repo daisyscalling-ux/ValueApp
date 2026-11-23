@@ -25,7 +25,8 @@ BASIS_MIN_TAGE = 21         # weniger erfasste Tage: Verhältnis bleibt offen
 MIN_NENNUNGEN = 5           # darunter kein Trendstatus (kleine Zahlen schwanken zufällig)
 FAKTOR_STEIGEND = 2.0       # aktuell ≥ 2 × Grundwert je Woche
 QUELLE_ANTEIL_MIN = 0.9     # Quelle muss an ≥ 90 % der Tage erfasst sein, sonst zählt sie nicht für Verhältnisse
-MAX_AKTIEN = 200
+MAX_AKTIEN = None           # seit 23.11.2026 alle Aktien (Wunsch des Nutzers; vorher 200 von 953)
+SCHLAGZEILEN_VOLL = 200     # die ersten 200 Aktien mit 3 Schlagzeilen, alle weiteren mit 1 (Dateigröße)
 MAX_BEISPIELE = 5
 
 # Routine-Meldungen (Fondsbestände, Bestandsänderungen) sagen nichts über das Unternehmen; sie werden gezählt, aber getrennt.
@@ -342,7 +343,7 @@ def auswerten(ordner, universum, jetzt):
                         'faktorSteigend': FAKTOR_STEIGEND, 'quelleAnteilMin': QUELLE_ANTEIL_MIN},
          'archiv': {'ersterTag': tage[0] if tage else None, 'erfassteTage': len(tage), 'basisTage': basis_tage, 'fensterTage': len(fenster_tage_liste),
                     'artikelFenster': sum(1 for z in zeilen if im_fenster(z)), 'stabileQuellen': sorted(stabile)},
-         'themen': themen, 'aktien': aktien[:MAX_AKTIEN], 'aktienGesamt': len(aktien), 'kandidaten': kandidaten[:100],
+         'themen': themen, 'aktien': [a if i < SCHLAGZEILEN_VOLL else {**a, 'schlagzeilen': a['schlagzeilen'][:1]} for i, a in enumerate(aktien[:MAX_AKTIEN])], 'aktienGesamt': len(aktien), 'kandidaten': kandidaten[:100],
          'grenzen': [
           'Nur Schlagzeilen, keine Artikeltexte; Schlagwörter erkennen keinen Zusammenhang und keine Ironie.',
           'Unternehmensnachrichten werden je Universumstitel abgefragt (höchstens 30 je Abruf); große Werte sind dadurch gekappt.',

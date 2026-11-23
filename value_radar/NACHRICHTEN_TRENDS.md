@@ -120,3 +120,11 @@ Methode `news_trends_ki_v1`, Code `value_radar/nachrichten_trends/ki_einordnung.
 - **Grenze:** Die Beschreibung stammt nur aus Schlagzeilen und ist kein Firmenprofil. Die Identität bleibt ungeprüft.
 - **Kosten:** etwa 15 × 3 Schlagzeilen mehr, also etwa +2.000 Tokens je Wochenlauf, unter 0,001 $.
 - **Tests:** 3 neu.
+
+## Alle Aktien in der Datei (23.11.2026, Wunsch des Nutzers)
+- **Vorher:** `cf_trends.json` enthielt nur die ersten 200 Aktien (`MAX_AKTIEN`). Die App zeigte „200 von 953“.
+- **Jetzt:** alle Aktien. Ab Platz 201 nur die neueste Schlagzeile (`SCHLAGZEILEN_VOLL`), damit die Datei klein bleibt.
+- **Probelauf auf einer Kopie von main:** 942 Aktien, 718 KB statt 295 KB. Die Grenze im Worker liegt bei 5 MB.
+- **App:** Sie zeigt seitenweise je 200 Zeilen, dazu Comp und Quantum aus der Scanner-Liste (valueapp-cf).
+- **Grundwert:** Archiv seit 21.11.2026; nötig sind mindestens 21 Tage vor dem 7-Tage-Fenster. Grundwert, Verhältnis, „steigend“ und „fallend“ entstehen deshalb um den 12.12.2026.
+- **Tests:** `test_trends.py` neu „alle Aktien, ab Grenze eine Schlagzeile“, 20/20.

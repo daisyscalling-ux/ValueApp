@@ -14,6 +14,8 @@ import {depositaryOrigin} from './depositary';
 import {domesticStandard,DOMESTIC_CAPITAL_REASON,DOMESTIC_LCR_REASON} from './domestic-standard';
 
 type Row=Record<string,any>;
+/** Risikoscore rechnet mit Leasing (seit 23.11.2026): die Bewertung nimmt es bei US-GAAP heraus (fundamental-supplement.ts). */
+const nettoschuldenRisiko=(f:Fund&Row):number|null=>finite((f as Row).net_debt_mit_leasing)?(f as Row).net_debt_mit_leasing as number:finite(f.net_debt)?f.net_debt as number:null;
 export const CONSTRUCT_VERSION='0.9';
 export type Block='Kursrisiko'|'Finanzielle Verwundbarkeit'|'Umfeldstress'|'Bewertungsrisiko'|'Wettbewerbsanfälligkeit';
 export type ConstructMetric=RiskMetric&{block:Block};
@@ -227,10 +229,10 @@ export function specialistFinancialMetrics(fund:Row):ConstructMetric[]{
  const equity=finite(fund.book_value_ps)&&finite(fund.shares_out)&&fund.book_value_ps>0&&fund.shares_out>0?fund.book_value_ps*fund.shares_out:finite(fund.market_cap)&&finite(fund.pb)&&fund.pb>0?fund.market_cap/fund.pb:null;
  const ratio=equity!==null&&finite(fund.total_assets)&&fund.total_assets>0?equity/fund.total_assets:null;
  if(blocked)out.push(open(B,levName,15,'Bilanzdaten widersprüchlich (z. B. Berichts- und Handelswährung verschieden); siehe Datenprüfung der Bewertung.'));
- else if(equity===null||!finite(fund.net_debt))out.push(open(B,levName,15,'Eigenkapital und Nettofinanzschulden aus demselben Abschluss benötigt.'));
+ else if(equity===null||!finite(nettoschuldenRisiko(fund)))out.push(open(B,levName,15,'Eigenkapital und Nettofinanzschulden aus demselben Abschluss benötigt.'));
  else if(ratio===null)out.push(open(B,levName,15,'Bilanzsumme fehlt; Bilanzstruktur nicht prüfbar.'));
  else if(ratio<SPECIALIST_MIN_EQUITY_RATIO)out.push(open(B,levName,15,'Eigenkapital nur '+pct(ratio)+' der Bilanzsumme: Die Bilanz enthält Kunden-, Clearing- oder Bankvermögen. Verschuldungskennzahl nicht aussagekräftig; dafür wären geprüfte Kapitalquoten nötig.'));
- else{const x=fund.net_debt/equity;out.push(metric(B,levName,15,lin(x,.5,3),x.toLocaleString('de-DE',{maximumFractionDigits:2})+'× (Eigenkapital '+pct(ratio,0)+' der Bilanz)','Finanzschulden minus Kasse im Verhältnis zum bilanziellen Eigenkapital. 0 Punkte bis 0,5×, 100 Punkte ab 3×; Netto-Kasse zählt 0. Leasing- und Konsumkreditgeschäft ist naturgemäß fremdfinanziert, Beteiligungsholdings können stille Reserven haben.'))}
+ else{const x=nettoschuldenRisiko(fund)!/equity;out.push(metric(B,levName,15,lin(x,.5,3),x.toLocaleString('de-DE',{maximumFractionDigits:2})+'× (Eigenkapital '+pct(ratio,0)+' der Bilanz)','Finanzschulden minus Kasse im Verhältnis zum bilanziellen Eigenkapital. 0 Punkte bis 0,5×, 100 Punkte ab 3×; Netto-Kasse zählt 0. Leasing- und Konsumkreditgeschäft ist naturgemäß fremdfinanziert, Beteiligungsholdings können stille Reserven haben.'))}
  const roe=fund.roe;
  if(!finite(roe)||roe<=-1||roe>=2)out.push(open(B,roeName,10,'Gültige Eigenkapitalrendite des letzten Geschäftsjahres fehlt.'));
  else out.push(metric(B,roeName,10,lin(roe,.12,0),pct(roe),'Jahresergebnis / Eigenkapital des letzten Geschäftsjahres. 0 Punkte ab 12 %, 100 Punkte bei 0 % oder Verlust. Ein Jahr; Bewertungsgewinne von Beteiligungen können schwanken.'));

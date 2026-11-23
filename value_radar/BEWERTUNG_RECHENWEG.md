@@ -903,3 +903,9 @@ Regeln, Messung und Grenzen stehen in valueapp-cf `BEWERTUNG-RISIKODATEN.md`, Ab
 Probelauf auf main: Universumsweit 27 Titel mit Gewinnknick und 15 mit Finanzsparte. 6 Fair Values ändern sich, weil der DCF im Kern war: Porsche AG +3,6 %, Mazda +22,7 %, Subaru +7,0 %, Carrefour +29,1 %, STMicro +21,5 %, Tesla +40,6 % (Näherung).
 
 US-Leasing: Unter US-GAAP mindert die Miete den operativen Cashflow, „Total Debt“ (Yahoo) enthält die Mietverpflichtungen aber zusätzlich (MGM 31 Mrd $). Das zählt doppelt. Die Wirkung wird vor einer Methodenänderung gemessen (Entscheidung des Nutzers).
+
+## US-Leasing aus den Nettoschulden der Bewertung (23.11.2026)
+- **Messung** (`us-leasing-messung`, 416 US-Titel): Total Debt enthält das Operating-Leasing bei 195, bei 77 nicht, 144 nicht prüfbar. Ohne Leasing steigt der DCF je Titel im Median um 2,1 %, bei 19 Titeln um mehr als 10 %. DCF/Kurs im Median 0,556 → 0,573, also kaum Einfluss auf den US-Abstand.
+- **Regel** (Entscheidung des Nutzers): `fundamental_export/operating_lease.py` schreibt den Block `operating_lease` (Methode `us_operating_lease_v1`) in die Ergänzungsdatei, aus derselben SEC-Antwort wie der Jahresabschluss, ohne zusätzlichen Abruf. Die App rechnet nur bei belegtem „enthalten“ ohne Leasing (`applyOperatingLease`); der Risikoscore behält es. Details: valueapp-cf `BEWERTUNG-RISIKODATEN.md`.
+- **Wirksam:** nach dem nächsten `fundamentals-daily` (je Titel beim Neuabruf) und `precompute-3tage`.
+- **Tests:** `fundamental_export/test_operating_lease.py` (im Workflow `fundamentals-daily`), App `tests/operating-lease.test.mjs`.

@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "gov_10y_v1",
- "generated_at": "2026-11-21T13:36:37.827418+00:00",
+ "generated_at": "2026-11-23T16:14:26.916037+00:00",
  "max_age_days": 7,
  "rates": {
   "USD": {
@@ -10,15 +10,15 @@
    "source": "U.S. Treasury, Daily Treasury Par Yield Curve, 10 Yr",
    "source_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&field_tdr_date_value=2026",
    "sha256": "3a48daf1c889672fedc4643d8c2fc0a46b99eadf4af5a8780b11996eaff11df4",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "EUR": {
-   "value": 0.034415,
-   "as_of": "2026-11-19",
+   "value": 0.033608,
+   "as_of": "2026-11-20",
    "source": "EZB, Zinsstrukturkurve Euroraum AAA, 10 Jahre (YC)",
    "source_url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y?lastNObservations=3&format=csvdata",
-   "sha256": "3489cb24c571240943a398cd46a1f1e0d8e8e1be253b0232e420eb59644fbf1c",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "sha256": "de60a32d43f8183eaa895418f1e69c4cad9e668562dacff8ba43fdd95e4b085d",
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "JPY": {
    "value": 0.0287,
@@ -26,15 +26,15 @@
    "source": "Japanisches Finanzministerium, JGB Interest Rate, 10Y",
    "source_url": "https://www.mof.go.jp/english/policy/jgbs/reference/interest_rate/jgbcme.csv",
    "sha256": "79e31647a4e73282062c78917b867da10af16c3059f6fbb02ad44d3991a0f464",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "GBP": {
-   "value": 0.052894,
-   "as_of": "2026-11-18",
+   "value": 0.053035,
+   "as_of": "2026-11-19",
    "source": "Bank of England, IUDMNZC (10 Jahre nominal, Nullkupon)",
-   "source_url": "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=01/Nov/2026&Dateto=now&SeriesCodes=IUDMNZC&CSVF=TN&UsingCodes=Y",
-   "sha256": "72f61499f633a509ec2280886572002eabda9c059fea2cf0774efc926cfee7cf",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "source_url": "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=03/Nov/2026&Dateto=now&SeriesCodes=IUDMNZC&CSVF=TN&UsingCodes=Y",
+   "sha256": "0a4b6d6e5d2157d2d93914af5a54480fc7e08b31ba60b3f1751baab2bd87c2d2",
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "SEK": {
    "value": 0.03004,
@@ -42,15 +42,15 @@
    "source": "Sveriges Riksbank, SEGVB10YC (Staatsanleihe 10 Jahre)",
    "source_url": "https://api.riksbank.se/swea/v1/Observations/Latest/SEGVB10YC",
    "sha256": "221cccd4e48291c8741981ad82f9ba1e70633dccd0687d682fc380f9ed26cd60",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "NOK": {
-   "value": 0.04323,
-   "as_of": "2026-11-19",
+   "value": 0.04246,
+   "as_of": "2026-11-20",
    "source": "Norges Bank, GOVT_GENERIC_RATES 10Y (Staatsanleihe)",
    "source_url": "https://data.norges-bank.no/api/data/GOVT_GENERIC_RATES/B.10Y.GBON?format=csv&lastNObservations=3&locale=en",
-   "sha256": "b4fdd45d59834335836970ca9f6ed0923534f950a87f539935a18c7be5bfb5bc",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "sha256": "2bfeee8028ab7c92365b9914093de8731970170db75f65922137639f9a04e966",
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "DKK": {
    "value": 0.03228,
@@ -60,7 +60,7 @@
    "source": "EZB, Langfristige Zinssaetze Daenemark (IRS, Monatswert)",
    "source_url": "https://data-api.ecb.europa.eu/service/data/IRS/M.DK.L.L40.CI.0000.DKK.N.Z?lastNObservations=3&format=csvdata",
    "sha256": "3ab2dabb152508dee553db6390102dfc13e5362e41bd20ac14298743edb61e4b",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   },
   "PLN": {
    "value": 0.0632,
@@ -70,7 +70,7 @@
    "source": "EZB, Langfristige Zinssaetze Polen (IRS, Monatswert)",
    "source_url": "https://data-api.ecb.europa.eu/service/data/IRS/M.PL.L.L40.CI.0000.PLN.N.Z?lastNObservations=3&format=csvdata",
    "sha256": "5e315d7126bd20c85767f5eaf05b586b824dc909276c384ce8bf8224dbe48f0c",
-   "retrieved_at": "2026-11-21T13:36:37.827418+00:00"
+   "retrieved_at": "2026-11-23T16:14:26.916037+00:00"
   }
  },
  "issues": {

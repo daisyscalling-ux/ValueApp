@@ -152,6 +152,31 @@ class Wechselkurs(unittest.TestCase):
    self.assertEqual(w.depot()['verlauf'][-1]['wert_eur'], 50_000, 'Cash in EUR braucht keinen Kurs')
 
 
+class Waechter(unittest.TestCase):
+ def test_zu_grosse_auswahl_wird_nach_composite_gekuerzt(self):
+  # Seit 23.11.2026: Liste über PROMPT_MAX_TOKENS -> schwächste Viertel weg, statt den ganzen Lauf ausfallen zu lassen.
+  with tempfile.TemporaryDirectory() as tmp:
+   w = Welt(tmp)
+   w.kurse('2026-11-20', {'NYSE:AAA': 100, 'NYSE:BBB': 50, 'TSE:7203': 3000, 'NYSE:CCC': 20})
+   c = FakeClient([kauf('NYSE:AAA')])
+   zaehl = []
+   def count(**kw):
+    t = kw['messages'][0]['content']; zaehl.append(t)
+    return SimpleNamespace(input_tokens=95_000 if '<universum>' in t and t.count('NYSE:') + t.count('TSE:') > 3 else 60_000)
+   c.messages.count_tokens = count
+   P.lauf(w.d, c, dt.datetime(2026, 11, 24, 5, tzinfo=UTC))
+   st = w.depot()['stand']
+   self.assertIsNotNone(st['ki'], st.get('ki_grund'))
+   self.assertEqual(st['ki']['auswahl_gekuerzt_auf'], 3)
+   self.assertEqual(len(w.depot()['auftraege']), 1)
+
+ def test_liste_ohne_kurs_und_fair_value(self):
+  u = {'kandidaten': [{**zeile('NYSE:Z', 10, '2026-11-23'), 'composite': 80, 'kauf_urteil': 'beobachten', 'fair_value': 12.34}]}
+  t = P.universum_text(u, P.kurse(u, T0.date()))
+  self.assertNotIn('12.34', t); self.assertTrue(t.rstrip().endswith('|beob'))
+  self.assertEqual(len(P.universum_text(u, P.kurse(u, T0.date()), max_zeilen=0).split('\n')), 1)
+
+
 class Sortierung(unittest.TestCase):
  def test_nach_composite_mit_region(self):
   u = {'kandidaten': [{**zeile('ATHEX:A', 10, '2026-11-23', 'EUR'), 'composite': 50, 'country': 'GR'}, {**zeile('NYSE:Z', 10, '2026-11-23'), 'composite': 90, 'country': 'US'},
@@ -211,7 +236,7 @@ class KiAntworten(unittest.TestCase):
    kw = c.aufrufe[0]; text = kw['messages'][0]['content']
    self.assertEqual(kw['model'], 'claude-haiku-5-5'); self.assertEqual(kw['output_config']['format']['type'], 'json_schema')
    self.assertIn('<universum>', text); self.assertIn('NYSE:AAA|AAA Inc', text); self.assertNotIn('NYSE:ALT', text, 'veralteter Kurs nicht im Angebot'); self.assertNotIn('NYSE:UNG', text)
-   self.assertIn('Finanzlage|Ziel12M%|ValueTrap|Vol%', text)
+   self.assertIn('Bilanz|Ziel12M%|VT|Vol%|Urteil', text); self.assertNotIn('FairValue', text)
    self.assertEqual(len(c.aufrufe), 1, 'ohne Kandidaten und Positionen keine zweite Stufe')
    self.assertEqual(P.lauf(w.d, c, T0)['grund'], 'Heute schon gelaufen'); self.assertEqual(len(c.aufrufe), 1)
 

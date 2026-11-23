@@ -61,7 +61,7 @@
   {
    "app": "src/lib/lifecycle.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/lifecycle.ts",
-   "sha256": "d736afc58b35ee15809e8b5166572588a2c47a3fca3d674f600b1f0e953c677c"
+   "sha256": "8a99998f9a519ed772ee2875a4d9c37ed651d7e4306d2d0ee98e0f176bf72e6c"
   },
   {
    "app": "src/lib/listing-identity.ts",
@@ -146,7 +146,7 @@
   {
    "app": "src/lib/valuation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/valuation.ts",
-   "sha256": "7f7a033df4c3b439f5ffddc120a29322700a00b6195d074c30876f387144a173"
+   "sha256": "6d8f93e486e39ac29aad46f08ec66f0d90b307d69e41105e0d5ea4d23bfc0302"
   },
   {
    "app": "src/risk_capital_requirement_view.ts",

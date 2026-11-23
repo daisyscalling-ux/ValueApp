@@ -151,6 +151,22 @@ class Archiv(unittest.TestCase):
   with self.assertRaises(SystemExit):
    T.main(Path(self.tmp.name) / 'leer', JETZT)
 
+ def test_alle_aktien_ab_grenze_eine_schlagzeile(self):
+  # Seit 23.11.2026 alle Aktien; ab SCHLAGZEILEN_VOLL nur noch die neueste Schlagzeile (Dateigröße).
+  self.assertIsNone(T.MAX_AKTIEN)
+  daten = Path(self.tmp.name)
+  (daten / 'cf_company_news.json').write_text(json.dumps(company({'NASDAQ:AAPL': stock(['Apple AI one', 'Apple AI two', 'Apple AI three'])})))
+  (daten / 'cf_universum.json').write_text(json.dumps(UNIVERSUM))
+  alt = T.SCHLAGZEILEN_VOLL
+  try:
+   T.SCHLAGZEILEN_VOLL = 0
+   T.main(daten, JETZT)
+  finally:
+   T.SCHLAGZEILEN_VOLL = alt
+  e = json.loads((daten / 'cf_trends.json').read_text())
+  self.assertEqual(len(e['aktien']), e['aktienGesamt'])
+  self.assertTrue(all(len(a['schlagzeilen']) <= 1 for a in e['aktien']))
+
 
 if __name__ == '__main__':
  unittest.main()

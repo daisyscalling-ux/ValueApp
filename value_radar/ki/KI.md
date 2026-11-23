@@ -14,7 +14,7 @@ Stand 22.11.2026. Testmonat des Nutzers mit eigenem API-Schlüssel (Secret `ANTH
   | Ereignis-Vorprüfung | 0,90 $ |
   | News-Briefing (seit 22.11. statt „Themen des Tages“ mit 0,20 $) | 0,70 $ |
   | KI-Portfolio | 0,40 $ |
-  | Trends-Einordnung | 0,10 $ |
+  | Trends-Einordnung | 0,20 $ (bis 22.11.2026: 0,10 $) |
   | **Pipeline zusammen** | **2,10 $** |
   | Fair-Value-Erklärung (Cloudflare) | 0,30 $ |
 
@@ -24,7 +24,7 @@ Stand 22.11.2026. Testmonat des Nutzers mit eigenem API-Schlüssel (Secret `ANTH
 
 | Funktion | Methode | Takt | geschätzte Kosten pro Monat |
 |---|---|---|---:|
-| Trends-Einordnung | `news_trends_ki_v1` (`nachrichten_trends/ki_einordnung.py`) | montags | ~0,01 $ |
+| Trends-Einordnung | `news_trends_ki_v1` (`nachrichten_trends/ki_einordnung.py`) | täglich 9 Uhr (bis 22.11.2026 montags) | ~0,17 $ |
 | Vorprüfung negativer Ereignisse | `risk_event_ki_v1` (`ki/ereignisse.py`) | täglich | ~0,6–0,9 $ (gemessen 22.11.) |
 | News-Briefing (ersetzt Themen des Tages) | `news_briefing_ki_v1` (`ki/news_briefing.py`) | dreimal täglich | ~0,50 $ |
 
@@ -159,3 +159,26 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
   - Volatilität für 1.325 von 1.339 Titeln.
 - **Budget-Anteil:** Portfolio 0,55 $ (vorher 0,40 $). Pipeline zusammen 2,25 $, mit der Fair-Value-Erklärung 2,55 $, unter der Console-Grenze von 3 $.
 - **Tests:** 1 neu (zwei Stufen, Datenblatt, Vorauswahl); bestehende Tests auf zwei Aufrufe umgestellt.
+
+## Pünktliche Läufe über den Cloudflare-Worker, Wochenbild täglich (23.11.2026, Entscheidung des Nutzers)
+
+**Befund:**
+- Das Wochenbild (Trends-Einordnung) lief nur montags um 07:31 UTC. Der Lauf vom 23.11. war um 10 Uhr UTC noch nicht gestartet.
+- GitHub startet geplante Läufe oft Stunden zu spät. Beispiele: `news-trends` geplant 11:13 UTC, gelaufen 18:29 UTC. `news-briefing` geplant 21:27 UTC, gelaufen 01:53 UTC.
+- Eigener Fehler: `news-briefing`, `news-trends`, `news-trends-ki`, `ki-ereignisse` und `ki-portfolio` teilten sich die Concurrency-Gruppe `news-trends`. GitHub hält je Gruppe nur einen wartenden Lauf und verwirft den älteren wartenden. So konnten Läufe stillschweigend entfallen.
+
+**Änderung:**
+
+| Lauf | Start durch den Worker (Berliner Zeit) | GitHub-Rückfall (UTC) | Sperre beim Rückfall |
+|---|---|---|---|
+| market-news | 6:30, 13:30, 21:30 | stündlich (wie bisher) | keine (keine KI) |
+| news-briefing | 7:00, 14:00, 22:00 | 7:13, 14:13, 22:13 | Briefing jünger als 4 h |
+| news-trends | 8:30, 20:30 | 11:13, 23:13 | keine (keine KI) |
+| news-trends-ki (Wochenbild) | 9:00 täglich | 10:17 | heute (Berliner Datum) schon erstellt |
+
+- **Worker:** `worker/laufplan.ts` in valueapp-cf, Cron alle 30 Minuten. Er startet die Läufe per `workflow_dispatch` mit `QUANTUM_GITHUB_TOKEN` (Actions: schreiben, nur ValueApp). Jeder Start wird je Tag im KV vermerkt und höchstens einmal ausgelöst. Schlägt er fehl, versucht der Worker es beim nächsten Tick noch einmal, längstens 3 Stunden.
+- **Rückfall:** Läufe vom Worker (`workflow_dispatch`) laufen immer. Ein geplanter GitHub-Lauf prüft vorher `value_radar/ki/laufwache.py` und überspringt, wenn das Ergebnis schon frisch ist. So entsteht kein doppelter, kostenpflichtiger Aufruf.
+- **Warteschlangen:** Jede KI-Workflow-Datei hat eine eigene Concurrency-Gruppe. Gleichzeitige Pushes fängt der vorhandene `git pull --rebase` mit 3 Versuchen ab.
+- **Wochenbild:** Es wird jeden Morgen über die letzten 7 Tage neu geschrieben, rund 0,0055 $ je Lauf, also etwa 0,17 $ im Monat. Der Budgetanteil steigt von 0,10 auf 0,20 $. Pipeline zusammen 2,35 $, mit der Fair-Value-Erklärung 2,65 $, unter der Console-Grenze von 3 $.
+
+**Tests:** `ki/test_laufwache.py` prüft nur geplante Läufe, das Berliner Datum über Mitternacht UTC, alte, fehlende und kaputte Dateien, Zeitzone und Zukunftsdaten. Die Budget-Tests sind an 2,35 $ und 0,20 $ angepasst.

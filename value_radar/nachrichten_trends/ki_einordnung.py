@@ -1,6 +1,6 @@
 """KI-Einordnung der Nachrichten-Trends (news_trends_ki_v1, seit 22.11.2026, Testmonat des Nutzers).
 
-Ein Aufruf von Claude Haiku 5.5 je Lauf (wöchentlich): Die Schlagzeilen der letzten 7 Tage aus dem Archiv werden als Daten
+Ein Aufruf von Claude Haiku 5.5 je Lauf (täglich um 9 Uhr, gleitend über 7 Tage; bis 22.11.2026 wöchentlich): Die Schlagzeilen der letzten 7 Tage aus dem Archiv werden als Daten
 übergeben, das Modell fasst die vorherrschenden Themen zusammen und muss jede Aussage mit Schlagzeilen-IDs belegen.
 Die Pipeline prüft danach jede ID, jedes Symbol und jede Länge; Unbelegtes wird verworfen und gezählt.
 Gekennzeichnet als „KI-Einordnung, nicht geprüft“, scoreContribution 0, kein Kauf- oder Verkaufssignal.
@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'ki'))
 import trends as T
 import kosten as KO
+import laufwache as LW
 
 UTC = dt.timezone.utc
 METHOD = 'news_trends_ki_v1'
@@ -183,6 +184,11 @@ def ausfuehren(daten, client, jetzt):
 
 def main(daten=Path('value_radar/daten'), jetzt=None):
  jetzt = jetzt or dt.datetime.now(UTC)
+ # Rückfall-Zeitplan: höchstens ein Wochenbild je Tag (Berliner Datum), wenn der Worker den Lauf schon gestartet hat.
+ warum = LW.schon_frisch(daten / 'cf_trends_ki.json', jetzt, os.environ.get('LAUF_ANLASS', ''), gleicher_tag=True)
+ if warum:
+  print(f'KI-Einordnung übersprungen: {warum}.')
+  return 0
  if not os.environ.get('ANTHROPIC_API_KEY'):
   print('Kein ANTHROPIC_API_KEY: KI-Einordnung übersprungen.')
   return 0

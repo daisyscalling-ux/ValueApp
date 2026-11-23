@@ -13,7 +13,9 @@ PROMPT_MAX_TOKENS = 90_000
 # Feste Anteile je Funktion (seit 22.11.2026, Entscheidungen des Nutzers): keine Funktion verdrängt die anderen.
 # News-Briefing (dreimal täglich, ersetzt Themen des Tages) 0,70 $; zusammen 2,10 $, dazu 0,30 $ für die Fair-Value-Erklärung
 # in Cloudflare = 2,40 $ unter der Console-Grenze von 3 $ (vom Nutzer am 22.11.2026 erhöht). KI-Portfolio seit 22.11. zweistufig: 0,55 $.
-ANTEILE = {'risiko_ereignisse': 0.90, 'news_briefing': 0.70, 'ki_portfolio': 0.55, 'trends_einordnung': 0.10}
+# Wochenbild seit 23.11.2026 täglich statt wöchentlich (Entscheidung des Nutzers): 0,10 -> 0,20 $ (rund 0,0055 $ je Lauf);
+# Summe 2,35 $ + 0,30 $ Cloudflare = 2,65 $ unter 3 $.
+ANTEILE = {'risiko_ereignisse': 0.90, 'news_briefing': 0.70, 'ki_portfolio': 0.55, 'trends_einordnung': 0.20}
 KI_BUDGET_USD = round(sum(ANTEILE.values()), 2)
 
 

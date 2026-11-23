@@ -53,3 +53,13 @@ def buchen(pfad, monat, funktion, tokens_ein, tokens_aus):
  p = Path(pfad); p.parent.mkdir(parents=True, exist_ok=True)
  tmp = p.with_suffix('.tmp'); tmp.write_text(json.dumps(d, ensure_ascii=False, separators=(',', ':')), encoding='utf8'); tmp.replace(p)
  return usd
+
+
+def api_fehler(e):
+ """Lesbarer Grund eines API-Fehlers für das Protokoll (seit 23.11.2026; vorher nur die Nummer, z. B. „API-Fehler 400“).
+ Nur Statuscode, Fehlertyp und die Meldung der API, gekürzt; nie Anfrageinhalte oder Schlüssel."""
+ body = getattr(e, 'body', None)
+ err = body.get('error') if isinstance(body, dict) and isinstance(body.get('error'), dict) else {}
+ text = ' '.join(str(err.get('message') or getattr(e, 'message', '') or '').split())[:300]
+ typ = str(err.get('type') or '')[:40]
+ return f"API-Fehler {getattr(e, 'status_code', '?')}" + (f' ({typ})' if typ else '') + (f': {text}' if text else '')

@@ -267,18 +267,26 @@ def region(r):
  return REGION.get(c, 'Europa' if c in ('DE', 'FR', 'CH', 'SE', 'IT', 'NL', 'ES', 'DK', 'NO', 'PL', 'FI', 'BE', 'GR', 'AT', 'IE', 'PT', 'LU', 'CZ', 'HU') else 'übrige')
 
 
-def universum_text(universum, k, risiko=None):
+# Auswahlliste (Stufe 1) kompakt (seit 23.11.2026): Der Lauf vom 23.11. scheiterte mit 97.628 Tokens über PROMPT_MAX_TOKENS
+# (90.000), nachdem Finanzlage, Ziel, Value-Trap und Volatilität dazukamen. Kurs, Fair Value und Währung entfallen hier
+# (Upside% enthält das Verhältnis; volle Werte stehen in den Datenblättern der Stufe 2), Namen 18 Zeichen, Kurzformen.
+# Gemessen auf main: 142.003 → rund 100.000 Zeichen, also etwa 69.000 Tokens. Zusätzlich Wächter in ki_entscheiden.
+URTEIL_KURZ = {'kauf': 'kauf', 'beobachten': 'beob', 'meiden': 'meid', 'Daten prüfen': 'prüf'}
+
+
+def universum_text(universum, k, risiko=None, max_zeilen=None):
  """Kompakte Zeile je Titel mit geprüftem Kurs, nach Composite absteigend (seit 22.11.2026, Entscheidung des Nutzers;
- vorher alphabetisch, siehe STORNO). Titel ohne Composite am Ende; bei Gleichstand nach Notierung."""
- z = ['Symbol|Name|Region|Branche|Währung|Kurs|FairValue|Upside%|FV verlässlich|Composite|Momentum|Qualität|KGV|Umsatzwachstum%|Finanzlage|Ziel12M%|ValueTrap|Vol%|Urteil']
+ vorher alphabetisch, siehe STORNO). Titel ohne Composite am Ende; bei Gleichstand nach Notierung.
+ max_zeilen: nur die ersten n Zeilen (Wächter bei zu großer Eingabe; gekennzeichnet im Ergebnis)."""
+ z = ['Symbol|Name|Region|Branche|Upside%|FVok|Comp|Mom|Qual|KGV|Umsatz%|Bilanz|Ziel12M%|VT|Vol%|Urteil']
  rows = [r for r in (universum or {}).get('kandidaten', []) if r.get('listing_symbol') in k]
  rows.sort(key=lambda r: (-(r['composite']) if isinstance(r.get('composite'), (int, float)) else float('inf'), r['listing_symbol']))
- for r in rows:
+ for r in rows[:max_zeilen]:
   s = r['listing_symbol']
-  z.append('|'.join([s, str(r.get('name', ''))[:28], region(r), str(r.get('sector', ''))[:14], k[s]['waehrung'], _f(k[s]['kurs'], 2), _f(r.get('fair_value'), 2), _f(r.get('upside')),
-                     'ja' if r.get('fv_reliable') else 'nein', _f(r.get('composite'), 0), _f(r.get('momentum'), 0), _f(r.get('quality'), 0), _f(r.get('pe')),
-                     _f(r.get('revenue_growth')), _f(r.get('health'), 0), _f(ziel_pct(r, k[s]['kurs']), 0), 'ja' if r.get('value_trap') else '',
-                     _f(vol(risiko, s), 0), str(r.get('kauf_urteil', ''))[:9]]))
+  z.append('|'.join([s, str(r.get('name', ''))[:18], region(r), str(r.get('sector', ''))[:14], _f(r.get('upside'), 0),
+                     'j' if r.get('fv_reliable') else 'n', _f(r.get('composite'), 0), _f(r.get('momentum'), 0), _f(r.get('quality'), 0), _f(r.get('pe'), 0),
+                     _f(r.get('revenue_growth'), 0), _f(r.get('health'), 0), _f(ziel_pct(r, k[s]['kurs']), 0), 'j' if r.get('value_trap') else '',
+                     _f(vol(risiko, s), 0), URTEIL_KURZ.get(str(r.get('kauf_urteil', '')), '')]))
  return '\n'.join(z)
 
 
@@ -398,7 +406,16 @@ def ki_entscheiden(daten, client, depot, k, ecb, universum, heute, jetzt, eintra
  regeln = (f"Heute: {heute.isoformat()}\nRegeln: höchstens {MAX_POSITIONEN} Positionen, höchstens {MAX_TITEL:.0%} je Titel, {MAX_BRANCHE:.0%} je Branche, mindestens {MIN_CASH:.0%} Cash, "
            f"Stop-Loss −{STOP_LOSS:.0%}, Take-Profit +{TAKE_PROFIT:.0%} (Hälfte), Gebühr {GEBUEHR:.1%}, Ausführung am nächsten Schlusskurs.\n\n<depot>\n{depot_text(depot, k, ecb, heute)}\n</depot>")
  monat = jetzt.strftime('%Y-%m')
- text1 = f"{regeln}\n\n<universum>\n{universum_text(universum, k, risiko)}\n</universum>"
+ # Wächter (seit 23.11.2026): passt die Liste nicht unter PROMPT_MAX_TOKENS, fallen die Titel mit dem niedrigsten Composite
+ # weg (je Schritt ein Viertel), höchstens zweimal; die Kürzung steht im Ergebnis. Ohne Wächter fiel der ganze Tag aus.
+ legende = 'Spalten: FVok = Fair Value verlässlich (j/n), Comp/Mom/Qual = Composite/Momentum/Qualität, Bilanz = Finanzlage, VT = Value-Trap (j), Urteil kauf/beob(achten)/meid(en)/prüf(en).'
+ n_zeilen, gekuerzt = None, None
+ for _ in range(3):
+  text1 = f"{regeln}\n\n{legende}\n<universum>\n{universum_text(universum, k, risiko, n_zeilen)}\n</universum>"
+  if client.messages.count_tokens(model=KO.MODELL, system=SYSTEM_AUSWAHL, messages=[{'role': 'user', 'content': text1}]).input_tokens <= KO.PROMPT_MAX_TOKENS:
+   break
+  alle = universum_text(universum, k, risiko).count('\n') if n_zeilen is None else n_zeilen   # Titelzeilen ohne Kopf
+  n_zeilen = gekuerzt = int(alle * 0.75)
  roh1, grund, info1 = _aufruf(daten, client, SYSTEM_AUSWAHL, text1, SCHEMA_AUSWAHL, 'low', monat)
  if roh1 is None:
   return None, 'Auswahl: ' + grund
@@ -417,7 +434,7 @@ def ki_entscheiden(daten, client, depot, k, ecb, universum, heute, jetzt, eintra
   journal(eintraege, 'auftrag', heute, symbol=e['symbol'], aktion=e['aktion'], anteil=e['anteil'], these=e['these'], begruendung=e['begruendung'])
  for v in verworfen:
   journal(eintraege, 'verworfen', heute, **v)
- return {'marktsicht': str(roh.get('marktsicht', ''))[:600], 'kandidaten': kandidaten, 'entscheidungen': len(entscheidungen), 'verworfen': len(verworfen),
+ return {'marktsicht': str(roh.get('marktsicht', ''))[:600], 'kandidaten': kandidaten, 'auswahl_gekuerzt_auf': gekuerzt, 'entscheidungen': len(entscheidungen), 'verworfen': len(verworfen),
          'usd': round(info1['usd'] + info2['usd'], 6), 'input_tokens': info1['input_tokens'] + info2['input_tokens'], 'output_tokens': info1['output_tokens'] + info2['output_tokens'],
          'eingabe_sha256': hashlib.sha256((text1 + text2).encode()).hexdigest()}, ''
 

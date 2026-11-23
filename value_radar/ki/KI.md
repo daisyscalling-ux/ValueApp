@@ -182,3 +182,13 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 - **Wochenbild:** Es wird jeden Morgen über die letzten 7 Tage neu geschrieben, rund 0,0055 $ je Lauf, also etwa 0,17 $ im Monat. Der Budgetanteil steigt von 0,10 auf 0,20 $. Pipeline zusammen 2,35 $, mit der Fair-Value-Erklärung 2,65 $, unter der Console-Grenze von 3 $.
 
 **Tests:** `ki/test_laufwache.py` prüft nur geplante Läufe, das Berliner Datum über Mitternacht UTC, alte, fehlende und kaputte Dateien, Zeitzone und Zukunftsdaten. Die Budget-Tests sind an 2,35 $ und 0,20 $ angepasst.
+
+## KI-Depot: Auswahlliste zu groß, kompakter und mit Wächter (23.11.2026)
+
+**Befund, eigener Fehler:** Der Lauf vom 23.11. hat die Aufträge vom 22.11. storniert, aber keine neue Auswahl getroffen. Die Liste aller Titel war mit den neuen Spalten (Finanzlage, Ziel, Value-Trap, Volatilität) auf 97.628 Tokens gewachsen und lag damit über `PROMPT_MAX_TOKENS` (90.000). Der Aufruf wurde vor dem Senden abgelehnt (keine Kosten). Das Depot blieb bei 50.000 € Cash.
+
+**Korrektur:**
+- **Kompaktere Liste:** Kurs, Fair Value und Währung entfallen in Stufe 1. Upside% enthält das Verhältnis, die vollen Werte stehen in den Datenblättern der Stufe 2. Namen sind auf 18 Zeichen gekürzt, Spalten und Urteil haben Kurzformen; eine Legende steht vor der Liste.
+- **Gemessen auf main:** 142.003 → 103.302 Zeichen, geschätzt rund 71.000 Tokens; mit der Volatilitätsspalte etwa 75.000.
+- **Wächter:** Passt die Liste trotzdem nicht, fällt das schwächste Viertel nach Composite weg, höchstens zweimal. Die Kürzung steht im Ergebnis (`auswahl_gekuerzt_auf`). Vorher fiel dann der ganze Tag aus.
+- **Tests:** `test_portfolio.py`, neu: Wächter kürzt von 4 auf 3 Titel und entscheidet; Liste ohne Kurs und Fair Value, Kurzform des Urteils. `value_radar/ki` 26/26.

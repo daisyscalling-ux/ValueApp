@@ -8,7 +8,7 @@ on:
     - cron: '31 4 * * 2-6'
   workflow_dispatch: {}
 concurrency:
-  group: news-trends
+  group: ki-portfolio
   cancel-in-progress: false
 permissions:
   contents: write

@@ -89,7 +89,7 @@ Die App prüft beim Lesen erneut (`src/lib/trends.ts`):
 - Die Kandidaten sind Anregungen zur eigenen Recherche. Vor einer Aufnahme ins Universum gilt die normale Identitätsprüfung (ISIN, Notierung, Währung).
 
 ## KI-Einordnung (22.11.2026, Testmonat des Nutzers)
-Methode `news_trends_ki_v1`, Code `value_radar/nachrichten_trends/ki_einordnung.py`, Workflow `news-trends-ki.yml` (montags 07:31 UTC und manuell).
+Methode `news_trends_ki_v1`, Code `value_radar/nachrichten_trends/ki_einordnung.py`, Workflow `news-trends-ki.yml` (seit 23.11.2026 täglich um 9 Uhr Berliner Zeit über den Cloudflare-Worker, vorher montags 07:31 UTC; manuell jederzeit).
 
 **Entscheidung des Nutzers:** Claude API mit eigenem Schlüssel (Secret `ANTHROPIC_API_KEY`), günstigstes Modell Claude Haiku 5.5, Ausgabegrenze 2 $ pro Monat in der Anthropic Console.
 

@@ -3,7 +3,7 @@ name: news-trends
 # Zweimal täglich, damit die stündlichen Marktnachrichten (je Quelle höchstens 80) lückenlos ins Archiv kommen.
 on:
   schedule:
-    - cron: '13 11,23 * * *'
+    - cron: '13 11,23 * * *'    # Rückfall; der Cloudflare-Worker startet den Lauf um 8:30 und 20:30 Berliner Zeit (seit 23.11.2026)
   workflow_dispatch: {}
 concurrency:
   group: news-trends

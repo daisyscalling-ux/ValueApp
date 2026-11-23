@@ -1,14 +1,15 @@
 name: news-briefing
 # News-Briefing (news_briefing_ki_v1, value_radar/ki/news_briefing.py): USA, Europa, Asien, Welt nach Themen,
-# dreimal täglich (vor Europas Eröffnung, vor der US-Eröffnung, nach US-Schluss) und manuell. Ersetzt themen-des-tages.
+# dreimal täglich (7, 14 und 22 Uhr Berliner Zeit) und manuell. Ersetzt themen-des-tages. Seit 23.11.2026 startet der
+# Cloudflare-Worker die Läufe pünktlich (worker/laufplan.ts in valueapp-cf); der Zeitplan hier ist nur Rückfall und
+# überspringt, wenn das letzte Briefing jünger als 4 h ist (value_radar/ki/laufwache.py).
 # Claude Haiku 5.5, Budget-Anteil 0,70 $/Monat (value_radar/ki/kosten.py). Ohne Secret kein Aufruf.
 on:
   schedule:
-    - cron: '53 5,12 * * *'
-    - cron: '27 21 * * *'
+    - cron: '13 7,14,22 * * *'    # Rückfall, eine bis zwei Stunden nach den Worker-Zeiten
   workflow_dispatch: {}
 concurrency:
-  group: news-trends
+  group: news-briefing
   cancel-in-progress: false
 permissions:
   contents: write
@@ -29,6 +30,7 @@ jobs:
       - name: News-Briefing erstellen
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LAUF_ANLASS: ${{ github.event_name }}
         run: python value_radar/ki/news_briefing.py value_radar/daten
       - name: Ergebnis und Kostenprotokoll speichern
         shell: bash

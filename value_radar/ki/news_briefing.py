@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'nachrichten_trends'))
 import kosten as KO
+import laufwache as LW
 from trends import ist_routine, zeit
 
 UTC = dt.timezone.utc
@@ -180,8 +181,16 @@ def ausfuehren(daten, client, jetzt):
                      'Kein Kauf- oder Verkaufssignal; fließt in keinen Score ein.']}, ''
 
 
+RUECKFALL_STUNDEN = 4   # Rückfall-Zeitplan überspringt, wenn das letzte Briefing jünger ist (laufwache.py)
+
+
 def main(daten=Path('value_radar/daten'), jetzt=None):
  jetzt = jetzt or dt.datetime.now(UTC)
+ # Rückfall-Zeitplan: kein zweites Briefing, wenn der Worker innerhalb der letzten 4 Stunden eines gestartet hat.
+ warum = LW.schon_frisch(daten / 'cf_news_briefing.json', jetzt, os.environ.get('LAUF_ANLASS', ''), stunden=RUECKFALL_STUNDEN)
+ if warum:
+  print(f'News-Briefing übersprungen: {warum}.')
+  return 0
  if not os.environ.get('ANTHROPIC_API_KEY'):
   print('Kein ANTHROPIC_API_KEY: News-Briefing übersprungen.')
   return 0

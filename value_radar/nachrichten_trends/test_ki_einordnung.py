@@ -90,7 +90,7 @@ class Ablauf(unittest.TestCase):
  def test_budget_alter_groesse_abbruch(self):
   with tempfile.TemporaryDirectory() as tmp:
    daten = daten_anlegen(tmp)
-   T.schreibe(daten / 'ki_kosten.json', {'schema': 1, 'monate': {'2026-11': {'usd': 0.1, 'laeufe': 9, 'funktionen': {'trends_einordnung': {'usd': 0.0999, 'laeufe': 9}}, 'tokens': {'ein': 0, 'aus': 0}}}})
+   T.schreibe(daten / 'ki_kosten.json', {'schema': 1, 'monate': {'2026-11': {'usd': 0.2, 'laeufe': 9, 'funktionen': {'trends_einordnung': {'usd': 0.1999, 'laeufe': 9}}, 'tokens': {'ein': 0, 'aus': 0}}}})
    c = FakeClient(GUT)
    self.assertIsNone(K.ausfuehren(daten, c, JETZT)[0]); self.assertEqual(c.aufrufe, [], 'kein Aufruf bei erschöpftem Budget')
    self.assertIn('Monatsbudget', K.ausfuehren(daten, c, JETZT)[1])

@@ -161,7 +161,7 @@ def main(daten=Path('value_radar/daten'), jetzt=None):
  except anthropic.RateLimitError:
   ergebnis, grund = None, 'Ratenlimit der API'
  except anthropic.APIStatusError as e:
-  ergebnis, grund = None, f'API-Fehler {e.status_code}'
+  ergebnis, grund = None, KO.api_fehler(e)
  except anthropic.APIConnectionError:
   ergebnis, grund = None, 'Keine Verbindung zur API'
  except (ValueError, StopIteration) as e:

@@ -534,7 +534,7 @@ def main(daten=Path('value_radar/daten'), jetzt=None):
   if client is not None:
    import anthropic
    if isinstance(e, anthropic.APIError):
-    print(f'KI-Fehler ({type(e).__name__}); Lauf ohne KI.')
+    print(f'KI-Fehler ({type(e).__name__}: {KO.api_fehler(e) if isinstance(e, anthropic.APIStatusError) else ""}); Lauf ohne KI.')
     r = lauf(daten, None, jetzt, benchmarks_laden(jetzt))
     print(json.dumps(r, ensure_ascii=False))
     return 0

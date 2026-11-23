@@ -48,18 +48,39 @@ Abschnitte welt: politik, konjunktur, rohstoffe (Rohstoffe, Energie, Handel, Zö
 Jeder Punkt nennt 1 bis 6 IDs der stützenden Schlagzeilen, nur aus der eigenen Region (usa: u…, europa: e…, asien: a…, welt: w…).
 Nenne betroffene Aktien nur mit dem Symbol genau wie in den Daten (z. B. "NASDAQ:NVDA") und nur, wenn eine zitierte Schlagzeile sie betrifft.
 Keine Kursprognosen, keine Kauf- oder Verkaufsempfehlungen, keine Fakten außerhalb der Schlagzeilen. Deutsch, präzise, nüchtern.
-Gibt eine Region oder ein Abschnitt nichts her, gib eine leere Liste zurück."""
+Antwort: regionen = Liste mit je einem Eintrag für usa, europa, asien und welt (region, lage, punkte); jeder Punkt nennt seinen abschnitt.
+Gibt eine Region oder ein Abschnitt nichts her, lass die Punkte weg."""
 
-_PUNKT = {'type': 'object', 'additionalProperties': False, 'required': ['text', 'belege', 'aktien'],
-          'properties': {'text': {'type': 'string'}, 'belege': {'type': 'array', 'items': {'type': 'string'}}, 'aktien': {'type': 'array', 'items': {'type': 'string'}}}}
+# Antwortformat flach (seit 23.11.2026): Das verschachtelte Schema (4 Regionen × bis 5 Abschnitte, 15 Listen von Objekten)
+# lehnte die API am 22. und 23.11. mit Fehler 400 ab (Grund nicht protokolliert, siehe kosten.api_fehler). Jetzt nur zwei
+# Objekttypen mit Aufzählungen für Region und Abschnitt; die Pipeline baut die Gliederung selbst und verwirft Abschnitte,
+# die nicht zur Region gehören.
+ABSCHNITTE = sorted({k for v in REGIONEN.values() for k, _ in v[2]})
+_PUNKT = {'type': 'object', 'additionalProperties': False, 'required': ['abschnitt', 'text', 'belege', 'aktien'],
+          'properties': {'abschnitt': {'type': 'string', 'enum': ABSCHNITTE}, 'text': {'type': 'string'},
+                         'belege': {'type': 'array', 'items': {'type': 'string'}}, 'aktien': {'type': 'array', 'items': {'type': 'string'}}}}
+_REGION = {'type': 'object', 'additionalProperties': False, 'required': ['region', 'lage', 'punkte'],
+           'properties': {'region': {'type': 'string', 'enum': list(REGIONEN)}, 'lage': {'type': 'string'}, 'punkte': {'type': 'array', 'items': _PUNKT}}}
+SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['regionen'], 'properties': {'regionen': {'type': 'array', 'items': _REGION}}}
 
 
-def _region_schema(abschnitte):
- props = {'lage': {'type': 'string'}, **{k: {'type': 'array', 'items': _PUNKT} for k, _ in abschnitte}}
- return {'type': 'object', 'additionalProperties': False, 'required': list(props), 'properties': props}
-
-
-SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': list(REGIONEN), 'properties': {r: _region_schema(v[2]) for r, v in REGIONEN.items()}}
+def verschachteln(roh):
+ """Flache Antwort → {region: {lage, abschnitt: [punkte]}}; doppelte Regionen und fremde Abschnitte zählen als verworfen."""
+ out, verworfen = {}, 0
+ for reg in (roh or {}).get('regionen') or []:
+  r = reg.get('region') if isinstance(reg, dict) else None
+  if r not in REGIONEN or r in out:
+   verworfen += 1
+   continue
+  erlaubt = {k for k, _ in REGIONEN[r][2]}
+  ziel = {'lage': str(reg.get('lage', '')), **{k: [] for k in erlaubt}}
+  for p in reg.get('punkte') or []:
+   if isinstance(p, dict) and p.get('abschnitt') in erlaubt:
+    ziel[p['abschnitt']].append(p)
+   else:
+    verworfen += 1
+  out[r] = ziel
+ return out, verworfen
 
 
 def _lies(p):
@@ -166,7 +187,9 @@ def ausfuehren(daten, client, jetzt):
  usd = KO.buchen(daten / 'ki_kosten.json', monat, FUNKTION, a.usage.input_tokens, a.usage.output_tokens)
  if a.stop_reason != 'end_turn':
   return None, f'Antwort unvollständig ({a.stop_reason})'
- regionen, verworfen = pruefen(json.loads(next(b.text for b in a.content if b.type == 'text')), ein)
+ roh, v0 = verschachteln(json.loads(next(b.text for b in a.content if b.type == 'text')))
+ regionen, verworfen = pruefen(roh, ein)
+ verworfen += v0
  if not any(v['status'] == 'ok' for v in regionen.values()):
   return None, 'Kein belegter Punkt in der Antwort'
  return {'schema': 1, 'method': METHOD, 'generatedAt': jetzt.isoformat(), 'modell': KO.MODELL, 'kennzeichnung': KENNZEICHNUNG, 'scoreContribution': 0,
@@ -203,7 +226,7 @@ def main(daten=Path('value_radar/daten'), jetzt=None):
  except anthropic.RateLimitError:
   ergebnis, grund = None, 'Ratenlimit der API'
  except anthropic.APIStatusError as e:
-  ergebnis, grund = None, f'API-Fehler {e.status_code}'
+  ergebnis, grund = None, KO.api_fehler(e)
  except anthropic.APIConnectionError:
   ergebnis, grund = None, 'Keine Verbindung zur API'
  except (ValueError, StopIteration) as e:

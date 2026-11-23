@@ -192,3 +192,16 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 - **Gemessen auf main:** 142.003 → 103.302 Zeichen, geschätzt rund 71.000 Tokens; mit der Volatilitätsspalte etwa 75.000.
 - **Wächter:** Passt die Liste trotzdem nicht, fällt das schwächste Viertel nach Composite weg, höchstens zweimal. Die Kürzung steht im Ergebnis (`auswahl_gekuerzt_auf`). Vorher fiel dann der ganze Tag aus.
 - **Tests:** `test_portfolio.py`, neu: Wächter kürzt von 4 auf 3 Titel und entscheidet; Liste ohne Kurs und Fair Value, Kurzform des Urteils. `value_radar/ki` 26/26.
+
+## News-Briefing: API-Fehler 400, flaches Antwortformat, Fehlertext im Protokoll (23.11.2026)
+
+**Befund:** Keiner der Briefing-Läufe hat ein Briefing erzeugt: 22.11. 19:16 Uhr, 23.11. 2:53 Uhr und 23.11. 19:11 Uhr. Das Protokoll meldete jeweils „News-Briefing nicht erstellt: API-Fehler 400“. Der Workflow war trotzdem grün, weil das Skript bei Fehlern absichtlich die letzte Fassung behält. Den Grund der Ablehnung hat mein Code verworfen, protokolliert wurde nur die Nummer.
+
+**Geprüft und ausgeschlossen:** Die Eingabe vom 23.11. umfasst 254 Schlagzeilen und 23.977 Zeichen, ohne ungültige Zeichen und unter der Token-Grenze. Das Schema hält die dokumentierten Regeln ein (`additionalProperties: false`, keine Zahlen- oder Längengrenzen).
+
+**Änderung:**
+- **Fehlertext im Protokoll:** `kosten.api_fehler` schreibt Status, Fehlertyp und die Meldung der API (höchstens 300 Zeichen) ins Protokoll; Anfrageinhalte oder Schlüssel nie. Das gilt für alle KI-Läufe: Briefing, Ereignisse, Trends-KI und Depot.
+- **Flaches Antwortformat fürs Briefing:** Vorher 4 Regionen mit bis zu 5 Abschnitten, also 15 Listen von Objekten, das umfangreichste Schema aller KI-Funktionen. Jetzt eine Liste von Regionen mit Punkten, Region und Abschnitt als Aufzählung (2 Objekttypen, 1.209 statt 5.224 Zeichen). Die Pipeline baut die Gliederung selbst und verwirft Punkte mit fremdem Abschnitt und doppelte Regionen (gezählt).
+- **Grenze der Diagnose:** Ob das Schema wirklich die Ursache war, zeigt erst der nächste Lauf. Scheitert er wieder, steht die Meldung der API jetzt im Protokoll.
+
+**Tests:** `test_ki.py`: flaches Format mit fremdem Abschnitt und doppelter Region, Fehlertext (Kürzung, ohne Body). `value_radar/ki` OK, `nachrichten_trends` OK.

@@ -24,6 +24,8 @@ export interface Fund {
   ticker?: string; name?: string; sector?: string; industry?: string;
   price?: number | null; market_cap?: number | null; shares_out?: number | null;
   free_cashflow?: number | null; cash_conversion?: number | null;
+  /** Operativer Cashflow minus Investitionen des übernommenen Jahresabschlusses (kein FCFF; fundamental-supplement.ts). */
+  reported_equity_fcf?: number | null;
   net_income?: number | null; ebitda?: number | null; ebit?: number | null;
   revenue?: number | null; net_debt?: number | null; total_debt?: number | null;
   /** Gewinnknick im Conversion-Fenster (cash-conversion.ts, gesetzt in evaluateStock) und kuratierte Finanzsparte (finanzsparte.ts). */

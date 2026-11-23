@@ -35,6 +35,10 @@ export function capitalReturn(f:Fund){
  if(change!==null&&change>=0&&buy!==null&&buy>0)notes.push('Trotz Rückkäufen sinkt die verwässerte Aktienanzahl nicht.');
  return {returning,covered,shareChange:change,payoutFcf:paid!==null&&fcf!==null&&fcf>0?paid/fcf:null,period:valid?p.date:null,notes};
 }
+/** Etabliert auch bei leicht sinkendem Umsatz (seit 23.11.2026, Entscheidung des Nutzers): 133 profitable Firmen mit positivem
+ *  FCF fielen wegen eines Jahres mit Umsatzrückgang (Median −2,5 %) auf „Phase offen“. Zwei Jahre Rückgang bei Umsatz und
+ *  Gewinn bleiben „Rückgang“ (Regel davor); stärkere Einjahresrückgänge bleiben offen. */
+export const MATURE_GROWTH_MIN=-0.05;
 export function analysePhase(f:Fund):PhaseResult {
  const rows=[...(f.phase_history??[])].sort((a,b)=>a.year-b.year).slice(-3);
  const contiguous=rows.length===3&&rows[1].year===rows[0].year+1&&rows[2].year===rows[1].year+1;
@@ -50,13 +54,18 @@ export function analysePhase(f:Fund):PhaseResult {
  // damit eine Übernahme im letzten Jahr keine Wachstumsphase macht; ohne drei lückenlose Jahre wie bisher nach dem letzten Jahr.
  const growth3=revenueOK?Math.sqrt(rev[2]!/rev[0]!)-1:null;
  const growthHyper=growth3??growth;
- const profit=finite(f.net_income)??finite(f.eps_trailing)??finite(latest?.netIncome),fcf=finite(f.free_cashflow),capital=capitalReturn(f);
+ // FCF für die Phase (nur das Vorzeichen zählt): berichteter FCFF; fehlt er, weil der übernommene Jahresabschluss neuer ist als
+ // die ROIC-Zeile (fundamental-supplement.ts), operativer Cashflow minus Investitionen desselben Abschlusses (seit 23.11.2026;
+ // vorher landeten 53 profitable Firmen mit positivem Cashflow deshalb auf „Phase offen“). Gekennzeichnet in den Gründen.
+ const fcfBerichtet=finite(f.free_cashflow),fcfAbschluss=fcfBerichtet===null?finite(f.reported_equity_fcf):null;
+ const profit=finite(f.net_income)??finite(f.eps_trailing)??finite(latest?.netIncome),fcf=fcfBerichtet??fcfAbschluss,capital=capitalReturn(f);
  let id:PhaseId='unknown';const reasons:string[]=[],warnings:string[]=[];
  if(falling&&(growth===null||growth<0)){id='decline';reasons.push('Umsatz und Nettogewinn fallen über zwei aufeinanderfolgende Jahresvergleiche.');warnings.push('Der Rückgang kann zyklisch sein. Struktur, Sondereffekte und Erholung separat prüfen.');}
  else if(profit!==null&&profit<=0&&growth!==null){id=(growthHyper??growth)>=.25?'hypergrowth':'startup';reasons.push('Noch kein positiver realisierter Gewinn; Einordnung nach Umsatzwachstum.');}
  else if(profit!==null&&profit>0&&growthHyper!==null&&growthHyper>=.25){id='hypergrowth';reasons.push(growth3!==null?'Mindestens 25 % Umsatzwachstum p. a. über drei Geschäftsjahre bei positivem Gewinn.':'Mindestens 25 % Umsatzwachstum bei positivem Gewinn.');}
  else if(profit!==null&&profit>0&&leverage){id='operating_leverage';reasons.push('Steigender Umsatz und mindestens 2 Prozentpunkte operative Margenverbesserung über drei Geschäftsjahre.');}
- else if(profit!==null&&profit>0&&fcf!==null&&fcf>0&&growth!==null&&growth>=0){id=capital.returning?'capital_return':'mature';reasons.push('Positiver Gewinn und FCF bei nicht schrumpfendem Umsatz.');reasons.push(capital.returning?'Kapitalrückgabe gemeldet; ihre Deckung wird gesondert geprüft.':'Eine Kapitalrückgabe ist durch die vorhandenen Daten nicht belegt.');}
+ else if(profit!==null&&profit>0&&fcf!==null&&fcf>0&&growth!==null&&growth>=MATURE_GROWTH_MIN){id=capital.returning?'capital_return':'mature';reasons.push(growth>=0?'Positiver Gewinn und FCF bei nicht schrumpfendem Umsatz.':`Positiver Gewinn und FCF; Umsatz leicht rückläufig (bis ${Math.round(-MATURE_GROWTH_MIN*100)} % in einem Jahr toleriert).`);
+  if(fcfAbschluss!==null)reasons.push('FCF-Vorzeichen aus operativem Cashflow minus Investitionen des Jahresabschlusses (kein FCFF).');reasons.push(capital.returning?'Kapitalrückgabe gemeldet; ihre Deckung wird gesondert geprüft.':'Eine Kapitalrückgabe ist durch die vorhandenen Daten nicht belegt.');}
  else reasons.push('Die vorhandenen Daten erlauben keine eindeutige Phase.');
  if(growth!==null)reasons.push(`Umsatzwachstum: ${(growth*100).toFixed(1)} %.`);
  if(!contiguous)warnings.push('Keine drei lückenlosen Geschäftsjahre: längerfristiger Margentrend und Rückgang nicht bestätigt.');

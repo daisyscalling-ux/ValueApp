@@ -4,6 +4,7 @@ from share_basis_rule import ordinary_basis
 from listing_identity import listing_matches,SUFFIXES
 from reference_data import fetch_ecb,fetch_sec_listings
 from queue_policy import order_rows, due, failed as queue_failed, annual_supply_status
+from operating_lease import operating_lease
 UTC=dt.timezone.utc
 def stamp(): return dt.datetime.now(UTC).isoformat()
 def number(x):
@@ -335,10 +336,12 @@ def collect(row):
  # subsequently replace the valuation block; never merge these risk sources.
  risk_annual=native_risk_annual(annual,row.get('listing_symbol') or row['ticker'])
  cik=str(row.get('cik') or '').strip(); ua=os.getenv('SEC_USER_AGENT','')
+ sec_daten=sec_roh=None
  if cik.isdigit() and ua and ys.find('.')<0:
   try:
    req=urllib.request.Request(f'https://data.sec.gov/api/xbrl/companyfacts/CIK{int(cik):010d}.json',headers={'User-Agent':ua,'Accept':'application/json'})
-   with urllib.request.urlopen(req,timeout=12) as response: sec=sec_annual(json.load(response),cik)
+   with urllib.request.urlopen(req,timeout=12) as response: sec_roh=response.read()
+   sec_daten=json.loads(sec_roh); sec=sec_annual(sec_daten,cik)
    if sec and (not annual or sec['end']>=annual['end']): annual=enrich_matching_annual(sec,annual)
   except Exception: errors.append('SEC unavailable; no replacement fabricated')
  # Reviewed issuer releases bridge the interval before structured 10-K facts
@@ -356,6 +359,12 @@ def collect(row):
  if not annual: errors.append('No current dated annual statements available')
  elif annual['fields'].get('eps_trailing') is None: errors.append('Current annual statements available; diluted EPS missing, earnings multiple excluded')
  diagnostics=annual_diagnostics(annual,frames,info)
+ # Operating-Leasing zum Stichtag des endgültigen Jahresabschlusses aus derselben SEC-Antwort (seit 23.11.2026, operating_lease.py).
+ lease=None
+ if sec_daten is not None:
+  import hashlib
+  try: lease=operating_lease(sec_daten,annual,cik,hashlib.sha256(sec_roh).hexdigest(),stamp())
+  except (ValueError,TypeError,KeyError): lease=None
  currency=info.get('currency'); observed=info.get('regularMarketTime')
  market={k:number(info.get(v)) for k,v in {'price':'regularMarketPrice','shares_out':'sharesOutstanding','52w_high':'fiftyTwoWeekHigh','52w_low':'fiftyTwoWeekLow','target_mean':'targetMeanPrice','analyst_count':'numberOfAnalystOpinions','beta':'beta','implied_shares_out':'impliedSharesOutstanding'}.items()}
  references={}
@@ -365,7 +374,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'surprises':earnings_surprises(earnings_history_table(t),ys),'splits':recent_splits(t),'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'surprises':earnings_surprises(earnings_history_table(t),ys),'splits':recent_splits(t),'operating_lease':lease,'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

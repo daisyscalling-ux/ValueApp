@@ -101,6 +101,7 @@ export function applySupplement(f:Row,raw:Row,now=Date.now()):void {
  if(finite(fields.equity)&&fields.equity>0&&finite(fields.net_income))f.roe=fields.net_income/fields.equity;
  if(finite(fields.equity)&&finite(f.shares_out)&&f.shares_out>0)f.book_value_ps=fields.equity/f.shares_out;
  if(finite(f.net_debt)&&finite(f.ebitda)&&f.ebitda>0)f.net_debt_ebitda=f.net_debt/f.ebitda;
+ applyOperatingLease(f,s,a,fields,annualScale,now);
  if(finite(fields.operating_cashflow)&&finite(fields.capex))f.reported_equity_fcf=fields.operating_cashflow-Math.abs(fields.capex);
  // Investitionsanteil der bereinigten EKR aus demselben Abschluss (seit 22.11.2026, valuation.ts investitionsanteil).
  if(finite(fields.operating_cashflow)&&fields.operating_cashflow>0&&finite(fields.capex))f.investitionsanteil={method:'capex_share_annual_v1',wert:Math.abs(fields.capex)/fields.operating_cashflow,periode:a.end,quelle:a.source??null};
@@ -266,4 +267,33 @@ export function applyEarningsSurprises(f:Row,s:Row|null|undefined,now=Date.now()
  f.surprise_median=sorted[Math.floor(sorted.length/2)];f.surprise_beat_quote=sp.filter((x:number)=>x>0).length/sp.length;f.surprise_n=sp.length;
  f.surprise_method=SURPRISE_SOURCE_METHOD;f.surprise_status=null;
  f.surprise_source=`${b.source}, ${sp.length} Quartale bis ${q[0].quarter_end}, Stand ${String(b.as_of).slice(0,10)}`;
+}
+
+/**
+ * Operating-Leasing (us_operating_lease_v1, seit 23.11.2026, Entscheidung des Nutzers nach Messung):
+ * Unter US-GAAP mindert die Miete bereits Cashflow und EBITDA; enthält „Total Debt“ die Leasingverbindlichkeit zusätzlich,
+ * zählt sie in DCF, EPV und EV/EBITDA doppelt. Nur wenn die Pipeline „enthalten“ belegt und alles zum übernommenen
+ * Jahresabschluss passt (Stichtag, USD ohne Umrechnung, gleiche Gesamtschulden ±0,1 %, Leasing > 0 und < Gesamtschulden),
+ * rechnet die Bewertung mit Nettoschulden ohne Leasing. Nettoschulden/EBITDA (Bilanz, Risiko) behält das Leasing;
+ * net_debt_mit_leasing trägt den ursprünglichen Wert für den Risikoscore. Sonst bleibt alles wie bisher.
+ */
+export const LEASE_METHOD='us_operating_lease_v1';
+export function applyOperatingLease(f:Row,s:Row,a:Row,fields:Row,annualScale:number,now=Date.now()):void{
+ const l=s?.operating_lease;
+ if(!l||l.method!==LEASE_METHOD)return;
+ const td=fields.total_debt,lw=l.operating_lease_liability?.wert;
+ const grund=l.einordnung!=='enthalten'?null
+  :annualScale!==1||a.currency!=='USD'||l.currency!=='USD'?'Abschluss nicht in USD ohne Umrechnung'
+  :l.end!==a.end?'Stichtag des Leasings passt nicht zum Jahresabschluss'
+  :!finite(td)||!finite(l.total_debt)||Math.abs(l.total_debt-td)>Math.max(Math.abs(td),1)*0.001?'Gesamtschulden passen nicht zur Leasingprüfung'
+  :!finite(lw)||lw<=0||lw>=td?'Leasingbetrag außerhalb des Bereichs'
+  :typeof l.source_url!=='string'||!/^https:\/\/data\.sec\.gov\//.test(l.source_url)||typeof l.sha256!=='string'||!/^[0-9a-f]{64}$/.test(l.sha256)?'Herkunft der Leasingangabe fehlt'
+  :!finite(f.net_debt)?'Nettoschulden fehlen':'';
+ if(grund===null)return;
+ if(grund){f.leasing_status=`Operating-Leasing nicht herausgerechnet: ${grund}.`;return;}
+ f.net_debt_mit_leasing=f.net_debt;
+ f.net_debt=f.net_debt-lw;
+ f.leasing_bereinigt={method:LEASE_METHOD,betrag:lw,tag:l.operating_lease_liability.tag,accession:l.operating_lease_liability.accession??null,end:l.end,source_url:l.source_url,sha256:l.sha256};
+ f.leasing_status=`Bewertung ohne Operating-Leasing (${(lw/1e9).toLocaleString('de-DE',{maximumFractionDigits:2})} Mrd USD, SEC 10-K zum ${l.end}): Die Miete mindert unter US-GAAP bereits Cashflow und EBITDA. Nettoschulden/EBITDA und Risikoscore enthalten das Leasing weiter.`;
+ f.supplement_status+=' · '+f.leasing_status;
 }

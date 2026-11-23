@@ -17,14 +17,16 @@ export function riskScore(history:Row|null,fund:Row,now=Date.now(),extra:RiskMet
  const metrics:RiskMetric[]=[],notes:string[]=[];let period='',observations=0;
  const add=(name:string,weight:number,score:number|null,value:string,reason:string)=>metrics.push({name,weight,score,value,reason});
  const stats=historyStatistics(history,now),{error,es,dd,worst,vol}=stats;observations=stats.observations;period=stats.first?stats.first+' bis '+stats.last:'';
- const short=stats.shortHistory===true,shortNote=short?'Verkürzte Historie: '+stats.observations+' Handelstage (unter zwei Jahren, etwa nach Börsengang oder Abspaltung). ':'';
+ const seg=stats.historySegment as {from:string;pauseDays:number;droppedObservations:number}|undefined;
+ const segNote=seg?'Historie ab '+seg.from+' nach einer Handelspause von '+seg.pauseDays+' Tagen; '+seg.droppedObservations+' Handelstage davor nicht verwendet. ':'';
+ const short=stats.shortHistory===true,shortNote=segNote+(short?'Verkürzte Historie: '+stats.observations+' Handelstage (unter zwei Jahren, etwa nach Börsengang oder Abspaltung). ':'');
  add('Verlust an den schlechtesten 5 % der Handelstage',15,es===null?null:scale(es,.01,.07),es===null?'—':pct(es),error||shortNote+(short?'Expected Shortfall aus rund '+Math.max(1,Math.floor((stats.observations-1)*.05))+' schlechtesten Tagen statt etwa 25; weniger belastbar. ':'')+'Historischer Tages-Expected-Shortfall; kein prognostizierter Verlust.');
  if(priceModel==='v0.3'){
- add('Größter historischer Rückgang',10,dd===null?null:scale(dd,.15,.70),dd===null?'—':pct(dd),error||(short?shortNote+'Größter Rückgang erst ab zwei Handelsjahren.':'Vom vorherigen Höchststand zum Tiefststand.'));
- add('Schlechteste 20-Handelstage-Phase',5,worst===null?null:scale(worst,.05,.35),worst===null?'—':pct(worst),error||(short?shortNote+'Erst ab zwei Handelsjahren.':'Überlappende Fenster; keine unabhängigen Ereignisse.'));
+ add('Größter historischer Rückgang',10,dd===null?null:scale(dd,.15,.70),dd===null?'—':pct(dd),error||(seg?segNote+'Größter Rückgang offen: Der Verlust vor oder während der Handelspause fehlt in den Daten.':short?shortNote+'Größter Rückgang erst ab zwei Handelsjahren.':'Vom vorherigen Höchststand zum Tiefststand.'));
+ add('Schlechteste 20-Handelstage-Phase',5,worst===null?null:scale(worst,.05,.35),worst===null?'—':pct(worst),error||(seg?segNote+'Offen wegen der Handelspause.':short?shortNote+'Erst ab zwei Handelsjahren.':'Überlappende Fenster; keine unabhängigen Ereignisse.'));
  }else{
- add('Schwankungsbreite · Jahresvolatilität',10,vol===null||vol===undefined?null:scale(vol,.15,.60),vol===null||vol===undefined?'—':pct(vol),error||(vol===null||vol===undefined?'Volatilität fehlt in dieser Vorberechnung; nächster täglicher Lauf ergänzt sie.':'Annualisierte Schwankung der letzten 252 Tagesrenditen. 0 Punkte bei 15 %, 100 Punkte bei 60 %.'));
- add('Größter historischer Rückgang',5,dd===null?null:scale(dd,.15,.70),dd===null?'—':pct(dd),error||(short?shortNote+'Größter Rückgang erst ab zwei Handelsjahren; über einen kürzeren Zeitraum fällt er systematisch zu niedrig aus.':'Vom vorherigen Höchststand zum Tiefststand.'));
+ add('Schwankungsbreite · Jahresvolatilität',10,vol===null||vol===undefined?null:scale(vol,.15,.60),vol===null||vol===undefined?'—':pct(vol),error||(vol===null||vol===undefined?'Volatilität fehlt in dieser Vorberechnung; nächster täglicher Lauf ergänzt sie.':segNote+'Annualisierte Schwankung der letzten 252 Tagesrenditen. 0 Punkte bei 15 %, 100 Punkte bei 60 %.'));
+ add('Größter historischer Rückgang',5,dd===null?null:scale(dd,.15,.70),dd===null?'—':pct(dd),error||(seg?segNote+'Größter Rückgang offen: Der Verlust vor oder während der Handelspause fehlt in den Daten und würde sonst beschönigt.':short?shortNote+'Größter Rückgang erst ab zwei Handelsjahren; über einen kürzeren Zeitraum fällt er systematisch zu niedrig aus.':'Vom vorherigen Höchststand zum Tiefststand.'));
  }
  const f=fund.risk_financial,asof=Date.parse(f?.asof),age=(now-asof)/86400000;
  const financial=/finance|financial|bank|insurance|versicher/i.test(String(fund.sector)+' '+String(fund.industry));
@@ -34,6 +36,7 @@ export function riskScore(history:Row|null,fund:Row,now=Date.now(),extra:RiskMet
  add('Nettoschulden / EBITDA',15,leverage===null?null:scale(leverage,1,6),leverage===null?'—':leverage.toFixed(1)+'×',reason||(leverage===null?'Gültige Schulden, Cash und positives EBITDA benötigt.':'Gemeinsame Berichtszeile, kein Währungsmix.'));
  const margin=!reason&&fcff!==null&&revenue!==null&&revenue>0?fcff/revenue:null;
  add('Cashflow-Puffer · berichteter FCFF / Umsatz',10,margin===null?null:100-scale(margin,-.10,.15),margin===null?'—':pct(margin),reason||(margin===null?'Berichteter FCFF oder Umsatz fehlt.':'FCFF des Anbieters; nicht mit Eigenkapital-FCF gleichgesetzt.'));
+ if(seg)notes.push('Kurshistorie ab '+seg.from+' (nach einer Handelspause von '+seg.pauseDays+' Tagen); größter Rückgang offen.');
  metrics.push(...extra);
  const available=metrics.filter(m=>m.score!==null),coverage=available.reduce((s,m)=>s+m.weight,0),partialScore=coverage?Math.round(available.reduce((s,m)=>s+m.weight*m.score!,0)/coverage):null;
  notes.push(priceModel==='v0.3'?'Kursblock Version 0.3 · feste heuristische Schwellen.':'Kursblock Version 0.5 · Gewichte 15/10/5 (Expected Shortfall, Volatilität, größter Rückgang) anhand historischer S&P-500-Verluste ausgewählt; Schwellen nicht als Wahrscheinlichkeit kalibriert.','Teilscore ist keine Verlustwahrscheinlichkeit und kein Kauf-/Verkaufssignal.');

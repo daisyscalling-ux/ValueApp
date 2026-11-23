@@ -12,6 +12,9 @@ export function historyStatistics(h:Row|null,now=Date.now()):Row{
   const fraction=(v:any)=>v===null||typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1;
   const short=s?.shortHistory===true;
   if(h.schema!==RISK_SCHEMA||h.adjustment!=='total_return'||!s||!Number.isInteger(s.observations)||s.observations<1||!validDate(s.first)||!validDate(s.last)||s.first>s.last||typeof s.error!=='string'||![s.es,s.dd,s.worst,s.drawdown].every(fraction)||!(s.shortHistory===undefined||s.shortHistory===true)||short&&(s.observations<SHORT_OBSERVATIONS||s.observations>=FULL_OBSERVATIONS||!!s.error||s.dd!==null||s.worst!==null)||s.observations<FULL_OBSERVATIONS&&!short&&[s.es,s.dd,s.worst].some(v=>v!==null)||s.observations<200&&s.drawdown!==null||s.error&&[s.es,s.dd,s.worst].some(v=>v!==null)||!(s.vol===undefined||s.vol===null||typeof s.vol==='number'&&Number.isFinite(s.vol)&&s.vol>=0&&s.vol<=5)||(s.observations<FULL_OBSERVATIONS&&!short||s.error)&&typeof s.vol==='number')return empty('Ungültige vorberechnete Risikodaten.');
+  // Abschnitt nach Lücke: Kennzeichnung muss stimmig sein, größter Rückgang und 20-Tage-Phase offen.
+  const g=s.historySegment;
+  if(g!==undefined&&!(g&&typeof g==='object'&&g.from===s.first&&Number.isInteger(g.pauseDays)&&g.pauseDays>14&&Number.isInteger(g.droppedObservations)&&g.droppedObservations>=1&&s.dd===null&&s.worst===null&&!s.error&&s.observations>=SHORT_OBSERVATIONS))return empty('Ungültige vorberechnete Risikodaten.');
   if(Date.parse(s.last)>=new Date(now).setUTCHours(0,0,0,0)||now-Date.parse(s.last)>7*86400000)return {...s,error:'Letzter Kurs nicht aktuell oder in der Zukunft.',es:null,dd:null,worst:null,vol:null,drawdown:null};
   // Ältere Vorberechnungen ohne Volatilität bleiben gültig; die Kennzahl ist dann offen.
   return {...s,vol:s.vol??null};
@@ -24,10 +27,17 @@ export function historyStatistics(h:Row|null,now=Date.now()):Row{
  const basic=invalid?'Ungültige oder widersprüchliche Kursdaten.':now-Date.parse(s.last)>7*86400000?'Letzter Kurs älter als sieben Tage.':'';
  const gaps=(v:[string,number][])=>v.some((b,i)=>i>0&&Date.parse(b[0])-Date.parse(v[i-1][0])>14*86400000);
  const recent=a.slice(-252);if(!basic&&recent.length>=200&&!gaps(recent))s.drawdown=1-recent.at(-1)![1]/Math.max(...recent.map(b=>b[1]));
+ // Abschnitt nach der letzten Lücke (seit 23.11.2026, Entscheidung des Nutzers; Anlass Nebius: Handel 02/2022 bis 10/2024
+ // ausgesetzt): Hat der lückenlose Abschnitt nach der letzten Lücke > 14 Tage mindestens ein Handelsjahr, rechnen
+ // Volatilität und Expected Shortfall auf diesem Abschnitt, gekennzeichnet (historySegment). Größter Rückgang und
+ // schlechteste 20-Tage-Phase bleiben offen: Der Verlust vor oder während der Pause fehlt in den Daten.
+ let seg:{from:string;pauseDays:number;droppedObservations:number}|null=null;
+ if(!basic&&gaps(a)){let k=0;for(let i=1;i<a.length;i++)if(Date.parse(a[i][0])-Date.parse(a[i-1][0])>14*86400000)k=i;
+  if(a.length-k>=SHORT_OBSERVATIONS){seg={from:a[k][0],pauseDays:Math.round((Date.parse(a[k][0])-Date.parse(a[k-1][0]))/86400000),droppedObservations:k};a.splice(0,k);s.observations=a.length;s.first=a[0][0];s.historySegment=seg}}
  s.error=basic||(a.length<SHORT_OBSERVATIONS?'Weniger als ein Handelsjahr vorhanden.':gaps(a)?'Kurshistorie enthält längere Lücken.':'');
  const short=!s.error&&a.length<FULL_OBSERVATIONS;if(short)s.shortHistory=true;
  if(!s.error){const raw=a.slice(1).map((b,i)=>b[1]/a[i][1]-1),last=raw.slice(-252),mean=last.reduce((x,y)=>x+y,0)/last.length;s.vol=Math.sqrt(last.reduce((x,y)=>x+(y-mean)**2,0)/(last.length-1)*252);const returns=[...raw].sort((a,b)=>a-b),tail=returns.slice(0,Math.max(1,Math.floor(returns.length*.05)));s.es=Math.max(0,-tail.reduce((a,b)=>a+b,0)/tail.length);
-  if(!short){let peak=a[0][1];s.dd=0;s.worst=0;a.forEach((b,i)=>{peak=Math.max(peak,b[1]);s.dd=Math.max(s.dd,1-b[1]/peak);if(i>=20)s.worst=Math.max(s.worst,1-b[1]/a[i-20][1])})}}
+  if(!short&&!seg){let peak=a[0][1];s.dd=0;s.worst=0;a.forEach((b,i)=>{peak=Math.max(peak,b[1]);s.dd=Math.max(s.dd,1-b[1]/peak);if(i>=20)s.worst=Math.max(s.worst,1-b[1]/a[i-20][1])})}}
  return s;
 }
 export function compactHistory(h:Row,now=Date.now()){

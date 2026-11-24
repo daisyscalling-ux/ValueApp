@@ -207,7 +207,7 @@
   {
    "app": "src/lib/fundamental-supplement.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/fundamental-supplement.ts",
-   "sha256": "0393ec384f4135903d6eac53bb4c4ae1161b3944380dde360486c690cb211751"
+   "sha256": "6c0fa81af53598f9eb662d60efeb64ff04712948eee9fdb6e62a2ea6181d559d"
   },
   {
    "app": "src/lib/phase-data.ts",

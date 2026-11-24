@@ -273,7 +273,8 @@ export function applyEarningsSurprises(f:Row,s:Row|null|undefined,now=Date.now()
  * Operating-Leasing (us_operating_lease_v1, seit 23.11.2026, Entscheidung des Nutzers nach Messung):
  * Unter US-GAAP mindert die Miete bereits Cashflow und EBITDA; enthält „Total Debt“ die Leasingverbindlichkeit zusätzlich,
  * zählt sie in DCF, EPV und EV/EBITDA doppelt. Nur wenn die Pipeline „enthalten“ belegt und alles zum übernommenen
- * Jahresabschluss passt (Stichtag, USD ohne Umrechnung, gleiche Gesamtschulden ±0,1 %, Leasing > 0 und < Gesamtschulden),
+ * Jahresabschluss passt (Stichtag, USD ohne Umrechnung, gleiche Gesamtschulden ±0,1 %, Leasing > 0 und höchstens die Gesamtschulden;
+ * seit 24.11.2026 auch gleich, z. B. Chipotle ohne Finanzschulden: 5,08 von 5,08 Mrd $ sind Leasing),
  * rechnet die Bewertung mit Nettoschulden ohne Leasing. Nettoschulden/EBITDA (Bilanz, Risiko) behält das Leasing;
  * net_debt_mit_leasing trägt den ursprünglichen Wert für den Risikoscore. Sonst bleibt alles wie bisher.
  */
@@ -286,7 +287,7 @@ export function applyOperatingLease(f:Row,s:Row,a:Row,fields:Row,annualScale:num
   :annualScale!==1||a.currency!=='USD'||l.currency!=='USD'?'Abschluss nicht in USD ohne Umrechnung'
   :l.end!==a.end?'Stichtag des Leasings passt nicht zum Jahresabschluss'
   :!finite(td)||!finite(l.total_debt)||Math.abs(l.total_debt-td)>Math.max(Math.abs(td),1)*0.001?'Gesamtschulden passen nicht zur Leasingprüfung'
-  :!finite(lw)||lw<=0||lw>=td?'Leasingbetrag außerhalb des Bereichs'
+  :!finite(lw)||lw<=0||lw>td*1.001?'Leasingbetrag außerhalb des Bereichs'
   :typeof l.source_url!=='string'||!/^https:\/\/data\.sec\.gov\//.test(l.source_url)||typeof l.sha256!=='string'||!/^[0-9a-f]{64}$/.test(l.sha256)?'Herkunft der Leasingangabe fehlt'
   :!finite(f.net_debt)?'Nettoschulden fehlen':'';
  if(grund===null)return;

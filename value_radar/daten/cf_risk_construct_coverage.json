@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-24T07:34:59.354603+00:00",
+ "generatedAt": "2026-11-24T19:38:35.338037+00:00",
  "listings": 1342,
  "overallAverageWeight": {
   "filled": 82.1,
@@ -73,11 +73,11 @@
    "blocks": {
     "Kursrisiko": {
      "weight": 30,
-     "filled": 29.59,
-     "missing": 0.41,
+     "filled": 29.61,
+     "missing": 0.39,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.986
+     "filledShareOfMeasurable": 0.987
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
@@ -167,19 +167,19 @@
   "specialist_financial": {
    "listings": 74,
    "averageWeight": {
-    "filled": 71.4,
-    "missing": 4.2,
+    "filled": 71.7,
+    "missing": 3.9,
     "app_only": 10.0,
     "by_design": 14.5
    },
    "blocks": {
     "Kursrisiko": {
      "weight": 30,
-     "filled": 29.59,
-     "missing": 0.41,
+     "filled": 29.93,
+     "missing": 0.07,
      "app_only": 0.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.986
+     "filledShareOfMeasurable": 0.998
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
@@ -222,13 +222,12 @@
    "block": "Kursrisiko",
    "metric": "Expected Shortfall",
    "weight": 15,
-   "missingListings": 14,
-   "filledListings": 1113,
-   "weightedGap": 210,
+   "missingListings": 13,
+   "filledListings": 1114,
+   "weightedGap": 195,
    "reasons": {
     "Keine Kurshistorie": 11,
-    "Weniger als ein Handelsjahr (Neuemission)": 2,
-    "Kurshistorie mit längeren Handelslücken": 1
+    "Weniger als ein Handelsjahr (Neuemission)": 2
    }
   },
   {
@@ -249,13 +248,12 @@
    "block": "Kursrisiko",
    "metric": "Volatilität",
    "weight": 10,
-   "missingListings": 14,
-   "filledListings": 1113,
-   "weightedGap": 140,
+   "missingListings": 13,
+   "filledListings": 1114,
+   "weightedGap": 130,
    "reasons": {
     "Keine Kurshistorie": 11,
-    "Weniger als ein Handelsjahr (Neuemission)": 2,
-    "Kurshistorie mit längeren Handelslücken": 1
+    "Weniger als ein Handelsjahr (Neuemission)": 2
    }
   },
   {
@@ -297,7 +295,7 @@
     "Keine Kurshistorie": 11,
     "Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren": 8,
     "Weniger als ein Handelsjahr (Neuemission)": 2,
-    "Kurshistorie mit längeren Handelslücken": 1
+    "Kennzahl in der Vorberechnung noch nicht vorhanden": 1
    }
   },
   {
@@ -410,18 +408,6 @@
   },
   {
    "profile": "specialist_financial",
-   "block": "Kursrisiko",
-   "metric": "Expected Shortfall",
-   "weight": 15,
-   "missingListings": 1,
-   "filledListings": 73,
-   "weightedGap": 15,
-   "reasons": {
-    "Kurshistorie mit längeren Handelslücken": 1
-   }
-  },
-  {
-   "profile": "specialist_financial",
    "block": "Umfeldstress",
    "metric": "Peer-Stress",
    "weight": 5,
@@ -494,18 +480,6 @@
    }
   },
   {
-   "profile": "specialist_financial",
-   "block": "Kursrisiko",
-   "metric": "Volatilität",
-   "weight": 10,
-   "missingListings": 1,
-   "filledListings": 73,
-   "weightedGap": 10,
-   "reasons": {
-    "Kurshistorie mit längeren Handelslücken": 1
-   }
-  },
-  {
    "profile": "insurer",
    "block": "Kursrisiko",
    "metric": "Volatilität",
@@ -527,6 +501,30 @@
    "weightedGap": 10,
    "reasons": {
     "KBV fehlt oder unplausibel": 1
+   }
+  },
+  {
+   "profile": "specialist_financial",
+   "block": "Kursrisiko",
+   "metric": "Größter Rückgang",
+   "weight": 5,
+   "missingListings": 1,
+   "filledListings": 73,
+   "weightedGap": 5,
+   "reasons": {
+    "Kennzahl in der Vorberechnung noch nicht vorhanden": 1
+   }
+  },
+  {
+   "profile": "insurer",
+   "block": "Kursrisiko",
+   "metric": "Größter Rückgang",
+   "weight": 5,
+   "missingListings": 1,
+   "filledListings": 53,
+   "weightedGap": 5,
+   "reasons": {
+    "Weniger als ein Handelsjahr (Neuemission)": 1
    }
   }
  ],

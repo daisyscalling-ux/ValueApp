@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-23T19:28:14.869573+00:00",
+ "generatedAt": "2026-11-24T07:34:59.354603+00:00",
  "listings": 1342,
  "overallAverageWeight": {
   "filled": 82.1,
@@ -81,8 +81,8 @@
     },
     "Finanzielle Verwundbarkeit": {
      "weight": 25,
-     "filled": 24.88,
-     "missing": 0.12,
+     "filled": 24.87,
+     "missing": 0.13,
      "app_only": 0.0,
      "by_design": 0.0,
      "filledShareOfMeasurable": 0.995
@@ -109,7 +109,7 @@
      "missing": 0.04,
      "app_only": 10.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.993
+     "filledShareOfMeasurable": 0.992
     }
    }
   },
@@ -259,6 +259,19 @@
    }
   },
   {
+   "profile": "corporate",
+   "block": "Finanzielle Verwundbarkeit",
+   "metric": "FCFF-Marge",
+   "weight": 10,
+   "missingListings": 12,
+   "filledListings": 1115,
+   "weightedGap": 120,
+   "reasons": {
+    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 11,
+    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
+   }
+  },
+  {
    "profile": "specialist_financial",
    "block": "Bewertungsrisiko",
    "metric": "Erwartungslücke Gewinnwachstum",
@@ -285,19 +298,6 @@
     "Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren": 8,
     "Weniger als ein Handelsjahr (Neuemission)": 2,
     "Kurshistorie mit längeren Handelslücken": 1
-   }
-  },
-  {
-   "profile": "corporate",
-   "block": "Finanzielle Verwundbarkeit",
-   "metric": "FCFF-Marge",
-   "weight": 10,
-   "missingListings": 11,
-   "filledListings": 1116,
-   "weightedGap": 110,
-   "reasons": {
-    "ROIC liefert keinen FCFF oder Umsatz (TTM)": 10,
-    "Cashflow, Investitionen oder Umsatz fehlen (Näherung über den Ersatzabschluss)": 1
    }
   },
   {
@@ -353,11 +353,11 @@
    "block": "Wettbewerbsanfälligkeit",
    "metric": "EBITDA-Marge gegenüber Peers",
    "weight": 5,
-   "missingListings": 8,
-   "filledListings": 1119,
-   "weightedGap": 40,
+   "missingListings": 9,
+   "filledListings": 1118,
+   "weightedGap": 45,
    "reasons": {
-    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 8
+    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 9
    }
   },
   {

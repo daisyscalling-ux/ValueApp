@@ -5,7 +5,7 @@ name: ki-portfolio
 # Ohne Secret laufen Aufträge, Stops und Bewertung trotzdem. Kein echter Handel.
 on:
   schedule:
-    - cron: '31 4 * * 2-6'
+    - cron: '17 7 * * 2-6'    # Rückfall; der Cloudflare-Worker startet den Lauf Di–Sa um 6:30 Berliner Zeit (seit 24.11.2026), ein zweiter Lauf am selben Tag endet mit „Heute schon gelaufen“
   workflow_dispatch: {}
 concurrency:
   group: ki-portfolio

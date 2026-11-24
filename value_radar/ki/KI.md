@@ -205,3 +205,9 @@ Deshalb bleibt die Kennzeichnung „nicht geprüft“.
 - **Grenze der Diagnose:** Ob das Schema wirklich die Ursache war, zeigt erst der nächste Lauf. Scheitert er wieder, steht die Meldung der API jetzt im Protokoll.
 
 **Tests:** `test_ki.py`: flaches Format mit fremdem Abschnitt und doppelter Region, Fehlertext (Kürzung, ohne Body). `value_radar/ki` OK, `nachrichten_trends` OK.
+
+## KI-Depot über den Worker-Laufplan (24.11.2026)
+- **Anlass:** Der Lauf vom 24.11. kam 10,5 Stunden zu spät (geplant 4:31 UTC, gelaufen 15:04 UTC).
+- **Start durch den Worker:** Der Cloudflare-Worker startet `ki-portfolio` jetzt Dienstag bis Samstag um 6:30 Uhr Berliner Zeit (valueapp-cf `worker/laufplan.ts`).
+- **Rückfall:** Der GitHub-Zeitplan steht auf 7:17 UTC und dient nur als Rückfall. Ein zweiter Lauf am selben Tag endet mit „Heute schon gelaufen“, ohne KI-Aufruf.
+- **Erster Kauf:** Die Aufträge vom 24.11. (8 Titel je 10 %, Entscheidung auf Kursen vom 23.11.) führt der nächste Lauf zum Schlusskurs vom 24.11. aus.

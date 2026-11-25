@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-24T19:38:35.338037+00:00",
+ "generatedAt": "2026-11-25T07:10:44.954018+00:00",
  "listings": 1342,
  "overallAverageWeight": {
   "filled": 82.1,
@@ -109,7 +109,7 @@
      "missing": 0.04,
      "app_only": 10.0,
      "by_design": 0.0,
-     "filledShareOfMeasurable": 0.992
+     "filledShareOfMeasurable": 0.993
     }
    }
   },
@@ -351,11 +351,11 @@
    "block": "Wettbewerbsanfälligkeit",
    "metric": "EBITDA-Marge gegenüber Peers",
    "weight": 5,
-   "missingListings": 9,
-   "filledListings": 1118,
-   "weightedGap": 45,
+   "missingListings": 8,
+   "filledListings": 1119,
+   "weightedGap": 40,
    "reasons": {
-    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 9
+    "Eigene EBITDA-Marge oder mindestens drei Peers mit Marge fehlen": 8
    }
   },
   {

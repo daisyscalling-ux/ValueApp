@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "method": "fv_vs_target_forward_v2",
- "erstellt": "2026-11-24T20:21:23+00:00",
+ "erstellt": "2026-11-25T06:55:39+00:00",
  "regeln": {
   "min_abstand": 0.05,
   "unentschieden": 0.02,
@@ -105,6 +105,14 @@
    "method": "fv_vs_target_forward_v2",
    "eintraege": 254,
    "sha256": "f1f08069b3011220e8680a51aee474824d63ea6a8841c98b0b6907584ea4594e"
+  },
+  {
+   "datei": "2026-11-25T0654.json",
+   "stand": "2026-11-25 06:54 UTC",
+   "kohorte": "aktuell",
+   "method": "fv_vs_target_forward_v2",
+   "eintraege": 246,
+   "sha256": "0d25035bf3fab401b62e1cb84d061baabb07d2d737b45fce7a4df9f823ee30af"
   }
  ],
  "splits_ab": "2026-11-13",

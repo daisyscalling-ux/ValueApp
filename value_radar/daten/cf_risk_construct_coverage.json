@@ -2,7 +2,7 @@
  "schema": 1,
  "method": "offline-input-availability-v2",
  "constructVersion": "0.8",
- "generatedAt": "2026-11-25T07:10:44.954018+00:00",
+ "generatedAt": "2026-11-25T18:46:03.433330+00:00",
  "listings": 1342,
  "overallAverageWeight": {
   "filled": 82.1,
@@ -73,8 +73,8 @@
    "blocks": {
     "Kursrisiko": {
      "weight": 30,
-     "filled": 29.61,
-     "missing": 0.39,
+     "filled": 29.62,
+     "missing": 0.38,
      "app_only": 0.0,
      "by_design": 0.0,
      "filledShareOfMeasurable": 0.987
@@ -288,12 +288,12 @@
    "block": "Kursrisiko",
    "metric": "Größter Rückgang",
    "weight": 5,
-   "missingListings": 22,
-   "filledListings": 1105,
-   "weightedGap": 110,
+   "missingListings": 21,
+   "filledListings": 1106,
+   "weightedGap": 105,
    "reasons": {
     "Keine Kurshistorie": 11,
-    "Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren": 8,
+    "Verkürzte Historie: größter Rückgang erst ab zwei Handelsjahren": 7,
     "Weniger als ein Handelsjahr (Neuemission)": 2,
     "Kennzahl in der Vorberechnung noch nicht vorhanden": 1
    }

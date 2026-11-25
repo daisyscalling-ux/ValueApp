@@ -1,0 +1,48 @@
+name: aenderungen
+# Größere Änderungen im Universum für die Startseite der App (universe_changes_v1, value_radar/aenderungen, seit 25.11.2026).
+# Läuft nach jedem precompute-3tage und manuell; vergleicht mit dem letzten Stand und hält 7 Tage vor.
+on:
+  workflow_run:
+    workflows: [precompute-3tage]
+    types: [completed]
+  workflow_dispatch: {}
+  pull_request:
+    paths: ['.github/workflows/aenderungen.yml', 'value_radar/aenderungen/**']
+concurrency:
+  group: aenderungen
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  vergleich:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event != 'pull_request')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Tests
+        run: python -m unittest -v value_radar/aenderungen/test_aenderungen.py
+      - name: Änderungen bestimmen
+        if: github.event_name != 'pull_request'
+        run: python value_radar/aenderungen/aenderungen.py value_radar/daten
+      - name: Speichern
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          git config user.name "value-radar-bot"
+          git config user.email "bot@value-radar"
+          git add value_radar/daten/cf_aenderungen.json value_radar/daten/aenderungen
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Änderungen im Universum [skip ci]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::Push der Änderungsliste nach 4 Versuchen abgelehnt"
+          exit 1

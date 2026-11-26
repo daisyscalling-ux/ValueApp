@@ -135,6 +135,28 @@ def yahoo_cash_history(frames,info,years=5):
   if ocf is None or ni is None or capex is None or capex>0:continue
   out.append({'end':date[:10],'currency':info.get('financialCurrency'),'fields':{'operating_cashflow':ocf,'capex':-capex,'net_income':ni},'capex_derivation':how})
  return {'method':CASH_HISTORY_METHOD,'source':'Yahoo annual statements','source_url':'https://finance.yahoo.com/quote/'+str(info.get('symbol'))+'/cash-flow/','annuals':sorted(out,key=lambda a:a['end'])}
+# Kennzahlen je Aktie und Geschäftsjahr (seit 26.11.2026, Wunsch des Nutzers): Gewinn je Aktie, Gewinn, Eigenkapital,
+# Aktienzahl und gezahlte Dividenden aus den Yahoo-Jahresabschlüssen, dazu der unbereinigte Schlusskurs am letzten
+# Handelstag bis zum Stichtag und die Dividenden je Aktie im Geschäftsjahr (Kurswährung). Keine Rechnung hier: KGV, KBV,
+# Graham-Zahl, Rendite und Wachstum rechnet und prüft die App (kennzahlen-je-aktie.ts). Fehlende Felder bleiben None.
+PER_SHARE_METHOD='yahoo_annual_per_share_v1'
+def kennzahlen_jahre(frames,info,kurse,years=4):
+ """kurse: Liste (datum 'YYYY-MM-DD', schluss, dividende) aufsteigend, unbereinigt, Kurswährung."""
+ inc,bal,cf=frames.get('income',{}),frames.get('balance',{}),frames.get('cashflow',{});out=[]
+ for date in sorted(inc,reverse=True)[:years]:
+  end=date[:10];i,b,c=inc.get(date,{}),bal.get(date,{}),cf.get(date,{})
+  try:e=dt.date.fromisoformat(end)
+  except ValueError:continue
+  bis=[k for k in kurse if k[0]<=end]
+  preis=bis[-1] if bis and (e-dt.date.fromisoformat(bis[-1][0])).days<=7 else None
+  start=(e-dt.timedelta(days=365)).isoformat()
+  div=[k[2] for k in kurse if start<k[0]<=end and number(k[2]) is not None and k[2]>0]
+  paid=number(c.get('Cash Dividends Paid'))
+  out.append({'end':end,'currency':info.get('financialCurrency'),
+   'fields':{'eps_diluted':number(i.get('Diluted EPS')),'net_income':number(i.get('Net Income')),'equity':number(b.get('Stockholders Equity')),
+    'shares':number(b.get('Ordinary Shares Number')) or number(b.get('Share Issued')),'dividends_paid':abs(paid) if paid is not None else None},
+   'kurs':{'datum':preis[0] if preis else None,'schluss':number(preis[1]) if preis else None,'dividende_je_aktie':round(sum(div),6) if kurse else None,'waehrung':info.get('currency')}})
+ return {'method':PER_SHARE_METHOD,'source':'Yahoo annual statements und Kurshistorie','source_url':'https://finance.yahoo.com/quote/'+str(info.get('symbol'))+'/financials/','jahre':sorted(out,key=lambda x:x['end'])}
 # Gesamtumsatz zuerst (11.11.2026): RevenueFromContractWithCustomer... (ASC 606) enthaelt keine Miet-, Leasing-, Zins- oder
 # Praemienertraege; bei United Rentals, ADM, GM, REITs und Banken war der Umsatz dadurch bis zu 99 % zu niedrig.
 TAGS={'revenue':['Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet'],'net_income':['NetIncomeLoss'],'eps_trailing':['EarningsPerShareDiluted'],'gross_profit':['GrossProfit'],'ebit':['OperatingIncomeLoss'],'weighted_shares':['WeightedAverageNumberOfDilutedSharesOutstanding'],'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],'capex':['PaymentsToAcquirePropertyPlantAndEquipment'],'cash':['CashAndCashEquivalentsAtCarryingValue'],'total_assets':['Assets'],'equity':['StockholdersEquity']}
@@ -359,6 +381,13 @@ def collect(row):
  if not annual: errors.append('No current dated annual statements available')
  elif annual['fields'].get('eps_trailing') is None: errors.append('Current annual statements available; diluted EPS missing, earnings multiple excluded')
  diagnostics=annual_diagnostics(annual,frames,info)
+ # Kurshistorie unbereinigt (Schlusskurs und Dividende je Tag) für die Kennzahlen je Aktie (seit 26.11.2026).
+ per_share=None
+ try:
+  h=t.history(period='6y',interval='1d',auto_adjust=False,actions=True)
+  kurse=[(ix.strftime('%Y-%m-%d'),number(float(r['Close'])),number(float(r.get('Dividends',0) or 0))) for ix,r in h.iterrows()]
+  per_share=kennzahlen_jahre(frames,info,kurse)
+ except Exception: errors.append('Kurshistorie für Kennzahlen je Aktie nicht verfügbar')
  # Operating-Leasing zum Stichtag des endgültigen Jahresabschlusses aus derselben SEC-Antwort (seit 23.11.2026, operating_lease.py).
  lease=None
  if sec_daten is not None:
@@ -374,7 +403,7 @@ def collect(row):
   except (OSError,ValueError):pass
  basis_path=pathlib.Path(__file__).parent/'share_basis.json'
  bases=json.loads(basis_path.read_text(encoding='utf-8')) if basis_path.exists() else {}
- return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'surprises':earnings_surprises(earnings_history_table(t),ys),'splits':recent_splits(t),'operating_lease':lease,'issues':errors}
+ return {'risk_annual':risk_annual,'annual_diagnostics':diagnostics,'fx':references.get('fx'),'share_basis':bases.get(row.get('listing_symbol') or row['ticker']) or ordinary_basis(row,annual,currency,f'https://finance.yahoo.com/quote/{ys}/'),'schema':1,'symbol':row.get('listing_symbol') or row['ticker'],'yahoo_symbol':ys,'retrieved_at':stamp(),'latest_fiscal_end':dt.datetime.fromtimestamp(latest,UTC).date().isoformat() if latest else None,'annual':annual,'market':{'currency':currency,'quote_at':dt.datetime.fromtimestamp(observed,UTC).isoformat() if observed else None,'source':'Yahoo Finance','source_url':f'https://finance.yahoo.com/quote/{ys}/','fields':market},'cash_history':yahoo_cash_history(frames,info),'estimates':consensus_estimates(estimate_table(t),info,ys),'analysts':analyst_recommendations(recommendation_rows(t),ys),'surprises':earnings_surprises(earnings_history_table(t),ys),'splits':recent_splits(t),'operating_lease':lease,'per_share':per_share,'issues':errors}
 def select_registered_rows(universe,index,symbols):
  registry=index.setdefault('registered',{})
  # Remember explicit requests even if their first provider request fails.

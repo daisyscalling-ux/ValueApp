@@ -407,7 +407,9 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   applySupplement(out, raw);
   // Yahoo-Cashflow-Historie für den Cash-Conversion-Ersatz (evaluation.ts), nur bei gleicher Notierung.
   { const sup = raw.fundamental_supplement as Record<string, any> | null;
-    if (sup && sup.schema === 1 && sup.symbol === raw.resolved_symbol && sup.cash_history) out._fundamental_cash_history = sup.cash_history; }
+    if (sup && sup.schema === 1 && sup.symbol === raw.resolved_symbol && sup.cash_history) out._fundamental_cash_history = sup.cash_history;
+    // Bewertung je Aktie (seit 26.11.2026): Jahre, Konsens und Aktienbasis derselben Notierung für kennzahlen-je-aktie.ts.
+    if (sup && sup.schema === 1 && sup.symbol === raw.resolved_symbol) out._je_aktie_quelle = { per_share: sup.per_share ?? null, estimates: sup.estimates ?? null, share_basis: sup.share_basis ?? null }; }
   // ROIC-Beträge in der Berichtswährung → Handelswährung (EZB-Kurs der Ergänzungsdatei), vor Prognose und Prüfung.
   convertReportCurrency(out, (raw.fundamental_supplement as Record<string, any> | null)?.fx ?? null);
   normalizeMarketCap(out, raw.fundamental_supplement as Record<string, unknown> | null, Date.now(), typeof raw.resolved_symbol === 'string' ? raw.resolved_symbol : '');

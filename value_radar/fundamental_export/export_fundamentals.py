@@ -157,6 +157,31 @@ def kennzahlen_jahre(frames,info,kurse,years=4):
     'shares':number(b.get('Ordinary Shares Number')) or number(b.get('Share Issued')),'dividends_paid':abs(paid) if paid is not None else None},
    'kurs':{'datum':preis[0] if preis else None,'schluss':number(preis[1]) if preis else None,'dividende_je_aktie':round(sum(div),6) if kurse else None,'waehrung':info.get('currency')}})
  return {'method':PER_SHARE_METHOD,'source':'Yahoo annual statements und Kurshistorie','source_url':'https://finance.yahoo.com/quote/'+str(info.get('symbol'))+'/financials/','jahre':sorted(out,key=lambda x:x['end'])}
+# Archiv der Kennzahlen je Aktie (seit 26.11.2026, Entscheidung des Nutzers): Yahoo liefert nur die letzten vier
+# Geschäftsjahre; mit jedem neuen Jahr fiele das älteste weg. Jahre aus der bisherigen Datei, die Yahoo nicht mehr liefert,
+# bleiben erhalten und tragen herkunft 'archiv' mit dem Datum der letzten Lieferung. Es wird nie gelöscht. Liefert Yahoo
+# einen Stichtag erneut, gilt der neue Wert. Übernommen wird nur bei gleicher Notierung (symbol, yahoo_symbol) und
+# gleicher Methode; ein archiviertes Jahr wird nie mit einem gelieferten vermischt.
+PER_SHARE_ARCHIVE_METHOD='per_share_archive_v1'
+def per_share_archivieren(data,old):
+ neu=data.get('per_share');stand=data.get('retrieved_at')
+ if isinstance(neu,dict):
+  for j in neu.get('jahre',[]):j['herkunft']='yahoo';j['zuletzt_geliefert']=stand
+ alt=(old or {}).get('per_share')
+ if not isinstance(alt,dict) or alt.get('method')!=PER_SHARE_METHOD:return data
+ if (old.get('symbol'),old.get('yahoo_symbol'))!=(data.get('symbol'),data.get('yahoo_symbol')):
+  data.setdefault('issues',[]).append('Archiv der Kennzahlen je Aktie verworfen: Notierung abweichend');return data
+ if not isinstance(neu,dict):
+  data['per_share']=neu=alt;data.setdefault('issues',[]).append('Kennzahlen je Aktie: Abruf fehlgeschlagen, bisheriger Block behalten')
+  return data
+ da={j['end'] for j in neu.get('jahre',[]) if isinstance(j,dict) and isinstance(j.get('end'),str)};n=0
+ for j in alt.get('jahre',[]):
+  if not isinstance(j,dict) or not isinstance(j.get('end'),str) or j['end'] in da:continue
+  if j.get('herkunft')!='archiv':j={**j,'herkunft':'archiv','zuletzt_geliefert':j.get('zuletzt_geliefert') or old.get('retrieved_at')}
+  neu['jahre'].append(j);n+=1
+ neu['jahre'].sort(key=lambda x:x['end'])
+ if n:neu['archiv']={'method':PER_SHARE_ARCHIVE_METHOD,'jahre':n}
+ return data
 # Gesamtumsatz zuerst (11.11.2026): RevenueFromContractWithCustomer... (ASC 606) enthaelt keine Miet-, Leasing-, Zins- oder
 # Praemienertraege; bei United Rentals, ADM, GM, REITs und Banken war der Umsatz dadurch bis zu 99 % zu niedrig.
 TAGS={'revenue':['Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet'],'net_income':['NetIncomeLoss'],'eps_trailing':['EarningsPerShareDiluted'],'gross_profit':['GrossProfit'],'ebit':['OperatingIncomeLoss'],'weighted_shares':['WeightedAverageNumberOfDilutedSharesOutstanding'],'operating_cashflow':['NetCashProvidedByUsedInOperatingActivities'],'capex':['PaymentsToAcquirePropertyPlantAndEquipment'],'cash':['CashAndCashEquivalentsAtCarryingValue'],'total_assets':['Assets'],'equity':['StockholdersEquity']}
@@ -476,6 +501,7 @@ def main():
    data=json.loads(temp.read_text(encoding='utf-8')); old=json.loads(dest.read_text(encoding='utf-8')) if dest.exists() else None
    # Never overwrite a newer retained annual block with an older/missing one.
    data=preserve_annual(data,old)
+   data=per_share_archivieren(data,old)
    index['annualSupply'][symbol]={**annual_supply_status(data,time.time()),'checkedAt':stamp()}
    save(dest,data);index['listings'][symbol]=filename;index['failures'].pop(symbol,None);success+=1
   except Exception as exc:

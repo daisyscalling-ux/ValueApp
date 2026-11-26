@@ -909,3 +909,16 @@ US-Leasing: Unter US-GAAP mindert die Miete den operativen Cashflow, „Total De
 - **Regel** (Entscheidung des Nutzers): `fundamental_export/operating_lease.py` schreibt den Block `operating_lease` (Methode `us_operating_lease_v1`) in die Ergänzungsdatei, aus derselben SEC-Antwort wie der Jahresabschluss, ohne zusätzlichen Abruf. Die App rechnet nur bei belegtem „enthalten“ ohne Leasing (`applyOperatingLease`); der Risikoscore behält es. Details: valueapp-cf `BEWERTUNG-RISIKODATEN.md`.
 - **Wirksam:** nach dem nächsten `fundamentals-daily` (je Titel beim Neuabruf) und `precompute-3tage`.
 - **Tests:** `fundamental_export/test_operating_lease.py` (im Workflow `fundamentals-daily`), App `tests/operating-lease.test.mjs`.
+
+## Archiv der Kennzahlen je Aktie (26.11.2026, Entscheidung des Nutzers)
+- **Messung** (`daten/fundamentals`, 1.751 Dateien): Der Block `per_share` hat bei 1.553 Titeln 4 Geschäftsjahre mit Gewinn je Aktie, bei 81 Titeln 3. 107 Dateien haben noch keinen Block. Das älteste Jahr ist bei 1.180 Titeln 2022 und bei 447 Titeln 2023. Yahoo liefert nur vier Geschäftsjahre, ROIC in unserem Tarif höchstens fünf.
+- **Regel** (`per_share_archivieren`, Methode `per_share_archive_v1`): Jahre aus der bisherigen Datei, die Yahoo nicht mehr liefert, bleiben erhalten.
+  - Sie tragen `herkunft: 'archiv'` und `zuletzt_geliefert`, das Datum der letzten echten Lieferung.
+  - Gelieferte Jahre tragen `herkunft: 'yahoo'`. Liefert Yahoo einen Stichtag erneut, gilt der neue Wert.
+  - Übernommen wird nur bei gleicher Notierung (`symbol`, `yahoo_symbol`) und gleicher Methode, sonst verworfen mit Eintrag in `issues`.
+  - Schlägt der Abruf fehl, bleibt der bisherige Block.
+  - Es wird nie gelöscht.
+- **App** (`kennzahlen-je-aktie.ts`): prüft die Herkunft je Jahr. Unbekannte Herkunft oder ein Archivjahr ohne Lieferdatum wird verworfen und gezählt. Archivjahre stehen mit Lieferdatum im Hinweis unter der Tabelle. Gewinnwachstum nur zwischen direkt aufeinanderfolgenden Geschäftsjahren. Höchstens 20 Jahre.
+- **Grenze:** Das Archiv füllt keine Vergangenheit auf. Es verhindert nur, dass Jahre wegfallen; die Reihe wächst ab jetzt um ein Jahr je Geschäftsjahr. Ältere Jahre brauchen eine eigene Quelle: SEC für US-Titel, EDINET für Japan; beide folgen als eigene PRs.
+- **Probelauf** auf einer Kopie von main (ADI, KO, IMO, echter Yahoo-Abruf): je 4 Jahre mit `herkunft: 'yahoo'`, kein Archivjahr, kein Fehler. Das erste Archivjahr entsteht, sobald Yahoo ein neues Geschäftsjahr liefert und 2022 dafür wegfällt.
+- **Tests:** `fundamental_export/test_per_share.py` (Workflow `fundamentals-daily`): Archivjahr mit Datum, Weitergabe über mehrere Läufe, andere Notierung oder Methode, fehlgeschlagener Abruf. Ergebnis: 45 Tests in `test_per_share.py` und `test_export_fundamentals.py`.

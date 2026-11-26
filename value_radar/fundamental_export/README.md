@@ -108,3 +108,12 @@ Quartale ohne Ist, ohne Schätzung oder mit Schätzung 0 entfallen. Unter 2 Quar
 Das ist die einzige Quelle für App und Screener. `applyEarningsSurprises` prüft Notierung, Alter (Abruf ≤ 7 Tage, jüngstes Quartal ≤ 200 Tage) und Mindestzahl erneut.
 
 Livetest 17.11.2026: AAPL 4 Quartale, jüngstes 2026-09-30 mit +5,80 %; Toyota (7203.T) +15,79 %. Tests: `SurpriseTests` (Prozentrechnung, Reihenfolge, Verlustquartal, 6 unvollständige Fälle).
+
+## Kennzahlen je Aktie und Geschäftsjahr (`per_share`, seit 26.11.2026)
+- **Wunsch des Nutzers:** KGV, KBV, Graham-Zahl, EPS, Gewinn, Gewinnwachstum und Dividende je Geschäftsjahr in der Einzelanalyse.
+- **Block `per_share`** (`yahoo_annual_per_share_v1`, Funktion `kennzahlen_jahre`), bis zu 4 Geschäftsjahre:
+  - aus den Yahoo-Jahresabschlüssen: `Diluted EPS`, `Net Income`, `Stockholders Equity`, `Ordinary Shares Number` (sonst `Share Issued`), `Cash Dividends Paid`;
+  - aus der unbereinigten Kurshistorie (`history(period='6y', auto_adjust=False)`): Schlusskurs am letzten Handelstag bis zum Stichtag (höchstens 7 Tage davor, sonst `None`) und Summe der Dividenden je Aktie im Geschäftsjahr. Ohne Kurshistorie bleibt die Dividende `None`, nicht 0.
+- **Rechnen:** KGV, KBV, Graham-Zahl, Rendite und Wachstum rechnet und prüft die App (`kennzahlen-je-aktie.ts`).
+- **Tests:** `test_per_share.py` (im Workflow `fundamentals-daily`).
+- **Live-Probe ADI:** GJ 2022–2025 vollständig, z. B. GJ 2025: EPS 4,56 $, Dividende 3,89 $, Kurs zum Stichtag 234,13 $.

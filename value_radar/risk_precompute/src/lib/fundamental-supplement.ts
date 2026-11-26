@@ -5,7 +5,7 @@ const DAY=86400000;
 export const SAME_PERIOD_DAYS=35;
 const finite=(x:unknown):x is number=>typeof x==='number'&&Number.isFinite(x);
 // Unit conversion only. FX rates come from the ECB file; ADR ratios only from share_basis (issuer-reviewed or the double check below).
-const unitRate=(from:unknown,to:unknown):number|null=>{
+export const unitRate=(from:unknown,to:unknown):number|null=>{
  if(typeof from!=='string'||typeof to!=='string')return null;
  if(from===to)return 1;
  const units:Record<string,number>={GBP:1,GBp:0.01,GBX:0.01};

@@ -892,6 +892,8 @@ export interface Kursziel12m {
   spanne_tief: number;
   spanne_hoch: number;
   konfidenz: string;
+  /** Gründe, warum die Konfidenz nicht „hoch“ ist (seit 27.11.2026); leer bei „hoch“. Nur Anzeige, ändert die Regel nicht. */
+  konfidenz_gruende: string[];
   /** Spanne aus Schaetzungsstreuung; seit 13.11.2026 mindestens +/- 1 gemessene Jahresvolatilitaet. */
   spanne_basis: "schaetzungen" | "gemessene_volatilitaet";
   vola_pct: number | null;
@@ -1041,6 +1043,28 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
   let konfidenz = "mittel";
   if (schaetzungen.length >= 3 && streuung < 0.15) konfidenz = "hoch";
   else if (schaetzungen.length === 1 || streuung > 0.40) konfidenz = "niedrig";
+  // Gründe für mittel/niedrig (seit 27.11.2026, Wunsch des Nutzers nach Messung: 147 von 1.340 Titeln niedrig, 136 davon
+  // durch Streuung über 40 %; 83 von 100 Analystenzielen > +60 % stehen bei Titeln, die > 40 % unter dem 52W-Hoch liegen).
+  const konfidenzGruende: string[] = [];
+  if (konfidenz !== "hoch") {
+    const pz = (v: number) => `${v >= kurs ? "+" : "−"}${Math.abs(Math.round((v / kurs - 1) * 100))} %`;
+    const teile: [string, number | null][] = [["Fundamental", zielFund], ["Analysten", zielAnalyst], ["Marktlage", zielMom]];
+    const fehlend = teile.filter(([, v]) => v === null).map(([n]) => n);
+    if (schaetzungen.length === 1) konfidenzGruende.push(`Nur eine Schätzung (${teile.find(([, v]) => v !== null)![0]}).`);
+    else if (fehlend.length) {
+      const warum = (n: string) => n === "Analysten" ? (target && target > 0 ? `Konsensziel beträgt das ${(target / kurs).toLocaleString("de-DE", { maximumFractionDigits: 1 })}-fache des Kurses (verwendet nur 0,3- bis 3,5-fach)` : "kein Konsensziel")
+        : n === "Fundamental" ? "kein positiver erwarteter Gewinn" : "kein 52-Wochen-Band";
+      konfidenzGruende.push(fehlend.map((n) => `${n} fehlt: ${warum(n)}.`).join(" "));
+    }
+    if (werte.length > 1) {
+      const da = teile.filter((t): t is [string, number] => t[1] !== null);
+      const hoch = da.reduce((a, b) => b[1] > a[1] ? b : a), tief = da.reduce((a, b) => b[1] < a[1] ? b : a);
+      if (streuung >= 0.15) konfidenzGruende.push(`Schätzungen liegen ${Math.round(streuung * 100)} % des Ziels auseinander (hoch ab unter 15 %, niedrig ab über 40 %): ${hoch[0]} ${pz(hoch[1])}, ${tief[0]} ${pz(tief[1])} zum Kurs.`);
+    }
+    if (target && target > kurs * 1.6 && hi && kurs < hi * 0.6)
+      konfidenzGruende.push(`Analystenziel ${pz(target)} zum Kurs, der Kurs liegt ${Math.round((1 - kurs / hi) * 100)} % unter dem 52-Wochen-Hoch: Das Ziel ist vermutlich noch nicht an den Kursrückgang angepasst (die Quelle nennt kein Datum).`);
+    if (!(anker && anker.reliable === true) && zielFund !== null) konfidenzGruende.push("Fair Value nicht verlässlich: Die fundamentale Schätzung rechnet über Gewinn × KGV statt über den Fair Value.");
+  }
   const upside = (ziel / kurs - 1) * 100;
   const vsAnalyst = target && target > 0 ? (ziel / target - 1) * 100 : null;
   const extrem = Math.abs(upside) > 45;
@@ -1061,6 +1085,7 @@ export function kursziel12m(fund: Fund, _preset: Playbook = "quality"): Kursziel
     ziel_momentum: zielMom ? Math.round(zielMom * 100) / 100 : null,
     spanne_tief: Math.round(spanneTief * 100) / 100,
     spanne_hoch: Math.round(spanneHoch * 100) / 100,
+    konfidenz_gruende: konfidenzGruende,
     konfidenz,
     spanne_basis: mv !== null ? "gemessene_volatilitaet" : "schaetzungen",
     vola_pct: mv !== null ? Math.round(mv * 1000) / 10 : null,

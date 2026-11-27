@@ -163,10 +163,84 @@ def kennzahlen_jahre(frames,info,kurse,years=4):
 # einen Stichtag erneut, gilt der neue Wert. Übernommen wird nur bei gleicher Notierung (symbol, yahoo_symbol) und
 # gleicher Methode; ein archiviertes Jahr wird nie mit einem gelieferten vermischt.
 PER_SHARE_ARCHIVE_METHOD='per_share_archive_v1'
+# Ältere Geschäftsjahre aus SEC companyfacts (seit 27.11.2026, Entscheidung des Nutzers): nur US-GAAP-10-K, Abschluss und
+# Notierung in USD. Je Stichtag gilt die zuletzt eingereichte Zahl (Anpassungen späterer 10-K). Gewinn je Aktie und Aktienzahl
+# werden mit allen Yahoo-Splits nach dem Einreichungsdatum auf die heutige Aktienbasis gebracht, damit sie zum
+# split-bereinigten Yahoo-Kurs passen (KGV und KBV hängen davon nicht ab, die Reihe des Gewinns je Aktie schon).
+# Abgleich Pflicht: In mindestens SEC_PS_MIN_ABGLEICH Jahren, die auch Yahoo liefert, darf der Gewinn je Aktie höchstens
+# SEC_PS_TOLERANZ abweichen; sonst wird der ganze SEC-Block verworfen. SEC ergänzt nur Jahre vor dem ältesten Yahoo-Jahr.
+SEC_PER_SHARE_METHOD='sec_annual_per_share_v1'
+SEC_PS_TOLERANZ=0.02
+SEC_PS_MIN_ABGLEICH=1
+SEC_PS_MAX_JAHRE=20
+SEC_PS_TAGS={'eps_diluted':('EarningsPerShareDiluted','USD/shares',True),'net_income':('NetIncomeLoss','USD',True),
+ 'equity':('StockholdersEquity','USD',False),'shares':('CommonStockSharesOutstanding','shares',False)}
+def _sec_fakten(facts,tag,unit,dauer):
+ """{stichtag: fakt} je Stichtag die zuletzt eingereichte 10-K-Zahl; Flussgrößen nur mit Jahresdauer."""
+ out={}
+ for f in facts.get(tag,{}).get('units',{}).get(unit,[]):
+  try:
+   if f.get('form') not in ('10-K','10-K/A'):continue
+   end=dt.date.fromisoformat(f['end']);filed=dt.date.fromisoformat(f['filed']);v=number(f.get('val'))
+   if v is None or not re.fullmatch(r'\d{10}-\d{2}-\d{6}',str(f.get('accn',''))):continue
+   if dauer and not 330<=(end-dt.date.fromisoformat(f['start'])).days<=400:continue
+  except (KeyError,ValueError,TypeError):continue
+  alt=out.get(end)
+  if alt is None or filed>alt['filed']:out[end]={'val':v,'filed':filed,'accn':f['accn'],'form':f['form']}
+ return out
+def sec_jahre_je_aktie(data,cik,kurse,splits,yahoo_jahre,info,sha,stand,heute=None):
+ """(jahre, block, grund): SEC-Jahre vor dem ältesten Yahoo-Jahr oder Grund, warum keine."""
+ heute=heute or dt.datetime.now(UTC).date()
+ if str(data.get('cik','')).lstrip('0')!=str(cik).lstrip('0'):return [],None,'SEC-Identität (CIK) abweichend'
+ if info.get('financialCurrency')!='USD' or info.get('currency')!='USD':return [],None,'Abschluss oder Notierung nicht in USD'
+ facts=data.get('facts',{}).get('us-gaap',{})
+ f={k:_sec_fakten(facts,tag,unit,dauer) for k,(tag,unit,dauer) in SEC_PS_TAGS.items()}
+ sp=[(dt.date.fromisoformat(s['date']),s['ratio']) for s in splits if number(s.get('ratio')) and s['ratio']>0]
+ def faktor(filed):
+  x=1.0
+  for d,r in sp:
+   if d>filed:x*=r
+  return x
+ def eps_adj(end):
+  e=f['eps_diluted'].get(end);return (e['val']/faktor(e['filed']),e) if e else (None,None)
+ # Abgleich mit Yahoo
+ yj={dt.date.fromisoformat(j['end']):j for j in yahoo_jahre if isinstance(j.get('end'),str)}
+ vergleich=[]
+ for end,j in yj.items():
+  # Stichtage dürfen bis 7 Tage abweichen (52/53-Wochen-Jahre: Yahoo 31.01., SEC 29.01.).
+  nah=[e for e in f['eps_diluted'] if abs((e-end).days)<=7]
+  y=number((j.get('fields') or {}).get('eps_diluted'));s,_=eps_adj(min(nah,key=lambda e:abs((e-end).days))) if nah else (None,None)
+  if y is None or s is None:continue
+  ab=abs(s-y)/max(abs(s),abs(y),0.01);vergleich.append((end,ab,s,y))
+ schlecht=[v for v in vergleich if v[1]>SEC_PS_TOLERANZ]
+ if schlecht:
+  e,_,s,y=schlecht[0];return [],None,f'Gewinn je Aktie GJ {e.year} weicht ab (SEC {s:.4g}, Yahoo {y:.4g})'
+ if len(vergleich)<SEC_PS_MIN_ABGLEICH:return [],None,'Kein Geschäftsjahr zum Abgleich mit Yahoo'
+ erstes=min(yj) if yj else heute
+ out=[]
+ for end in sorted(f['eps_diluted'],reverse=True):
+  if end>=erstes-dt.timedelta(days=35) or (heute-end).days>365*SEC_PS_MAX_JAHRE:continue
+  eps,quelle=eps_adj(end)
+  ni=f['net_income'].get(end);eq=f['equity'].get(end);sh=f['shares'].get(end)
+  ende=end.isoformat();bis=[k for k in kurse if k[0]<=ende]
+  preis=bis[-1] if bis and (end-dt.date.fromisoformat(bis[-1][0])).days<=7 else None
+  start=(end-dt.timedelta(days=365)).isoformat()
+  div=[k[2] for k in kurse if start<k[0]<=ende and number(k[2]) is not None and k[2]>0]
+  out.append({'end':ende,'currency':'USD','herkunft':'sec',
+   'fields':{'eps_diluted':round(eps,6),'net_income':ni['val'] if ni else None,'equity':eq['val'] if eq else None,
+    'shares':sh['val']*faktor(sh['filed']) if sh else None,'dividends_paid':None},
+   'kurs':{'datum':preis[0] if preis else None,'schluss':number(preis[1]) if preis else None,'dividende_je_aktie':round(sum(div),6) if kurse and kurse[0][0]<=start else None,'waehrung':'USD'},
+   'sec':{'accession':quelle['accn'],'filed':quelle['filed'].isoformat(),'form':quelle['form'],'split_faktor':round(faktor(quelle['filed']),6),
+    'source_url':f'https://www.sec.gov/Archives/edgar/data/{int(cik)}/{quelle["accn"].replace("-","")}/'}})
+ out.sort(key=lambda x:x['end'])
+ block={'method':SEC_PER_SHARE_METHOD,'cik':str(cik),'sha256':sha,'abgerufen':stand,'jahre':len(out),
+  'abgleich':{'jahre':len(vergleich),'max_abweichung':round(max(v[1] for v in vergleich),6)},'source':'SEC companyfacts / US-GAAP (10-K)'}
+ return out,block,None
 def per_share_archivieren(data,old):
  neu=data.get('per_share');stand=data.get('retrieved_at')
  if isinstance(neu,dict):
-  for j in neu.get('jahre',[]):j['herkunft']='yahoo';j['zuletzt_geliefert']=stand
+  for j in neu.get('jahre',[]):
+   if j.get('herkunft')!='sec':j['herkunft']='yahoo';j['zuletzt_geliefert']=stand
  alt=(old or {}).get('per_share')
  if not isinstance(alt,dict) or alt.get('method')!=PER_SHARE_METHOD:return data
  if (old.get('symbol'),old.get('yahoo_symbol'))!=(data.get('symbol'),data.get('yahoo_symbol')):
@@ -176,10 +250,20 @@ def per_share_archivieren(data,old):
   return data
  da={j['end'] for j in neu.get('jahre',[]) if isinstance(j,dict) and isinstance(j.get('end'),str)};n=0
  for j in alt.get('jahre',[]):
-  if not isinstance(j,dict) or not isinstance(j.get('end'),str) or j['end'] in da:continue
+  if not isinstance(j,dict) or not isinstance(j.get('end'),str):continue
+  # SEC-Jahre (seit 27.11.2026) kommen bei jedem Lauf neu; fehlt der SEC-Abruf, bleiben sie unverändert als SEC.
+  if j.get('herkunft')=='sec':
+   if j['end'] not in da:neu['jahre'].append(j);da.add(j['end'])
+   continue
+  # Eigene, früher von Yahoo gelieferte Jahre haben Vorrang vor SEC für denselben Stichtag.
+  if j['end'] in da:
+   if not any(x.get('end')==j['end'] and x.get('herkunft')=='sec' for x in neu['jahre']):continue
+   neu['jahre']=[x for x in neu['jahre'] if x.get('end')!=j['end']]
   if j.get('herkunft')!='archiv':j={**j,'herkunft':'archiv','zuletzt_geliefert':j.get('zuletzt_geliefert') or old.get('retrieved_at')}
-  neu['jahre'].append(j);n+=1
+  neu['jahre'].append(j);n+=1;da.add(j['end'])
  neu['jahre'].sort(key=lambda x:x['end'])
+ # Behaltene SEC-Jahre brauchen ihren Block (Prüfsumme, Abgleich); ohne neuen SEC-Abruf gilt der bisherige.
+ if 'sec' not in neu and isinstance(alt.get('sec'),dict) and any(x.get('herkunft')=='sec' for x in neu['jahre']):neu['sec']=alt['sec']
  if n:neu['archiv']={'method':PER_SHARE_ARCHIVE_METHOD,'jahre':n}
  return data
 # Gesamtumsatz zuerst (11.11.2026): RevenueFromContractWithCustomer... (ASC 606) enthaelt keine Miet-, Leasing-, Zins- oder
@@ -409,9 +493,18 @@ def collect(row):
  # Kurshistorie unbereinigt (Schlusskurs und Dividende je Tag) für die Kennzahlen je Aktie (seit 26.11.2026).
  per_share=None
  try:
-  h=t.history(period='6y',interval='1d',auto_adjust=False,actions=True)
+  # 20 Jahre (seit 27.11.2026, vorher 6) für die SEC-Jahre. Yahoo-Kurse sind split-bereinigt, nicht dividendenbereinigt.
+  h=t.history(period='20y',interval='1d',auto_adjust=False,actions=True)
   kurse=[(ix.strftime('%Y-%m-%d'),number(float(r['Close'])),number(float(r.get('Dividends',0) or 0))) for ix,r in h.iterrows()]
   per_share=kennzahlen_jahre(frames,info,kurse)
+  if sec_daten is not None:
+   import hashlib
+   alle_splits=recent_splits(t,years=SEC_PS_MAX_JAHRE+2)
+   try:
+    sj,sb,grund=sec_jahre_je_aktie(sec_daten,cik,kurse,alle_splits,per_share['jahre'],info,hashlib.sha256(sec_roh).hexdigest(),stamp())
+    if sb:per_share['jahre']=sorted(per_share['jahre']+sj,key=lambda x:x['end']);per_share['sec']=sb
+    else:per_share['sec_status']=grund
+   except Exception:per_share['sec_status']='SEC-Jahre je Aktie: Auswertung fehlgeschlagen'
  except Exception: errors.append('Kurshistorie für Kennzahlen je Aktie nicht verfügbar')
  # Operating-Leasing zum Stichtag des endgültigen Jahresabschlusses aus derselben SEC-Antwort (seit 23.11.2026, operating_lease.py).
  lease=None

@@ -160,19 +160,27 @@ def parse_summary(raw, doc):
             continue
         umfang, ende, dauer = kontexte[e.get('contextRef')]
         werte.setdefault((mt[1], umfang, ende, dauer, einheiten.get(e.get('unitRef'))), set()).add(v)
-    vorhanden = {k[0] for k in werte}
-    standards = [s for s, el in JE_AKTIE_ELEMENTE.items() if el['net_income'] in vorhanden or el['eps_basic'] in vorhanden]
-    if len(standards) != 1:
-        raise ValueError('ambiguous_or_unsupported_taxonomy')
-    standard = standards[0]
-    elemente = {**JE_AKTIE_ELEMENTE[standard], **EINZEL_ELEMENTE}
-    dauer_felder = {'eps_diluted', 'eps_basic', 'net_income', 'per', 'dps'}
-    enden = sorted({k[2] for k in werte if k[0] == elemente['net_income'] and k[1] == 'konzern' and k[3]}
-                   | {k[2] for k in werte if k[0] == elemente['eps_basic'] and k[1] == 'konzern' and k[3]})
+    # Standard je Geschäftsjahr, nur aus Konzernwerten (seit 27.11.2026, Korrektur nach dem ersten Lauf: 45 von 89 Titeln
+    # verworfen). IFRS- und US-GAAP-Konzerne berichten den Einzelabschluss der Muttergesellschaft nach J-GAAP; nach einer
+    # Umstellung stehen ältere Jahre der Übersicht noch nach J-GAAP. Zwei Standards im Konzern für dasselbe Jahr: Jahr offen.
+    def standards_im_jahr(ende):
+        return [s for s, el in JE_AKTIE_ELEMENTE.items()
+                if any(k[0] in (el['net_income'], el['eps_basic']) and k[1] == 'konzern' and k[2] == ende and k[3] for k in werte)]
+    enden = sorted({k[2] for k in werte if k[1] == 'konzern' and k[3]
+                    and any(k[0] in (el['net_income'], el['eps_basic']) for el in JE_AKTIE_ELEMENTE.values())})
     if ende_doc not in enden:
         raise ValueError('invalid_annual_period')
+    if len(standards_im_jahr(ende_doc)) != 1:
+        raise ValueError('ambiguous_or_unsupported_taxonomy')
+    standard = standards_im_jahr(ende_doc)[0]
+    dauer_felder = {'eps_diluted', 'eps_basic', 'net_income', 'per', 'dps'}
     jahre, konflikte = [], []
     for ende in enden:
+        st = standards_im_jahr(ende)
+        if len(st) != 1:
+            konflikte.append(f'standard:{ende}')
+            continue
+        elemente = {**JE_AKTIE_ELEMENTE[st[0]], **EINZEL_ELEMENTE}
         felder = {}
         for feld, el in elemente.items():
             umfaenge = ('einzel', 'konzern') if feld in EINZEL_ELEMENTE else ('konzern',)
@@ -186,7 +194,7 @@ def parse_summary(raw, doc):
                     wert = next(iter(s))
                     break
             felder[feld] = wert
-        jahre.append({'end': ende.isoformat(), 'fields': felder})
+        jahre.append({'end': ende.isoformat(), 'standard': st[0], 'fields': felder})
     return {'standard': standard, 'jahre': jahre, 'konflikte': konflikte}
 
 

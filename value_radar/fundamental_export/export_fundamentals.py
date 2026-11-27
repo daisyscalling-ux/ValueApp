@@ -236,11 +236,93 @@ def sec_jahre_je_aktie(data,cik,kurse,splits,yahoo_jahre,info,sha,stand,heute=No
  block={'method':SEC_PER_SHARE_METHOD,'cik':str(cik),'sha256':sha,'abgerufen':stand,'jahre':len(out),
   'abgleich':{'jahre':len(vergleich),'max_abweichung':round(max(v[1] for v in vergleich),6)},'source':'SEC companyfacts / US-GAAP (10-K)'}
  return out,block,None
+# Ältere japanische Geschäftsjahre aus EDINET (seit 27.11.2026, Entscheidung des Nutzers; Schritt 2 nach edinet_je_aktie.py).
+# Quelle: daten/cf_edinet_je_aktie.json (berichtete Fünfjahresübersichten, edinet_summary_per_share_v1). Aktienbasis je Jahr aus
+# dem berichteten KGV: f = KGV × Gewinn je Aktie ÷ Yahoo-Schlusskurs am Stichtag (split-bereinigt). f muss bis auf
+# EDINET_FAKTOR_TOLERANZ einem Kandidaten entsprechen: 1 oder dem Produkt der Yahoo-Splits ab einem Split nach dem Stichtag.
+# Gemessen an 157 Jahren mit Kurs (27.11.2026): 151 innerhalb 3 %, 6 zwischen 6 und 10 % (TSE:4062, TSE:4751; vermutlich anderer
+# Stichtagskurs im Bericht). Kandidaten liegen mindestens 25 % auseinander (4 und 5), 10 % verwechselt keinen Faktor.
+# Ohne KGV (Verlust) oder ohne Kurs bleibt das Jahr je Aktie offen; der Gewinn bleibt. Abgleich Pflicht wie bei SEC.
+EDINET_PER_SHARE_METHOD='edinet_per_share_export_v1'
+EDINET_FAKTOR_TOLERANZ=0.10
+EDINET_MAX_ALTER_TAGE=400
+def edinet_jahre_je_aktie(eintrag,row,kurse,splits,yahoo_jahre,info,heute=None):
+ """(jahre, block, grund) für Jahre vor dem ältesten Yahoo-Jahr."""
+ heute=heute or dt.datetime.now(UTC).date()
+ sym=row.get('listing_symbol') or row.get('ticker')
+ if not isinstance(eintrag,dict) or not eintrag.get('berichte'):return [],None,'Keine EDINET-Fünfjahresübersicht'
+ ident=eintrag.get('inputIdentity') or {}
+ if ident.get('listing_symbol')!=sym or (row.get('isin') and ident.get('isin')!=row.get('isin')) or ident.get('currency')!='JPY':return [],None,'EDINET-Identität abweichend'
+ if info.get('financialCurrency')!='JPY' or info.get('currency')!='JPY':return [],None,'Abschluss oder Notierung nicht in JPY'
+ try:alter=(heute-dt.date.fromisoformat(str(eintrag.get('retrievedAt',''))[:10])).days
+ except ValueError:alter=None
+ if alter is None or not 0<=alter<=EDINET_MAX_ALTER_TAGE:return [],None,f'EDINET-Abruf älter als {EDINET_MAX_ALTER_TAGE} Tage'
+ jahre={}
+ for b in eintrag['berichte']:  # neuester Bericht zuerst; je Stichtag gilt er
+  for j in b.get('jahre',[]):
+   if isinstance(j.get('end'),str) and j['end'] not in jahre:jahre[j['end']]=(b,j)
+ sp=sorted((dt.date.fromisoformat(x['date']),x['ratio']) for x in splits if number(x.get('ratio')) and x['ratio']>0)
+ def kandidaten(ende):
+  out=[1.0]
+  for i,(d,_) in enumerate(sp):
+   if d>ende:
+    p=1.0
+    for _,r in sp[i:]:p*=r
+    out.append(p)
+  return out
+ def kurs_am(ende):
+  e=ende.isoformat();bis=[k for k in kurse if k[0]<=e]
+  return bis[-1] if bis and (ende-dt.date.fromisoformat(bis[-1][0])).days<=7 else None
+ umgerechnet={}
+ for end,(b,j) in jahre.items():
+  f=j.get('fields') or {};ende=dt.date.fromisoformat(end)
+  eps=number(f.get('eps_diluted'));art='verwässert'
+  if eps is None:eps=number(f.get('eps_basic'));art='unverwässert (keine Verwässerung berichtet)'
+  per=number(f.get('per'));k=kurs_am(ende);faktor=None;grund=None
+  if eps is None or eps<=0 or per is None or per<=0:grund='kein KGV im Bericht (Verlust oder nicht angegeben)'
+  elif not k or not number(k[1]):grund='kein Yahoo-Kurs am Stichtag'
+  else:
+   roh=per*eps/k[1];c=min(kandidaten(ende),key=lambda c:abs(roh/c-1))
+   if abs(roh/c-1)<=EDINET_FAKTOR_TOLERANZ:faktor=c
+   else:grund=f'Aktienbasis nicht bestimmbar (KGV × Gewinn je Aktie ÷ Kurs = {roh:.3g})'
+  umgerechnet[ende]=(b,j,eps,art,faktor,grund,k)
+ # Abgleich mit Yahoo (Stichtage bis 7 Tage auseinander)
+ vergleich=[]
+ for y in yahoo_jahre:
+  try:ye=dt.date.fromisoformat(y['end'])
+  except (KeyError,TypeError,ValueError):continue
+  yv=number((y.get('fields') or {}).get('eps_diluted'))
+  nah=[e for e in umgerechnet if abs((e-ye).days)<=7 and umgerechnet[e][4]]
+  if yv is None or not nah:continue
+  _,_,eps,_,faktor,_,_=umgerechnet[nah[0]];v=eps/faktor
+  vergleich.append((ye,abs(v-yv)/max(abs(v),abs(yv),0.01),v,yv))
+ schlecht=[v for v in vergleich if v[1]>SEC_PS_TOLERANZ]
+ if schlecht:
+  e,_,v,y=schlecht[0];return [],None,f'Gewinn je Aktie GJ {e.year} weicht ab (EDINET {v:.4g}, Yahoo {y:.4g})'
+ if len(vergleich)<SEC_PS_MIN_ABGLEICH:return [],None,'Kein Geschäftsjahr zum Abgleich mit Yahoo'
+ erstes=min(dt.date.fromisoformat(y['end']) for y in yahoo_jahre)
+ out=[];offen=[]
+ for ende in sorted(umgerechnet):
+  if ende>=erstes-dt.timedelta(days=35):continue
+  b,j,eps,art,faktor,grund,k=umgerechnet[ende];f=j.get('fields') or {}
+  start=(ende-dt.timedelta(days=365)).isoformat();e=ende.isoformat()
+  div=[x[2] for x in kurse if start<x[0]<=e and number(x[2]) is not None and x[2]>0]
+  if grund:offen.append(f'GJ {ende.year}: {grund}')
+  out.append({'end':e,'currency':'JPY','herkunft':'edinet',
+   'fields':{'eps_diluted':round(eps/faktor,6) if faktor else None,'net_income':number(f.get('net_income')),'equity':None,'shares':None,
+    'bvps':round(f['bvps']/faktor,6) if faktor and number(f.get('bvps')) and f['bvps']>0 else None,'dividends_paid':None},
+   'kurs':{'datum':k[0] if k else None,'schluss':number(k[1]) if k else None,'dividende_je_aktie':round(sum(div),6) if kurse and kurse[0][0]<=start else None,'waehrung':'JPY'},
+   'edinet':{'docID':b['docID'],'edinetCode':b.get('edinetCode'),'standard':j.get('standard') or b.get('standard'),'eps_art':art,'split_faktor':faktor,
+    'kgv_bericht':number(f.get('per')),'fileSha256':b.get('fileSha256'),'source_url':'https://disclosure2.edinet-fsa.go.jp/'}})
+ block={'method':EDINET_PER_SHARE_METHOD,'quelle':'EDINET 有価証券報告書 (主要な経営指標等の推移)','abgerufen':eintrag.get('retrievedAt'),'jahre':len(out),
+  'abgleich':{'jahre':len(vergleich),'max_abweichung':round(max(v[1] for v in vergleich),6)},'offen':offen}
+ return out,block,None
+QUELL_HERKUNFT=('sec','edinet')  # Jahre aus Behördenquellen: bei jedem Lauf neu, bei Ausfall samt Block behalten
 def per_share_archivieren(data,old):
  neu=data.get('per_share');stand=data.get('retrieved_at')
  if isinstance(neu,dict):
   for j in neu.get('jahre',[]):
-   if j.get('herkunft')!='sec':j['herkunft']='yahoo';j['zuletzt_geliefert']=stand
+   if j.get('herkunft') not in QUELL_HERKUNFT:j['herkunft']='yahoo';j['zuletzt_geliefert']=stand
  alt=(old or {}).get('per_share')
  if not isinstance(alt,dict) or alt.get('method')!=PER_SHARE_METHOD:return data
  if (old.get('symbol'),old.get('yahoo_symbol'))!=(data.get('symbol'),data.get('yahoo_symbol')):
@@ -252,18 +334,19 @@ def per_share_archivieren(data,old):
  for j in alt.get('jahre',[]):
   if not isinstance(j,dict) or not isinstance(j.get('end'),str):continue
   # SEC-Jahre (seit 27.11.2026) kommen bei jedem Lauf neu; fehlt der SEC-Abruf, bleiben sie unverändert als SEC.
-  if j.get('herkunft')=='sec':
+  if j.get('herkunft') in QUELL_HERKUNFT:
    if j['end'] not in da:neu['jahre'].append(j);da.add(j['end'])
    continue
   # Eigene, früher von Yahoo gelieferte Jahre haben Vorrang vor SEC für denselben Stichtag.
   if j['end'] in da:
-   if not any(x.get('end')==j['end'] and x.get('herkunft')=='sec' for x in neu['jahre']):continue
+   if not any(x.get('end')==j['end'] and x.get('herkunft') in QUELL_HERKUNFT for x in neu['jahre']):continue
    neu['jahre']=[x for x in neu['jahre'] if x.get('end')!=j['end']]
   if j.get('herkunft')!='archiv':j={**j,'herkunft':'archiv','zuletzt_geliefert':j.get('zuletzt_geliefert') or old.get('retrieved_at')}
   neu['jahre'].append(j);n+=1;da.add(j['end'])
  neu['jahre'].sort(key=lambda x:x['end'])
  # Behaltene SEC-Jahre brauchen ihren Block (Prüfsumme, Abgleich); ohne neuen SEC-Abruf gilt der bisherige.
- if 'sec' not in neu and isinstance(alt.get('sec'),dict) and any(x.get('herkunft')=='sec' for x in neu['jahre']):neu['sec']=alt['sec']
+ for q in QUELL_HERKUNFT:
+  if q not in neu and isinstance(alt.get(q),dict) and any(x.get('herkunft')==q for x in neu['jahre']):neu[q]=alt[q]
  if n:neu['archiv']={'method':PER_SHARE_ARCHIVE_METHOD,'jahre':n}
  return data
 # Gesamtumsatz zuerst (11.11.2026): RevenueFromContractWithCustomer... (ASC 606) enthaelt keine Miet-, Leasing-, Zins- oder
@@ -505,6 +588,16 @@ def collect(row):
     if sb:per_share['jahre']=sorted(per_share['jahre']+sj,key=lambda x:x['end']);per_share['sec']=sb
     else:per_share['sec_status']=grund
    except Exception:per_share['sec_status']='SEC-Jahre je Aktie: Auswertung fehlgeschlagen'
+  # Japan: EDINET-Fünfjahresübersichten aus dem Tageslauf daily-risk (seit 27.11.2026).
+  if str(row.get('isin','')).startswith('JP'):
+   try:
+    pfad=pathlib.Path(os.getenv('FUNDAMENTAL_EDINET_PATH',str(pathlib.Path(__file__).resolve().parents[1]/'daten'/'cf_edinet_je_aktie.json')))
+    st=json.loads(pfad.read_text(encoding='utf-8')) if pfad.exists() else {}
+    eintrag=(st.get('stocks') or {}).get(row.get('listing_symbol')) if st.get('method')=='edinet_summary_per_share_v1' else None
+    ej,eb,grund=edinet_jahre_je_aktie(eintrag,row,kurse,recent_splits(t,years=12),per_share['jahre'],info)
+    if eb:per_share['jahre']=sorted(per_share['jahre']+ej,key=lambda x:x['end']);per_share['edinet']=eb
+    else:per_share['edinet_status']=grund
+   except Exception:per_share['edinet_status']='EDINET-Jahre je Aktie: Auswertung fehlgeschlagen'
  except Exception: errors.append('Kurshistorie für Kennzahlen je Aktie nicht verfügbar')
  # Operating-Leasing zum Stichtag des endgültigen Jahresabschlusses aus derselben SEC-Antwort (seit 23.11.2026, operating_lease.py).
  lease=None

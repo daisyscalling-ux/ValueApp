@@ -50,7 +50,9 @@ Alle Namen enden auf `SummaryOfBusinessResults`.
 
 **Gespeichert** werden in `daten/cf_edinet_je_aktie.json` nur die berichteten Werte. Dazu kommen docID, EDINET-Nummer, Stichtag, Einreichung, Prüfsumme der Datei, Standard und Konflikte.
 
-## Noch nicht enthalten (folgt nach daisyscalling-ux/ValueApp#299)
+## Schritt 2: Export (seit 27.11.2026, `export_fundamentals.py`, Methode `edinet_per_share_export_v1`)
+
+Ursprünglicher Plan für Schritt 2:
 
 Umrechnung auf die heutige Aktienbasis, Abgleich und Übernahme in `per_share` (`export_fundamentals.py`). Geplante Regel:
 
@@ -88,3 +90,17 @@ Umrechnung auf die heutige Aktienbasis, Abgleich und Übernahme in `per_share` (
   - Älterer Bericht: 37 gelesen, 3 mit Korrektur offen, 2 nicht gefunden.
 - **45 Titel verworfen** (`ambiguous_or_unsupported_taxonomy`). Ursache war ein Fehler im eigenen Code: Der Standard wurde aus allen Werten bestimmt, auch aus dem Einzelabschluss. IFRS- und US-GAAP-Konzerne berichten die Muttergesellschaft aber nach J-GAAP. Korrigiert: Standard je Jahr nur aus Konzernwerten. Diese Titel werden im nächsten Lauf neu gelesen; an den J-GAAP-Ergebnissen ändert sich nichts.
 - 1 Titel mit ungeklärter Korrektur, 1 ohne Jahresbericht im Index.
+
+## Schritt 2 umgesetzt (27.11.2026)
+
+- `edinet_jahre_je_aktie` liest den Eintrag aus `cf_edinet_je_aktie.json`, nur für Titel mit japanischer ISIN.
+  - Geprüft werden Identität (Notierung, ISIN, JPY), Abschluss und Notierung in JPY und das Alter des Abrufs (höchstens 400 Tage).
+- **Aktienbasis je Jahr:** f = KGV × Gewinn je Aktie (verwässert, sonst unverwässert) ÷ Yahoo-Schlusskurs am Stichtag.
+  - f wird auf den nächsten Kandidaten gerundet: 1 oder das Produkt der Yahoo-Splits ab einem Split nach dem Stichtag.
+  - Erlaubt sind höchstens 10 % Abweichung (`EDINET_FAKTOR_TOLERANZ`). Gewinn je Aktie und Buchwert je Aktie werden durch diesen Faktor geteilt. Der Gewinn bleibt unverändert.
+- **Messung der Toleranz** an 157 Jahren mit Kurs (Abgleichsjahre): 151 liegen innerhalb von 3 %, 6 zwischen 6 und 10 % (TSE:4062, TSE:4751). Danach weicht der Gewinn je Aktie im Median 0,0 % von Yahoo ab, bei 4 von 149 Jahren um mehr als 2 %.
+- **Abgleich Pflicht** wie bei SEC: Der Gewinn je Aktie darf in mindestens einem gemeinsamen Jahr höchstens 2 % abweichen, sonst wird der Block verworfen und `edinet_status` nennt den Grund.
+- **Was übernommen wird:** nur Jahre vor dem ältesten Yahoo-Jahr, mit `herkunft: 'edinet'`, docID, Standard, Art des Gewinns je Aktie, Faktor, berichtetem KGV und Prüfsumme der Datei. Archivjahre haben Vorrang. EDINET-Jahre bleiben bei einem Ausfall samt Block erhalten.
+- **Ohne KGV** (Verlustjahr) oder ohne Kurs bleiben die Werte je Aktie offen; der Gewinn bleibt. Der Grund steht in `edinet.offen`.
+- **Probelauf** mit den 42 Titeln aus dem ersten Lauf, Kurse nur für die Abgleichsjahre: 38 übernommen mit zusammen 174 älteren Jahren, Abgleich höchstens 0,04 %. 4 Titel verworfen, weil der Gewinn je Aktie abweicht (z. B. EDINET 106 gegen Yahoo 35,35).
+- **Tests:** `fundamental_export/test_edinet_export.py` mit 5 Fällen, im Workflow `fundamentals-daily`.

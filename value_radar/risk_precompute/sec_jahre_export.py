@@ -47,6 +47,7 @@ def build(state, universe, now):
                 return False
             return not r.get('cik') or str(r['cik']).lstrip('0') == str(c.get('cik', '')).lstrip('0')
         rev, cf = state.get('revenueStocks', {}).get(s), state.get('stocks', {}).get(s)
+        eb = state.get('ebitdaStocks', {}).get(s)
         umsatz = [{'ende': p['end'], 'start': p['start'], 'wert': p['value'], 'waehrung': p['currency'], 'konzept': p['concept'],
                    'accession': p['accession'], 'sourceUrl': p['sourceUrl']}
                   for p in (rev or {}).get('periods', []) if rev and gueltig(rev) and _zahl(p.get('value')) and p['value'] >= 0]
@@ -56,11 +57,17 @@ def build(state, universe, now):
                for p in (cf or {}).get('periods', [])
                if cf and gueltig(cf) and p.get('namespace', 'us-gaap') == 'us-gaap' and p.get('concept') == PPE
                and _zahl(p.get('operatingCashflow')) and _zahl(p.get('cashPpe')) and p['cashPpe'] >= 0]
-        if len(umsatz) < 2 and len(ocf) < 2:
+        # EBITDA = operativer Gewinn + Abschreibungen (seit 27.11.2026, sec_ebitda_history); die App übernimmt nur bei Übereinstimmung mit ROIC.
+        ebitda = [{'ende': p['end'], 'start': p['start'], 'wert': p['value'], 'operativ': p['operatingIncome'], 'abschreibungen': p['da'],
+                   'waehrung': p['currency'], 'konzept': p['daConcept'], 'accession': p['accession'], 'sourceUrl': p['sourceUrl']}
+                  for p in (eb or {}).get('periods', []) if eb and gueltig(eb) and _zahl(p.get('value')) and _zahl(p.get('operatingIncome'))
+                  and _zahl(p.get('da')) and p['da'] >= 0]
+        if len(umsatz) < 2 and len(ocf) < 2 and len(ebitda) < 2:
             continue
-        out[s] = {'schema': 1, 'method': METHOD, 'inputIdentity': ident, 'cik': str((rev or cf)['cik']),
-                  'retrievedAt': max(c['retrievedAt'] for c in (rev, cf) if c and gueltig(c)),
-                  'umsatz': sorted(umsatz, key=lambda x: x['ende']), 'ocf_capex': sorted(ocf, key=lambda x: x['ende'])}
+        out[s] = {'schema': 1, 'method': METHOD, 'inputIdentity': ident, 'cik': str((rev or cf or eb)['cik']),
+                  'retrievedAt': max(c['retrievedAt'] for c in (rev, cf, eb) if c and gueltig(c)),
+                  'umsatz': sorted(umsatz, key=lambda x: x['ende']), 'ocf_capex': sorted(ocf, key=lambda x: x['ende']),
+                  'ebitda': sorted(ebitda, key=lambda x: x['ende'])}
     return out
 
 
@@ -71,8 +78,8 @@ def behalten(neu, alt):
     if not alt or alt.get('method') != METHOD or alt.get('inputIdentity') != neu['inputIdentity'] or str(alt.get('cik')) != str(neu['cik']):
         return neu, 0
     neu, n = dict(neu), 0
-    for key in ('umsatz', 'ocf_capex'):
-        if not neu[key]:
+    for key in ('umsatz', 'ocf_capex', 'ebitda'):
+        if not neu.get(key):
             continue
         erstes = neu[key][0]['ende']
         konzepte = {r.get('konzept') for r in neu[key]}
@@ -103,7 +110,7 @@ def main():
         gehalten += n
         pfad.write_text(json.dumps(d, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
     mit_umsatz = sum(1 for d in out.values() if len(d['umsatz']) >= 2)
-    print(json.dumps({'titel': len(out), 'aeltere_jahre_behalten': gehalten, 'mit_umsatz': mit_umsatz, 'mit_ocf_capex': sum(1 for d in out.values() if len(d['ocf_capex']) >= 2)}))
+    print(json.dumps({'titel': len(out), 'aeltere_jahre_behalten': gehalten, 'mit_umsatz': mit_umsatz, 'mit_ocf_capex': sum(1 for d in out.values() if len(d['ocf_capex']) >= 2), 'mit_ebitda': sum(1 for d in out.values() if len(d['ebitda']) >= 2)}))
 
 
 if __name__ == '__main__':

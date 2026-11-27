@@ -938,3 +938,16 @@ US-Leasing: Unter US-GAAP mindert die Miete den operativen Cashflow, „Total De
 - **Verzerrung:** Der Abgleich prüft nur die Jahre, die es auch bei Yahoo gibt. Ein Fehler, der nur ältere Jahre betrifft (etwa ein Split, den Yahoo nicht kennt), fällt dabei nicht auf. Gewinn und Eigenkapital sind davon nicht betroffen, Gewinn je Aktie, KGV und KBV schon. Titel, die nicht mehr notiert sind, fehlen ganz, weil das Universum nur heutige Titel enthält. Die lange Reihe zeigt also nur Überlebende.
 - **Probelauf:** hier nicht möglich, weil `SEC_USER_AGENT` nur im Workflow liegt. Geprüft ist mit synthetischen companyfacts nach dem Muster von NVDA: Split 4:1 (2021) und 10:1 (2024), Original und angepasster 10-K. Messung nach dem ersten `fundamentals-daily`-Lauf: Zahl der Titel mit SEC-Jahren, ältestes Jahr, Gründe in `sec_status`.
 - **Tests:** `fundamental_export/test_sec_je_aktie.py` mit 10 Fällen im Workflow `fundamentals-daily`; zusammen mit den übrigen Workflow-Tests 82 grün.
+
+## EBITDA vor den ROIC-Jahren aus SEC (27.11.2026, Entscheidung des Nutzers: nur EBITDA ableiten)
+- **Ziel:** Die EBITDA-Zeile der Kennzahlen-Tabelle für US-Titel so weit zurück wie der Umsatz (8 Jahre, bis etwa 2018). FCFF bleibt bei ROIC, weil SEC keine gleich definierte Größe hat. Die eigene Zeile „Operativer CF − Capex (SEC)“ bleibt.
+- **Regel** (`sec_ebitda_history.py`, Methode `sec-annual-ebitda-v1`):
+  - EBITDA = `OperatingIncomeLoss` + Abschreibungen. Für die Abschreibungen gilt das erste Konzept aus `DepreciationDepletionAndAmortization`, `DepreciationAndAmortization`, `DepreciationAmortizationAndAccretionNet`, das den jüngsten Stichtag abdeckt; ein Konzept je Titel.
+  - Beide Bestandteile müssen aus demselben 10-K (Accession) und demselben Zeitraum stammen (330–400 Tage).
+  - Je Stichtag gilt der neueste Bericht. Ein Widerspruch oder negative Abschreibungen im neuesten Bericht verwerfen den Stichtag, ohne Rückfall auf ältere Berichte.
+- **Abruf:** dieselbe companyfacts-Antwort wie Umsatz und Cashflow (`sec_cashflow_history.py`), kein zusätzlicher Abruf. Neue Richtlinie `EBITDA_POLICY`: Titel ohne EBITDA werden einmal neu geholt.
+- **Export** in `daten/sec_jahre/<Notierung>.json` als `ebitda` (Wert, operativ, Abschreibungen, Konzept, Accession). Ältere Jahre bleiben wie beim Umsatz erhalten (`behalten`).
+- **App:** übernimmt die Werte nur bei mindestens 2 überlappenden Jahren mit höchstens 5 % Abweichung zu ROIC (`SEC_EBITDA_MAX_DIFF`). Beim Umsatz gilt 1 %; ROIC kann die Abschreibungen anders abgrenzen. Werte kursiv und als abgeleitet gekennzeichnet; EBITDA-Marge nur, wo Umsatz und EBITDA beide verlängert sind.
+- **Verzerrung:** Die Abschreibungen aus der Kapitalflussrechnung können Wertminderungen oder Abschreibungen auf aktivierte Kosten enthalten. Das EBITDA fiele dann höher aus. Der Abgleich mit ROIC in den gemeinsamen Jahren fängt systematische Unterschiede ab, einzelne Sonderjahre vor ROIC nicht.
+- **Probelauf:** hier nicht möglich (`SEC_USER_AGENT` nur im Workflow). Messung nach dem ersten `daily-risk`-Lauf: Titel mit EBITDA, Anteil innerhalb der 5-%-Grenze, Verteilung der Abweichungen.
+- **Tests:** `test_sec_ebitda_history.py` mit 6 Fällen, läuft im Workflow über `test_sec*.py` mit; alle 126 SEC-Tests grün.

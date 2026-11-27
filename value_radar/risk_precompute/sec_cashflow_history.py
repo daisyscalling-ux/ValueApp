@@ -16,6 +16,7 @@ METHOD='sec-cashflow-history-v1'
 COLLECTION_POLICY=POLICY+'/cash-context-v12-dei-date-continuations'
 # Einmaliger Nachabruf fuer Titel ohne Umsatzreihe (sec_revenue_history); danach normaler 7-Tage-Takt.
 REVENUE_POLICY='sec-annual-revenue-v1'
+EBITDA_POLICY='sec-annual-ebitda-v1'  # seit 27.11.2026: EBITDA aus derselben Antwort (sec_ebitda_history)
 
 def expected_period(domain,now):
  value=domain.get('domains',{}).get('balance',{}).get('period')
@@ -180,7 +181,8 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   evidence_due=att.get('requestedPeriodState')=='still_missing' and bool(att.get('originalFiling')) and 'investmentEvidence' not in att['originalFiling'] and not att.get('originalError')
   retry_partial=att.get('policy')!=COLLECTION_POLICY and (s not in state.get('operatingStocks',{}) or (att.get('originalFiling',{}).get('fields')=={}) or att.get('originalError') in ('filing_metadata_mismatch','filing_too_large','response_too_large') or any(att.get('normalization',{}).get(k,0)>0 for k in ('currency_conflict_periods','group_missing_same_filing_fields')))
   revenue_due=s in state['stocks'] and s not in state.get('revenueStocks',{}) and att.get('revenuePolicy')!=REVENUE_POLICY
-  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due and not evidence_due and not revenue_due:counts['cached']+=1;continue
+  ebitda_due=s in state['stocks'] and s not in state.get('ebitdaStocks',{}) and att.get('ebitdaPolicy')!=EBITDA_POLICY
+  if old.get('inputIdentity')==identity(r) and old.get('cik')==str(cik) and recent(old.get('retrievedAt'),now,7) and not retry_partial and not newer_due and not evidence_due and not revenue_due and not ebitda_due:counts['cached']+=1;continue
   cooldown=28 if att.get('error') in ('us_gaap_missing','supported_accounting_namespace_missing','supported_annual_form_missing') else 2
   if att.get('policy')==COLLECTION_POLICY and att.get('inputIdentity')==identity(r) and att.get('error') and recent(att.get('at'),now,cooldown):counts['cooldown']+=1;continue
   candidates.append(r)
@@ -189,7 +191,7 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
   remaining=budget-(time.monotonic()-started)
   if counts['attempted']>=max_companies or remaining<1:break
   s=r['listing_symbol'];cik=str(listing_map[s]);expected=expected_period(domains.get(s,{}),now)
-  att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY,'revenuePolicy':REVENUE_POLICY,'requestedPeriod':expected};counts['attempted']+=1
+  att={'at':now.isoformat(),'inputIdentity':identity(r),'policy':COLLECTION_POLICY,'revenuePolicy':REVENUE_POLICY,'ebitdaPolicy':EBITDA_POLICY,'requestedPeriod':expected};counts['attempted']+=1
   try:
    data=fetch(cik,min(12,remaining))
    att['issuerNames']={'expected':r.get('name_full') or r.get('name'),'sec':data.get('entityName'),'cik':cik}
@@ -220,6 +222,11 @@ def run(universe,coverage,state,listing_map,fetch,now=None,budget=900,max_compan
    if revenue:
     state.setdefault('revenueStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':revenue};counts['revenueUpdated']+=1
    else:counts['revenueMissing']+=1
+   from sec_ebitda_history import normalize as ebitda_normalize
+   ebitda=ebitda_normalize(data,cik,now)
+   if ebitda:
+    state.setdefault('ebitdaStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':ebitda};counts['ebitdaUpdated']+=1
+   else:counts['ebitdaMissing']+=1
    if operating:
     state.setdefault('operatingStocks',{})[s]={'inputIdentity':identity(r),'cik':cik,'retrievedAt':now.isoformat(),'periods':operating,'pointInTimeUsable':False}
     counts['operatingUpdated']+=1;counts['operatingPeriods']+=len(operating)

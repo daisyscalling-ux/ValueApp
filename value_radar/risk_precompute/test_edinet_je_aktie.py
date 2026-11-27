@@ -71,6 +71,26 @@ class Parser(unittest.TestCase):
         r = parse_summary(instanz(f, standard='IFRS'), DOC)
         self.assertEqual((r['standard'], r['jahre'][0]['fields']['bvps']), ('ifrs', 1800.0))
 
+    def test_ifrs_konzern_mit_jgaap_einzelabschluss(self):
+        # Wie im ersten Lauf (45 Titel verworfen): Muttergesellschaft im Einzelabschluss nach J-GAAP.
+        f = [('BasicEarningsLossPerShareIFRS', 'CurrentYearDuration', 'JPYPerShares', 150.0), ('ProfitLossAttributableToOwnersOfParentIFRS', 'CurrentYearDuration', 'JPY', 9e9),
+             ('BasicEarningsLossPerShare', 'CurrentYearDuration_NonConsolidatedMember', 'JPYPerShares', 40.0),
+             ('NetIncomeLoss', 'CurrentYearDuration_NonConsolidatedMember', 'JPY', 2e9),
+             ('DividendPaidPerShare', 'CurrentYearDuration_NonConsolidatedMember', 'JPYPerShares', 50.0)]
+        r = parse_summary(instanz(f), DOC)
+        j = r['jahre'][-1]
+        self.assertEqual((r['standard'], j['standard'], j['fields']['eps_basic'], j['fields']['net_income'], j['fields']['dps']), ('ifrs', 'ifrs', 150.0, 9e9, 50.0))
+
+    def test_umstellung_jgaap_auf_ifrs_je_jahr(self):
+        f = [('BasicEarningsLossPerShareIFRS', 'CurrentYearDuration', 'JPYPerShares', 150.0), ('BasicEarningsLossPerShareIFRS', 'Prior1YearDuration', 'JPYPerShares', 140.0),
+             ('BasicEarningsLossPerShare', 'Prior3YearDuration', 'JPYPerShares', 120.0), ('ProfitLossAttributableToOwnersOfParent', 'Prior3YearDuration', 'JPY', 7e9),
+             ('BasicEarningsLossPerShare', 'Prior1YearDuration', 'JPYPerShares', 139.0)]
+        r = parse_summary(instanz(f), DOC)
+        j = {x['end']: x for x in r['jahre']}
+        self.assertEqual((r['standard'], j['2026-03-31']['standard'], j['2023-03-31']['standard'], j['2023-03-31']['fields']['net_income']), ('ifrs', 'ifrs', 'jgaap', 7e9))
+        self.assertNotIn('2025-03-31', j, 'Übergangsjahr mit beiden Standards im Konzern bleibt offen')
+        self.assertIn('standard:2025-03-31', r['konflikte'])
+
     def test_widerspruch_falsche_einheit_und_identitaet(self):
         f = jgaap() + [('BasicEarningsLossPerShare', 'CurrentYearDuration', 'JPYPerShares', 301.0)]
         r = parse_summary(instanz(f), DOC)

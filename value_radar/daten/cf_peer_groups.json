@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "method": "issuer-business-groups-v1",
-  "generatedAt": "2026-11-28T05:29:10.502823+00:00",
+  "generatedAt": "2026-11-28T16:44:21.856283+00:00",
   "inputSha256": "624f9ed7d389151c862fe29e5a2e420413a6bcbe9be76a5db81b8a3719c76518",
   "summary": {
     "inputListings": 1342,
@@ -12,15 +12,15 @@
     "reviewListings": 0,
     "groups": 174,
     "levels": {
-      "provider_subindustry": 1258,
-      "industry_context": 65,
+      "provider_subindustry": 1257,
+      "industry_context": 66,
       "reviewed_business_model": 10
     },
-    "withFivePeers": 1107,
+    "withFivePeers": 1101,
     "groupSizeReasons": {
-      "small_currency_cohort": 538,
+      "small_currency_cohort": 532,
       "enough_issuers_before_history_check": 569,
-      "small_business_group": 232
+      "small_business_group": 238
     }
   },
   "listings": {
@@ -7230,7 +7230,7 @@
       "issuerId": "issuer:cf53240c38449ea0c40c",
       "group": "yahoo:real-estate:reit-industrial",
       "sameCurrencyPeerIssuerCount": 0,
-      "groupSizeReason": "small_currency_cohort",
+      "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "BE0974349814",
         "currency": "EUR",
@@ -7240,15 +7240,14 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 5,
+      "peerIssuerCount": 4,
       "peerSymbols": [
-        "LSE:BBOX",
         "LSE:LMP",
         "LSE:SGRO",
         "NYSE:EXR",
         "NYSE:PSA"
       ],
-      "state": "ready",
+      "state": "small_group",
       "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
@@ -9291,9 +9290,9 @@
     },
     "LSE:BBOX": {
       "issuerId": "issuer:570e07f93347e01d1718",
-      "group": "yahoo:real-estate:reit-industrial",
-      "sameCurrencyPeerIssuerCount": 2,
-      "groupSizeReason": "small_currency_cohort",
+      "group": "industry:investment trusts",
+      "sameCurrencyPeerIssuerCount": 1,
+      "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "GB00BG49KP99",
         "currency": "GBP",
@@ -9302,17 +9301,13 @@
         "name_full": "Tritax Big Box REIT PLC",
         "security_type": "stock"
       },
-      "level": "provider_subindustry",
-      "peerIssuerCount": 5,
+      "level": "industry_context",
+      "peerIssuerCount": 1,
       "peerSymbols": [
-        "EURONEXT:WDP",
-        "LSE:LMP",
-        "LSE:SGRO",
-        "NYSE:EXR",
-        "NYSE:PSA"
+        "LSE:III"
       ],
-      "state": "ready",
-      "reason": "identity_checked_provider_industry_not_independently_verified",
+      "state": "small_group",
+      "reason": "broad_industry_requires_business_model_review",
       "directCompetitorsVerified": false
     },
     "LSE:BBY": {
@@ -10622,7 +10617,7 @@
     "LSE:III": {
       "issuerId": "issuer:751914c3e60191aa1d00",
       "group": "industry:investment trusts",
-      "sameCurrencyPeerIssuerCount": 0,
+      "sameCurrencyPeerIssuerCount": 1,
       "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "GB00B1YW4409",
@@ -10633,8 +10628,10 @@
         "security_type": "stock"
       },
       "level": "industry_context",
-      "peerIssuerCount": 0,
-      "peerSymbols": [],
+      "peerIssuerCount": 1,
+      "peerSymbols": [
+        "LSE:BBOX"
+      ],
       "state": "small_group",
       "reason": "broad_industry_requires_business_model_review",
       "directCompetitorsVerified": false
@@ -11098,8 +11095,8 @@
     "LSE:LMP": {
       "issuerId": "issuer:080d14d60ef940e5b80e",
       "group": "yahoo:real-estate:reit-industrial",
-      "sameCurrencyPeerIssuerCount": 2,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 1,
+      "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "GB00B4WFW713",
         "currency": "GBP",
@@ -11109,15 +11106,14 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 5,
+      "peerIssuerCount": 4,
       "peerSymbols": [
         "EURONEXT:WDP",
-        "LSE:BBOX",
         "LSE:SGRO",
         "NYSE:EXR",
         "NYSE:PSA"
       ],
-      "state": "ready",
+      "state": "small_group",
       "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
@@ -12273,8 +12269,8 @@
     "LSE:SGRO": {
       "issuerId": "issuer:9b7b8ca7f5ec4305306f",
       "group": "yahoo:real-estate:reit-industrial",
-      "sameCurrencyPeerIssuerCount": 2,
-      "groupSizeReason": "small_currency_cohort",
+      "sameCurrencyPeerIssuerCount": 1,
+      "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "GB00B5ZN1N88",
         "currency": "GBP",
@@ -12284,15 +12280,14 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 5,
+      "peerIssuerCount": 4,
       "peerSymbols": [
         "EURONEXT:WDP",
-        "LSE:BBOX",
         "LSE:LMP",
         "NYSE:EXR",
         "NYSE:PSA"
       ],
-      "state": "ready",
+      "state": "small_group",
       "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
@@ -25514,7 +25509,7 @@
       "issuerId": "issuer:c3933988d03883106e52",
       "group": "yahoo:real-estate:reit-industrial",
       "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_currency_cohort",
+      "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "US30225T1025",
         "currency": "USD",
@@ -25524,15 +25519,14 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 5,
+      "peerIssuerCount": 4,
       "peerSymbols": [
         "EURONEXT:WDP",
-        "LSE:BBOX",
         "LSE:LMP",
         "LSE:SGRO",
         "NYSE:PSA"
       ],
-      "state": "ready",
+      "state": "small_group",
       "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
@@ -30695,7 +30689,7 @@
       "issuerId": "issuer:d2fa7c533d149cef3825",
       "group": "yahoo:real-estate:reit-industrial",
       "sameCurrencyPeerIssuerCount": 1,
-      "groupSizeReason": "small_currency_cohort",
+      "groupSizeReason": "small_business_group",
       "inputIdentity": {
         "isin": "US74460D1090",
         "currency": "USD",
@@ -30705,15 +30699,14 @@
         "security_type": "stock"
       },
       "level": "provider_subindustry",
-      "peerIssuerCount": 5,
+      "peerIssuerCount": 4,
       "peerSymbols": [
         "EURONEXT:WDP",
-        "LSE:BBOX",
         "LSE:LMP",
         "LSE:SGRO",
         "NYSE:EXR"
       ],
-      "state": "ready",
+      "state": "small_group",
       "reason": "identity_checked_provider_industry_not_independently_verified",
       "directCompetitorsVerified": false
     },
@@ -54561,7 +54554,7 @@
         "label": "Packaged Foods",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/MICC.AS/profile/",
-        "observedAt": "2026-11-27T14:27:08.291144+00:00",
+        "observedAt": "2026-11-28T16:43:34.254690+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -61753,7 +61746,7 @@
         "label": "Aerospace & Defense",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/SPCX/profile/",
-        "observedAt": "2026-11-27T14:26:47.102541+00:00",
+        "observedAt": "2026-11-28T16:43:18.817974+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -61853,12 +61846,11 @@
       ],
       "classification": {
         "state": "classified",
-        "group": "yahoo:real-estate:reit-industrial",
-        "label": "REIT - Industrial",
-        "level": "provider_subindustry",
-        "source": "https://finance.yahoo.com/quote/BBOX.L/profile/",
-        "observedAt": "2026-10-29T14:57:01.244048+00:00",
-        "reason": "identity_checked_provider_industry_not_independently_verified"
+        "group": "industry:investment trusts",
+        "label": "investment trusts",
+        "level": "industry_context",
+        "source": "ROIC profile/listing",
+        "reason": "broad_industry_requires_business_model_review"
       },
       "currencies": [
         "GBP"
@@ -63337,7 +63329,7 @@
         "label": "Banks - Regional",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/ALSYDB.CO/profile/",
-        "observedAt": "2026-11-27T14:27:19.801484+00:00",
+        "observedAt": "2026-11-28T16:43:43.268081+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -66867,7 +66859,7 @@
         "label": "Aerospace & Defense",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/CSG.AS/profile/",
-        "observedAt": "2026-11-27T14:27:05.922653+00:00",
+        "observedAt": "2026-11-28T16:43:32.372567+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -69857,7 +69849,7 @@
         "label": "Integrated Freight & Logistics",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/FDXF/profile/",
-        "observedAt": "2026-11-27T14:26:52.981562+00:00",
+        "observedAt": "2026-11-28T16:43:22.426743+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -72897,7 +72889,7 @@
         "label": "Insurance - Diversified",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/HBAN.SW/profile/",
-        "observedAt": "2026-11-27T14:27:13.664129+00:00",
+        "observedAt": "2026-11-28T16:43:38.745125+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -73026,7 +73018,7 @@
         "label": "Shell Companies",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/VYLR/profile/",
-        "observedAt": "2026-11-27T14:26:57.112130+00:00",
+        "observedAt": "2026-11-28T16:43:26.043484+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [
@@ -82270,7 +82262,7 @@
         "label": "Aerospace & Defense",
         "level": "provider_subindustry",
         "source": "https://finance.yahoo.com/quote/HONA/profile/",
-        "observedAt": "2026-11-27T14:26:45.907197+00:00",
+        "observedAt": "2026-11-28T16:43:17.802442+00:00",
         "reason": "identity_checked_provider_industry_not_independently_verified"
       },
       "currencies": [

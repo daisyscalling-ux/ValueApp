@@ -238,6 +238,8 @@ export function bundleLight(raw: RoicRaw): Fund & Record<string, unknown> {
   // Historienfelder (Reihen, KGV-Band, Gewinnhistorie, Ausschüttungsperiode) aus denselben Rohblöcken wie der Screener.
   Object.assign(out, historyFromRoicRaw(raw));
   out.ticker = gval(prof, 'symbol', 'ticker') ?? gval(quote, 'symbol') ?? gval(ev, 'symbol');
+  // Aufgerufene Notierung (z. B. TSE:6526), seit 28.11.2026 für den Abgleich mit der Scannerzeile; der ROIC-Ticker kann anders lauten.
+  out._listing_symbol = typeof raw.resolved_symbol === 'string' && raw.resolved_symbol.includes(':') ? raw.resolved_symbol.toUpperCase() : null;
   out.dividend_yield = num(gval(prof, 'dividend_yield'));
 
   if (mu) {

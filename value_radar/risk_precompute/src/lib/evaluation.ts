@@ -1,4 +1,5 @@
-import {classifyPlaybook,fairValue,kursziel12m,analystTarget,type Fund} from './valuation';
+import {classifyPlaybook,fairValue,kursziel12m,analystTarget,METHODEN_HERKUNFT,type Fund} from './valuation';
+import {pruefeScannerStand,fvAusScannerStand,zielAusScannerStand,type StandHerkunft} from './scanner-stand';
 import {scoreStock,quantumScore} from './scoring';
 import {altmanZ,type Row} from './scores';
 import {scoresPlus} from './scores_plus';
@@ -35,8 +36,10 @@ export function aktuelleMultiples(f:Record<string,any>):void{
  if(ok(mc)&&mc>0&&ok(nd)&&ok(eb)&&eb>0){const neu=(mc+nd)/eb;if(neu>0){if(ok(f.ev_ebitda)&&Math.abs(f.ev_ebitda/neu-1)>0.005&&f.ev_ebitda_year_end===undefined)f.ev_ebitda_year_end=f.ev_ebitda;f.ev_ebitda=neu;}}
  else if(ok(f.ev_ebitda))f.ev_ebitda_basis='Geschäftsjahresende (ROIC), aktueller Wert nicht berechenbar';
 }
-export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null){
+export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null,scannerZeile:Record<string,any>|null=null){
  const fund={...input};
+ // Ein Stand für alle (seit 28.11.2026): Nur App-Aufrufe übergeben die Scannerzeile; der Scanner selbst rechnet ohne.
+ const scanner=scannerZeile?pruefeScannerStand(scannerZeile,{ticker:input.ticker,isin:input.isin,currency:input.currency}):null;
  // Scanner (seit 17.11.2026): Historienfelder aus denselben ROIC-Rohblöcken wie bundleLight (historyFromRoicRaw), vor dem
  // Jahresblock-Schritt wie in der Einzelanalyse. Von der Pipeline mitgelieferte Werte zählen nicht; ohne gültige Blöcke
  // derselben Notierung bleiben KGV-Band, Reihen und Gewinnhistorie offen.
@@ -77,7 +80,11 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  // Finanz- und Zykliker-Modell rechnen keinen DCF: fehlende Cash-Conversion ist dort kein Datenmangel (seit 16.11.2026).
  if(fund.cash_conversion==null&&(playbook==='financial'||playbook==='cyclical')){fund.cash_conversion_origin='not_required';fund.cash_conversion_source='nicht benötigt: '+(playbook==='financial'?'Finanzmodell':'Zykliker-Modell')+' ohne DCF';}
  const peers=peerFundsFromRows(peerRows),peerArg=peers.length?peers:null;
- const nativeValue=fairValue(fund,peerArg,playbook);
+ const liveValue=fairValue(fund,peerArg,playbook);
+ // Scannerstand nur, wenn auch die Live-Prüfung einen Fair Value zulässt (gesperrte Eingänge bleiben offen).
+ const stand=scanner?.stand&&liveValue.fair_value!==null?scanner.stand:null;
+ const standHerkunft:StandHerkunft|null=!scannerZeile?null:stand?{quelle:'scanner',zeit:stand.zeit}:{quelle:'live',grund:scanner?.grund??'Live-Prüfung sperrt den Fair Value'};
+ const nativeValue=stand?fvAusScannerStand(liveValue,stand,1,fund.price??null,METHODEN_HERKUNFT):liveValue;
  fund._fv_wert=nativeValue.fair_value;
   const scores = scoreStock(fund as never, peerArg as never, playbook);
   // Für die Anzeige (Einzelanalyse rendert mit dem Original-Fund, nicht mit dieser Kopie).
@@ -119,13 +126,16 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
   }
 
  const display=fundInEur(fund,eur) as Fund & Record<string,any>;
- const fv=display.currency===fund.currency?nativeValue:fairValue(display,peerArg,playbook);
+ const faktor=display.currency===fund.currency?1:Number(display._fx);
+ const fvLive=display.currency===fund.currency?liveValue:fairValue(display,peerArg,playbook);
+ const fv=stand&&Number.isFinite(faktor)&&faktor>0?fvAusScannerStand(fvLive,stand,faktor,display.price??null,METHODEN_HERKUNFT):display.currency===fund.currency?nativeValue:fvLive;
  const targetFund={...display};
  // 12M-Ziel: fundamentaler Teil Richtung Fair Value, nur wenn dieser verlässlich ist (seit 17.11.2026).
  targetFund._fv_anker={value:fv.fair_value,reliable:fv.reliable};
  // Rückfall für das historische KGV: das KGV zum letzten Geschäftsjahresende (ROIC), nicht das heutige (seit 20.11.2026).
  if(!targetFund.hist_pe_median&&targetFund.pe_year_end)targetFund.hist_pe_median=targetFund.pe_year_end;
- const kz=kursziel12m(targetFund,playbook);
+ const kzLive=kursziel12m(targetFund,playbook);
+ const kz=stand&&Number.isFinite(faktor)&&faktor>0?zielAusScannerStand(kzLive,stand,faktor,display.price??null):kzLive;
  const analyst=(fund.analyst_buy!==undefined||fund.analyst_hold!==undefined)
   ?{buy:Number(fund.analyst_buy??0),hold:Number(fund.analyst_hold??0),sell:Number(fund.analyst_sell??0)}:null;
  // Wie in der Pipeline (scoring.py, bis 12.11.2026): Analysten-Skepsis = Konsensziel gegen eigenen Fair Value;
@@ -133,8 +143,8 @@ export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=n
  const target=analystTarget(display),skepsis=target&&fv.fair_value&&fv.fair_value>0?(target/fv.fair_value-1)*100:null;
  const trend=display._analyst_trend&&typeof display._analyst_trend==='object'?display._analyst_trend:null;
  const q=quantumScore(scores.composite,fv,analyst,scores.category_scores.momentum,null,skepsis,trend);
- display._fv_wert=fv.fair_value;display._composite_live=scores.composite;display._upside_live=fv.upside_pct;
+ display._fv_wert=fv.fair_value;display._stand_herkunft=standHerkunft;display._composite_live=scores.composite;display._upside_live=fv.upside_pct;
  // Dieselben Peers fuer Szenarien und Bewertungsrisiko (szenarioMatrix), sonst passt Base nicht zum Fair Value.
  display._peer_funds=peerArg;
- return {fund:display,playbook,fv,scores,altZforHealth,kz,q,peerCount:peers.length};
+ return {fund:display,playbook,fv,scores,altZforHealth,kz,q,peerCount:peers.length,standHerkunft};
 }

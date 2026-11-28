@@ -41,7 +41,7 @@
   {
    "app": "src/lib/evaluation.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/evaluation.ts",
-   "sha256": "d4c3989861de93332886fa3e373c6202aea1b2478172162d5da67651e1c3059e"
+   "sha256": "754be17dad9c45ab7fb661980a46b34a5b93164f7760c8737b0c1d404ebae204"
   },
   {
    "app": "src/lib/finanzsparte.ts",
@@ -207,7 +207,7 @@
   {
    "app": "src/lib/roic.ts",
    "pipeline": "value_radar/risk_precompute/src/lib/roic.ts",
-   "sha256": "492b5280f3118c2f1f099fc2b66ffc90cb198f7e78747eb78b81b582561ae74f"
+   "sha256": "d7093886051bf9e15bde376bbb2255a3a58071d98b31388886d88f9b31093023"
   },
   {
    "app": "src/lib/fundamental-supplement.ts",

@@ -39,7 +39,7 @@ export function aktuelleMultiples(f:Record<string,any>):void{
 export function evaluateStock(input:Fund & Record<string,any>,eur:EurRate|null=null,peerRows:Record<string,unknown>[]|null=null,riskCoverage:Record<string,any>|null=null,healthDistribution:HealthDistribution|null=null,scannerZeile:Record<string,any>|null=null){
  const fund={...input};
  // Ein Stand für alle (seit 28.11.2026): Nur App-Aufrufe übergeben die Scannerzeile; der Scanner selbst rechnet ohne.
- const scanner=scannerZeile?pruefeScannerStand(scannerZeile,{ticker:input.ticker,isin:input.isin,currency:input.currency}):null;
+ const scanner=scannerZeile?pruefeScannerStand(scannerZeile,{ticker:input._listing_symbol??input.ticker,isin:input.isin,currency:input.currency}):null;
  // Scanner (seit 17.11.2026): Historienfelder aus denselben ROIC-Rohblöcken wie bundleLight (historyFromRoicRaw), vor dem
  // Jahresblock-Schritt wie in der Einzelanalyse. Von der Pipeline mitgelieferte Werte zählen nicht; ohne gültige Blöcke
  // derselben Notierung bleiben KGV-Band, Reihen und Gewinnhistorie offen.

@@ -603,7 +603,7 @@ export function fwdComposite(fund: Fund, preset: Playbook = "quality"): number |
 export const FAIR_VALUE_MAX_MULT = 3.0;
 export const FAIR_VALUE_MIN_MULT = 0.3;
 export const TERMINAL_ANTEIL_WARN = 0.75;
-const METHODEN_HERKUNFT: Record<string, string> = {
+export const METHODEN_HERKUNFT: Record<string, string> = {
   justified_pe: "multiple", fwd_pe: "multiple", fwd_composite: "multiple",
   hist_pe: "multiple", ev_ebitda: "multiple", pb: "substanz",
   epv: "ertragskraft", dcf: "cashflow", analyst: "markt", fallback: "notbehelf",

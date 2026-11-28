@@ -951,3 +951,11 @@ US-Leasing: Unter US-GAAP mindert die Miete den operativen Cashflow, „Total De
 - **Verzerrung:** Die Abschreibungen aus der Kapitalflussrechnung können Wertminderungen oder Abschreibungen auf aktivierte Kosten enthalten. Das EBITDA fiele dann höher aus. Der Abgleich mit ROIC in den gemeinsamen Jahren fängt systematische Unterschiede ab, einzelne Sonderjahre vor ROIC nicht.
 - **Probelauf:** hier nicht möglich (`SEC_USER_AGENT` nur im Workflow). Messung nach dem ersten `daily-risk`-Lauf: Titel mit EBITDA, Anteil innerhalb der 5-%-Grenze, Verteilung der Abweichungen.
 - **Tests:** `test_sec_ebitda_history.py` mit 6 Fällen, läuft im Workflow über `test_sec*.py` mit; alle 126 SEC-Tests grün.
+
+## 28.11.2026 · Ein Stand für alle (App)
+Die App zeigt in Einzelanalyse und Portfolio jetzt Fair Value, Einstieg, 12M-Ziel und Methoden aus dem Scannerlauf (`cf_universum.json`) statt einer Live-Rechnung. So stimmen Startseite, Scanner und Einzelanalyse überein (vorher z. B. Socionext 1.463 gegen rund 1.130 JPY).
+- Die App prüft die Zeile beim Lesen erneut: Methode `ts-evaluate-v1`, gleiche Notierung, ISIN und Währung, höchstens 36 h alt, Wertebereiche, Nachrechnung des Fair Value aus Kernmethoden × Gewichten (Toleranz 2 %).
+- Die Pipeline übernimmt die App-Kopien `src/lib/scanner-stand.ts`, `evaluation.ts` und `valuation.ts` (`METHODEN_HERKUNFT` exportiert).
+- Der Scanner ruft `evaluateStock` ohne Scannerzeile auf. Sein Rechenweg und seine Ergebnisse bleiben unverändert.
+- Messung 28.11.2026: 1.323 von 1.342 Zeilen bestehen die Prüfung. 17 haben keinen Fair Value, 2 keine Notierung.
+- Details und Grenzen stehen in `valueapp-cf/FORTSCHRITT.md`.
